@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Describe the problem first. Want Keep is still in an early documentation stage, so please do not assume a feature already exists.
+        Describe the problem first.
   - type: textarea
     id: problem
     attributes:
@@ -36,4 +36,4 @@ body:
     id: additional
     attributes:
       label: Additional context
-      description: Links, sketches, or related issues. Do not attach real financial data.
+      description: Links, sketches, or related issues. Do not attach secrets or personal data.

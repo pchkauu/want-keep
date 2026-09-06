@@ -6,7 +6,7 @@ This repository is **source-available**. You may fork it, modify it, self-host i
 
 ## Current scope
 
-Application code is not published yet. Most useful contributions today are documentation, design discussion, and process improvements.
+Application code is not published yet. Useful contributions today are documentation and repository process.
 
 When application code lands, this file will gain concrete run, test, and lint commands. Until then, do not invent a stack or claim that the project can be started locally.
 
@@ -38,7 +38,7 @@ Use a short prefix and a descriptive slug:
 | `docs/` | Documentation only |
 | `chore/` | Tooling, templates, or repo hygiene |
 
-Examples: `docs/self-hosting`, `feat/alfabank-connector`, `fix/transfer-matching`.
+Examples: `docs/readme`, `chore/gitignore`.
 
 ## Commit expectations
 
@@ -63,7 +63,7 @@ A PR should:
 - update documentation when behavior or contracts change
 - include tests for new or changed behavior once code exists
 - call out breaking changes explicitly
-- contain no secrets and no real financial data
+- contain no secrets and no personal data
 
 Maintainers may ask for smaller PRs if a change mixes unrelated work.
 
@@ -71,69 +71,30 @@ Maintainers may ask for smaller PRs if a change mixes unrelated work.
 
 When application code exists:
 
-- add or update tests for business logic, mapping, validation, and error paths
-- cover security-sensitive behavior with regression tests
+- add or update tests for changed behavior
 - do not weaken tests to hide a failure
 
-Until then, documentation PRs should be fact-checked against the repository. Do not describe unimplemented features as shipped.
+Until then, documentation PRs should match what is actually in the repository.
 
 ## Code quality
 
-Prefer small, readable changes that fit the existing architecture.
+Prefer small, readable changes.
 
 Once a stack is published:
 
 - use the project formatter, linter, and test commands
-- keep public APIs, schemas, and storage contracts explicit
 - do not introduce dependencies without a clear need
 
 Do not replace existing tooling with alternatives unless there is a concrete reason.
 
-## Large changes
-
-Open an issue before:
-
-- adding a new integration
-- changing the domain model
-- introducing a new storage or sync strategy
-- changing auth, encryption, or privacy behavior
-- adding an AI or OCR provider
-
-Describe the problem, the proposed approach, and the alternatives you considered.
-
-## Adding integrations
-
-Use the [integration request](.github/ISSUE_TEMPLATE/integration_request.yml) template first.
-
-A connector should eventually document:
-
-- authentication and refresh
-- account and transaction mapping
-- pagination
-- rate limits
-- sync strategy
-- error handling
-- idempotency
-- supported currencies
-
-Integrations belong behind the shared connector abstraction described in [docs/integrations.md](docs/integrations.md). Do not bind the domain model to a bank-specific DTO.
-
-Do not add reverse-engineered or unofficial private APIs unless this repository already has a clear, lawful basis for that integration.
-
-Never commit fake banking clients that pretend to call a live API.
-
 ## Security rules
 
-Want Keep will handle bank credentials, tokens, receipts, and personal financial history.
-
-Never add real API keys, bank credentials, access tokens, cookies, or personal financial data to the repository, fixtures, screenshots, or logs.
+Never add real API keys, credentials, access tokens, cookies, or personal data to the repository, fixtures, screenshots, or logs.
 
 Also:
 
-- do not log secrets or account identifiers in examples
+- do not log secrets in examples
 - strip credentials from reproduced errors
-- treat OCR images and AI prompts as sensitive input
-- prefer least privilege for any future connector credential
 
 Report vulnerabilities privately. See [SECURITY.md](SECURITY.md). Do not file public issues for security problems.
 
