@@ -1,0 +1,52 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_rsa.pub
+
+# Credentials and financial dumps
+*.cookie
+cookies.txt
+credentials.json
+secrets.json
+*.sqlite
+*.sqlite3
+*.db
+dumps/
+backups/
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Logs and local tooling
+*.log
+.cache/
+tmp/
+temp/
+.direnv/
+.venv/
+venv/
+node_modules/
+dist/
+build/
+coverage/
