@@ -8,7 +8,7 @@ This repository is **source-available**. You may fork it, modify it, self-host i
 
 Application code is not published yet. Useful contributions today are documentation and repository process.
 
-When application code lands, this file will gain concrete run, test, and lint commands. Until then, do not invent a stack or claim that the project can be started locally.
+The agreed target stack and task dependencies are documented in the [MVP specification](spec/001-want-keep-mvp/README.en.md). When application code lands, this file will gain concrete runtime, test, and lint commands. Do not present planned commands as available or claim that the application can be started locally.
 
 ## How to contribute
 
@@ -25,7 +25,15 @@ Discuss large changes in an issue first.
 
 There is no application runtime in this repository yet.
 
-For documentation changes, edit the relevant Markdown files and open a pull request.
+For hand-authored specification changes, update both RU/EN Markdown versions. Requirements, acceptance criteria, screens/forms/states and task cards are generated from `spec/001-want-keep-mvp/catalog.json`; edit that source and run these existing documentation commands from the repository root:
+
+```sh
+python3 spec/001-want-keep-mvp/tools/spec_tool.py render
+python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+git diff --check
+```
+
+Review semantic parity separately: the script checks translation presence and traceability, not whether the prose means the same thing. See the package README for the SDD readiness gate and future application work.
 
 ## Branch naming
 

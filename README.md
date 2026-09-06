@@ -2,9 +2,17 @@
 
 **One place for all your money.**
 
-Want Keep is an early **source-available** personal finance project. The product, architecture, and stack are not decided yet.
+Want Keep is an early **source-available** family finance project for multi-currency accounting, budgets, savings and AI-assisted analysis.
 
-This repository is a public template: license, contribution rules, and security process. Application code is not published yet.
+The agreed MVP targets Go, PostgreSQL, React/TypeScript/Vite and a separate Playwright collector. This repository contains the specification and backlog; application code is not implemented yet. External integration contracts remain under investigation.
+
+## MVP specification
+
+- [Русская документация](spec/001-want-keep-mvp/README.md) / [English documentation](spec/001-want-keep-mvp/README.en.md)
+- [Desktop design and animations](spec/001-want-keep-mvp/design.en.md) / [35 screens and navigation](spec/001-want-keep-mvp/screens.en.md)
+- [Requirements and acceptance](spec/001-want-keep-mvp/traceability.en.md)
+- [Implementation backlog and GitHub Issues](spec/001-want-keep-mvp/backlog.en.md)
+- [Readiness and blockers](spec/001-want-keep-mvp/verification.en.md)
 
 ## Contributing
 

@@ -1,0 +1,266 @@
+<!-- want-keep-task: task-5.5 -->
+# task-5.5 — Формировать обоснованные AI-инсайты / Generate grounded AI insights
+
+## RU
+
+Давать проверяемые объяснения расходов, доходов и выполнения плана.
+
+**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+
+**Зависимости:** `task-5.1`, `task-6.8`.
+
+**Тип:** `implementation`.
+
+### Изменение и контракты
+
+Передавать AI рассчитанные доменом срезы, coverage и ссылки на операции; суммы/выводы валидировать против этих данных. Генерировать дневные/месячные сводки и ответы по запросу, помечать прогнозы и неполноту. Предложение нового бюджета остаётся proposal до решения владельца. Перегенерация учитывает версии данных и бюджет API, не запускается на каждый render.
+
+### Границы изменений
+
+- `backend/internal/insights/`
+
+Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+
+### Связанные требования
+
+- **REQ-020:** AI-инсайты по доходам и расходам ссылаются на проверяемые данные и отделяют прогноз от факта.
+- **REQ-021:** AI меняет утверждённый бюджет, прогноз доходов или цели только по явному решению участника с правом на изменение.
+- **REQ-030:** Дневные лимиты показывают семейный и индивидуальный доступный/прогнозный остаток, по категориям и с отдельным обеспечением каждой валютой.
+- **REQ-037:** Исторические расходы используют зафиксированную оценку на дату операции, текущий капитал — актуальную оценку.
+- **REQ-051:** AI ограничен бюджетом $50/месяц и деградирует в очередь ожидания без остановки обычного учёта.
+- **REQ-052:** Дашборд объединяет счета, план/факт, доходы, расходы, цели и дневные лимиты с детализацией.
+- **REQ-055:** Веб-приложение предназначено для ноутбука macOS в Chrome и Arc; изменение окна и масштаба сохраняет доступность ежедневного учёта.
+- **REQ-056:** Развёртывание укладывается в $40/месяц на сервер в DE/NL/BG; отдельные платные источники не используются.
+- **REQ-066:** Все доходы и доступные средства входят в семейный пул; общий бюджет и личные разрезы используют один финансовый факт.
+- **REQ-069:** Резервы личных и совместных целей задаются явно; совместные цели отображаются отдельным общим блоком без персональных долей.
+- **REQ-070:** Сумма индивидуальных дневных лимитов не превышает семейный предел одной валюты; счёт плательщика не меняет долю расходов.
+- **REQ-071:** Один общий чат сохраняет автора сообщения и проверяет полномочия инициатора AI-команды при исполнении.
+
+### Критерии приёмки
+
+Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+
+#### AC-020
+
+- **Дано:** В двух месяцах известны расходы по категориям; один источник устарел.
+- **Когда:** AI формирует месячный инсайт.
+- **Тогда:** Числа воспроизводятся отчётом; указаны период, связанные операции/срезы и неполнота; прогноз не представлен как полученный доход.
+- **Уровень:** `integration`.
+
+#### AC-021
+
+- **Дано:** Есть утверждённый бюджет и предложение перераспределения.
+- **Когда:** Приходит новый расход, затем уполномоченный участник подтверждает предложенное изменение.
+- **Тогда:** До подтверждения план неизменен; подтверждение применяет показанную версию предложения один раз; устаревшее предложение пересогласуется.
+- **Уровень:** `integration`.
+
+#### AC-030
+
+- **Дано:** Есть RUB-бюджет, будущая зарплата, обязательный платёж, резерв цели и USDT на другом счёте.
+- **Когда:** Рассчитываются лимиты на оставшиеся дни месяца.
+- **Тогда:** Доступный RUB-лимит исключает будущую зарплату, USDT, долг и резервы; прогноз учитывает даты поступлений и показывает кассовые разрывы; общий предел не размножается по категориям.
+- **Уровень:** `integration`.
+
+#### AC-037
+
+- **Дано:** Расход USD 10 оценён в RUB 900; текущий курс стал RUB 100/USD.
+- **Когда:** Обновляются котировки и дашборд.
+- **Тогда:** Исторический расход остаётся RUB 900, USD-остаток переоценивается; видны источник, время курса и отдельное курсовое изменение.
+- **Уровень:** `integration`.
+
+#### AC-051
+
+- **Дано:** OpenAI недоступен либо израсходован разрешённый бюджет с резервами текущих запросов.
+- **Когда:** Поступают новый импорт, ручной расход и запрос AI.
+- **Тогда:** Учёт и расчёты доступны; статус AI ожидает; новые платные запросы не запускаются сверх разрешённого резерва; неизвестная стоимость не освобождается молча.
+- **Уровень:** `integration`.
+
+#### AC-052
+
+- **Дано:** Подготовлен месяц с несколькими валютами, переводом, расходами, целью и неполным источником.
+- **Когда:** Владелец открывает дашборд и раскрывает показатели.
+- **Тогда:** Итоги согласованы с учётом; видны состав, фильтры, валюты, свежесть и неполнота; скрытого двойного учёта нет.
+- **Уровень:** `end-to-end`.
+
+#### AC-076
+
+- **Дано:** Подготовлен синтетический набор сотен операций со сложными переводами, чеками и эталонными ответами.
+- **Когда:** Выполняются AI-eval, нагрузочная проверка и ручной дневной сценарий.
+- **Тогда:** Отчёт показывает ошибки, уточнения, латентность, токены/стоимость и время пользователя; финансовые инварианты проходят, бюджет оценивается по измерению; непроверенное качество не объявлено доказанным.
+- **Уровень:** `manual+integration`.
+
+#### AC-080
+
+- **Дано:** Зарплата поступила на счёт A, общая аренда оплачена B, у A нет доступного остатка.
+- **Когда:** Строятся семейный бюджет, персональные расходы и обеспеченность по валютам.
+- **Тогда:** Доход общий с сохранением получателя; аренда учтена в семье один раз и в личных видах по долям. Доступность семьи включает средства обоих без автоматического обмена валют и без кредитного лимита.
+- **Уровень:** `integration`.
+
+#### AC-083
+
+- **Дано:** Есть личные цели A и B, общая цель RUB 600000 и виртуальный резерв RUB 10000.
+- **Когда:** Оба открывают личные и семейный виды, увеличивают разрешённый резерв и связывают выделенный счёт.
+- **Тогда:** Общая цель показана целиком в общем блоке; персональные половины не создаются. Резерв уменьшает семейную доступность один раз; нет автоматического распределения свободных средств на цели.
+- **Уровень:** `end-to-end`.
+
+#### AC-084
+
+- **Дано:** Осталось 10 дней, K=RUB 1000, положительные персональные остатки A=3000 и B=1000.
+- **Когда:** Рассчитаны доступные лимиты; затем меняется плательщик общей покупки или дата ожидаемого дохода.
+- **Тогда:** Семейный лимит 100/день, A 75, B 25; суммы не дублируют K. Плательщик не меняет доли; перенос дохода меняет прогноз, не доступный остаток. Неизвестное назначение не скрывает факт расхода.
+- **Уровень:** `integration`.
+
+#### AC-085
+
+- **Дано:** Оба видят общий чат; A имеет личную цель, B просит AI изменить её от имени A.
+- **Когда:** Модель предлагает действие, а затем A подтверждает новую адресованную ему версию предложения.
+- **Тогда:** Сообщение B не выдаёт полномочия A; до разрешённого подтверждения изменения нет. Аудит хранит автора сообщения, подтвердившего и AI-основание; секретов в чате нет.
+- **Уровень:** `integration`.
+
+### Проверка результата
+
+```sh
+make eval-ai SUITE=insights && make test-integration AREA=insights
+```
+
+Числа и ссылки воспроизводимы; недоказанные выводы не представлены как факт, plan changes требуют решения.
+
+Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+
+### Передача следующему агенту
+
+Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+
+**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+
+## EN
+
+Provide verifiable explanations of spending, income and plan progress.
+
+**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+
+**Dependencies:** `task-5.1`, `task-6.8`.
+
+**Kind:** `implementation`.
+
+### Change and contracts
+
+Provide AI with domain-calculated aggregates, coverage and transaction references; validate figures/claims against those inputs. Generate daily/monthly and on-demand explanations with forecast/incompleteness markers. A suggested budget stays a proposal until the owner decides. Regeneration uses data revisions and API budget, not each render.
+
+### Change boundaries
+
+- `backend/internal/insights/`
+
+These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+
+### Linked requirements
+
+- **REQ-020:** AI income/expense insights reference verifiable data and separate forecasts from facts.
+- **REQ-021:** AI changes an approved budget, income forecast or goals only on an explicit decision by a member authorized for the change.
+- **REQ-030:** Daily limits show household and individual available/forecast allowances, by category and with separate funding in each currency.
+- **REQ-037:** Historical expenses use a fixed transaction-date valuation; current wealth uses a current valuation.
+- **REQ-051:** AI is limited to $50/month and degrades to a waiting queue without stopping ordinary accounting.
+- **REQ-052:** The dashboard combines accounts, plan/actuals, income, expenses, goals and daily limits with drill-down.
+- **REQ-055:** The web app targets macOS laptops in Chrome and Arc; window resizing and zoom preserve daily accounting access.
+- **REQ-056:** Deployment fits $40/month for a server in DE/NL/BG; no separately paid data sources are used.
+- **REQ-066:** All income and available funds enter the household pool; household and individual budget views share one financial fact.
+- **REQ-069:** Personal and joint goal reservations are explicit; joint goals appear in a separate shared block without personal shares.
+- **REQ-070:** Individual daily allowances sum to no more than the household ceiling in one currency; the payer’s account does not change expense shares.
+- **REQ-071:** One shared chat retains message authors and checks the AI command initiator’s authority at execution.
+
+### Acceptance criteria
+
+A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+
+#### AC-020
+
+- **Given:** Category expenses are known for two months and one source is stale.
+- **When:** AI generates a monthly insight.
+- **Then:** Figures are reproducible from reports; period, linked transactions/aggregates and incompleteness are shown; forecast income is not presented as received.
+- **Level:** `integration`.
+
+#### AC-021
+
+- **Given:** An approved budget and a reallocation proposal exist.
+- **When:** A new expense arrives and an authorized member later confirms the proposal.
+- **Then:** The plan stays unchanged until confirmation; confirmation applies the displayed proposal version once; a stale proposal must be reconfirmed.
+- **Level:** `integration`.
+
+#### AC-030
+
+- **Given:** There is a RUB budget, future salary, an obligation, a goal reservation and USDT in another account.
+- **When:** Limits are calculated for the remaining days of the month.
+- **Then:** Available RUB allowance excludes future salary, USDT, debt and reservations; the forecast uses receipt dates and shows cash shortfalls; the overall ceiling is not duplicated across categories.
+- **Level:** `integration`.
+
+#### AC-037
+
+- **Given:** A USD 10 expense was valued at RUB 900; the current rate becomes RUB 100/USD.
+- **When:** Quotes and dashboard refresh.
+- **Then:** Historical expense remains RUB 900 and the USD balance is revalued; rate source/time and separate FX change are visible.
+- **Level:** `integration`.
+
+#### AC-051
+
+- **Given:** OpenAI is unavailable or the allowed budget including in-flight reservations is exhausted.
+- **When:** A new import, manual expense and AI request arrive.
+- **Then:** Accounting and calculations remain available; AI status is waiting; no new paid calls exceed the allowed reservation; unknown cost is not silently released.
+- **Level:** `integration`.
+
+#### AC-052
+
+- **Given:** A month includes multiple currencies, a transfer, expenses, a goal and an incomplete source.
+- **When:** The owner opens the dashboard and drills into metrics.
+- **Then:** Totals reconcile to accounting; composition, filters, currencies, freshness and incompleteness are visible; no hidden double counting occurs.
+- **Level:** `end-to-end`.
+
+#### AC-076
+
+- **Given:** A synthetic hundreds-of-transactions set includes difficult transfers, receipts and reference answers.
+- **When:** AI evaluation, load checks and a manual daily flow run.
+- **Then:** The report shows errors, clarifications, latency, tokens/cost and user time; financial invariants pass and cost uses measurements; untested quality is not claimed as proven.
+- **Level:** `manual+integration`.
+
+#### AC-080
+
+- **Given:** Salary arrived in A’s account, B paid joint rent and A has no available balance.
+- **When:** The household budget, individual expenses and currency funding are calculated.
+- **Then:** Income is pooled with recipient retained; rent appears once for the household and by shares in individual views. Household availability includes both members’ funds without automatic currency exchange or credit limits.
+- **Level:** `integration`.
+
+#### AC-083
+
+- **Given:** There are personal goals of A and B, a joint RUB 600,000 goal and a RUB 10,000 virtual reserve.
+- **When:** Both open individual and household views, increase an authorized reserve and link a dedicated account.
+- **Then:** The joint goal appears whole in the shared block; personal halves are not created. The reserve reduces household availability once; free funds are not automatically allocated to goals.
+- **Level:** `end-to-end`.
+
+#### AC-084
+
+- **Given:** 10 days remain, K=RUB 1,000 and positive individual remainders are A=3,000 and B=1,000.
+- **When:** Available allowances are calculated; then a joint purchase payer or expected-income date changes.
+- **Then:** Household allowance is 100/day, A 75, B 25; totals do not duplicate K. Payer does not change shares; rescheduling income changes forecast, not available funds. Unknown attribution does not hide actual expense.
+- **Level:** `integration`.
+
+#### AC-085
+
+- **Given:** Both see the shared chat; A has a personal goal and B asks AI to change it as A.
+- **When:** The model proposes an action and A later confirms a new proposal version addressed to A.
+- **Then:** B’s message grants no authority of A; nothing changes before authorized confirmation. Audit records message author, approver and AI rationale; chat contains no secrets.
+- **Level:** `integration`.
+
+### Verification
+
+```sh
+make eval-ai SUITE=insights && make test-integration AREA=insights
+```
+
+Figures and references reproduce; unsupported conclusions are not facts and plan changes require an owner decision.
+
+The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+
+### Handoff to the next agent
+
+Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+
+**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.

@@ -1,0 +1,42 @@
+# Integrations and research blockers
+
+[Русский](integrations.md)
+
+Public-documentation snapshot: 2026-09-06. No personal bank/crypto session was connected; live access, history completeness and product coverage remain unverified. Public documentation or marketing descriptions do not establish personal-account access.
+
+## Mandatory coverage
+
+| Platform | Products | Publicly established | Open work and task |
+| --- | --- | --- | --- |
+| Alfa-Bank | Debit/credit cards, current/savings, deposits | The portal describes APIs including individual account information. The described onboarding involves a contract/Alfa-Business. | Personal-pilot eligibility, scopes, all products, retail history/grace/quotes; task-0.1 → task-4.1. |
+| Raiffeisenbank Russia | Debit/credit cards, current/savings, deposits | An API portal and statement workflows exist. | Personal-retail applicability, contract/permissions and every product; task-0.2 → task-4.2. |
+| Ozon Bank | Debit/credit cards, current/savings, deposits | Service identity was confirmed by the owner; this research did not establish a public personal-account API. | Verify the bank specifically, automatic access and every product; task-0.3 → task-4.3. |
+| Bybit | Funding, Spot, Earn, P2P, futures | V5 documents wallet balance and the Unified-account log. The UTA log has time-window/pagination limits and does not prove Funding/Earn/P2P coverage. | Full log/endpoint set, key permissions, region, history and net/gross semantics; task-0.4 → task-4.4. |
+| Aifory Pro | RUB/crypto wallet, exchange, payments, card | The official site describes wallet, exchange, payments, cards and a web app. | Personal/card read contract, fees, history and quotes; task-0.5 → task-4.5. |
+| EMCD | Wallet, Coinhold, P2P, card, mining | The Help Center describes several account purposes and wallet history. This does not prove accessible read APIs for all products. | Wallet/mining/Coinhold/card/P2P contracts, accrual versus transfer and access; task-0.6 → task-4.6. |
+
+Sources: [Alfa developer portal](https://developers.alfabank.ru/), [Alfa onboarding](https://developers.alfabank.ru/products/alfa-api/documentation/articles/connection/connection), [Raiffeisen API](https://developer.raiffeisen.ru/), [Ozon Bank](https://finance.ozon.ru/), [Bybit wallet balance](https://bybit-exchange.github.io/docs/v5/account/wallet-balance), [Bybit transaction log](https://bybit-exchange.github.io/docs/v5/account/transaction-log), [Aifory Pro](https://aifory.pro/), [EMCD wallet](https://help.emcd.io/en/articles/16205516-what-is-emcd-wallet).
+
+Ozon and some Alfa links were unavailable during repeated retrieval through the research tool. This limits research; it does not prove that APIs are absent.
+
+## Required per-source research outcome
+
+For every mandatory product record: product existence/owner availability; read method; required scopes; account identity/card aliases; owned/available/locked/debt balances; events/IDs/revisions/statuses; fees/net-gross; date/timezone; pagination/window/depth; terms/minimum/grace/accrual; quote direction/amount/fee; rate limits; reauth; endpoint allowlist; evidence date; synthetic fixture; live outcome.
+
+A positive result needs actual comparison to an authorized source. An owner-inaccessible product, mandatory payment or missing acceptable automatic path produces a precise blocker and required decision; unsupported is not equivalent to implemented.
+
+Prefer official read APIs with least privilege. Browser collection is allowed with owner consent for agreed read actions only; protect sessions and require human involvement for expiry/MFA. This does not authorize bypassing restrictions or executing external financial actions.
+
+## Rates
+
+task-0.7 must prove free USD/RUB, BTC, USDT and required historical-cross coverage. Reference valuation is not an executable quote. Provider buy/sell needs direction, applicable amount, timestamp and fee coverage. Unknown fees are not zero; USDT is not pegged by assumption.
+
+No specific rate provider is selected in this package: full history or executable prices cannot be promised without verification. Missing mandatory free access remains a blocker.
+
+## Closure order
+
+task-0.1–task-0.7 produce specific evidence documents; task-0.8 verifies OpenAI and task-0.9 infrastructure. task-0.10 transfers verified contracts into the specification, updates affected tasks and reviews Ready. Adapter implementation depends on its own research and the common Ready gate.
+
+## Two members and source identity
+
+Each provider must support independent member accounts. One bank/crypto account reauthorized by another member must not create a second set of financial accounts. Research records stable external-account identity and transaction namespace separately from connectionId. Both manage synchronization; the external owner supplies MFA/password in a protected flow. These are requirements, not verified provider capabilities.

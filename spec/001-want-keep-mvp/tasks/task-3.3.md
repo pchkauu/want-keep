@@ -1,0 +1,254 @@
+<!-- want-keep-task: task-3.3 -->
+# task-3.3 — Создать изолированный браузерный сборщик / Create an isolated browser collector
+
+## RU
+
+Читать кабинеты по разрешённым сценариям и передавать нормализуемые данные Go-приложению.
+
+**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+
+**Зависимости:** `task-3.2`, `task-1.5`.
+
+**Тип:** `implementation`.
+
+### Изменение и контракты
+
+Использовать Playwright TypeScript в отдельном процессе/контейнере с ограниченным egress и отдельными профилями источников. Реализовать контролируемый вход владельца, шифрование сохранённых сессий, разрешённые read-сценарии и подтверждённые маршруты. POST заказа выписки допустим только как проверенная операция получения данных. MFA/CAPTCHA требуют пользователя; платёжные/торговые действия отсутствуют, raw browser control не доступен AI.
+
+### Границы изменений
+
+- `collector/src/`
+- `backend/internal/connections/`
+
+Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+
+### Связанные требования
+
+- **REQ-015:** Для отправки чека требуется счёт списания; фото/PDF остаётся связанным с результатом обработки.
+- **REQ-016:** Позиции чека распределяют одну оплаченную сумму по категориям без дублирования итога.
+- **REQ-017:** Чат создаёт установленную операцию, уточняет недостающие данные и явно объясняет пропуск неподходящего документа.
+- **REQ-040:** Каждый источник обновляется раз в час и по запросу с видимым временем успешного обновления.
+- **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
+- **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
+- **REQ-050:** Файлы, ключи источников, сессии и финансовые журналы защищены от постороннего доступа.
+- **REQ-060:** Текст чеков, банковских описаний и ответов AI не может расширять полномочия агента.
+- **REQ-061:** Повторные задания, перезапуски и параллельные изменения не создают двойных финансовых эффектов.
+- **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
+- **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
+- **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+
+### Критерии приёмки
+
+Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+
+#### AC-040
+
+- **Дано:** Два источника доступны, третий требует повторного входа.
+- **Когда:** Срабатывает расписание и одновременно нажата кнопка обновления.
+- **Тогда:** Нет параллельного дублирования одного задания; доступные источники обновлены, проблемный имеет отдельный статус и старый timestamp.
+- **Уровень:** `integration`.
+
+#### AC-041
+
+- **Дано:** Источник выдаёт несколько страниц с ограничением глубины; второй запрос завершился ошибкой.
+- **Когда:** Импорт возобновляется.
+- **Тогда:** Подтверждённые страницы сохранены без дублей; курсор не перескакивает пропуск; неполная история и её границы видны.
+- **Уровень:** `integration`.
+
+#### AC-048
+
+- **Дано:** Сборщик имеет сессию личного кабинета с более широкими внешними правами.
+- **Когда:** Возникают запрос на платёж, неподтверждённый маршрут или MFA/CAPTCHA.
+- **Тогда:** Платёж и неизвестный маршрут блокируются; MFA/CAPTCHA передаётся владельцу, источник приостанавливается; остальные источники продолжают работать.
+- **Уровень:** `integration`.
+
+#### AC-050
+
+- **Дано:** Существует приватный чек и активное подключение источника.
+- **Когда:** Проверяются прямой URL файла, экспорт без сессии, логи и отзыв подключения.
+- **Тогда:** Без авторизации доступ закрыт; секреты зашифрованы и не журналируются; отзыв подключения прекращает дальнейший сбор.
+- **Уровень:** `integration`.
+
+#### AC-060
+
+- **Дано:** В PDF или описании операции есть инструкция раскрыть ключ либо сделать перевод.
+- **Когда:** Документ обрабатывается AI.
+- **Тогда:** Инструкция считается данными; секреты и платёжные инструменты недоступны; недопустимая команда отклонена и не меняет учёт.
+- **Уровень:** `integration`.
+
+#### AC-061
+
+- **Дано:** Процесс падает между сохранением записи и подтверждением задания.
+- **Когда:** Задание повторяется, одновременно приходит правка владельца.
+- **Тогда:** Применён один эффект, правка защищена версией, незавершённое состояние восстанавливается; внешняя неоднозначность не вызывает слепой повтор.
+- **Уровень:** `integration`.
+
+#### AC-068
+
+- **Дано:** Загружаются повреждённый PDF, неверно обозначенный тип, чрезмерный файл и чек с вредоносным текстом.
+- **Когда:** Срабатывают проверка файла и обработка.
+- **Тогда:** Файл с ошибкой не проводится; нет выполнения вложенного кода, произвольного скачивания URL или публичного доступа; понятная причина/уточнение видна в чате.
+- **Уровень:** `integration`.
+
+#### AC-079
+
+- **Дано:** A и B имеют разные аккаунты одного провайдера и общий счёт; B заносит покупку A со счёта B.
+- **Когда:** Выполняются ввод, импорт обоих аккаунтов и повторное подключение того же внешнего аккаунта.
+- **Тогда:** Разные аккаунты не сливаются; повторный источник не удваивает остатки. Плательщик, автор и получатель расхода сохраняются независимо. Неустановленное совпадение блокирует новый учёт до уточнения.
+- **Уровень:** `integration`.
+
+#### AC-087
+
+- **Дано:** A владеет внешним аккаунтом, B инициирует повторную авторизацию или отключение.
+- **Когда:** Запрашивается MFA; одновременно завершает работу старое задание синхронизации.
+- **Тогда:** MFA адресован A; B видит статус, но не пароль/код/сессию. Отключение отзывает lease/version и запрещает применение старого результата; реальные платежи недоступны обоим.
+- **Уровень:** `integration`.
+
+#### AC-090
+
+- **Дано:** В тестах созданы две изолированные семьи; запрос или задача подменяет householdId/actor/resourceId.
+- **Когда:** Проверяются чтение файла, импорт, исправление, поиск AI и дедупликация.
+- **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
+- **Уровень:** `integration`.
+
+### Проверка результата
+
+```sh
+make test-collector FILTER=security && make test-integration AREA=collector
+```
+
+Неавторизованные маршруты, платежи, доступ к чужому профилю и потеря сессии обработаны; безопасный read-fixture проходит.
+
+Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+
+### Передача следующему агенту
+
+Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+
+**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+
+## EN
+
+Read portals through authorized workflows and return normalizable data to Go.
+
+**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+
+**Dependencies:** `task-3.2`, `task-1.5`.
+
+**Kind:** `implementation`.
+
+### Change and contracts
+
+Use Playwright TypeScript in a separate process/container with restricted egress and per-source profiles. Implement controlled owner sign-in, encrypted persisted sessions, authorized read workflows and verified routes. Statement-request POST is allowed only as a verified data retrieval action. MFA/CAPTCHA requires the owner; payment/trading actions are absent and AI has no raw browser control.
+
+### Change boundaries
+
+- `collector/src/`
+- `backend/internal/connections/`
+
+These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+
+### Linked requirements
+
+- **REQ-015:** Receipt submission requires a debit account; the photo/PDF stays linked to the processing result.
+- **REQ-016:** Receipt items allocate one paid amount across categories without duplicating the total.
+- **REQ-017:** Chat records an established transaction, clarifies missing data and explicitly explains skipped irrelevant documents.
+- **REQ-040:** Each source refreshes hourly and on demand with a visible last-success timestamp.
+- **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
+- **REQ-048:** Integrations and the browser collector perform authorized read operations only.
+- **REQ-050:** Files, source keys, sessions and financial records are protected against unauthorized access.
+- **REQ-060:** Receipt text, bank descriptions and AI outputs cannot expand agent authority.
+- **REQ-061:** Repeated jobs, restarts and concurrent changes cannot create duplicate financial effects.
+- **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
+- **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
+- **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+
+### Acceptance criteria
+
+A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+
+#### AC-040
+
+- **Given:** Two sources are available and a third requires sign-in again.
+- **When:** The schedule fires while the refresh button is pressed.
+- **Then:** The same job is not duplicated concurrently; available sources refresh and the failing source has its own status and old timestamp.
+- **Level:** `integration`.
+
+#### AC-041
+
+- **Given:** A source provides paginated history with a retention limit; the second request fails.
+- **When:** Import resumes.
+- **Then:** Confirmed pages remain without duplicates; the cursor does not skip the gap; incomplete history and its boundaries are visible.
+- **Level:** `integration`.
+
+#### AC-048
+
+- **Given:** The collector has a personal-account session with broader provider permissions.
+- **When:** A payment request, unapproved route or MFA/CAPTCHA appears.
+- **Then:** Payments and unknown routes are blocked; MFA/CAPTCHA is handed to the owner and that source pauses; other sources continue.
+- **Level:** `integration`.
+
+#### AC-050
+
+- **Given:** A private receipt and an active source connection exist.
+- **When:** A direct file URL, unauthenticated export, logs and disconnection are checked.
+- **Then:** Unauthenticated access fails; secrets are encrypted and not logged; disconnecting stops further collection.
+- **Level:** `integration`.
+
+#### AC-060
+
+- **Given:** A PDF or transaction description instructs the agent to reveal a key or transfer funds.
+- **When:** AI processes the document.
+- **Then:** The instruction is treated as data; secrets and payment tools are unavailable; an invalid command is rejected without changing accounting.
+- **Level:** `integration`.
+
+#### AC-061
+
+- **Given:** A process crashes between persisting a record and acknowledging its job.
+- **When:** The job is retried while the owner submits a correction.
+- **Then:** One effect is applied, the correction is version-protected and incomplete state recovers; an ambiguous external outcome is not blindly retried.
+- **Level:** `integration`.
+
+#### AC-068
+
+- **Given:** A corrupt PDF, mislabeled type, oversized file and prompt-injected receipt are uploaded.
+- **When:** File validation and processing run.
+- **Then:** Invalid files do not post; embedded code, arbitrary URL fetching and public access are unavailable; chat shows an understandable reason or clarification.
+- **Level:** `integration`.
+
+#### AC-079
+
+- **Given:** A and B have separate accounts at one provider and a joint account; B enters A’s purchase paid from B’s account.
+- **When:** Entry, import of both accounts and reconnection of the same external account run.
+- **Then:** Distinct accounts are not merged; a repeated source does not double balances. Payer, author and expense beneficiary remain independent. Unresolved source identity blocks new posting pending clarification.
+- **Level:** `integration`.
+
+#### AC-087
+
+- **Given:** A owns the external account and B initiates reauthorization or disconnect.
+- **When:** MFA is requested while an old sync job completes.
+- **Then:** MFA is addressed to A; B sees status but no password/code/session. Disconnect revokes lease/version and prevents stale-result application; actual payments are unavailable to both.
+- **Level:** `integration`.
+
+#### AC-090
+
+- **Given:** Tests contain two isolated households; a request or job forges householdId/actor/resourceId.
+- **When:** File reads, import, correction, AI retrieval and deduplication are exercised.
+- **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
+- **Level:** `integration`.
+
+### Verification
+
+```sh
+make test-collector FILTER=security && make test-integration AREA=collector
+```
+
+Unauthorized routes, payments, cross-profile access and session loss are handled; a safe read fixture passes.
+
+The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+
+### Handoff to the next agent
+
+Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+
+**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
