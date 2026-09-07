@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Добавить миграции для владельца, счетов, неизменяемых исходников, операций/проводок, версий, идемпотентности и outbox/jobs. Использовать NUMERIC с достаточной точностью исходника и явными ограничениями; не связывать внешний ID разных провайдеров без namespace. Уникальность, version-check и резервирование денег обеспечивать транзакционно.
+Добавить миграции для владельца, счетов, неизменяемых исходников, операций/проводок, версий, идемпотентности и outbox/jobs. Использовать NUMERIC с достаточной точностью исходника и явными ограничениями; не связывать внешний ID разных провайдеров без namespace. Уникальность, version-check и резервирование денег обеспечивать транзакционно. D-37: хранить command status/key/hash/result всё время хранения семьи, не исходный payload. Регистрация предшествует исполнению; эффект и terminal result атомарны. Уникальность household+actor+key; type/hash неизменны, replay до повторного version check. Pending после неизвестного исхода требует сверки; not_found не разрешает новый ключ. Статусы доступны только инициатору; права на результат проверяются отдельно.
 
 ### Границы изменений
 
@@ -104,7 +104,7 @@ make test-integration AREA=storage
 
 Миграции применяются к пустой БД; crash/retry и конкуренция не дают частичных проводок или двойных эффектов.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды make реализованы. Проверяются Go 1.26.5 и Node 24.19.0; OpenAPI tooling использует изолированный TS 5.9.3, web — TS 6.0.3. Live banking, БД, deploy и browser E2E вне этой задачи.
 
 ### Передача следующему агенту
 
@@ -124,7 +124,7 @@ Make accounting, revision and job persistence atomic.
 
 ### Change and contracts
 
-Add migrations for owner, accounts, immutable source records, transactions/postings, revisions, idempotency and outbox/jobs. Use NUMERIC preserving source precision with explicit constraints; namespace provider IDs. Enforce uniqueness, version checks and money reservation transactionally.
+Add migrations for owner, accounts, immutable source records, transactions/postings, revisions, idempotency and outbox/jobs. Use NUMERIC preserving source precision with explicit constraints; namespace provider IDs. Enforce uniqueness, version checks and money reservation transactionally. D-37: retain command status/key/hash/result for the family lifetime, never the source payload. Registration precedes execution; effect and terminal result are atomic. Uniqueness is household+actor+key; type/hash are immutable and replay precedes a fresh version check. Pending after an unknown outcome requires reconciliation; not_found does not permit a new key. Status is visible only to its originator; result permissions are checked separately.
 
 ### Change boundaries
 
@@ -215,7 +215,7 @@ make test-integration AREA=storage
 
 Migrations apply to an empty DB; crash/retry and concurrency create neither partial postings nor duplicate effects.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Make commands are implemented. Checks use Go 1.26.5 and Node 24.19.0; OpenAPI tooling has isolated TS 5.9.3, web uses TS 6.0.3. Live banking, DB, deploy and browser E2E are outside this task.
 
 ### Handoff to the next agent
 

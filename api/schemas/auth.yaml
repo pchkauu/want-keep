@@ -1,0 +1,323 @@
+---
+LoginOptions:
+  type: object
+  additionalProperties: false
+  properties:
+    attemptId:
+      "$ref": "./money.yaml#/ID"
+    challenge:
+      type: string
+      minLength: 1
+    rpId:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    timeout:
+      type: integer
+      minimum: 1
+    userVerification:
+      type: string
+      enum:
+      - required
+  required:
+  - attemptId
+  - challenge
+  - rpId
+  - timeout
+  - userVerification
+AuthenticationCredential:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    rawId:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    type:
+      type: string
+      enum:
+      - public-key
+    clientDataJSON:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    authenticatorData:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    signature:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    userHandle:
+      type: string
+      maxLength: 2000
+  required:
+  - id
+  - rawId
+  - type
+  - clientDataJSON
+  - authenticatorData
+  - signature
+RegistrationCredential:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    rawId:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    type:
+      type: string
+      enum:
+      - public-key
+    clientDataJSON:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    attestationObject:
+      type: string
+      minLength: 1
+      maxLength: 65536
+    transports:
+      type: array
+      items:
+        type: string
+        enum:
+        - usb
+        - nfc
+        - ble
+        - internal
+        - hybrid
+  required:
+  - id
+  - rawId
+  - type
+  - clientDataJSON
+  - attestationObject
+  - transports
+LoginVerifyInput:
+  type: object
+  additionalProperties: false
+  properties:
+    attemptId:
+      "$ref": "./money.yaml#/ID"
+    credential:
+      "$ref": "./auth.yaml#/AuthenticationCredential"
+  required:
+  - attemptId
+  - credential
+EnrollmentInput:
+  type: object
+  additionalProperties: false
+  properties:
+    purpose:
+      type: string
+      enum:
+      - bootstrap
+      - invitation
+      - add_passkey
+      - recovery
+    authorizationToken:
+      type: string
+      minLength: 1
+      maxLength: 1024
+      writeOnly: true
+  required:
+  - purpose
+EnrollmentOptions:
+  type: object
+  additionalProperties: false
+  properties:
+    attemptId:
+      "$ref": "./money.yaml#/ID"
+    challenge:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    rpId:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    rpName:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    userId:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    userName:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    userDisplayName:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    algorithms:
+      type: array
+      items:
+        type: integer
+    timeout:
+      type: integer
+      minimum: 1
+    residentKey:
+      type: string
+      enum:
+      - required
+    userVerification:
+      type: string
+      enum:
+      - required
+    attestation:
+      type: string
+      enum:
+      - none
+  required:
+  - attemptId
+  - challenge
+  - rpId
+  - rpName
+  - userId
+  - userName
+  - userDisplayName
+  - algorithms
+  - timeout
+  - residentKey
+  - userVerification
+  - attestation
+EnrollmentVerifyInput:
+  type: object
+  additionalProperties: false
+  properties:
+    attemptId:
+      "$ref": "./money.yaml#/ID"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    credential:
+      "$ref": "./auth.yaml#/RegistrationCredential"
+  required:
+  - attemptId
+  - name
+  - credential
+RecoveryInput:
+  type: object
+  additionalProperties: false
+  properties:
+    recoveryCode:
+      type: string
+      minLength: 1
+      maxLength: 1024
+      writeOnly: true
+  required:
+  - recoveryCode
+RecoveryAttempt:
+  type: object
+  additionalProperties: false
+  properties:
+    attemptId:
+      "$ref": "./money.yaml#/ID"
+    enrollmentToken:
+      type: string
+      minLength: 32
+      maxLength: 1024
+    expiresAt:
+      "$ref": "./money.yaml#/Instant"
+  required:
+  - attemptId
+  - enrollmentToken
+  - expiresAt
+RecoveryCodes:
+  type: object
+  additionalProperties: false
+  properties:
+    codes:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 1024
+      minItems: 1
+  required:
+  - codes
+  description: One-time display; never retained in command status, telemetry or chat.
+Passkey:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    createdAt:
+      "$ref": "./money.yaml#/Instant"
+  required:
+  - id
+  - name
+  - createdAt
+Session:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    current:
+      type: boolean
+    createdAt:
+      "$ref": "./money.yaml#/Instant"
+  required:
+  - id
+  - name
+  - current
+  - createdAt
+PasskeyPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./auth.yaml#/Passkey"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+SessionPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./auth.yaml#/Session"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality

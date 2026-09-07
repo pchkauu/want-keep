@@ -2,9 +2,21 @@
 
 [Русский](contracts.md)
 
-Target project contract version 7; family, desktop, D-36/USDC and FX amendments dated 2026-09-07. No actual API or database schema exists yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
+Project contract version 8, D-37 dated 2026-09-07. Task-1.2 implements OpenAPI and basic domain types; HTTP handlers and a database schema do not exist yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
 
 ## Domain entities
+
+### Executable foundation D-37
+
+Decimal strings are limited to 256 characters, reject exponent/float input and retain fractional precision for all six assets. RUB does not imply two stored decimal places, nor BTC eight. Rounding is a separate action with scale and floor/half-even; allocation preserves the exact total and distributes remainders by stable ID. Totals not representable in the chosen quantum and overflow are rejected. Rate is a positive finite decimal quote/base observation; valuation owns cross calculations and retains source legs.
+
+A known amount contains value; unknown/unavailable contains reason without value. Complete coverage has an empty reason list, partial/unavailable a non-empty list. Fresh/stale/unknown freshness is independent of completeness. UTC timestamps accept RFC3339 with Z and up to nine fractional-second digits; Date/Month contain no time, timezone is UTC or a validated IANA zone. Revision is an integer from 1 through 9007199254740991, exactly representable in JavaScript.
+
+OpenAPI 3.0.3 and Go/TypeScript models/strict interfaces derive from one source. Schema validation and explicit boundary converters do not replace permissions, transactions or use-case invariants. DTOs distinguish actorId/User, payerMemberId/Membership, personalOwnerId/User and externalAccountOwnerId/User. Command input cannot assign actor/household. Lists and result references require current household scope and resource authorization.
+
+Command ID is a client-created UUIDv4 Idempotency-Key, unique within household+actor and bound to immutable type/hash. Pending is persisted before execution; effect and succeeded/result commit atomically. Replay precedes old expectedRevision checks and returns the original outcome. Timeout never changes a command to failed; not_found permits only the original key under the registration protocol. Status/key/hash/result metadata lives for the family lifetime. Auth/recovery/enrollment, private upload bytes and push credentials use separate protected flows and are not copied into financial-command records; preview stores no financial change.
+
+This is a new foundation with no running product API or database, so data migration is unnecessary. Task-1.3/task-1.4 own durable storage and server authorization. [Checks and limitations](evidence/task-1.2-domain-api.en.md).
 
 | Entity | Minimum contract |
 | --- | --- |
@@ -86,7 +98,7 @@ Target prefix `/api/v1`, JSON, money strings, UTC RFC3339 timestamps plus explic
 | Reports | GET dashboard, valuation, daily-limit, credit, savings, returns and insights with filters/date/currency/coverage. Reads do not trigger hidden mutations. |
 | Notifications | GET in-app notifications, POST read acknowledgment, POST/DELETE push subscriptions. Delivery receipt does not mean read. |
 
-task-1.2 materializes OpenAPI only after Ready; exact form fields follow the models above and verified provider contracts. Client/generated types never become domain types.
+Under D-37 task-1.2 materializes shared OpenAPI independently of remaining research. Provider-specific forms and handlers stay with their owning tasks. Client/generated types never become domain types.
 
 ### Raiffeisen authorization callback
 
@@ -119,7 +131,7 @@ Important failure codes: unauthorized, version_conflict, duplicate_command, inva
 | Reimbursement | Explicit creditor/debtor member IDs, asset/amount, optional expense link, settlements and revision. Internal claims do not enter household wealth. |
 | SharedThread / Message | One household thread, message actorId, attachments, proposal/clarification revision. Shared visibility does not grant authority for every command. |
 
-Minimum `/api/v1` additions: GET `/me` and `/household`; POST `/household/invitations`, POST `/invitations/accept`; ownership in accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` and memberId for reports. These filters do not change principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached and version_conflict are distinct safe errors. Forms materialize in OpenAPI after Ready.
+Minimum `/api/v1` additions: GET `/me` and `/household`; POST `/household/invitations`, POST `/invitations/accept`; ownership in accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` and memberId for reports. These filters do not change principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached and version_conflict are distinct safe errors. Shared forms are materialized in task-1.2 OpenAPI under D-37; runtime permissions are implemented separately.
 
 Engineering defaults: the first user uses restricted single-use bootstrap; the second accepts a signed-in member’s single-use random invitation with a 24-hour expiry, stored hashed. It binds to a separate new sign-in; replay and the limit are checked atomically. It cannot reset another user’s passkeys. The system does not send external invitation messages itself. Editing a personal goal or plan line, including deletion, changing owner/personal scope or applying an AI proposal, requires its current owner. Converting another user’s goal to joint cannot bypass this. Members create personal goals/lines for themselves and joint ones freely. Both can read/create/correct all accounting transactions. Personal account ownership changes require its owner, household account changes either member; these cannot change the verified external owner or transaction history.
 
@@ -141,9 +153,9 @@ In `F(d)`, outstandingPayments is the same unpaid obligation portion not covered
 
 ## Presentation, command and event contracts
 
-SCR-001–SCR-035 UI routes are not API endpoints. The [screen catalog](screens.en.md) defines FORM-01–FORM-15 fields and error flows; task-1.2 refines OpenAPI after Ready. Reports return native amounts, separately known reporting amounts, asOf/coverage, actual/forecast/reserved type, calculation inputs and explanatory transaction links. Client formats and expands these data without repeating financial formulas.
+SCR-001–SCR-035 UI routes are not API endpoints. The [screen catalog](screens.en.md) defines FORM-01–FORM-15 fields and error flows; task-1.2 materializes shared OpenAPI under D-37. Reports return native amounts, separately known reporting amounts, asOf/coverage, actual/forecast/reserved type, calculation inputs and explanatory transaction links. Client formats and expands these data without repeating financial formulas.
 
-For a mutating command, server binds Idempotency-Key to householdId, actorId, type and payload hash; same key with a different payload is rejected. Result and financial effect are atomic. Target GET `/api/v1/commands/{id}` and `/api/v1/commands/recent` return only the current member’s own authorized commands with `pending|succeeded|failed`, outcome reference and safe error. `unknown` describes client knowledge, not permission to create a new command. After timeout/reload client checks command status; `not_found` cannot prove no effect without the server registration contract. Keep input in tab memory, never secrets in URLs/localStorage. Command-record/idempotency retention must cover retry/recovery windows and is resolved in task-0.10/task-1.2.
+For a mutating command, server binds Idempotency-Key to householdId, actorId, type and payload hash; same key with a different payload is rejected. Result and financial effect are atomic. Target GET `/api/v1/commands/{id}` and `/api/v1/commands/recent` return only the current member’s own authorized commands with `pending|succeeded|failed`, outcome reference and safe error. `unknown` describes client knowledge, not permission to create a new command. After timeout/reload client checks command status; `not_found` cannot prove no effect without the server registration contract. Keep input in tab memory, never secrets in URLs/localStorage. Under D-37 compact command records and idempotency keys live as long as the family, without copies of source documents/messages or secrets. Task-1.3 implements durable storage.
 
 UIState derives from typed errors/coverage/result. `version_conflict` includes an authorized current revision for comparison; server rechecks permission on reapply. Session expiry hides protected screens; another principal never receives a draft. Personal preferences include locale, reporting currency, notification options and decorativeEffectsEnabled; preferences change neither household fact nor authority.
 

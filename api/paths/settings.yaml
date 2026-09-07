@@ -1,0 +1,684 @@
+---
+"/notifications":
+  get:
+    operationId: notifications_list
+    tags:
+    - notifications
+    summary: notifications list
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/settings.yaml#/NotificationPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/notifications/read":
+  post:
+    operationId: notifications_acknowledge
+    tags:
+    - notifications
+    summary: notifications acknowledge
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: notifications.acknowledge
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/settings.yaml#/NotificationRead"
+"/push-subscriptions":
+  post:
+    operationId: notifications_subscribe
+    tags:
+    - notifications
+    summary: notifications subscribe
+    parameters:
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/ResourceReference"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/settings.yaml#/PushSubscription"
+"/push-subscriptions/{subscriptionId}":
+  delete:
+    operationId: notifications_unsubscribe
+    tags:
+    - notifications
+    summary: notifications unsubscribe
+    parameters:
+    - name: subscriptionId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '204':
+        description: Completed
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+"/preferences":
+  get:
+    operationId: preferences_read
+    tags:
+    - preferences
+    summary: preferences read
+    parameters: []
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/household.yaml#/Preferences"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+  post:
+    operationId: preferences_change
+    tags:
+    - preferences
+    summary: preferences change
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: preferences.change
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/household.yaml#/Preferences"
+"/security/passkeys":
+  get:
+    operationId: security_passkeys
+    tags:
+    - security
+    summary: security passkeys
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/auth.yaml#/PasskeyPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/security/sessions":
+  get:
+    operationId: security_sessions
+    tags:
+    - security
+    summary: security sessions
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/auth.yaml#/SessionPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/security/passkeys/{credentialId}":
+  delete:
+    operationId: security_revoke_passkeys
+    tags:
+    - security
+    summary: security revoke passkeys
+    parameters:
+    - name: credentialId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '204':
+        description: Completed
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+"/security/sessions/{credentialId}":
+  delete:
+    operationId: security_revoke_sessions
+    tags:
+    - security
+    summary: security revoke sessions
+    parameters:
+    - name: credentialId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '204':
+        description: Completed
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+"/security/recovery-codes":
+  post:
+    operationId: security_recovery_codes
+    tags:
+    - security
+    summary: security recovery codes
+    parameters:
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/auth.yaml#/RecoveryCodes"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/commands.yaml#/EmptyInput"
+"/categories":
+  get:
+    operationId: categories_list
+    tags:
+    - categories
+    summary: categories list
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/settings.yaml#/CategoryPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+  post:
+    operationId: categories_create
+    tags:
+    - categories
+    summary: categories create
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: categories.create
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/settings.yaml#/CategoryInput"
+"/categories/{categoryId}":
+  post:
+    operationId: categories_change
+    tags:
+    - categories
+    summary: categories change
+    parameters:
+    - name: categoryId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: categories.change
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/settings.yaml#/CategoryChange"
+"/rules":
+  get:
+    operationId: rules_list
+    tags:
+    - rules
+    summary: rules list
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/settings.yaml#/RulePage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+  post:
+    operationId: rules_create
+    tags:
+    - rules
+    summary: rules create
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: rules.create
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/settings.yaml#/RuleInput"
+"/rules/{ruleId}":
+  post:
+    operationId: rules_change
+    tags:
+    - rules
+    summary: rules change
+    parameters:
+    - name: ruleId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: rules.change
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/settings.yaml#/RuleChange"
+"/system/status":
+  get:
+    operationId: system_status
+    tags:
+    - system
+    summary: system status
+    parameters: []
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/settings.yaml#/SystemStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"

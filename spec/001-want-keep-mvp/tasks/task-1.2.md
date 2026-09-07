@@ -5,7 +5,7 @@
 
 Закрепить точность денег и типы публичных границ до адаптеров и UI.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Доменные типы, OpenAPI и генерация реализованы как независимая техническая основа по D-37; общий статус MVP Not Ready. Проверки и публикация фиксируются в evidence и Issue #12.
 
 **Зависимости:** `task-1.1`.
 
@@ -13,14 +13,20 @@
 
 ### Изменение и контракты
 
-Определить Money/Asset/Rate/Time/coverage и версионированные ошибки по contracts.md. Деньги передавать десятичными строками, валидировать на первой границе; поддержать явные unknown/partial. Домен не импортирует generated DTO. Генерацию выполнять из OpenAPI, добавить проверки round-trip BTC/USDT и неверных сумм. Включить read models объяснимых сумм и command status/recent API из contracts.md для неизвестного результата UI; command retention согласовать до Ready.
+Реализовать Money/Asset/Rate/календарные типы, отдельные knownness/coverage/freshness, семейную область и command transitions. apd v3.2.3 закрыт внутри money/domain; десятичные строки до 256 символов без float или display truncation. Материализовать OpenAPI 3.0.3 и воспроизводимую генерацию Go/TypeScript, явные boundary converters, безопасные ошибки версии 1, объяснимые read models и command status/recent. По D-37 status/key/hash/result хранятся всё время хранения семьи; secret ceremonies исключены. Остаточный ресерч эту техническую задачу не блокирует; auth/DB/handlers принадлежат следующим задачам. См. evidence/task-1.2-domain-api.md.
 
 ### Границы изменений
 
 - `backend/internal/money/`
-- `api/openapi.yaml`
-- `backend/internal/delivery/`
+- `backend/internal/calendar/`
+- `backend/internal/household/`
+- `backend/internal/reporting/`
+- `backend/internal/commands/`
+- `backend/internal/delivery/http/`
+- `api/`
+- `scripts/generate-openapi.sh`
 - `web/src/api/`
+- `spec/001-want-keep-mvp/evidence/task-1.2-domain-api.md`
 
 Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
 
@@ -98,12 +104,12 @@
 ### Проверка результата
 
 ```sh
-make test-go PKG=./internal/money/... && make check-contracts
+make check
 ```
 
-Нулевая потеря точности, некорректные значения отвергаются, generated output воспроизводим.
+Точные synthetic round trips и распределения, отклонение неверных значений, проверяемые семейные/command инварианты; OpenAPI валиден, Go/TypeScript output воспроизводим. Это не доказательство auth/storage/product runtime.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды make реализованы. Проверяются Go 1.26.5 и Node 24.19.0; OpenAPI tooling использует изолированный TS 5.9.3, web — TS 6.0.3. Live banking, БД, deploy и browser E2E вне этой задачи.
 
 ### Передача следующему агенту
 
@@ -115,7 +121,7 @@ make test-go PKG=./internal/money/... && make check-contracts
 
 Establish money precision and public boundary types before adapters and UI.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Domain types, OpenAPI and generation implemented as an independent technical foundation under D-37; overall MVP remains Not Ready. Checks and publication are recorded in evidence and Issue #12.
 
 **Dependencies:** `task-1.1`.
 
@@ -123,14 +129,20 @@ Establish money precision and public boundary types before adapters and UI.
 
 ### Change and contracts
 
-Define Money/Asset/Rate/Time/coverage and versioned errors from contracts.md. Transport money as decimal strings and validate at the first boundary; support explicit unknown/partial states. Domain must not import generated DTOs. Generate from OpenAPI and test BTC/USDT round trips and invalid amounts. Include explainable-amount read models and command status/recent API from contracts.en.md for unknown UI outcomes; resolve command retention before Ready.
+Implement Money/Asset/Rate/calendar types, separate knowledge/coverage/freshness, household scope and command transitions. Encapsulate apd v3.2.3 in money/domain; decimal strings up to 256 characters without float or display truncation. Materialize OpenAPI 3.0.3 and reproducible Go/TypeScript generation, explicit boundary converters, safe version-1 errors, explainable read models and command status/recent. Under D-37 status/key/hash/result metadata lives as long as the family; secret ceremonies are excluded. Remaining research does not block this technical task; auth/DB/handlers belong to subsequent tasks. See evidence/task-1.2-domain-api.en.md.
 
 ### Change boundaries
 
 - `backend/internal/money/`
-- `api/openapi.yaml`
-- `backend/internal/delivery/`
+- `backend/internal/calendar/`
+- `backend/internal/household/`
+- `backend/internal/reporting/`
+- `backend/internal/commands/`
+- `backend/internal/delivery/http/`
+- `api/`
+- `scripts/generate-openapi.sh`
 - `web/src/api/`
+- `spec/001-want-keep-mvp/evidence/task-1.2-domain-api.md`
 
 These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
 
@@ -208,12 +220,12 @@ A criterion link establishes coverage; research or a partial task does not prove
 ### Verification
 
 ```sh
-make test-go PKG=./internal/money/... && make check-contracts
+make check
 ```
 
-No precision loss, invalid values rejected and generated output reproducible.
+Exact synthetic round trips and allocations, invalid inputs rejected, tested household/command invariants; valid OpenAPI and reproducible Go/TypeScript output. This is not auth/storage/product runtime proof.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Make commands are implemented. Checks use Go 1.26.5 and Node 24.19.0; OpenAPI tooling has isolated TS 5.9.3, web uses TS 6.0.3. Live banking, DB, deploy and browser E2E are outside this task.
 
 ### Handoff to the next agent
 

@@ -27,6 +27,7 @@ help:
 
 bootstrap:
 	cd backend && $(GO) mod download
+	$(NPM) ci --prefix api
 	$(NPM) ci --prefix web
 	$(NPM) ci --prefix collector
 
@@ -62,6 +63,7 @@ test: test-tooling test-go
 
 test-tooling:
 	sh scripts/check-make-contracts.sh
+	$(PYTHON) -m unittest discover -s scripts -p 'test_*.py'
 
 build:
 	$(NPM) --prefix web run build

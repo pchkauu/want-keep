@@ -1,0 +1,122 @@
+---
+CommandPending:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/CommandID"
+    type:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    status:
+      type: string
+      enum:
+      - pending
+    registeredAt:
+      "$ref": "./money.yaml#/Instant"
+  required:
+  - id
+  - type
+  - status
+  - registeredAt
+CommandSucceeded:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/CommandID"
+    type:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    status:
+      type: string
+      enum:
+      - succeeded
+    registeredAt:
+      "$ref": "./money.yaml#/Instant"
+    completedAt:
+      "$ref": "./money.yaml#/Instant"
+    result:
+      "$ref": "./commands.yaml#/CommandResult"
+  required:
+  - id
+  - type
+  - status
+  - registeredAt
+  - completedAt
+  - result
+CommandFailed:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/CommandID"
+    type:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    status:
+      type: string
+      enum:
+      - failed
+    registeredAt:
+      "$ref": "./money.yaml#/Instant"
+    completedAt:
+      "$ref": "./money.yaml#/Instant"
+    error:
+      "$ref": "./quality.yaml#/APIError"
+  required:
+  - id
+  - type
+  - status
+  - registeredAt
+  - completedAt
+  - error
+CommandStatus:
+  oneOf:
+  - "$ref": "./commands.yaml#/CommandPending"
+  - "$ref": "./commands.yaml#/CommandSucceeded"
+  - "$ref": "./commands.yaml#/CommandFailed"
+  description: Metadata retained for the lifetime of the family. Visible only to the
+    originating authorized member; current result-resource authorization is checked
+    independently. Unknown is client knowledge, never a terminal server status.
+EmptyInput:
+  type: object
+  additionalProperties: false
+  properties: {}
+  required: []
+CommandStatusPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./commands.yaml#/CommandStatus"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+CommandResult:
+  type: object
+  additionalProperties: false
+  properties:
+    type:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+  required:
+  - type
+  - id
+  - revision

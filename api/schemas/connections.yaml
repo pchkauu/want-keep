@@ -1,0 +1,120 @@
+---
+Connection:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    provider:
+      "$ref": "./money.yaml#/Provider"
+    externalAccountOwnerId:
+      "$ref": "./money.yaml#/ID"
+    historyFrom:
+      "$ref": "./money.yaml#/Date"
+    products:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 2000
+    state:
+      type: string
+      enum:
+      - pending
+      - connected
+      - syncing
+      - reauth_required
+      - disconnected
+      - failed
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+    generation:
+      "$ref": "./money.yaml#/Revision"
+    lastError:
+      "$ref": "./quality.yaml#/APIError"
+  required:
+  - id
+  - revision
+  - provider
+  - externalAccountOwnerId
+  - historyFrom
+  - products
+  - state
+  - quality
+  - generation
+ConnectionCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    provider:
+      "$ref": "./money.yaml#/Provider"
+    externalAccountOwnerId:
+      "$ref": "./money.yaml#/ID"
+    historyFrom:
+      "$ref": "./money.yaml#/Date"
+    products:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 2000
+      minItems: 1
+  required:
+  - provider
+  - externalAccountOwnerId
+  - historyFrom
+  - products
+ConnectionAction:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+  required:
+  - expectedRevision
+AuthorizationAttempt:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    connectionId:
+      "$ref": "./money.yaml#/ID"
+    expiresAt:
+      "$ref": "./money.yaml#/Instant"
+    state:
+      type: string
+      enum:
+      - awaiting_owner
+      - ready
+      - completed
+      - failed
+    authorizationUrl:
+      type: string
+      format: uri
+  required:
+  - id
+  - connectionId
+  - expiresAt
+  - state
+  description: URL is returned only to the authenticated external-account owner; no
+    credentials in shared chat or general connection responses.
+ConnectionPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./connections.yaml#/Connection"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality

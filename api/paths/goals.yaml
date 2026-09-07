@@ -1,0 +1,293 @@
+---
+"/goals":
+  get:
+    operationId: goals_list
+    tags:
+    - goals
+    summary: goals list
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/goals.yaml#/GoalPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+  post:
+    operationId: goals_create
+    tags:
+    - goals
+    summary: goals create
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: goals.create
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/goals.yaml#/GoalInput"
+"/goals/{goalId}":
+  get:
+    operationId: goals_read
+    tags:
+    - goals
+    summary: goals read
+    parameters:
+    - name: goalId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/goals.yaml#/Goal"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+  post:
+    operationId: goals_change
+    tags:
+    - goals
+    summary: goals change
+    parameters:
+    - name: goalId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: goals.change
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/goals.yaml#/GoalChange"
+  delete:
+    operationId: goals_archive
+    tags:
+    - goals
+    summary: goals archive
+    parameters:
+    - name: goalId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: goals.archive
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/UndoInput"
+"/goals/{goalId}/reservations":
+  post:
+    operationId: goals_reserve
+    tags:
+    - goals
+    summary: goals reserve
+    parameters:
+    - name: goalId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    x-command-type: goals.reserve
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/goals.yaml#/ReservationChange"
+"/goals/preview":
+  post:
+    operationId: goals_preview
+    tags:
+    - goals
+    summary: goals preview
+    parameters:
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/Report"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: Read-only preview of family funds and native-asset limits; no reservation
+      mutation.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/goals.yaml#/GoalPreview"

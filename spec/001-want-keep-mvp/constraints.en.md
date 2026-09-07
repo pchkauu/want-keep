@@ -71,7 +71,7 @@ Suite names in task cards form part of the runner contract. A missing suite fail
 
 ## Readiness, migrations and rollout
 
-The owner explicitly authorized task-1.1 early as an independent technical foundation. This does not change the overall Not Ready verdict. Before binding generation, adapter code or product logic, task-0.10 resolves fields/sources/terms, updates these documents and publishes a Ready plan. Never fill unknown external contracts with invented endpoints.
+The owner explicitly authorized task-1.1 early as an independent technical foundation. This does not change the overall Not Ready verdict. D-37 separately authorizes task-1.2: domain types and shared OpenAPI/bindings do not wait for remaining research. Before dependent adapter/product implementation, task-0.10 resolves the relevant fields/sources/terms and publishes a Ready plan. Never fill unknown external contracts with invented endpoints.
 
 Add schema changes through new migrations; do not rewrite applied migrations. Check compatibility against existing APIs/data; use expand → backfill → switch → contract only where needed. Rollback never discards the ledger, files or owner corrections.
 

@@ -1,0 +1,112 @@
+---
+ID:
+  type: string
+  format: uuid
+  pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+  x-go-type: string
+CommandID:
+  type: string
+  format: uuid
+  pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+  x-go-type: string
+Revision:
+  type: integer
+  format: int64
+  minimum: 1
+  maximum: 9007199254740991
+Decimal:
+  type: string
+  pattern: "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+  maxLength: 256
+  example: '12.000000000123'
+PositiveDecimal:
+  type: string
+  pattern: "^(0\\.[0-9]*[1-9][0-9]*|[1-9][0-9]*(\\.[0-9]+)?)$"
+  maxLength: 256
+  description: Strictly positive decimal, with no exponent or binary-float conversion.
+Asset:
+  type: string
+  enum:
+  - RUB
+  - USD
+  - USDT
+  - USDC
+  - BTC
+  - ETH
+Instant:
+  type: string
+  format: date-time
+  pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+  x-go-type: string
+Date:
+  type: string
+  format: date
+  x-go-type: string
+Month:
+  type: string
+  pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+Timezone:
+  type: string
+  minLength: 1
+  maxLength: 100
+  example: Europe/Moscow
+  description: UTC or an installed IANA Area/Location. Local, filesystem paths and
+    implicit machine timezone are forbidden.
+Freshness:
+  type: string
+  enum:
+  - fresh
+  - stale
+  - unknown
+Locale:
+  type: string
+  enum:
+  - ru
+  - en
+Provider:
+  type: string
+  enum:
+  - alfa
+  - raiffeisen
+  - ozon
+  - bybit
+  - aifory
+  - emcd
+Money:
+  type: object
+  additionalProperties: false
+  properties:
+    amount:
+      "$ref": "./money.yaml#/Decimal"
+    asset:
+      "$ref": "./money.yaml#/Asset"
+  required:
+  - amount
+  - asset
+PositiveMoney:
+  type: object
+  additionalProperties: false
+  properties:
+    amount:
+      "$ref": "./money.yaml#/PositiveDecimal"
+    asset:
+      "$ref": "./money.yaml#/Asset"
+  required:
+  - amount
+  - asset
+Rate:
+  type: object
+  additionalProperties: false
+  properties:
+    base:
+      "$ref": "./money.yaml#/Asset"
+    quote:
+      "$ref": "./money.yaml#/Asset"
+    value:
+      "$ref": "./money.yaml#/PositiveDecimal"
+  required:
+  - base
+  - quote
+  - value
+  description: Quote units per base unit; base and quote differ. No assumed stablecoin
+    parity.

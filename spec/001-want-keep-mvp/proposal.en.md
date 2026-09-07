@@ -2,6 +2,8 @@
 
 Execution mode: autonomous
 
+**D-37, 2026-09-07:** task-1.2 proceeds independently of remaining research. Branch and PR are based on `docs/want-keep-mvp-sdd`; the overall MVP remains Not Ready. Compact command status/key/hash/result metadata is retained for the family lifetime without copies of source files/messages or secrets. [Outcome and boundaries](evidence/task-1.2-domain-api.en.md).
+
 Initially agreed on 2026-09-06; family amendment agreed on 2026-09-07. Basis: the detailed interview and the user's explicit request to implement the agreed documentation and GitHub backlog plan.
 
 ## Problem and outcome

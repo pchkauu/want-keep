@@ -2,9 +2,21 @@
 
 [English](contracts.en.md)
 
-Контракт проекта версии 7, целевой; семейное, desktop, D-36/USDC и FX-уточнения 2026-09-07. Реальных API или схемы БД ещё нет. Здесь закреплены общие правила; provider-specific поля и условия закрываются task-0.1–task-0.10 до реализации. REQ/AC имеют приоритет над предположением адаптера.
+Контракт проекта версии 8, D-37 от 2026-09-07. OpenAPI и базовые доменные типы реализованы task-1.2; HTTP-обработчиков и схемы БД ещё нет. Здесь закреплены общие правила; provider-specific поля и условия закрываются task-0.1–task-0.10 до реализации. REQ/AC имеют приоритет над предположением адаптера.
 
 ## Доменные сущности
+
+### Исполняемая основа D-37
+
+Денежная строка имеет длину до 256 символов, не принимает exponent/float и сохраняет дробную точность всех шести активов. RUB не означает автоматически две цифры хранения, BTC — восемь. Округление — отдельное действие с scale и floor/half-even; allocation сохраняет итог точно и распределяет остатки по стабильному ID. Непредставимый в выбранном quantum итог и переполнение отвергаются. Rate — положительная конечная decimal observation quote/base; расчёт кросса принадлежит valuation и сохраняет исходные legs.
+
+Known amount содержит value; unknown/unavailable — reason без value. Coverage complete имеет пустой список причин, partial/unavailable — непустой. Freshness fresh/stale/unknown независима от полноты. UTC timestamp принимает RFC3339 с Z и до 9 знаков дробной секунды; Date/Month не содержат времени, timezone — UTC или проверенная IANA-зона. Revision — целое 1–9007199254740991, точно представимое в JavaScript.
+
+OpenAPI 3.0.3, модели и strict interfaces Go/TypeScript генерируются из одного источника. Schema validation и явные boundary converters не заменяют права, транзакции или бизнес-проверки use cases. В DTO отдельно заданы actorId/User, payerMemberId/Membership, personalOwnerId/User и externalAccountOwnerId/User. При создании команды клиент не назначает actor/household. Списки и result references проверяют актуальную семейную область и права.
+
+Command ID — созданный клиентом UUIDv4 в Idempotency-Key; ключ уникален в household+actor и фиксирует type/hash. До исполнения сохраняется pending; эффект и succeeded/result сохраняются атомарно. Replay проверяется до старой expectedRevision и возвращает исходный результат. Timeout не переводит команду в failed; при not_found допустимо только повторить тот же ключ по протоколу регистрации. Status/key/hash/result хранятся всю жизнь семьи. Auth/recovery/enrollment, приватные upload bytes и push credentials используют свои защищённые потоки и не копируются в financial-command records; preview не сохраняет финансовое изменение.
+
+Изменения относятся к новой основе без действующего product API или БД; миграция данных не нужна. Реализация хранения и серверных прав передаётся task-1.3/task-1.4. [Проверки и ограничения](evidence/task-1.2-domain-api.md).
 
 | Сущность | Минимальный контракт |
 | --- | --- |
@@ -86,7 +98,7 @@ Reference valuation не заменяет фактический обмен. Exe
 | Reports | GET dashboard, valuation, daily-limit, credit, savings, returns и insights с filters/date/currency/coverage. Чтение не запускает скрытую мутацию. |
 | Notifications | GET in-app notifications, POST read acknowledgment, POST/DELETE push subscriptions. Delivery receipt не означает прочтение. |
 
-task-1.2 материализует этот контракт в OpenAPI только после Ready; точные поля каждой формы следуют моделям выше и проверенным provider contracts. Клиентские/generated типы не становятся доменными.
+По D-37 task-1.2 материализует общий OpenAPI независимо от остаточного ресерча. Provider-specific формы и обработчики остаются за профильными задачами. Клиентские/generated типы не становятся доменными.
 
 ### Callback авторизации Raiffeisen
 
@@ -119,7 +131,7 @@ Receipt pipeline: uploaded → validating → processing → clarification / ski
 | Reimbursement | Явные creditor/debtor member IDs, asset/amount, optional expense link, settlements и revision. Внутренние требования не входят в семейный капитал. |
 | SharedThread / Message | Один thread на семью, message actorId, attachments, proposal/clarification revision. Общая видимость не означает полномочия на любую команду. |
 
-Минимальные дополнения `/api/v1`: GET `/me` и `/household`; POST `/household/invitations`, POST `/invitations/accept`; принадлежность в accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` и memberId для отчётов. Эти фильтры не меняют principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached и version_conflict — отдельные безопасные ошибки. Формы материализуются в OpenAPI после Ready.
+Минимальные дополнения `/api/v1`: GET `/me` и `/household`; POST `/household/invitations`, POST `/invitations/accept`; принадлежность в accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` и memberId для отчётов. Эти фильтры не меняют principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached и version_conflict — отдельные безопасные ошибки. Общие формы материализованы в OpenAPI task-1.2 по D-37; runtime-права реализуются отдельно.
 
 Инженерные defaults: первый пользователь создаётся закрытым одноразовым bootstrap; второй принимает созданное вошедшим member одноразовое случайное приглашение со сроком 24 часа, хранимое хешированным. Приглашение связывается с новым отдельным входом; повтор/лимит проверяются атомарно. Оно не даёт сбросить чужие passkey. Система не отправляет приглашение через внешние сообщения сама. Изменение пользовательской цели или личной строки, включая удаление, смену владельца/личного статуса и применение AI-предложения, требует её текущего владельца. Нельзя обойти это переводом чужой цели в общую. Создать личную цель/строку можно для себя; общую — любому. У обоих есть чтение/создание/исправление всех учётных операций. Принадлежность личного счёта меняет его владелец, семейного — любой; это не изменяет подтверждённого внешнего владельца и историю операций.
 
@@ -141,9 +153,9 @@ Receipt pipeline: uploaded → validating → processing → clarification / ski
 
 ## Контракты представления, команд и событий
 
-UI routes SCR-001–SCR-035 не являются API endpoints. [Каталог экранов](screens.md) задаёт поля FORM-01–FORM-15 и сценарии ошибок; task-1.2 уточняет OpenAPI после Ready. Reports возвращают native amounts, reporting amounts с отдельной известностью, asOf/coverage, actual/forecast/reserved тип, входы расчёта и ссылки на объясняющие операции. Клиент форматирует и раскрывает эти данные, не повторяет финансовые формулы.
+UI routes SCR-001–SCR-035 не являются API endpoints. [Каталог экранов](screens.md) задаёт поля FORM-01–FORM-15 и сценарии ошибок; task-1.2 материализует общий OpenAPI по D-37. Reports возвращают native amounts, reporting amounts с отдельной известностью, asOf/coverage, actual/forecast/reserved тип, входы расчёта и ссылки на объясняющие операции. Клиент форматирует и раскрывает эти данные, не повторяет финансовые формулы.
 
-Для mutating command сервер связывает Idempotency-Key с householdId, actorId, типом и hash payload; тот же ключ с другим payload отклоняется. Результат и финансовый эффект атомарны. Целевые GET `/api/v1/commands/{id}` и `/api/v1/commands/recent` возвращают только собственные разрешённые команды текущего участника с `pending|succeeded|failed`, ссылкой на результат и безопасной ошибкой. `unknown` — состояние знания клиента, не повод породить новую команду. После timeout/reload клиент проверяет command status; `not_found` не доказывает отсутствие эффекта без серверного контракта регистрации команды. Сохранять ввод в памяти вкладки, не секреты в URL/localStorage. Сроки доступности command records и идемпотентности должны покрывать retry/recovery window и закрываются task-0.10/task-1.2.
+Для mutating command сервер связывает Idempotency-Key с householdId, actorId, типом и hash payload; тот же ключ с другим payload отклоняется. Результат и финансовый эффект атомарны. Целевые GET `/api/v1/commands/{id}` и `/api/v1/commands/recent` возвращают только собственные разрешённые команды текущего участника с `pending|succeeded|failed`, ссылкой на результат и безопасной ошибкой. `unknown` — состояние знания клиента, не повод породить новую команду. После timeout/reload клиент проверяет command status; `not_found` не доказывает отсутствие эффекта без серверного контракта регистрации команды. Сохранять ввод в памяти вкладки, не секреты в URL/localStorage. По D-37 компактные command records и ключи идемпотентности хранятся всё время хранения семьи; исходные документы/сообщения и секреты туда не копируются. Постоянное хранилище реализует task-1.3.
 
 UIState выводится из typed errors/coverage/result. `version_conflict` содержит разрешённую актуальную версию для сравнения; сервер снова проверяет права при повторном применении. Session expiry закрывает защищённый экран, другой principal не получает черновик. Личные preferences включают locale, reporting currency, notification options и decorativeEffectsEnabled; изменение предпочтения не меняет семейный факт или права.
 

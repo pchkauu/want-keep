@@ -1,0 +1,287 @@
+---
+ResourceReference:
+  type: object
+  additionalProperties: false
+  properties:
+    type:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+  required:
+  - type
+  - id
+CalculationInput:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    amount:
+      "$ref": "./quality.yaml#/AmountValue"
+    resources:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+  required:
+  - name
+  - amount
+  - resources
+ExplainableAmount:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    kind:
+      type: string
+      enum:
+      - actual
+      - forecast
+      - reserved
+      - revaluation
+    native:
+      type: array
+      items:
+        "$ref": "./money.yaml#/Money"
+    reporting:
+      "$ref": "./quality.yaml#/AmountValue"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+    method:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    inputs:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/CalculationInput"
+    resources:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+  required:
+  - name
+  - kind
+  - native
+  - reporting
+  - quality
+  - method
+  - inputs
+  - resources
+ReportContext:
+  type: object
+  additionalProperties: false
+  properties:
+    view:
+      type: string
+      enum:
+      - household
+      - member
+    memberId:
+      "$ref": "./money.yaml#/ID"
+    reportingAsset:
+      "$ref": "./money.yaml#/Asset"
+    from:
+      "$ref": "./money.yaml#/Date"
+    to:
+      "$ref": "./money.yaml#/Date"
+    timezone:
+      "$ref": "./money.yaml#/Timezone"
+  required:
+  - view
+  - reportingAsset
+  - from
+  - to
+  - timezone
+  description: Member view requires memberId belonging to the current family. A display
+    filter never changes principal.
+Report:
+  type: object
+  additionalProperties: false
+  properties:
+    context:
+      "$ref": "./reports.yaml#/ReportContext"
+    amounts:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ExplainableAmount"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - context
+  - amounts
+  - quality
+UpcomingPayment:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    label:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    dueDate:
+      "$ref": "./money.yaml#/Date"
+    outstanding:
+      "$ref": "./quality.yaml#/AmountValue"
+    risk:
+      type: string
+      enum:
+      - covered
+      - shortfall
+      - unknown
+  required:
+  - id
+  - label
+  - dueDate
+  - outstanding
+  - risk
+Dashboard:
+  type: object
+  additionalProperties: false
+  properties:
+    context:
+      "$ref": "./reports.yaml#/ReportContext"
+    dailyLimits:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ExplainableAmount"
+    upcomingPayments:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/UpcomingPayment"
+    planActual:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ExplainableAmount"
+    goals:
+      type: array
+      items:
+        "$ref": "./goals.yaml#/Goal"
+    attention:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - context
+  - dailyLimits
+  - upcomingPayments
+  - planActual
+  - goals
+  - attention
+  - quality
+ValuationObservation:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    rate:
+      "$ref": "./money.yaml#/Rate"
+    requestedDate:
+      "$ref": "./money.yaml#/Date"
+    observedAt:
+      "$ref": "./money.yaml#/Instant"
+    fetchedAt:
+      "$ref": "./money.yaml#/Instant"
+    source:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    method:
+      type: string
+      enum:
+      - reference
+      - executed
+    granularity:
+      type: string
+      enum:
+      - instant
+      - daily
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - id
+  - revision
+  - rate
+  - requestedDate
+  - observedAt
+  - fetchedAt
+  - source
+  - method
+  - granularity
+  - quality
+Insight:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    summary:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    evidence:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+      minItems: 1
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+    proposalId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - id
+  - revision
+  - summary
+  - evidence
+  - quality
+ValuationObservationPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ValuationObservation"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+InsightPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/Insight"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality

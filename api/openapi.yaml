@@ -1,0 +1,507 @@
+---
+openapi: 3.0.3
+info:
+  title: Want Keep API
+  version: 1.0.0
+  description: Task-1.2 contract foundation. Product handlers and storage are implemented
+    by subsequent tasks. All examples are synthetic. Financial commands never execute
+    payments or trades. Actor and household are derived from verified session/job
+    context, not input. Decimal values remain strings throughout transport.
+servers:
+- url: "/api/v1"
+security:
+- sessionCookie: []
+paths:
+  "/auth/login/options":
+    "$ref": "./paths/auth.yaml#/~1auth~1login~1options"
+  "/auth/login/verify":
+    "$ref": "./paths/auth.yaml#/~1auth~1login~1verify"
+  "/auth/enrollment/options":
+    "$ref": "./paths/auth.yaml#/~1auth~1enrollment~1options"
+  "/auth/enrollment/verify":
+    "$ref": "./paths/auth.yaml#/~1auth~1enrollment~1verify"
+  "/auth/recovery":
+    "$ref": "./paths/auth.yaml#/~1auth~1recovery"
+  "/auth/logout":
+    "$ref": "./paths/auth.yaml#/~1auth~1logout"
+  "/household/bootstrap":
+    "$ref": "./paths/household.yaml#/~1household~1bootstrap"
+  "/me":
+    "$ref": "./paths/household.yaml#/~1me"
+  "/household":
+    "$ref": "./paths/household.yaml#/~1household"
+  "/household/invitations":
+    "$ref": "./paths/household.yaml#/~1household~1invitations"
+  "/invitations/accept":
+    "$ref": "./paths/household.yaml#/~1invitations~1accept"
+  "/accounts":
+    "$ref": "./paths/accounts.yaml#/~1accounts"
+  "/accounts/{accountId}":
+    "$ref": "./paths/accounts.yaml#/~1accounts~1{accountId}"
+  "/accounts/{accountId}/ownership":
+    "$ref": "./paths/accounts.yaml#/~1accounts~1{accountId}~1ownership"
+  "/accounts/{accountId}/opening-corrections":
+    "$ref": "./paths/accounts.yaml#/~1accounts~1{accountId}~1opening-corrections"
+  "/transactions":
+    "$ref": "./paths/transactions.yaml#/~1transactions"
+  "/transfers":
+    "$ref": "./paths/transactions.yaml#/~1transfers"
+  "/refunds":
+    "$ref": "./paths/transactions.yaml#/~1refunds"
+  "/transactions/{transactionId}":
+    "$ref": "./paths/transactions.yaml#/~1transactions~1{transactionId}"
+  "/transactions/{transactionId}/corrections":
+    "$ref": "./paths/transactions.yaml#/~1transactions~1{transactionId}~1corrections"
+  "/transactions/{transactionId}/links":
+    "$ref": "./paths/transactions.yaml#/~1transactions~1{transactionId}~1links"
+  "/transactions/{transactionId}/undo":
+    "$ref": "./paths/transactions.yaml#/~1transactions~1{transactionId}~1undo"
+  "/transactions/{transactionId}/allocations":
+    "$ref": "./paths/transactions.yaml#/~1transactions~1{transactionId}~1allocations"
+  "/reconciliations":
+    "$ref": "./paths/reconciliations.yaml#/~1reconciliations"
+  "/reconciliations/{reconciliationId}":
+    "$ref": "./paths/reconciliations.yaml#/~1reconciliations~1{reconciliationId}"
+  "/reconciliations/{reconciliationId}/resolve":
+    "$ref": "./paths/reconciliations.yaml#/~1reconciliations~1{reconciliationId}~1resolve"
+  "/reimbursements":
+    "$ref": "./paths/transactions.yaml#/~1reimbursements"
+  "/reimbursements/{reimbursementId}":
+    "$ref": "./paths/transactions.yaml#/~1reimbursements~1{reimbursementId}"
+  "/reimbursements/{reimbursementId}/settlements":
+    "$ref": "./paths/transactions.yaml#/~1reimbursements~1{reimbursementId}~1settlements"
+  "/connections":
+    "$ref": "./paths/connections.yaml#/~1connections"
+  "/connections/{connectionId}":
+    "$ref": "./paths/connections.yaml#/~1connections~1{connectionId}"
+  "/connections/{connectionId}/sync":
+    "$ref": "./paths/connections.yaml#/~1connections~1{connectionId}~1sync"
+  "/connections/{connectionId}/reauth":
+    "$ref": "./paths/connections.yaml#/~1connections~1{connectionId}~1reauth"
+  "/connections/{connectionId}/authorization":
+    "$ref": "./paths/connections.yaml#/~1connections~1{connectionId}~1authorization"
+  "/connections/raiffeisen/callback":
+    "$ref": "./paths/connections.yaml#/~1connections~1raiffeisen~1callback"
+  "/attachments":
+    "$ref": "./paths/chat.yaml#/~1attachments"
+  "/attachments/{attachmentId}":
+    "$ref": "./paths/chat.yaml#/~1attachments~1{attachmentId}"
+  "/attachments/{attachmentId}/content":
+    "$ref": "./paths/chat.yaml#/~1attachments~1{attachmentId}~1content"
+  "/receipts/{receiptId}":
+    "$ref": "./paths/chat.yaml#/~1receipts~1{receiptId}"
+  "/receipts/{receiptId}/allocations":
+    "$ref": "./paths/chat.yaml#/~1receipts~1{receiptId}~1allocations"
+  "/threads":
+    "$ref": "./paths/chat.yaml#/~1threads"
+  "/threads/{threadId}/messages":
+    "$ref": "./paths/chat.yaml#/~1threads~1{threadId}~1messages"
+  "/clarifications":
+    "$ref": "./paths/chat.yaml#/~1clarifications"
+  "/clarifications/{clarificationId}/answers":
+    "$ref": "./paths/chat.yaml#/~1clarifications~1{clarificationId}~1answers"
+  "/proposals/{proposalId}":
+    "$ref": "./paths/chat.yaml#/~1proposals~1{proposalId}"
+  "/proposals/{proposalId}/apply":
+    "$ref": "./paths/chat.yaml#/~1proposals~1{proposalId}~1apply"
+  "/budgets":
+    "$ref": "./paths/budgets.yaml#/~1budgets"
+  "/budgets/{budgetId}":
+    "$ref": "./paths/budgets.yaml#/~1budgets~1{budgetId}"
+  "/budgets/{budgetId}/lines":
+    "$ref": "./paths/budgets.yaml#/~1budgets~1{budgetId}~1lines"
+  "/budgets/{budgetId}/lines/{lineId}":
+    "$ref": "./paths/budgets.yaml#/~1budgets~1{budgetId}~1lines~1{lineId}"
+  "/budgets/{budgetId}/approve":
+    "$ref": "./paths/budgets.yaml#/~1budgets~1{budgetId}~1approve"
+  "/budgets/preview":
+    "$ref": "./paths/budgets.yaml#/~1budgets~1preview"
+  "/goals":
+    "$ref": "./paths/goals.yaml#/~1goals"
+  "/goals/{goalId}":
+    "$ref": "./paths/goals.yaml#/~1goals~1{goalId}"
+  "/goals/{goalId}/reservations":
+    "$ref": "./paths/goals.yaml#/~1goals~1{goalId}~1reservations"
+  "/goals/preview":
+    "$ref": "./paths/goals.yaml#/~1goals~1preview"
+  "/reports/dashboard":
+    "$ref": "./paths/reports.yaml#/~1reports~1dashboard"
+  "/reports/cashflow":
+    "$ref": "./paths/reports.yaml#/~1reports~1cashflow"
+  "/reports/valuation":
+    "$ref": "./paths/reports.yaml#/~1reports~1valuation"
+  "/reports/daily-limits":
+    "$ref": "./paths/reports.yaml#/~1reports~1daily-limits"
+  "/reports/credit":
+    "$ref": "./paths/reports.yaml#/~1reports~1credit"
+  "/reports/savings":
+    "$ref": "./paths/reports.yaml#/~1reports~1savings"
+  "/reports/returns":
+    "$ref": "./paths/reports.yaml#/~1reports~1returns"
+  "/reports/crypto":
+    "$ref": "./paths/reports.yaml#/~1reports~1crypto"
+  "/rates":
+    "$ref": "./paths/reports.yaml#/~1rates"
+  "/insights":
+    "$ref": "./paths/reports.yaml#/~1insights"
+  "/notifications":
+    "$ref": "./paths/settings.yaml#/~1notifications"
+  "/notifications/read":
+    "$ref": "./paths/settings.yaml#/~1notifications~1read"
+  "/push-subscriptions":
+    "$ref": "./paths/settings.yaml#/~1push-subscriptions"
+  "/push-subscriptions/{subscriptionId}":
+    "$ref": "./paths/settings.yaml#/~1push-subscriptions~1{subscriptionId}"
+  "/preferences":
+    "$ref": "./paths/settings.yaml#/~1preferences"
+  "/security/passkeys":
+    "$ref": "./paths/settings.yaml#/~1security~1passkeys"
+  "/security/sessions":
+    "$ref": "./paths/settings.yaml#/~1security~1sessions"
+  "/security/passkeys/{credentialId}":
+    "$ref": "./paths/settings.yaml#/~1security~1passkeys~1{credentialId}"
+  "/security/sessions/{credentialId}":
+    "$ref": "./paths/settings.yaml#/~1security~1sessions~1{credentialId}"
+  "/security/recovery-codes":
+    "$ref": "./paths/settings.yaml#/~1security~1recovery-codes"
+  "/categories":
+    "$ref": "./paths/settings.yaml#/~1categories"
+  "/categories/{categoryId}":
+    "$ref": "./paths/settings.yaml#/~1categories~1{categoryId}"
+  "/rules":
+    "$ref": "./paths/settings.yaml#/~1rules"
+  "/rules/{ruleId}":
+    "$ref": "./paths/settings.yaml#/~1rules~1{ruleId}"
+  "/system/status":
+    "$ref": "./paths/settings.yaml#/~1system~1status"
+  "/commands/recent":
+    "$ref": "./paths/commands.yaml#/~1commands~1recent"
+  "/commands/{commandId}":
+    "$ref": "./paths/commands.yaml#/~1commands~1{commandId}"
+components:
+  responses:
+    Problem:
+      "$ref": "./components.yaml#/responses/Problem"
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: want_keep_session
+      description: Secure HttpOnly SameSite session cookie. Origin and session-bound
+        CSRF validation are required for authenticated browser mutations.
+  parameters:
+    IdempotencyKey:
+      "$ref": "./components.yaml#/parameters/IdempotencyKey"
+    CSRF:
+      "$ref": "./components.yaml#/parameters/CSRF"
+    Cursor:
+      "$ref": "./components.yaml#/parameters/Cursor"
+    Limit:
+      "$ref": "./components.yaml#/parameters/Limit"
+  schemas:
+    ID:
+      "$ref": "./schemas/money.yaml#/ID"
+    CommandID:
+      "$ref": "./schemas/money.yaml#/CommandID"
+    Revision:
+      "$ref": "./schemas/money.yaml#/Revision"
+    Decimal:
+      "$ref": "./schemas/money.yaml#/Decimal"
+    PositiveDecimal:
+      "$ref": "./schemas/money.yaml#/PositiveDecimal"
+    Asset:
+      "$ref": "./schemas/money.yaml#/Asset"
+    Instant:
+      "$ref": "./schemas/money.yaml#/Instant"
+    Date:
+      "$ref": "./schemas/money.yaml#/Date"
+    Month:
+      "$ref": "./schemas/money.yaml#/Month"
+    Timezone:
+      "$ref": "./schemas/money.yaml#/Timezone"
+    Freshness:
+      "$ref": "./schemas/money.yaml#/Freshness"
+    Locale:
+      "$ref": "./schemas/money.yaml#/Locale"
+    Provider:
+      "$ref": "./schemas/money.yaml#/Provider"
+    ErrorCode:
+      "$ref": "./schemas/quality.yaml#/ErrorCode"
+    Money:
+      "$ref": "./schemas/money.yaml#/Money"
+    PositiveMoney:
+      "$ref": "./schemas/money.yaml#/PositiveMoney"
+    Rate:
+      "$ref": "./schemas/money.yaml#/Rate"
+    FieldViolation:
+      "$ref": "./schemas/quality.yaml#/FieldViolation"
+    APIError:
+      "$ref": "./schemas/quality.yaml#/APIError"
+    KnownAmount:
+      "$ref": "./schemas/quality.yaml#/KnownAmount"
+    MissingAmount:
+      "$ref": "./schemas/quality.yaml#/MissingAmount"
+    AmountValue:
+      "$ref": "./schemas/quality.yaml#/AmountValue"
+    CompleteCoverage:
+      "$ref": "./schemas/quality.yaml#/CompleteCoverage"
+    IncompleteCoverage:
+      "$ref": "./schemas/quality.yaml#/IncompleteCoverage"
+    Coverage:
+      "$ref": "./schemas/quality.yaml#/Coverage"
+    DataQuality:
+      "$ref": "./schemas/quality.yaml#/DataQuality"
+    PersonalOwnership:
+      "$ref": "./schemas/household.yaml#/PersonalOwnership"
+    SharedOwnership:
+      "$ref": "./schemas/household.yaml#/SharedOwnership"
+    Ownership:
+      "$ref": "./schemas/household.yaml#/Ownership"
+    PersonalScopeInput:
+      "$ref": "./schemas/household.yaml#/PersonalScopeInput"
+    SharedScopeInput:
+      "$ref": "./schemas/household.yaml#/SharedScopeInput"
+    ScopeInput:
+      "$ref": "./schemas/household.yaml#/ScopeInput"
+    User:
+      "$ref": "./schemas/household.yaml#/User"
+    Membership:
+      "$ref": "./schemas/household.yaml#/Membership"
+    Household:
+      "$ref": "./schemas/household.yaml#/Household"
+    Preferences:
+      "$ref": "./schemas/household.yaml#/Preferences"
+    Me:
+      "$ref": "./schemas/household.yaml#/Me"
+    SetupInput:
+      "$ref": "./schemas/household.yaml#/SetupInput"
+    Invitation:
+      "$ref": "./schemas/household.yaml#/Invitation"
+    InvitationCreated:
+      "$ref": "./schemas/household.yaml#/InvitationCreated"
+    InvitationAcceptInput:
+      "$ref": "./schemas/household.yaml#/InvitationAcceptInput"
+    LoginOptions:
+      "$ref": "./schemas/auth.yaml#/LoginOptions"
+    AuthenticationCredential:
+      "$ref": "./schemas/auth.yaml#/AuthenticationCredential"
+    RegistrationCredential:
+      "$ref": "./schemas/auth.yaml#/RegistrationCredential"
+    LoginVerifyInput:
+      "$ref": "./schemas/auth.yaml#/LoginVerifyInput"
+    EnrollmentInput:
+      "$ref": "./schemas/auth.yaml#/EnrollmentInput"
+    EnrollmentOptions:
+      "$ref": "./schemas/auth.yaml#/EnrollmentOptions"
+    EnrollmentVerifyInput:
+      "$ref": "./schemas/auth.yaml#/EnrollmentVerifyInput"
+    RecoveryInput:
+      "$ref": "./schemas/auth.yaml#/RecoveryInput"
+    RecoveryAttempt:
+      "$ref": "./schemas/auth.yaml#/RecoveryAttempt"
+    RecoveryCodes:
+      "$ref": "./schemas/auth.yaml#/RecoveryCodes"
+    Passkey:
+      "$ref": "./schemas/auth.yaml#/Passkey"
+    Session:
+      "$ref": "./schemas/auth.yaml#/Session"
+    SourceReference:
+      "$ref": "./schemas/accounts.yaml#/SourceReference"
+    Balance:
+      "$ref": "./schemas/accounts.yaml#/Balance"
+    Account:
+      "$ref": "./schemas/accounts.yaml#/Account"
+    AccountCreate:
+      "$ref": "./schemas/accounts.yaml#/AccountCreate"
+    AccountOwnershipChange:
+      "$ref": "./schemas/accounts.yaml#/AccountOwnershipChange"
+    OpeningCorrection:
+      "$ref": "./schemas/accounts.yaml#/OpeningCorrection"
+    MemberAmount:
+      "$ref": "./schemas/transactions.yaml#/MemberAmount"
+    MemberShare:
+      "$ref": "./schemas/transactions.yaml#/MemberShare"
+    AmountAllocation:
+      "$ref": "./schemas/transactions.yaml#/AmountAllocation"
+    ShareAllocation:
+      "$ref": "./schemas/transactions.yaml#/ShareAllocation"
+    UnresolvedAllocation:
+      "$ref": "./schemas/transactions.yaml#/UnresolvedAllocation"
+    ExpenseAllocation:
+      "$ref": "./schemas/transactions.yaml#/ExpenseAllocation"
+    Posting:
+      "$ref": "./schemas/transactions.yaml#/Posting"
+    ReceiptItem:
+      "$ref": "./schemas/transactions.yaml#/ReceiptItem"
+    Transaction:
+      "$ref": "./schemas/transactions.yaml#/Transaction"
+    TransactionCreate:
+      "$ref": "./schemas/transactions.yaml#/TransactionCreate"
+    FeeInput:
+      "$ref": "./schemas/transactions.yaml#/FeeInput"
+    TransferCreate:
+      "$ref": "./schemas/transactions.yaml#/TransferCreate"
+    TransactionCorrection:
+      "$ref": "./schemas/transactions.yaml#/TransactionCorrection"
+    TransactionLink:
+      "$ref": "./schemas/transactions.yaml#/TransactionLink"
+    UndoInput:
+      "$ref": "./schemas/transactions.yaml#/UndoInput"
+    AllocationChange:
+      "$ref": "./schemas/transactions.yaml#/AllocationChange"
+    RefundCreate:
+      "$ref": "./schemas/transactions.yaml#/RefundCreate"
+    Reimbursement:
+      "$ref": "./schemas/transactions.yaml#/Reimbursement"
+    ReimbursementCreate:
+      "$ref": "./schemas/transactions.yaml#/ReimbursementCreate"
+    SettlementCreate:
+      "$ref": "./schemas/transactions.yaml#/SettlementCreate"
+    Reconciliation:
+      "$ref": "./schemas/accounts.yaml#/Reconciliation"
+    Connection:
+      "$ref": "./schemas/connections.yaml#/Connection"
+    ConnectionCreate:
+      "$ref": "./schemas/connections.yaml#/ConnectionCreate"
+    ConnectionAction:
+      "$ref": "./schemas/connections.yaml#/ConnectionAction"
+    AuthorizationAttempt:
+      "$ref": "./schemas/connections.yaml#/AuthorizationAttempt"
+    Attachment:
+      "$ref": "./schemas/chat.yaml#/Attachment"
+    AttachmentUpload:
+      "$ref": "./schemas/chat.yaml#/AttachmentUpload"
+    Receipt:
+      "$ref": "./schemas/chat.yaml#/Receipt"
+    Message:
+      "$ref": "./schemas/chat.yaml#/Message"
+    MessageCreate:
+      "$ref": "./schemas/chat.yaml#/MessageCreate"
+    Thread:
+      "$ref": "./schemas/chat.yaml#/Thread"
+    Clarification:
+      "$ref": "./schemas/chat.yaml#/Clarification"
+    ClarificationAnswer:
+      "$ref": "./schemas/chat.yaml#/ClarificationAnswer"
+    Proposal:
+      "$ref": "./schemas/chat.yaml#/Proposal"
+    ProposalDecision:
+      "$ref": "./schemas/chat.yaml#/ProposalDecision"
+    BudgetLine:
+      "$ref": "./schemas/budgets.yaml#/BudgetLine"
+    BudgetLineInput:
+      "$ref": "./schemas/budgets.yaml#/BudgetLineInput"
+    Budget:
+      "$ref": "./schemas/budgets.yaml#/Budget"
+    BudgetCreate:
+      "$ref": "./schemas/budgets.yaml#/BudgetCreate"
+    BudgetLineChange:
+      "$ref": "./schemas/budgets.yaml#/BudgetLineChange"
+    BudgetApproval:
+      "$ref": "./schemas/budgets.yaml#/BudgetApproval"
+    VirtualReservation:
+      "$ref": "./schemas/goals.yaml#/VirtualReservation"
+    DedicatedReservation:
+      "$ref": "./schemas/goals.yaml#/DedicatedReservation"
+    Reservation:
+      "$ref": "./schemas/goals.yaml#/Reservation"
+    Goal:
+      "$ref": "./schemas/goals.yaml#/Goal"
+    GoalInput:
+      "$ref": "./schemas/goals.yaml#/GoalInput"
+    GoalChange:
+      "$ref": "./schemas/goals.yaml#/GoalChange"
+    ReservationChange:
+      "$ref": "./schemas/goals.yaml#/ReservationChange"
+    BudgetPreview:
+      "$ref": "./schemas/budgets.yaml#/BudgetPreview"
+    GoalPreview:
+      "$ref": "./schemas/goals.yaml#/GoalPreview"
+    ResourceReference:
+      "$ref": "./schemas/reports.yaml#/ResourceReference"
+    CalculationInput:
+      "$ref": "./schemas/reports.yaml#/CalculationInput"
+    ExplainableAmount:
+      "$ref": "./schemas/reports.yaml#/ExplainableAmount"
+    ReportContext:
+      "$ref": "./schemas/reports.yaml#/ReportContext"
+    Report:
+      "$ref": "./schemas/reports.yaml#/Report"
+    UpcomingPayment:
+      "$ref": "./schemas/reports.yaml#/UpcomingPayment"
+    Dashboard:
+      "$ref": "./schemas/reports.yaml#/Dashboard"
+    ValuationObservation:
+      "$ref": "./schemas/reports.yaml#/ValuationObservation"
+    Insight:
+      "$ref": "./schemas/reports.yaml#/Insight"
+    Notification:
+      "$ref": "./schemas/settings.yaml#/Notification"
+    NotificationRead:
+      "$ref": "./schemas/settings.yaml#/NotificationRead"
+    PushSubscription:
+      "$ref": "./schemas/settings.yaml#/PushSubscription"
+    Category:
+      "$ref": "./schemas/settings.yaml#/Category"
+    CategoryInput:
+      "$ref": "./schemas/settings.yaml#/CategoryInput"
+    CategoryChange:
+      "$ref": "./schemas/settings.yaml#/CategoryChange"
+    RuleCondition:
+      "$ref": "./schemas/settings.yaml#/RuleCondition"
+    RuleInput:
+      "$ref": "./schemas/settings.yaml#/RuleInput"
+    Rule:
+      "$ref": "./schemas/settings.yaml#/Rule"
+    RuleChange:
+      "$ref": "./schemas/settings.yaml#/RuleChange"
+    SystemStatus:
+      "$ref": "./schemas/settings.yaml#/SystemStatus"
+    BackupStatus:
+      "$ref": "./schemas/settings.yaml#/BackupStatus"
+    CommandPending:
+      "$ref": "./schemas/commands.yaml#/CommandPending"
+    CommandSucceeded:
+      "$ref": "./schemas/commands.yaml#/CommandSucceeded"
+    CommandFailed:
+      "$ref": "./schemas/commands.yaml#/CommandFailed"
+    CommandStatus:
+      "$ref": "./schemas/commands.yaml#/CommandStatus"
+    EmptyInput:
+      "$ref": "./schemas/commands.yaml#/EmptyInput"
+    AccountPage:
+      "$ref": "./schemas/accounts.yaml#/AccountPage"
+    TransactionPage:
+      "$ref": "./schemas/transactions.yaml#/TransactionPage"
+    ReconciliationPage:
+      "$ref": "./schemas/accounts.yaml#/ReconciliationPage"
+    ReimbursementPage:
+      "$ref": "./schemas/transactions.yaml#/ReimbursementPage"
+    ConnectionPage:
+      "$ref": "./schemas/connections.yaml#/ConnectionPage"
+    MessagePage:
+      "$ref": "./schemas/chat.yaml#/MessagePage"
+    ClarificationPage:
+      "$ref": "./schemas/chat.yaml#/ClarificationPage"
+    BudgetPage:
+      "$ref": "./schemas/budgets.yaml#/BudgetPage"
+    GoalPage:
+      "$ref": "./schemas/goals.yaml#/GoalPage"
+    ValuationObservationPage:
+      "$ref": "./schemas/reports.yaml#/ValuationObservationPage"
+    InsightPage:
+      "$ref": "./schemas/reports.yaml#/InsightPage"
+    NotificationPage:
+      "$ref": "./schemas/settings.yaml#/NotificationPage"
+    PasskeyPage:
+      "$ref": "./schemas/auth.yaml#/PasskeyPage"
+    SessionPage:
+      "$ref": "./schemas/auth.yaml#/SessionPage"
+    CategoryPage:
+      "$ref": "./schemas/settings.yaml#/CategoryPage"
+    RulePage:
+      "$ref": "./schemas/settings.yaml#/RulePage"
+    CommandStatusPage:
+      "$ref": "./schemas/commands.yaml#/CommandStatusPage"
+    CommandResult:
+      "$ref": "./schemas/commands.yaml#/CommandResult"

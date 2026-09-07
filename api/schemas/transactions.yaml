@@ -1,0 +1,528 @@
+---
+MemberAmount:
+  type: object
+  additionalProperties: false
+  properties:
+    memberId:
+      "$ref": "./money.yaml#/ID"
+    amount:
+      "$ref": "./money.yaml#/Money"
+  required:
+  - memberId
+  - amount
+MemberShare:
+  type: object
+  additionalProperties: false
+  properties:
+    memberId:
+      "$ref": "./money.yaml#/ID"
+    share:
+      "$ref": "./money.yaml#/PositiveDecimal"
+  required:
+  - memberId
+  - share
+AmountAllocation:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - amounts
+    purpose:
+      type: string
+      enum:
+      - personal
+      - shared
+    members:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/MemberAmount"
+      minItems: 1
+      maxItems: 1000
+  required:
+  - mode
+  - purpose
+  - members
+ShareAllocation:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - shares
+    purpose:
+      type: string
+      enum:
+      - personal
+      - shared
+    members:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/MemberShare"
+      minItems: 1
+      maxItems: 1000
+  required:
+  - mode
+  - purpose
+  - members
+  description: Shares must sum to exactly 100. Allocation uses largest remainders
+    and memberId ties.
+UnresolvedAllocation:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - unresolved
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - mode
+  - reason
+ExpenseAllocation:
+  oneOf:
+  - "$ref": "./transactions.yaml#/AmountAllocation"
+  - "$ref": "./transactions.yaml#/ShareAllocation"
+  - "$ref": "./transactions.yaml#/UnresolvedAllocation"
+Posting:
+  type: object
+  additionalProperties: false
+  properties:
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    money:
+      "$ref": "./money.yaml#/Money"
+    role:
+      type: string
+      enum:
+      - principal
+      - fee
+      - interest
+      - funding
+      - pnl
+      - reward
+  required:
+  - accountId
+  - money
+  - role
+ReceiptItem:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    quantity:
+      "$ref": "./money.yaml#/PositiveDecimal"
+    total:
+      "$ref": "./money.yaml#/Money"
+    discount:
+      "$ref": "./money.yaml#/Money"
+    allocation:
+      "$ref": "./transactions.yaml#/ExpenseAllocation"
+    categoryId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - id
+  - name
+  - quantity
+  - total
+  - discount
+  - allocation
+Transaction:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    householdId:
+      "$ref": "./money.yaml#/ID"
+    actorId:
+      "$ref": "./money.yaml#/ID"
+    payerMemberId:
+      "$ref": "./money.yaml#/ID"
+    type:
+      type: string
+      enum:
+      - income
+      - expense
+      - transfer
+      - exchange
+      - refund
+      - opening
+      - adjustment
+      - yield
+      - trade_result
+    state:
+      type: string
+      enum:
+      - draft
+      - pending
+      - posted
+      - reversed
+    occurredAt:
+      "$ref": "./money.yaml#/Instant"
+    cashDate:
+      "$ref": "./money.yaml#/Date"
+    expenseMonth:
+      "$ref": "./money.yaml#/Month"
+    postings:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/Posting"
+    allocation:
+      "$ref": "./transactions.yaml#/ExpenseAllocation"
+    categoryId:
+      "$ref": "./money.yaml#/ID"
+    merchant:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    receiptId:
+      "$ref": "./money.yaml#/ID"
+    originalTransactionId:
+      "$ref": "./money.yaml#/ID"
+    sources:
+      type: array
+      items:
+        "$ref": "./accounts.yaml#/SourceReference"
+    aiState:
+      type: string
+      enum:
+      - waiting
+      - reviewed
+      - clarification
+      - failed
+  required:
+  - id
+  - revision
+  - householdId
+  - actorId
+  - type
+  - state
+  - occurredAt
+  - cashDate
+  - postings
+  - allocation
+  - sources
+  - aiState
+TransactionCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    type:
+      type: string
+      enum:
+      - income
+      - expense
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    occurredAt:
+      "$ref": "./money.yaml#/Instant"
+    amount:
+      "$ref": "./money.yaml#/PositiveMoney"
+    categoryId:
+      "$ref": "./money.yaml#/ID"
+    merchant:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    allocation:
+      "$ref": "./transactions.yaml#/ExpenseAllocation"
+    attachmentId:
+      "$ref": "./money.yaml#/ID"
+    note:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - type
+  - accountId
+  - occurredAt
+  - amount
+  - allocation
+FeeInput:
+  type: object
+  additionalProperties: false
+  properties:
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    amount:
+      "$ref": "./money.yaml#/PositiveMoney"
+  required:
+  - accountId
+  - amount
+TransferCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    fromAccountId:
+      "$ref": "./money.yaml#/ID"
+    toAccountId:
+      "$ref": "./money.yaml#/ID"
+    occurredAt:
+      "$ref": "./money.yaml#/Instant"
+    sent:
+      "$ref": "./money.yaml#/PositiveMoney"
+    received:
+      "$ref": "./money.yaml#/PositiveMoney"
+    fees:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/FeeInput"
+    existingTransactionIds:
+      type: array
+      items:
+        "$ref": "./money.yaml#/ID"
+  required:
+  - fromAccountId
+  - toAccountId
+  - occurredAt
+  - sent
+  - received
+  - fees
+  - existingTransactionIds
+  description: Records internal movement only. Distinct family accounts, equal principal
+    for same-asset transfers; explicit native legs for exchange.
+TransactionCorrection:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    amount:
+      "$ref": "./money.yaml#/PositiveMoney"
+    occurredAt:
+      "$ref": "./money.yaml#/Instant"
+    categoryId:
+      "$ref": "./money.yaml#/ID"
+    merchant:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    allocation:
+      "$ref": "./transactions.yaml#/ExpenseAllocation"
+  required:
+  - expectedRevision
+  - reason
+  description: At least one changed field required; application validates economic
+    invariants and preserves previous revision.
+  anyOf:
+  - required:
+    - amount
+  - required:
+    - occurredAt
+  - required:
+    - categoryId
+  - required:
+    - merchant
+  - required:
+    - allocation
+TransactionLink:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    relatedTransactionId:
+      "$ref": "./money.yaml#/ID"
+    relatedExpectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    kind:
+      type: string
+      enum:
+      - transfer
+      - exchange
+      - receipt_match
+      - refund
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - expectedRevision
+  - relatedTransactionId
+  - relatedExpectedRevision
+  - kind
+  - reason
+UndoInput:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - expectedRevision
+  - reason
+AllocationChange:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    allocation:
+      "$ref": "./transactions.yaml#/ExpenseAllocation"
+    items:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/ReceiptItem"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - expectedRevision
+  - allocation
+  - reason
+RefundCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    purchaseId:
+      "$ref": "./money.yaml#/ID"
+    purchaseExpectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    occurredAt:
+      "$ref": "./money.yaml#/Instant"
+    amount:
+      "$ref": "./money.yaml#/PositiveMoney"
+    itemIds:
+      type: array
+      items:
+        "$ref": "./money.yaml#/ID"
+  required:
+  - purchaseId
+  - purchaseExpectedRevision
+  - accountId
+  - occurredAt
+  - amount
+  - itemIds
+  description: Refund is bounded by unrefunded purchase value. Original month, audited
+    allocation and historical valuation are used.
+Reimbursement:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    creditorMemberId:
+      "$ref": "./money.yaml#/ID"
+    debtorMemberId:
+      "$ref": "./money.yaml#/ID"
+    principal:
+      "$ref": "./money.yaml#/Money"
+    outstanding:
+      "$ref": "./money.yaml#/Money"
+    expenseId:
+      "$ref": "./money.yaml#/ID"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - id
+  - revision
+  - creditorMemberId
+  - debtorMemberId
+  - principal
+  - outstanding
+  - reason
+ReimbursementCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    creditorMemberId:
+      "$ref": "./money.yaml#/ID"
+    debtorMemberId:
+      "$ref": "./money.yaml#/ID"
+    amount:
+      "$ref": "./money.yaml#/PositiveMoney"
+    expenseId:
+      "$ref": "./money.yaml#/ID"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - creditorMemberId
+  - debtorMemberId
+  - amount
+  - reason
+SettlementCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    transferId:
+      "$ref": "./money.yaml#/ID"
+    transferExpectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    transferAmount:
+      "$ref": "./money.yaml#/PositiveMoney"
+    settledAmount:
+      "$ref": "./money.yaml#/PositiveMoney"
+  required:
+  - expectedRevision
+  - transferId
+  - transferExpectedRevision
+  - transferAmount
+  - settledAmount
+  description: Both amounts explicit for cross-asset settlement. Cannot exceed outstanding
+    debt or unused transfer amount.
+TransactionPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/Transaction"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+ReimbursementPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/Reimbursement"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality

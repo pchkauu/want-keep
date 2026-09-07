@@ -1,0 +1,9 @@
+[
+  {"amount":"1000.01","asset":"RUB"},
+  {"amount":"-10.20","asset":"USD"},
+  {"amount":"0.00000000123456789","asset":"USDT"},
+  {"amount":"12.000000000123","asset":"USDC"},
+  {"amount":"0.00000001","asset":"BTC"},
+  {"amount":"0.001234567891234567","asset":"ETH"},
+  {"amount":"9007199254740993.000000000000000001","asset":"USDC"}
+]

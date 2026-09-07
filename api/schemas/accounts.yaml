@@ -1,0 +1,252 @@
+---
+SourceReference:
+  type: object
+  additionalProperties: false
+  properties:
+    provider:
+      "$ref": "./money.yaml#/Provider"
+    externalAccountId:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    product:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    log:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    sourceId:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    revision:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    connectionId:
+      "$ref": "./money.yaml#/ID"
+    externalAssetCode:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    network:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - provider
+  - externalAccountId
+  - product
+  - log
+  - sourceId
+  - revision
+  - connectionId
+  description: Source identity is household-scoped and stable across connection recreation.
+    External identifiers, raw asset codes and networks are separate from normalized
+    Money.Asset; unknown aliases are never mapped by resemblance.
+Balance:
+  type: object
+  additionalProperties: false
+  properties:
+    owned:
+      "$ref": "./quality.yaml#/AmountValue"
+    available:
+      "$ref": "./quality.yaml#/AmountValue"
+    locked:
+      "$ref": "./quality.yaml#/AmountValue"
+    debt:
+      "$ref": "./quality.yaml#/AmountValue"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - owned
+  - available
+  - locked
+  - debt
+  - quality
+Account:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    ownership:
+      "$ref": "./household.yaml#/Ownership"
+    asset:
+      "$ref": "./money.yaml#/Asset"
+    product:
+      type: string
+      enum:
+      - cash
+      - current
+      - debit_card
+      - credit_card
+      - savings
+      - deposit
+      - wallet
+      - funding
+      - earn
+      - coinhold
+      - crypto_card
+    balance:
+      "$ref": "./accounts.yaml#/Balance"
+    openingDate:
+      "$ref": "./money.yaml#/Date"
+    connectionId:
+      "$ref": "./money.yaml#/ID"
+    externalAccountOwnerId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - id
+  - revision
+  - name
+  - ownership
+  - asset
+  - product
+  - balance
+  - openingDate
+AccountCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    ownership:
+      "$ref": "./household.yaml#/ScopeInput"
+    asset:
+      "$ref": "./money.yaml#/Asset"
+    product:
+      type: string
+      enum:
+      - cash
+    openingDate:
+      "$ref": "./money.yaml#/Date"
+    openingBalance:
+      "$ref": "./money.yaml#/Money"
+  required:
+  - name
+  - ownership
+  - asset
+  - product
+  - openingDate
+  - openingBalance
+  description: Manual cash account. Opening money must match account asset and is
+    not income. Imported products are created only by verified adapters.
+AccountOwnershipChange:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    ownership:
+      "$ref": "./household.yaml#/ScopeInput"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - expectedRevision
+  - ownership
+  - reason
+OpeningCorrection:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    date:
+      "$ref": "./money.yaml#/Date"
+    balance:
+      "$ref": "./money.yaml#/Money"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - expectedRevision
+  - date
+  - balance
+  - reason
+Reconciliation:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    ledger:
+      "$ref": "./quality.yaml#/AmountValue"
+    source:
+      "$ref": "./quality.yaml#/AmountValue"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+    relatedTransactionIds:
+      type: array
+      items:
+        "$ref": "./money.yaml#/ID"
+    state:
+      type: string
+      enum:
+      - open
+      - resolved
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - id
+  - accountId
+  - revision
+  - ledger
+  - source
+  - quality
+  - relatedTransactionIds
+  - state
+  - reason
+AccountPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./accounts.yaml#/Account"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+ReconciliationPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./accounts.yaml#/Reconciliation"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality

@@ -2,6 +2,8 @@
 
 Verdict: Not Ready
 
+Task-1.2 implements the independent domain/API foundation under D-37; remaining research does not block it. [Evidence](evidence/task-1.2-domain-api.en.md) separates executable types/schema tests from future auth/storage/product AC. Shared OpenAPI and command retention are no longer open task-0.10 questions; provider contracts, solver and runtime gates remain.
+
 Updated: 2026-09-07. This verdict concerns the complete specification's readiness for application implementation. It neither prevents agreed documentation/backlog delivery nor describes an implemented application.
 
 ## Artifact state
