@@ -141,9 +141,9 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-03 — Счёт и начальный остаток
 
-**Поля:** Название, тип продукта, валюта, личный владелец/семейный, дата начала, начальные собственные/заёмные/заблокированные суммы по типу.
+**Поля:** Название, валюта, личный/семейный наличный счёт, дата начала в timezone семьи и точный остаток. Импортный продукт имеет отдельные owned/available/locked/debt, подтверждение и источник; карты — алиасы без баланса.
 
-**Проверки и права:** Оба member создают счета и исправляют факты учёта. При смене владельца или personal/household принадлежности существующего личного счёта требуется его текущий владелец; для семейного счёта — любой member. Проверенный внешний владелец и история операций этим не меняются. Точные decimal, валюта обязательна. Импортируемые поля меняются через correction; начальный остаток не доход.
+**Проверки и права:** Оба member создают счета и исправляют факты учёта. При смене владельца или personal/household принадлежности существующего личного счёта требуется его текущий владелец; для семейного счёта — любой member. Проверенный внешний владелец и история операций этим не меняются. Точные decimal, валюта обязательна. Импортируемые поля меняются через correction; начальный остаток не доход. Ручное создание — только наличные, личный счёт только для себя. Перенос даты сохраняет операции до неё в истории; новое открытие заменяет прежнее в расчёте. Дата не может быть в будущем. Неизвестный ответ восстанавливается по прежнему Idempotency-Key через /commands; partial/unknown не равны нулю.
 
 **Результат:** Счёт в учёте создан/исправлен с audit; это не открытие банковского продукта.
 
@@ -473,9 +473,9 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-03 — Account and opening balance
 
-**Fields:** Name, product type, currency, personal owner/household, start date, own/borrowed/blocked opening amounts by type.
+**Fields:** Name, asset, personal/household cash account, start date in household timezone and exact opening balance. Imported products have separate owned/available/locked/debt, confirmation and provenance; cards are balance-free aliases.
 
-**Validation and permissions:** Both members create accounts and correct accounting facts. Changing owner or personal/household scope of an existing personal account requires its current owner; either member may change a household account. This never changes verified external ownership or transaction history. Exact decimals and currency required. Imported fields change through correction; opening balance is not income.
+**Validation and permissions:** Both members create accounts and correct accounting facts. Changing owner or personal/household scope of an existing personal account requires its current owner; either member may change a household account. This never changes verified external ownership or transaction history. Exact decimals and currency required. Imported fields change through correction; opening balance is not income. Manual creation is cash only; a personal account is created for oneself. Moving the date keeps earlier operations in history; the new opening replaces the previous calculation input. The date cannot be in the future. Unknown outcomes use the original Idempotency-Key via /commands; partial/unknown are not zero.
 
 **Outcome:** Accounting account created/corrected with audit; this does not open a bank product.
 

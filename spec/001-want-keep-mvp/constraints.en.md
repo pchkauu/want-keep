@@ -106,3 +106,7 @@ Task-1.5 (D-46) adds separate keyrings and an isolated processor. Domain/applica
 ## Household task-1.6
 
 An invitation does not assign principal or provide financial access before atomic enrollment. Identity lock precedes family/invitation lock; financial family scope and joining scope remain separate. Domain policies preserve current ownership, actor, payer and external owner. Migration 005 expands the schema; secret responses are never replayed. [Contract](contracts.en.md#task-16--invitations-and-household-permissions), [evidence](evidence/task-1.6-household.en.md).
+
+### Accounts storage boundary (task-2.1)
+
+The accounts API registers commands before session-bound execution and reuses the identity → household lock order. Reads use repeatable-read snapshots without financial write locks. Migration 007 preserves 001–006 and marks old unproven balances as legacy. Only admitted import transactions may create imported products, source observations or aliases; public commands cannot forge them. Ledger projections and immutable provider observations have separate persistence and semantics. Account ownership never grants ownership of a bank session. See [accounts contract](contracts.en.md#task-21--accounts-and-opening-balances) and [verification boundaries](evidence/task-2.1-accounts.en.md).

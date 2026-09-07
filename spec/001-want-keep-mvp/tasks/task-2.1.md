@@ -5,7 +5,7 @@
 
 Учесть собственные счета, наличные и начальную точку истории.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализованы backend/API счетов, начальных остатков и admitted import-контракт; UI, адаптеры и полная сверка — в следующих задачах.
 
 **Зависимости:** `task-1.3`, `task-1.6`.
 
@@ -13,11 +13,21 @@
 
 ### Изменение и контракты
 
-Разделить логический аккаунт платформы, счёт актива и карту-доступ к счёту, чтобы карты не дублировали баланс. Поддержать ручные наличные счета, выбранную дату начала, явный начальный остаток и снимки источника с owned/available/locked/debt. Неизвестные значения сохранять неизвестными, неподдерживаемые активы — в покрытии источника.
+Разделить логический аккаунт платформы, счёт актива и карту-доступ к счёту, чтобы карты не дублировали баланс. Поддержать ручные наличные счета, выбранную дату начала, явный начальный остаток и снимки источника с owned/available/locked/debt. Неизвестные значения сохранять неизвестными, неподдерживаемые активы — в покрытии источника. Открытие — начало дня в timezone семьи; correction хранит историю и пересчитывает текущие проведённые движения с новой даты. Источник и проекция раздельны; подтверждённая собственная доступность снимка без более поздних движений используется для резервов, без сложения с журналом. Импорт — только внутри admitted CommitPage; неизвестный актив/неоднозначность сохраняют evidence. Команды имеют отдельную pending-регистрацию, атомарный результат, replay до revision, owner-проверку и личное чтение статуса.
 
 ### Границы изменений
 
 - `backend/internal/accounts/`
+- `backend/internal/delivery/accounts/`
+- `backend/internal/storage/account*.go`
+- `backend/internal/commands/application/executor.go`
+- `backend/internal/ledger/application/writer.go`
+- `backend/migrations/007_accounts_opening_balances.sql`
+- `backend/test/integration/accounts/`
+- `api/schemas/accounts.yaml`
+- `backend/cmd/api/main.go`
+- `Makefile`
+- `.github/workflows/ci.yml`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -94,12 +104,12 @@
 ### Проверка результата
 
 ```sh
-make test-go PKG=./internal/accounts/...
+make check; make test-integration AREA=accounts; make test-accounts-race
 ```
 
-Пять базовых счетов, карточные алиасы, долг и начальные остатки считаются без ложного дохода или двойного капитала.
+Семь счетов AC-002 и все шесть активов, точные суммы, алиасы, отдельный долг, история opening, изоляция, replay и admitted импорт проверены на изолированной PostgreSQL; отсутствующая БД завершает suite ошибкой.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Доказательства и границы: evidence/task-2.1-accounts.md. Команды доступны; зависимости включены в базу. Обязательны storage/identity/household, соответствующие race и privacy-регрессии. Это не проверка production или браузерного UI.
 
 ### Передача следующему агенту
 
@@ -111,7 +121,7 @@ make test-go PKG=./internal/accounts/...
 
 Account for owned accounts, cash and the history opening point.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Account/opening backend/API and admitted import contract implemented; UI, adapters and full reconciliation remain downstream.
 
 **Dependencies:** `task-1.3`, `task-1.6`.
 
@@ -119,11 +129,21 @@ Account for owned accounts, cash and the history opening point.
 
 ### Change and contracts
 
-Separate platform identity, asset account and card-as-access-to-account so cards do not duplicate balances. Support manual cash accounts, selected start date, explicit opening balance and source snapshots with owned/available/locked/debt. Preserve unknown values and track unsupported assets in source coverage.
+Separate platform identity, asset account and card-as-access-to-account so cards do not duplicate balances. Support manual cash accounts, selected start date, explicit opening balance and source snapshots with owned/available/locked/debt. Preserve unknown values and track unsupported assets in source coverage. Opening is the start of day in the household timezone; corrections preserve history and recalculate current posted movements from the new date. Source and projection stay separate; verified own snapshot availability without later movements funds reserves without adding the ledger. Import runs only within admitted CommitPage; unknown assets/ambiguity preserve evidence. Commands have separate pending registration, atomic outcomes, replay before revision checks, owner checks and actor-only status reads.
 
 ### Change boundaries
 
 - `backend/internal/accounts/`
+- `backend/internal/delivery/accounts/`
+- `backend/internal/storage/account*.go`
+- `backend/internal/commands/application/executor.go`
+- `backend/internal/ledger/application/writer.go`
+- `backend/migrations/007_accounts_opening_balances.sql`
+- `backend/test/integration/accounts/`
+- `api/schemas/accounts.yaml`
+- `backend/cmd/api/main.go`
+- `Makefile`
+- `.github/workflows/ci.yml`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -200,12 +220,12 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make test-go PKG=./internal/accounts/...
+make check; make test-integration AREA=accounts; make test-accounts-race
 ```
 
-Five baseline accounts, card aliases, debt and opening balances produce no false income or duplicated wealth.
+Seven AC-002 accounts and all six assets, exact amounts, aliases, separate debt, opening history, isolation, replay and admitted import are checked on isolated PostgreSQL; missing DB fails the suite.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Evidence and boundaries: evidence/task-2.1-accounts.en.md. Commands exist; dependencies are included in the base. Storage/identity/household, corresponding race and privacy regressions are required. This does not verify production or browser UI.
 
 ### Handoff to the next agent
 
