@@ -104,7 +104,7 @@ make test-integration AREA=storage
 
 Миграции применяются к пустой БД; crash/retry и конкуренция не дают частичных проводок или двойных эффектов.
 
-Команды make реализованы. Проверяются Go 1.26.5 и Node 24.19.0; OpenAPI tooling использует изолированный TS 5.9.3, web — TS 6.0.3. Live banking, БД, deploy и browser E2E вне этой задачи.
+Make предоставляет точку входа test-integration, но suite storage создаётся этой задачей. Обязательны проверки PostgreSQL: миграции на пустой БД, точное хранение сумм, crash/retry, конкурирующие записи, проверка версий и атомарность финансового эффекта с terminal command status. Live banking и browser E2E относятся к последующим задачам.
 
 ### Передача следующему агенту
 
@@ -215,7 +215,7 @@ make test-integration AREA=storage
 
 Migrations apply to an empty DB; crash/retry and concurrency create neither partial postings nor duplicate effects.
 
-Make commands are implemented. Checks use Go 1.26.5 and Node 24.19.0; OpenAPI tooling has isolated TS 5.9.3, web uses TS 6.0.3. Live banking, DB, deploy and browser E2E are outside this task.
+Make provides the test-integration entry point, but this task must implement the storage suite. PostgreSQL checks are mandatory: empty-database migrations, exact amounts, crash/retry, concurrent writes, revision checks and atomic financial effect plus terminal command status. Live banking and browser E2E belong to subsequent tasks.
 
 ### Handoff to the next agent
 

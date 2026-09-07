@@ -347,7 +347,10 @@ export interface paths {
     put?: never;
     /** budgets change line */
     post: operations["budgets_change_line"];
-    /** budgets delete line */
+    /**
+     * budgets delete line
+     * @description UndoInput.expectedRevision is the containing Budget aggregate revision, as for add/change/preview. Deletion advances that aggregate revision atomically; a stale preview cannot authorize a write.
+     */
     delete: operations["budgets_delete_line"];
     options?: never;
     head?: never;
@@ -1622,7 +1625,7 @@ export interface components {
       revision: components["schemas"]["Revision"];
       timezone: components["schemas"]["Timezone"];
     };
-    /** @description Only authorized lines are approved. A shared plan never approves the partner personal drafts implicitly. */
+    /** @description Only authorized lines are approved. A shared plan never approves the partner personal drafts implicitly. expectedRevision is the containing Budget aggregate revision; approval advances it atomically. */
     BudgetApproval: {
       expectedRevision: components["schemas"]["Revision"];
       lineIds: components["schemas"]["ID"][];
@@ -1632,6 +1635,23 @@ export interface components {
       copyFromBudgetId?: components["schemas"]["ID"];
       month: components["schemas"]["Month"];
       timezone: components["schemas"]["Timezone"];
+    };
+    /** @description expectedRevision is the containing Budget aggregate revision. Update replaces only lineId; delete removes only lineId; create adds a new line. Preview uses the same policy/calculation as the corresponding mutation without persistence. */
+    BudgetCreatePreview: {
+      budgetId: components["schemas"]["ID"];
+      expectedRevision: components["schemas"]["Revision"];
+      line: components["schemas"]["BudgetLineInput"];
+      /** @enum {string} */
+      mode: "create";
+    };
+    /** @description expectedRevision is the containing Budget aggregate revision. Update replaces only lineId; delete removes only lineId; create adds a new line. Preview uses the same policy/calculation as the corresponding mutation without persistence. */
+    BudgetDeletePreview: {
+      budgetId: components["schemas"]["ID"];
+      expectedRevision: components["schemas"]["Revision"];
+      lineId: components["schemas"]["ID"];
+      /** @enum {string} */
+      mode: "delete";
+      reason: string;
     };
     BudgetLine: {
       actual: components["schemas"]["Money"];
@@ -1647,6 +1667,7 @@ export interface components {
       /** @enum {string} */
       status: "draft" | "approved";
     };
+    /** @description expectedRevision is the containing Budget aggregate revision for both add and change routes. Each child creation, edit, deletion or approval atomically advances that aggregate revision; lineId from the URL identifies replacement. All mutations recheck aggregate revision and current authority, including after preview. */
     BudgetLineChange: {
       expectedRevision: components["schemas"]["Revision"];
       line: components["schemas"]["BudgetLineInput"];
@@ -1665,10 +1686,18 @@ export interface components {
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
     };
-    BudgetPreview: {
+    BudgetPreview:
+      | components["schemas"]["BudgetCreatePreview"]
+      | components["schemas"]["BudgetUpdatePreview"]
+      | components["schemas"]["BudgetDeletePreview"];
+    /** @description expectedRevision is the containing Budget aggregate revision. Update replaces only lineId; delete removes only lineId; create adds a new line. Preview uses the same policy/calculation as the corresponding mutation without persistence. */
+    BudgetUpdatePreview: {
       budgetId: components["schemas"]["ID"];
       expectedRevision: components["schemas"]["Revision"];
       line: components["schemas"]["BudgetLineInput"];
+      lineId: components["schemas"]["ID"];
+      /** @enum {string} */
+      mode: "update";
     };
     CalculationInput: {
       amount: components["schemas"]["AmountValue"];
@@ -1877,6 +1906,10 @@ export interface components {
       | "invitation_used"
       | "member_limit_reached"
       | "internal_error";
+    ExistingTransaction: {
+      expectedRevision: components["schemas"]["Revision"];
+      transactionId: components["schemas"]["ID"];
+    };
     ExpenseAllocation:
       | components["schemas"]["AmountAllocation"]
       | components["schemas"]["ShareAllocation"]
@@ -1988,6 +2021,18 @@ export interface components {
        */
       knowledge: "known";
       value: components["schemas"]["Money"];
+    };
+    /** @description Membership must be active in the trusted household. Payer never assigns the authenticated actor or expense allocation. */
+    KnownPayer: {
+      memberId: components["schemas"]["ID"];
+      /** @enum {string} */
+      state: "known";
+    };
+    /** @description Dimensionless annualized XIRR ratio as an exact decimal string: 0.12 means 12%, -0.05 means -5%. A unique validated root greater than -1 is required; do not substitute provider APR. */
+    KnownReturn: {
+      ratio: components["schemas"]["Decimal"];
+      /** @enum {string} */
+      state: "known";
     };
     /** @enum {string} */
     Locale: "ru" | "en";
@@ -2107,6 +2152,9 @@ export interface components {
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
     };
+    Payer:
+      | components["schemas"]["KnownPayer"]
+      | components["schemas"]["UnspecifiedPayer"];
     PersonalOwnership: {
       householdId: components["schemas"]["ID"];
       personalOwnerId: components["schemas"]["ID"];
@@ -2293,6 +2341,36 @@ export interface components {
       revision?: components["schemas"]["Revision"];
       type: string;
     };
+    /** @description Signed cash flows in the metric asset: contributions negative, distributions/terminal value positive. Source links retain provenance; historical FX applies to each dated flow. */
+    ReturnCashFlow: {
+      amount: components["schemas"]["Money"];
+      date: components["schemas"]["Date"];
+      /** @enum {string} */
+      kind: "contribution" | "distribution" | "terminal_value";
+      resources: components["schemas"]["ResourceReference"][];
+    };
+    /** @description Native and reporting results are separate observations, even when the requested reporting asset matches the native asset. The application validates cash-flow asset/signs, dates, method and availability. Solver remains task-0.10/task-6.4. */
+    ReturnMetric: {
+      asset: components["schemas"]["Asset"];
+      /** @enum {string} */
+      basis: "native" | "reporting";
+      flows: components["schemas"]["ReturnCashFlow"][];
+      /** @enum {string} */
+      kind: "actual" | "forecast";
+      /** @enum {string} */
+      method: "xirr";
+      quality: components["schemas"]["DataQuality"];
+      value: components["schemas"]["ReturnValue"];
+    };
+    ReturnValue:
+      | components["schemas"]["KnownReturn"]
+      | components["schemas"]["UnavailableReturn"];
+    ReturnsReport: {
+      amounts: components["schemas"]["ExplainableAmount"][];
+      context: components["schemas"]["ReportContext"];
+      quality: components["schemas"]["DataQuality"];
+      returns: components["schemas"]["ReturnMetric"][];
+    };
     /** Format: int64 */
     Revision: number;
     Rule: {
@@ -2416,7 +2494,7 @@ export interface components {
       merchant?: string;
       occurredAt: components["schemas"]["Instant"];
       originalTransactionId?: components["schemas"]["ID"];
-      payerMemberId?: components["schemas"]["ID"];
+      payer: components["schemas"]["Payer"];
       postings: components["schemas"]["Posting"][];
       receiptId?: components["schemas"]["ID"];
       revision: components["schemas"]["Revision"];
@@ -2444,8 +2522,10 @@ export interface components {
           expectedRevision: components["schemas"]["Revision"];
           merchant?: string;
           occurredAt?: components["schemas"]["Instant"];
+          payer?: components["schemas"]["Payer"];
           reason: string;
         }
+      | unknown
       | unknown
       | unknown
       | unknown
@@ -2460,6 +2540,7 @@ export interface components {
       merchant?: string;
       note?: string;
       occurredAt: components["schemas"]["Instant"];
+      payer: components["schemas"]["Payer"];
       /** @enum {string} */
       type: "income" | "expense";
     };
@@ -2476,15 +2557,27 @@ export interface components {
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
     };
-    /** @description Records internal movement only. Distinct family accounts, equal principal for same-asset transfers; explicit native legs for exchange. */
+    /** @description Records internal movement only. Distinct family accounts, equal principal for same-asset transfers; explicit native legs for exchange. All referenced IDs must be distinct and belong to the trusted household. Before linking, validate every expectedRevision atomically with the effect; a stale leg fails with version_conflict and changes no leg. An empty list means new movements. */
     TransferCreate: {
-      existingTransactionIds: components["schemas"]["ID"][];
+      existingTransactions: components["schemas"]["ExistingTransaction"][];
       fees: components["schemas"]["FeeInput"][];
       fromAccountId: components["schemas"]["ID"];
       occurredAt: components["schemas"]["Instant"];
       received: components["schemas"]["PositiveMoney"];
       sent: components["schemas"]["PositiveMoney"];
       toAccountId: components["schemas"]["ID"];
+    };
+    UnavailableReturn: {
+      /** @enum {string} */
+      reason:
+        | "no_sign_change"
+        | "zero_period"
+        | "missing_valuation"
+        | "partial_history"
+        | "no_unique_root"
+        | "solver_failure";
+      /** @enum {string} */
+      state: "unavailable";
     };
     UndoInput: {
       expectedRevision: components["schemas"]["Revision"];
@@ -2494,6 +2587,11 @@ export interface components {
       /** @enum {string} */
       mode: "unresolved";
       reason: string;
+    };
+    /** @description Unknown requires clarification for a household-paid expense. Not applicable is for external income or non-payment records; the application validates economic type. */
+    UnspecifiedPayer: {
+      /** @enum {string} */
+      state: "unknown" | "not_applicable";
     };
     UpcomingPayment: {
       dueDate: components["schemas"]["Date"];
@@ -5191,7 +5289,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["Report"];
+          "application/json": components["schemas"]["ReturnsReport"];
         };
       };
       400: components["responses"]["Problem"];

@@ -16,7 +16,7 @@ The UUIDv4 Idempotency-Key is created before submission and used for status look
 
 Principal derives from a loaded, verified membership. This is a pure domain policy, not authentication. Real cookie/CSRF checks, database transactions, outbox and HTTP handlers are absent. They are mandatory in task-1.3/task-1.4 and product tasks. A passing schema test does not prove runtime session isolation or atomic exactly-once effects.
 
-Schemas distinguish actorId (User), payerMemberId/allocation (Membership), personalOwnerId and externalAccountOwnerId (User). External asset codes/networks and identity do not replace Money.Asset. Provider DTOs, secrets and unconfirmed endpoints are not implemented.
+Schemas distinguish actorId (User), payer.memberId/allocation (Membership), personalOwnerId and externalAccountOwnerId (User). External asset codes/networks and identity do not replace Money.Asset. Provider DTOs, secrets and unconfirmed endpoints are not implemented.
 
 ## Verification and handoff
 
@@ -25,3 +25,5 @@ Executable checks: `make check`, `make check-contracts`, focused Go money/calend
 Task-1.3 owns atomic command registration and effect+final-status persistence, precision-preserving NUMERIC, durable idempotency and outbox. Task-1.4 implements trusted sessions, family authorization and CSRF; product use cases check current ownership and revision. Errors expose currentRevision only after authorized resource access.
 
 PostgreSQL, banking, payment, browser E2E and deployment checks were not run: those implementations are outside task-1.2. This result does not claim full product AC-002/003/039/059/077/079/090 acceptance.
+
+Task-1.2 review clarification: payer is explicit known/memberId, unknown or not_applicable, entered/corrected independently from actor and shares. Existing movement links require each ID/expectedRevision and atomic validation. Plan preview distinguishes create/update/delete and lineId; expectedRevision identifies the Budget aggregate, advanced by every line change/approval. ReturnsReport carries decimal-string dimensionless XIRR ratios, native/reporting basis, dated cash flows and unavailable reasons; task-0.10/task-6.4 still own the solver. These changes affect unreleased DTOs; both clients regenerate together and no deployed data requires migration.

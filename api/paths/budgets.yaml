@@ -266,6 +266,9 @@
         application/json:
           schema:
             "$ref": "../schemas/transactions.yaml#/UndoInput"
+    description: UndoInput.expectedRevision is the containing Budget aggregate revision,
+      as for add/change/preview. Deletion advances that aggregate revision atomically;
+      a stale preview cannot authorize a write.
 "/budgets/{budgetId}/approve":
   post:
     operationId: budgets_approve

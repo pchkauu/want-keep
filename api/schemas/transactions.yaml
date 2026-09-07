@@ -149,8 +149,6 @@ Transaction:
       "$ref": "./money.yaml#/ID"
     actorId:
       "$ref": "./money.yaml#/ID"
-    payerMemberId:
-      "$ref": "./money.yaml#/ID"
     type:
       type: string
       enum:
@@ -203,6 +201,8 @@ Transaction:
       - reviewed
       - clarification
       - failed
+    payer:
+      "$ref": "./transactions.yaml#/Payer"
   required:
   - id
   - revision
@@ -216,6 +216,7 @@ Transaction:
   - allocation
   - sources
   - aiState
+  - payer
 TransactionCreate:
   type: object
   additionalProperties: false
@@ -245,12 +246,15 @@ TransactionCreate:
       type: string
       minLength: 1
       maxLength: 2000
+    payer:
+      "$ref": "./transactions.yaml#/Payer"
   required:
   - type
   - accountId
   - occurredAt
   - amount
   - allocation
+  - payer
 FeeInput:
   type: object
   additionalProperties: false
@@ -280,10 +284,11 @@ TransferCreate:
       type: array
       items:
         "$ref": "./transactions.yaml#/FeeInput"
-    existingTransactionIds:
+    existingTransactions:
       type: array
       items:
-        "$ref": "./money.yaml#/ID"
+        "$ref": "./transactions.yaml#/ExistingTransaction"
+      uniqueItems: true
   required:
   - fromAccountId
   - toAccountId
@@ -291,9 +296,12 @@ TransferCreate:
   - sent
   - received
   - fees
-  - existingTransactionIds
+  - existingTransactions
   description: Records internal movement only. Distinct family accounts, equal principal
-    for same-asset transfers; explicit native legs for exchange.
+    for same-asset transfers; explicit native legs for exchange. All referenced IDs
+    must be distinct and belong to the trusted household. Before linking, validate
+    every expectedRevision atomically with the effect; a stale leg fails with version_conflict
+    and changes no leg. An empty list means new movements.
 TransactionCorrection:
   type: object
   additionalProperties: false
@@ -316,6 +324,8 @@ TransactionCorrection:
       maxLength: 2000
     allocation:
       "$ref": "./transactions.yaml#/ExpenseAllocation"
+    payer:
+      "$ref": "./transactions.yaml#/Payer"
   required:
   - expectedRevision
   - reason
@@ -332,6 +342,8 @@ TransactionCorrection:
     - merchant
   - required:
     - allocation
+  - required:
+    - payer
 TransactionLink:
   type: object
   additionalProperties: false
@@ -526,3 +538,47 @@ ReimbursementPage:
   required:
   - items
   - quality
+ExistingTransaction:
+  type: object
+  additionalProperties: false
+  properties:
+    transactionId:
+      "$ref": "./money.yaml#/ID"
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+  required:
+  - transactionId
+  - expectedRevision
+KnownPayer:
+  type: object
+  additionalProperties: false
+  properties:
+    state:
+      type: string
+      enum:
+      - known
+    memberId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - state
+  - memberId
+  description: Membership must be active in the trusted household. Payer never assigns
+    the authenticated actor or expense allocation.
+UnspecifiedPayer:
+  type: object
+  additionalProperties: false
+  properties:
+    state:
+      type: string
+      enum:
+      - unknown
+      - not_applicable
+  required:
+  - state
+  description: Unknown requires clarification for a household-paid expense. Not applicable
+    is for external income or non-payment records; the application validates economic
+    type.
+Payer:
+  oneOf:
+  - "$ref": "./transactions.yaml#/KnownPayer"
+  - "$ref": "./transactions.yaml#/UnspecifiedPayer"

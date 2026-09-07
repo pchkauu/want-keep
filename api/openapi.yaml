@@ -505,3 +505,29 @@ components:
       "$ref": "./schemas/commands.yaml#/CommandStatusPage"
     CommandResult:
       "$ref": "./schemas/commands.yaml#/CommandResult"
+    ExistingTransaction:
+      "$ref": "./schemas/transactions.yaml#/ExistingTransaction"
+    KnownPayer:
+      "$ref": "./schemas/transactions.yaml#/KnownPayer"
+    UnspecifiedPayer:
+      "$ref": "./schemas/transactions.yaml#/UnspecifiedPayer"
+    Payer:
+      "$ref": "./schemas/transactions.yaml#/Payer"
+    BudgetCreatePreview:
+      "$ref": "./schemas/budgets.yaml#/BudgetCreatePreview"
+    BudgetUpdatePreview:
+      "$ref": "./schemas/budgets.yaml#/BudgetUpdatePreview"
+    BudgetDeletePreview:
+      "$ref": "./schemas/budgets.yaml#/BudgetDeletePreview"
+    KnownReturn:
+      "$ref": "./schemas/reports.yaml#/KnownReturn"
+    UnavailableReturn:
+      "$ref": "./schemas/reports.yaml#/UnavailableReturn"
+    ReturnValue:
+      "$ref": "./schemas/reports.yaml#/ReturnValue"
+    ReturnCashFlow:
+      "$ref": "./schemas/reports.yaml#/ReturnCashFlow"
+    ReturnMetric:
+      "$ref": "./schemas/reports.yaml#/ReturnMetric"
+    ReturnsReport:
+      "$ref": "./schemas/reports.yaml#/ReturnsReport"

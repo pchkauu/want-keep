@@ -114,6 +114,11 @@ BudgetLineChange:
   required:
   - expectedRevision
   - line
+  description: expectedRevision is the containing Budget aggregate revision for both
+    add and change routes. Each child creation, edit, deletion or approval atomically
+    advances that aggregate revision; lineId from the URL identifies replacement.
+    All mutations recheck aggregate revision and current authority, including after
+    preview.
 BudgetApproval:
   type: object
   additionalProperties: false
@@ -129,21 +134,13 @@ BudgetApproval:
   - expectedRevision
   - lineIds
   description: Only authorized lines are approved. A shared plan never approves the
-    partner personal drafts implicitly.
+    partner personal drafts implicitly. expectedRevision is the containing Budget
+    aggregate revision; approval advances it atomically.
 BudgetPreview:
-  type: object
-  additionalProperties: false
-  properties:
-    budgetId:
-      "$ref": "./money.yaml#/ID"
-    expectedRevision:
-      "$ref": "./money.yaml#/Revision"
-    line:
-      "$ref": "./budgets.yaml#/BudgetLineInput"
-  required:
-  - budgetId
-  - expectedRevision
-  - line
+  oneOf:
+  - "$ref": "./budgets.yaml#/BudgetCreatePreview"
+  - "$ref": "./budgets.yaml#/BudgetUpdatePreview"
+  - "$ref": "./budgets.yaml#/BudgetDeletePreview"
 BudgetPage:
   type: object
   additionalProperties: false
@@ -161,3 +158,77 @@ BudgetPage:
   required:
   - items
   - quality
+BudgetCreatePreview:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - create
+    budgetId:
+      "$ref": "./money.yaml#/ID"
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    line:
+      "$ref": "./budgets.yaml#/BudgetLineInput"
+  required:
+  - mode
+  - budgetId
+  - expectedRevision
+  - line
+  description: expectedRevision is the containing Budget aggregate revision. Update
+    replaces only lineId; delete removes only lineId; create adds a new line. Preview
+    uses the same policy/calculation as the corresponding mutation without persistence.
+BudgetUpdatePreview:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - update
+    budgetId:
+      "$ref": "./money.yaml#/ID"
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    lineId:
+      "$ref": "./money.yaml#/ID"
+    line:
+      "$ref": "./budgets.yaml#/BudgetLineInput"
+  required:
+  - mode
+  - budgetId
+  - expectedRevision
+  - lineId
+  - line
+  description: expectedRevision is the containing Budget aggregate revision. Update
+    replaces only lineId; delete removes only lineId; create adds a new line. Preview
+    uses the same policy/calculation as the corresponding mutation without persistence.
+BudgetDeletePreview:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - delete
+    budgetId:
+      "$ref": "./money.yaml#/ID"
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    lineId:
+      "$ref": "./money.yaml#/ID"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - mode
+  - budgetId
+  - expectedRevision
+  - lineId
+  - reason
+  description: expectedRevision is the containing Budget aggregate revision. Update
+    replaces only lineId; delete removes only lineId; create adds a new line. Preview
+    uses the same policy/calculation as the corresponding mutation without persistence.

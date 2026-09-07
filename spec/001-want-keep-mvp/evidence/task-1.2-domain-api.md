@@ -16,7 +16,7 @@ UUIDv4 Idempotency-Key создаётся до отправки и исполь�
 
 Principal создаётся из загруженного проверенного membership. Это чистая доменная policy, не аутентификация. Нет runtime-проверки реальной cookie, CSRF, DB-транзакции, outbox или HTTP-обработчиков. Они обязательны в task-1.3/task-1.4 и продуктовых задачах. Успешный schema test не доказывает реальную изоляцию серверной сессии или atomic exactly-once effect.
 
-Схемы различают actorId (User), payerMemberId/распределение (Membership), personalOwnerId и externalAccountOwnerId (User). Внешние asset code/network и identity не подменяют Money.Asset. Provider DTO, секреты и неподтверждённые endpoint не реализованы.
+Схемы различают actorId (User), payer.memberId/распределение (Membership), personalOwnerId и externalAccountOwnerId (User). Внешние asset code/network и identity не подменяют Money.Asset. Provider DTO, секреты и неподтверждённые endpoint не реализованы.
 
 ## Проверка и передача
 
@@ -25,3 +25,5 @@ Principal создаётся из загруженного проверенно�
 Task-1.3 получает атомарную регистрацию команд и сохранение эффекта+итогового статуса, NUMERIC без потери точности, durable idempotency и outbox. Task-1.4 реализует доверенную сессию, семейные права и CSRF; продуктовые use cases проверяют текущую принадлежность и ревизию. `currentRevision` в ошибке возвращается только после разрешённого чтения ресурса.
 
 Не выполнялись проверки PostgreSQL, банков, платежей, browser E2E или deploy: эти реализации за пределами task-1.2. Полные продуктовые AC-002/003/039/059/077/079/090 этим результатом не объявляются пройденными.
+
+Уточнение task-1.2 после review: payer — явное known/memberId, unknown или not_applicable; плательщик вводится и исправляется отдельно от actor и долей. Связь существующих движений требует ID/expectedRevision каждого участника и атомарной проверки. Preview плана различает create/update/delete и lineId; expectedRevision относится к Budget aggregate, который меняется при каждом изменении статьи/подтверждении. ReturnsReport передаёт dimensionless XIRR ratio строкой, native/reporting basis, dated cash flows и unavailable reason; solver остаётся в task-0.10/task-6.4. Эти поправки затрагивают ещё не выпущенные DTO; оба клиента регенерируются вместе, действующих данных для миграции нет.

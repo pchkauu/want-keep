@@ -285,3 +285,129 @@ InsightPage:
   required:
   - items
   - quality
+KnownReturn:
+  type: object
+  additionalProperties: false
+  properties:
+    state:
+      type: string
+      enum:
+      - known
+    ratio:
+      "$ref": "./money.yaml#/Decimal"
+  required:
+  - state
+  - ratio
+  description: 'Dimensionless annualized XIRR ratio as an exact decimal string: 0.12
+    means 12%, -0.05 means -5%. A unique validated root greater than -1 is required;
+    do not substitute provider APR.'
+UnavailableReturn:
+  type: object
+  additionalProperties: false
+  properties:
+    state:
+      type: string
+      enum:
+      - unavailable
+    reason:
+      type: string
+      enum:
+      - no_sign_change
+      - zero_period
+      - missing_valuation
+      - partial_history
+      - no_unique_root
+      - solver_failure
+  required:
+  - state
+  - reason
+ReturnValue:
+  oneOf:
+  - "$ref": "./reports.yaml#/KnownReturn"
+  - "$ref": "./reports.yaml#/UnavailableReturn"
+ReturnCashFlow:
+  type: object
+  additionalProperties: false
+  properties:
+    date:
+      "$ref": "./money.yaml#/Date"
+    amount:
+      "$ref": "./money.yaml#/Money"
+    kind:
+      type: string
+      enum:
+      - contribution
+      - distribution
+      - terminal_value
+    resources:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+  required:
+  - date
+  - amount
+  - kind
+  - resources
+  description: 'Signed cash flows in the metric asset: contributions negative, distributions/terminal
+    value positive. Source links retain provenance; historical FX applies to each
+    dated flow.'
+ReturnMetric:
+  type: object
+  additionalProperties: false
+  properties:
+    basis:
+      type: string
+      enum:
+      - native
+      - reporting
+    asset:
+      "$ref": "./money.yaml#/Asset"
+    kind:
+      type: string
+      enum:
+      - actual
+      - forecast
+    method:
+      type: string
+      enum:
+      - xirr
+    value:
+      "$ref": "./reports.yaml#/ReturnValue"
+    flows:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ReturnCashFlow"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - basis
+  - asset
+  - kind
+  - method
+  - value
+  - flows
+  - quality
+  description: Native and reporting results are separate observations, even when the
+    requested reporting asset matches the native asset. The application validates
+    cash-flow asset/signs, dates, method and availability. Solver remains task-0.10/task-6.4.
+ReturnsReport:
+  type: object
+  additionalProperties: false
+  properties:
+    context:
+      "$ref": "./reports.yaml#/ReportContext"
+    amounts:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ExplainableAmount"
+    returns:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ReturnMetric"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - context
+  - amounts
+  - returns
+  - quality

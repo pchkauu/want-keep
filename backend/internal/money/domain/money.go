@@ -106,6 +106,12 @@ func (m Money) Round(scale int32, mode Rounding) (Money, error) {
 	if _, err := context.Quantize(&result, &m.amount, -scale); err != nil {
 		return Money{}, ErrInvalidRounding
 	}
+	// apd Quantize drops subquantum coefficients before directed rounding in v3.2.3.
+	if mode == Floor && result.Cmp(&m.amount) > 0 {
+		if _, err := context.Sub(&result, &result, apd.New(1, -scale)); err != nil {
+			return Money{}, ErrInvalidRounding
+		}
+	}
 	return NewMoney(result.Text('f'), m.asset)
 }
 

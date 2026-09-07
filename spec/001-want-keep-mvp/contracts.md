@@ -2,7 +2,9 @@
 
 [English](contracts.en.md)
 
-Контракт проекта версии 8, D-37 от 2026-09-07. OpenAPI и базовые доменные типы реализованы task-1.2; HTTP-обработчиков и схемы БД ещё нет. Здесь закреплены общие правила; provider-specific поля и условия закрываются task-0.1–task-0.10 до реализации. REQ/AC имеют приоритет над предположением адаптера.
+Контракт проекта версии 9, D-37 от 2026-09-07. OpenAPI и базовые доменные типы реализованы task-1.2; HTTP-обработчиков и схемы БД ещё нет. Здесь закреплены общие правила; provider-specific поля и условия закрываются task-0.1–task-0.10 до реализации. REQ/AC имеют приоритет над предположением адаптера.
+
+Уточнение task-1.2 после review: payer — явное known/memberId, unknown или not_applicable; плательщик вводится и исправляется отдельно от actor и долей. Связь существующих движений требует ID/expectedRevision каждого участника и атомарной проверки. Preview плана различает create/update/delete и lineId; expectedRevision относится к Budget aggregate, который меняется при каждом изменении статьи/подтверждении. ReturnsReport передаёт dimensionless XIRR ratio строкой, native/reporting basis, dated cash flows и unavailable reason; solver остаётся в task-0.10/task-6.4. Эти поправки затрагивают ещё не выпущенные DTO; оба клиента регенерируются вместе, действующих данных для миграции нет.
 
 ## Доменные сущности
 
@@ -12,7 +14,7 @@
 
 Known amount содержит value; unknown/unavailable — reason без value. Coverage complete имеет пустой список причин, partial/unavailable — непустой. Freshness fresh/stale/unknown независима от полноты. UTC timestamp принимает RFC3339 с Z и до 9 знаков дробной секунды; Date/Month не содержат времени, timezone — UTC или проверенная IANA-зона. Revision — целое 1–9007199254740991, точно представимое в JavaScript.
 
-OpenAPI 3.0.3, модели и strict interfaces Go/TypeScript генерируются из одного источника. Schema validation и явные boundary converters не заменяют права, транзакции или бизнес-проверки use cases. В DTO отдельно заданы actorId/User, payerMemberId/Membership, personalOwnerId/User и externalAccountOwnerId/User. При создании команды клиент не назначает actor/household. Списки и result references проверяют актуальную семейную область и права.
+OpenAPI 3.0.3, модели и strict interfaces Go/TypeScript генерируются из одного источника. Schema validation и явные boundary converters не заменяют права, транзакции или бизнес-проверки use cases. В DTO отдельно заданы actorId/User, payer.memberId/Membership, personalOwnerId/User и externalAccountOwnerId/User. При создании команды клиент не назначает actor/household. Списки и result references проверяют актуальную семейную область и права.
 
 Command ID — созданный клиентом UUIDv4 в Idempotency-Key; ключ уникален в household+actor и фиксирует type/hash. До исполнения сохраняется pending; эффект и succeeded/result сохраняются атомарно. Replay проверяется до старой expectedRevision и возвращает исходный результат. Timeout не переводит команду в failed; при not_found допустимо только повторить тот же ключ по протоколу регистрации. Status/key/hash/result хранятся всю жизнь семьи. Auth/recovery/enrollment, приватные upload bytes и push credentials используют свои защищённые потоки и не копируются в financial-command records; preview не сохраняет финансовое изменение.
 

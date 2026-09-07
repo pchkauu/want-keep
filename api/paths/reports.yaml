@@ -400,7 +400,7 @@
         content:
           application/json:
             schema:
-              "$ref": "../schemas/reports.yaml#/Report"
+              "$ref": "../schemas/reports.yaml#/ReturnsReport"
       '400':
         "$ref": "../components.yaml#/responses/Problem"
       '401':

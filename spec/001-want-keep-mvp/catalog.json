@@ -3197,8 +3197,8 @@
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/13",
       "verification_note": {
-        "ru": "Команды make реализованы. Проверяются Go 1.26.5 и Node 24.19.0; OpenAPI tooling использует изолированный TS 5.9.3, web — TS 6.0.3. Live banking, БД, deploy и browser E2E вне этой задачи.",
-        "en": "Make commands are implemented. Checks use Go 1.26.5 and Node 24.19.0; OpenAPI tooling has isolated TS 5.9.3, web uses TS 6.0.3. Live banking, DB, deploy and browser E2E are outside this task."
+        "ru": "Make предоставляет точку входа test-integration, но suite storage создаётся этой задачей. Обязательны проверки PostgreSQL: миграции на пустой БД, точное хранение сумм, crash/retry, конкурирующие записи, проверка версий и атомарность финансового эффекта с terminal command status. Live banking и browser E2E относятся к последующим задачам.",
+        "en": "Make provides the test-integration entry point, but this task must implement the storage suite. PostgreSQL checks are mandatory: empty-database migrations, exact amounts, crash/retry, concurrent writes, revision checks and atomic financial effect plus terminal command status. Live banking and browser E2E belong to subsequent tasks."
       }
     },
     {

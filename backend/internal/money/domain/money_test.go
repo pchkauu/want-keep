@@ -165,3 +165,30 @@ func FuzzMoneyRoundTrip(f *testing.F) {
 		}
 	})
 }
+
+func TestRoundingBelowQuantum(t *testing.T) {
+	for _, tc := range []struct {
+		input, floor, halfEven string
+		scale                  int32
+	}{
+		{"-0.0001", "-0.01", "0.00", 2}, {"-0.001", "-1", "0", 0},
+		{"-0.000000000000000001", "-0.00000001", "0.00000000", 8},
+		{"-0.01", "-0.01", "-0.01", 2}, {"-0.0101", "-0.02", "-0.01", 2},
+		{"0", "0.00", "0.00", 2}, {"0.0001", "0.00", "0.00", 2},
+		{"-0.005", "-0.01", "0.00", 2}, {"-0.006", "-0.01", "-0.01", 2},
+	} {
+		value, err := money.NewMoney(tc.input, money.BTC)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for mode, want := range map[money.Rounding]string{money.Floor: tc.floor, money.HalfEven: tc.halfEven} {
+			rounded, err := value.Round(tc.scale, mode)
+			if err != nil || rounded.Amount() != want {
+				t.Fatalf("%s(%s, %d)=%s %v; want %s", mode, tc.input, tc.scale, rounded.Amount(), err, want)
+			}
+			if value.Amount() != tc.input {
+				t.Fatal("rounding mutated input")
+			}
+		}
+	}
+}

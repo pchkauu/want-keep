@@ -2,7 +2,9 @@
 
 [Русский](contracts.md)
 
-Project contract version 8, D-37 dated 2026-09-07. Task-1.2 implements OpenAPI and basic domain types; HTTP handlers and a database schema do not exist yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
+Project contract version 9, D-37 dated 2026-09-07. Task-1.2 implements OpenAPI and basic domain types; HTTP handlers and a database schema do not exist yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
+
+Task-1.2 review clarification: payer is explicit known/memberId, unknown or not_applicable, entered/corrected independently from actor and shares. Existing movement links require each ID/expectedRevision and atomic validation. Plan preview distinguishes create/update/delete and lineId; expectedRevision identifies the Budget aggregate, advanced by every line change/approval. ReturnsReport carries decimal-string dimensionless XIRR ratios, native/reporting basis, dated cash flows and unavailable reasons; task-0.10/task-6.4 still own the solver. These changes affect unreleased DTOs; both clients regenerate together and no deployed data requires migration.
 
 ## Domain entities
 
@@ -12,7 +14,7 @@ Decimal strings are limited to 256 characters, reject exponent/float input and r
 
 A known amount contains value; unknown/unavailable contains reason without value. Complete coverage has an empty reason list, partial/unavailable a non-empty list. Fresh/stale/unknown freshness is independent of completeness. UTC timestamps accept RFC3339 with Z and up to nine fractional-second digits; Date/Month contain no time, timezone is UTC or a validated IANA zone. Revision is an integer from 1 through 9007199254740991, exactly representable in JavaScript.
 
-OpenAPI 3.0.3 and Go/TypeScript models/strict interfaces derive from one source. Schema validation and explicit boundary converters do not replace permissions, transactions or use-case invariants. DTOs distinguish actorId/User, payerMemberId/Membership, personalOwnerId/User and externalAccountOwnerId/User. Command input cannot assign actor/household. Lists and result references require current household scope and resource authorization.
+OpenAPI 3.0.3 and Go/TypeScript models/strict interfaces derive from one source. Schema validation and explicit boundary converters do not replace permissions, transactions or use-case invariants. DTOs distinguish actorId/User, payer.memberId/Membership, personalOwnerId/User and externalAccountOwnerId/User. Command input cannot assign actor/household. Lists and result references require current household scope and resource authorization.
 
 Command ID is a client-created UUIDv4 Idempotency-Key, unique within household+actor and bound to immutable type/hash. Pending is persisted before execution; effect and succeeded/result commit atomically. Replay precedes old expectedRevision checks and returns the original outcome. Timeout never changes a command to failed; not_found permits only the original key under the registration protocol. Status/key/hash/result metadata lives for the family lifetime. Auth/recovery/enrollment, private upload bytes and push credentials use separate protected flows and are not copied into financial-command records; preview stores no financial change.
 
