@@ -178,6 +178,10 @@ paths:
     "$ref": "./paths/settings.yaml#/~1categories"
   "/categories/{categoryId}":
     "$ref": "./paths/settings.yaml#/~1categories~1{categoryId}"
+  "/merchants":
+    "$ref": "./paths/settings.yaml#/~1merchants"
+  "/merchants/{merchantId}":
+    "$ref": "./paths/settings.yaml#/~1merchants~1{merchantId}"
   "/rules":
     "$ref": "./paths/settings.yaml#/~1rules"
   "/rules/{ruleId}":
@@ -397,6 +401,14 @@ components:
       "$ref": "./schemas/transactions.yaml#/Posting"
     ReceiptItem:
       "$ref": "./schemas/transactions.yaml#/ReceiptItem"
+    ReceiptItemInput:
+      "$ref": "./schemas/transactions.yaml#/ReceiptItemInput"
+    ClassificationReferenceChange:
+      "$ref": "./schemas/transactions.yaml#/ClassificationReferenceChange"
+    ReceiptItemsChange:
+      "$ref": "./schemas/transactions.yaml#/ReceiptItemsChange"
+    ClassificationProposal:
+      "$ref": "./schemas/transactions.yaml#/ClassificationProposal"
     Transaction:
       "$ref": "./schemas/transactions.yaml#/Transaction"
     TransactionCreate:
@@ -515,6 +527,16 @@ components:
       "$ref": "./schemas/settings.yaml#/CategoryInput"
     CategoryChange:
       "$ref": "./schemas/settings.yaml#/CategoryChange"
+    LocalizedCategoryName:
+      "$ref": "./schemas/settings.yaml#/LocalizedCategoryName"
+    MerchantAlias:
+      "$ref": "./schemas/settings.yaml#/MerchantAlias"
+    Merchant:
+      "$ref": "./schemas/settings.yaml#/Merchant"
+    MerchantInput:
+      "$ref": "./schemas/settings.yaml#/MerchantInput"
+    MerchantChange:
+      "$ref": "./schemas/settings.yaml#/MerchantChange"
     RuleCondition:
       "$ref": "./schemas/settings.yaml#/RuleCondition"
     RuleInput:
@@ -567,6 +589,8 @@ components:
       "$ref": "./schemas/auth.yaml#/SessionPage"
     CategoryPage:
       "$ref": "./schemas/settings.yaml#/CategoryPage"
+    MerchantPage:
+      "$ref": "./schemas/settings.yaml#/MerchantPage"
     RulePage:
       "$ref": "./schemas/settings.yaml#/RulePage"
     CommandStatusPage:

@@ -152,6 +152,12 @@ func (s *Store) AuthorizeCommandResult(ctx context.Context, p household.Principa
 	case "connection":
 		_, err := s.Connection(ctx, p, r.ResourceID)
 		return err
+	case "category":
+		_, err := s.Category(ctx, p, r.ResourceID)
+		return err
+	case "merchant":
+		_, err := s.Merchant(ctx, p, r.ResourceID)
+		return err
 	default:
 		return household.ErrForbidden
 	}

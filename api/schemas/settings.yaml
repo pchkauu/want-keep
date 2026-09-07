@@ -70,13 +70,38 @@ Category:
     name:
       type: string
       minLength: 1
-      maxLength: 2000
+      maxLength: 200
     parentId:
       "$ref": "./money.yaml#/ID"
+    state:
+      type: string
+      enum: [active, archived]
+    origin:
+      type: string
+      enum: [starter, custom]
+    starterKey:
+      type: string
+      minLength: 1
+      maxLength: 200
+    labels:
+      "$ref": "./settings.yaml#/LocalizedCategoryName"
+    customName:
+      type: string
+      minLength: 1
+      maxLength: 200
   required:
   - id
   - revision
   - name
+  - state
+  - origin
+LocalizedCategoryName:
+  type: object
+  additionalProperties: false
+  properties:
+    ru: { type: string, minLength: 1, maxLength: 200 }
+    en: { type: string, minLength: 1, maxLength: 200 }
+  required: [ru, en]
 CategoryInput:
   type: object
   additionalProperties: false
@@ -84,7 +109,7 @@ CategoryInput:
     name:
       type: string
       minLength: 1
-      maxLength: 2000
+      maxLength: 200
     parentId:
       "$ref": "./money.yaml#/ID"
   required:
@@ -95,11 +120,85 @@ CategoryChange:
   properties:
     expectedRevision:
       "$ref": "./money.yaml#/Revision"
-    category:
-      "$ref": "./settings.yaml#/CategoryInput"
+    nameAction:
+      type: string
+      enum: [set, restore_default]
+    name:
+      type: string
+      minLength: 1
+      maxLength: 200
+    parentAction:
+      type: string
+      enum: [set, clear]
+    parentId:
+      "$ref": "./money.yaml#/ID"
+    state:
+      type: string
+      enum: [active, archived]
   required:
   - expectedRevision
-  - category
+  allOf:
+  - anyOf:
+    - required: [nameAction]
+    - required: [parentAction]
+    - required: [state]
+MerchantAlias:
+  type: object
+  additionalProperties: false
+  properties:
+    id: { $ref: './money.yaml#/ID' }
+    name: { type: string, minLength: 1, maxLength: 200 }
+    state: { type: string, enum: [active, archived] }
+    origin: { type: string, enum: [user_confirmed, review_proposed] }
+  required: [id, name, state, origin]
+Merchant:
+  type: object
+  additionalProperties: false
+  properties:
+    id: { $ref: './money.yaml#/ID' }
+    revision: { $ref: './money.yaml#/Revision' }
+    name: { type: string, minLength: 1, maxLength: 200 }
+    state: { type: string, enum: [active, archived] }
+    aliases:
+      type: array
+      maxItems: 1000
+      items: { $ref: './settings.yaml#/MerchantAlias' }
+  required: [id, revision, name, state, aliases]
+MerchantInput:
+  type: object
+  additionalProperties: false
+  properties:
+    name: { type: string, minLength: 1, maxLength: 200 }
+    aliases:
+      type: array
+      maxItems: 1000
+      uniqueItems: true
+      items: { type: string, minLength: 1, maxLength: 200 }
+  required: [name, aliases]
+MerchantChange:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision: { $ref: './money.yaml#/Revision' }
+    name: { type: string, minLength: 1, maxLength: 200 }
+    state: { type: string, enum: [active, archived] }
+    aliasesToAdd:
+      type: array
+      maxItems: 1000
+      uniqueItems: true
+      items: { type: string, minLength: 1, maxLength: 200 }
+    aliasIdsToArchive:
+      type: array
+      maxItems: 1000
+      uniqueItems: true
+      items: { $ref: './money.yaml#/ID' }
+  required: [expectedRevision]
+  allOf:
+  - anyOf:
+    - required: [name]
+    - required: [state]
+    - required: [aliasesToAdd]
+    - required: [aliasIdsToArchive]
 RuleCondition:
   type: object
   additionalProperties: false
@@ -254,6 +353,19 @@ CategoryPage:
   required:
   - items
   - quality
+MerchantPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items: { $ref: './settings.yaml#/Merchant' }
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality: { $ref: './quality.yaml#/DataQuality' }
+  required: [items, quality]
 RulePage:
   type: object
   additionalProperties: false

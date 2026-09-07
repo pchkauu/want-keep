@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Server) createInput(in generated.TransactionCreate) (application.CreateInput, error) {
-	out := application.CreateInput{Type: ledger.Type(in.Type), AccountID: in.AccountId, Unsupported: in.CategoryId != nil}
+	out := application.CreateInput{Type: ledger.Type(in.Type), AccountID: in.AccountId}
 	var err error
 	out.At, err = calendar.ParseInstant(in.OccurredAt)
 	if err != nil {
@@ -48,6 +48,12 @@ func (s *Server) createInput(in generated.TransactionCreate) (application.Create
 	}
 	if in.Merchant != nil {
 		out.Merchant = *in.Merchant
+	}
+	if in.CategoryId != nil {
+		out.CategoryID = *in.CategoryId
+	}
+	if in.MerchantId != nil {
+		out.MerchantID = *in.MerchantId
 	}
 	if in.Note != nil {
 		out.Note = *in.Note

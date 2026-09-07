@@ -29,6 +29,17 @@
       required: false
       schema:
         "$ref": "../schemas/money.yaml#/ID"
+    - name: merchantId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: itemSearch
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 200
     - name: type
       in: query
       schema:
@@ -75,7 +86,7 @@
     tags:
     - transactions
     summary: Record a confirmed manual income or expense
-    description: Household fact is posted even when allocation is unresolved. Category and resolved allocation requests return feature_unavailable until their owning tasks ship; fields are never ignored. Cash date follows the purchase in household timezone. Inputs cannot set actor, household, state or AI status.
+    description: Household fact is posted even when member allocation is unresolved. Active household category and merchant references may be confirmed at creation. Receipt item sets are created through corrections so their replacement and audit are atomic. Cash date follows the purchase in household timezone. Inputs cannot set actor, household, state or AI status.
     parameters:
     - "$ref": "../components.yaml#/parameters/IdempotencyKey"
     - "$ref": "../components.yaml#/parameters/CSRF"

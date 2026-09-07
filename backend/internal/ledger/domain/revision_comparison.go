@@ -20,7 +20,7 @@ func (r Revision) SameFacts(other Revision) bool {
 	if r.OperationID != other.OperationID || r.Type != other.Type || r.State != other.State || r.PostedAt != other.PostedAt || r.Timezone != other.Timezone || r.Origin != other.Origin || r.PnLBasis != other.PnLBasis || r.AttachmentID != other.AttachmentID || r.AllocationReason != other.AllocationReason || len(r.Postings) != len(other.Postings) {
 		return false
 	}
-	for _, f := range []Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField} {
+	for _, f := range []Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, CategoryField, MerchantIDField, ReceiptItemsField} {
 		if !r.FieldEqual(other, f) {
 			return false
 		}

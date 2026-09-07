@@ -46,9 +46,7 @@ func (s *Server) page(r *http.Request) (page, error) {
 			return p, contract.ErrInvalidRequest
 		}
 		switch k {
-		case "accountId", "from", "to", "type", "state", "search", "cursor", "limit":
-		case "categoryId":
-			return p, ledger.ErrFeatureUnavailable
+		case "accountId", "from", "to", "type", "state", "search", "categoryId", "merchantId", "itemSearch", "cursor", "limit":
 		default:
 			return p, contract.ErrInvalidRequest
 		}
@@ -59,10 +57,13 @@ func (s *Server) page(r *http.Request) (page, error) {
 			return p, contract.ErrInvalidRequest
 		}
 	}
-	p.filter = application.Filter{AccountID: values.Get("accountId"), Type: ledger.Type(values.Get("type")), State: ledger.State(values.Get("state")), Search: values.Get("search")}
-	if p.filter.AccountID != "" {
-		id, e := uuid.Parse(p.filter.AccountID)
-		if e != nil || id.Version() != 4 || id.String() != p.filter.AccountID {
+	p.filter = application.Filter{AccountID: values.Get("accountId"), CategoryID: values.Get("categoryId"), MerchantID: values.Get("merchantId"), Type: ledger.Type(values.Get("type")), State: ledger.State(values.Get("state")), Search: values.Get("search"), ItemSearch: values.Get("itemSearch")}
+	for _, value := range []string{p.filter.AccountID, p.filter.CategoryID, p.filter.MerchantID} {
+		if value == "" {
+			continue
+		}
+		id, e := uuid.Parse(value)
+		if e != nil || id.Version() != 4 || id.String() != value {
 			return p, contract.ErrInvalidRequest
 		}
 	}
@@ -81,7 +82,7 @@ func (s *Server) page(r *http.Request) (page, error) {
 	if err = p.filter.Validate(); err != nil {
 		return p, err
 	}
-	scope, _ := json.Marshal([]string{p.filter.AccountID, p.filter.From.String(), p.filter.To.String(), string(p.filter.Type), string(p.filter.State), p.filter.Search})
+	scope, _ := json.Marshal([]string{p.filter.AccountID, p.filter.From.String(), p.filter.To.String(), string(p.filter.Type), string(p.filter.State), p.filter.Search, p.filter.CategoryID, p.filter.MerchantID, p.filter.ItemSearch})
 	p.scope = string(scope)
 	if value := values.Get("cursor"); value != "" {
 		if len(value) > 2048 {
