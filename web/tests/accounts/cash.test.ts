@@ -228,4 +228,51 @@ describe("cash account precision and command recovery", () => {
     expect(controller.snapshot().confirmed).toBeUndefined();
     expect(api.read).not.toHaveBeenCalled();
   });
+  it.each(["pending", "succeeded", "failed"] as const)(
+    "keeps the active original request when another command is %s",
+    async (state) => {
+      const { api, controller } = fixture();
+      vi.mocked(api.recent).mockResolvedValue({
+        items: [
+          { id: "pending-a", state: "pending" },
+          { id: "other-b", state: "pending" },
+        ],
+        cursor: undefined,
+      });
+      vi.spyOn(api, "create")
+        .mockRejectedValueOnce(new ApiFailure("network_unconfirmed"))
+        .mockResolvedValue({
+          id: "pending-a",
+          state: "succeeded",
+          accountId: "account",
+        });
+      vi.spyOn(api, "command").mockImplementation(async (id) =>
+        id === "pending-a"
+          ? { id, state: "pending" }
+          : {
+              id,
+              state,
+              ...(state === "succeeded" ? { accountId: "account-b" } : {}),
+            },
+      );
+      await controller.loadRecent();
+      controller.restore("pending-a");
+      controller.draft(draft);
+      await controller.submit();
+      await controller.check("other-b");
+      controller.reset();
+      expect(controller.snapshot().creation).toEqual({
+        id: "pending-a",
+        state: "pending",
+      });
+      expect(controller.snapshot().draft).toEqual(draft);
+      expect(controller.snapshot().retryOriginal).toBe(true);
+      await controller.retry();
+      expect(api.create).toHaveBeenNthCalledWith(2, "pending-a", draft, "alex");
+      expect(controller.snapshot().confirmed).toEqual(account);
+      expect(controller.snapshot().recent).toEqual(
+        state === "pending" ? [{ id: "other-b", state: "pending" }] : [],
+      );
+    },
+  );
 });

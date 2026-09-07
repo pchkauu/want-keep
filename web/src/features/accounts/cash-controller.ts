@@ -58,7 +58,12 @@ export class CashController {
     this.update({ draft: { ...this.state.draft, ...patch }, error: undefined });
   }
   reset() {
-    if (this.state.busy || this.state.creation?.state === "pending") return;
+    if (
+      this.state.busy ||
+      this.request ||
+      this.state.creation?.state === "pending"
+    )
+      return;
     this.request = undefined;
     this.update({
       draft: CashAccount.empty(),
@@ -195,6 +200,13 @@ export class CashController {
   }
   private async finish(creation: Creation, epoch: number) {
     if (epoch !== this.epoch) return;
+    if (this.request && this.request.id !== creation.id) {
+      if (creation.state !== "pending")
+        this.update({
+          recent: this.state.recent.filter((x) => x.id !== creation.id),
+        });
+      return;
+    }
     if (creation.state !== "pending" && this.request?.id === creation.id)
       this.request = undefined;
     this.update({
