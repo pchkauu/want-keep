@@ -60,6 +60,11 @@ func (s *Executor) Execute(ctx context.Context, p household.Principal, r Request
 	if _, err := s.Register(ctx, p, r); err != nil {
 		return command.Command{}, err
 	}
+	return s.ExecuteRegistered(ctx, p, r, apply)
+}
+
+// ExecuteRegistered runs only after independently durable registration. An authenticated coordinator may wrap it in its session transaction.
+func (s *Executor) ExecuteRegistered(ctx context.Context, p household.Principal, r Request, apply func(context.Context) (command.Result, error)) (command.Command, error) {
 	var c command.Command
 	err := s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
 		var err error

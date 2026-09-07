@@ -72,6 +72,7 @@ type transactionScope struct {
 	tx                    pgx.Tx
 	principal             household.Principal
 	householdLocked       bool
+	readOnly              bool
 	identityLocked        bool
 	invitationHouseholdID household.HouseholdID
 	admissionKey          string
@@ -93,7 +94,7 @@ func (s *Store) familyScope(ctx context.Context) (*transactionScope, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !scope.householdLocked {
+	if !scope.householdLocked || scope.readOnly {
 		return nil, ErrTransactionRequired
 	}
 	return scope, nil

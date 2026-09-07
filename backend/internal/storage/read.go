@@ -18,7 +18,7 @@ func (s *Store) reader(ctx context.Context, p household.Principal) (reader, erro
 		if err != nil {
 			return nil, err
 		}
-		if !scope.householdLocked || scope.principal != p {
+		if (!scope.householdLocked && !scope.readOnly) || scope.principal != p {
 			return nil, household.ErrForbidden
 		}
 		return scope.tx, nil

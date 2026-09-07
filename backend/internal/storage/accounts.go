@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"time"
 
@@ -28,7 +29,8 @@ func (s *Store) CreateAccount(ctx context.Context, a account.Account) error {
 	if a.Revision != 1 {
 		return command.ErrVersionConflict
 	}
-	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.accounts(household_id,id,name,asset,scope,owner_id,product,revision,opening_date,external_account_id) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')::uuid,$7,$8,$9,NULLIF($10,'')::uuid)`, a.Ownership.HouseholdID(), a.ID, a.Name, a.Asset, a.Ownership.Scope(), string(a.Ownership.PersonalOwnerID()), a.Product, a.Revision, a.OpeningDate.String(), a.ExternalAccountID)
+	digest := sha256.Sum256([]byte(a.Network))
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.accounts(household_id,id,name,asset,scope,owner_id,product,revision,opening_date,external_account_id,network,external_asset_code,network_digest) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')::uuid,$7,$8,$9,NULLIF($10,'')::uuid,$11,$12,$13)`, a.Ownership.HouseholdID(), a.ID, a.Name, a.Asset, a.Ownership.Scope(), string(a.Ownership.PersonalOwnerID()), a.Product, a.Revision, a.OpeningDate.String(), a.ExternalAccountID, a.Network, a.ExternalAssetCode, digest[:])
 	return err
 }
 func (s *Store) Account(ctx context.Context, p household.Principal, id string) (account.Account, error) {
@@ -39,9 +41,9 @@ func (s *Store) Account(ctx context.Context, p household.Principal, id string) (
 	var a account.Account
 	var scope, owner, asset string
 	var date time.Time
-	err = q.QueryRow(ctx, `SELECT id,name,asset,scope,COALESCE(owner_id::text,''),product,revision,opening_date,COALESCE(external_account_id::text,'') FROM want_keep.accounts WHERE household_id=$1 AND id=$2`, p.HouseholdID(), id).Scan(&a.ID, &a.Name, &asset, &scope, &owner, &a.Product, &a.Revision, &date, &a.ExternalAccountID)
+	err = q.QueryRow(ctx, `SELECT id,name,asset,scope,COALESCE(owner_id::text,''),product,revision,opening_date,COALESCE(external_account_id::text,''),network,external_asset_code FROM want_keep.accounts WHERE household_id=$1 AND id=$2`, p.HouseholdID(), id).Scan(&a.ID, &a.Name, &asset, &scope, &owner, &a.Product, &a.Revision, &date, &a.ExternalAccountID, &a.Network, &a.ExternalAssetCode)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return a, ErrNotFound
+		return a, errors.Join(ErrNotFound, account.ErrNotFound)
 	}
 	if err != nil {
 		return a, err
@@ -57,6 +59,11 @@ func (s *Store) Account(ctx context.Context, p household.Principal, id string) (
 	a.OpeningDate, err = calendar.ParseDate(date.Format(time.DateOnly))
 	if err != nil {
 		return a, err
+	}
+	if a.ExternalAccountID != "" {
+		if err = q.QueryRow(ctx, `SELECT external_owner_id FROM want_keep.external_accounts WHERE household_id=$1 AND id=$2`, p.HouseholdID(), a.ExternalAccountID).Scan(&a.ExternalOwnerID); err != nil {
+			return a, err
+		}
 	}
 	return a, a.Validate()
 }
@@ -87,7 +94,7 @@ func (s *Store) RecordBalance(ctx context.Context, b account.Balance) error {
 	if reasons == nil {
 		reasons = []string{}
 	}
-	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.balance_snapshots(household_id,account_id,revision,field,knowledge,amount,asset,reason,coverage,coverage_reasons,freshness,observed_at,observed_ns) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,$8,$9,$10,$11,$12,$13)`, scope.principal.HouseholdID(), b.AccountID, a.Revision+1, b.Field, b.Amount.Knowledge(), value, a.Asset, b.Amount.Reason(), b.Coverage.State(), reasons, b.Freshness, at, ns)
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.balance_snapshots(household_id,account_id,revision,field,knowledge,amount,asset,reason,coverage,coverage_reasons,freshness,observed_at,observed_ns,basis) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,$8,$9,$10,$11,$12,$13,'ledger')`, scope.principal.HouseholdID(), b.AccountID, a.Revision+1, b.Field, b.Amount.Knowledge(), value, a.Asset, b.Amount.Reason(), b.Coverage.State(), reasons, b.Freshness, at, ns)
 	if err != nil {
 		return err
 	}

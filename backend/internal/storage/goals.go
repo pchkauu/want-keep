@@ -67,11 +67,11 @@ func (s *Store) Funding(ctx context.Context, p household.Principal, goalID strin
 		if err != nil {
 			return nil, err
 		}
-		b, err := s.Balance(ctx, p, id, "available")
+		available, err := s.AccountFunding(ctx, p, id)
 		if err != nil {
 			return nil, err
 		}
-		f := goals.Funding{AccountID: id, Asset: a.Asset, Available: b.Amount}
+		f := goals.Funding{AccountID: id, Asset: a.Asset, Available: available}
 		rows, err := scope.tx.Query(ctx, `SELECT r.mode,r.amount::text,r.asset FROM want_keep.reservations r JOIN want_keep.goals g ON (g.household_id,g.id,g.revision)=(r.household_id,r.goal_id,r.revision) WHERE r.household_id=$1 AND r.account_id=$2 AND r.goal_id!=$3`, p.HouseholdID(), id, goalID)
 		if err != nil {
 			return nil, err

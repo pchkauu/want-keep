@@ -341,6 +341,14 @@ components:
       "$ref": "./schemas/accounts.yaml#/SourceReference"
     Balance:
       "$ref": "./schemas/accounts.yaml#/Balance"
+    OpeningAmounts:
+      "$ref": "./schemas/accounts.yaml#/OpeningAmounts"
+    OpeningPoint:
+      "$ref": "./schemas/accounts.yaml#/OpeningPoint"
+    CardAlias:
+      "$ref": "./schemas/accounts.yaml#/CardAlias"
+    SourceBalance:
+      "$ref": "./schemas/accounts.yaml#/SourceBalance"
     Account:
       "$ref": "./schemas/accounts.yaml#/Account"
     AccountCreate:
