@@ -5,7 +5,7 @@
 
 Закрепить точность денег и типы публичных границ до адаптеров и UI.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-1.1`.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Определить Money/Asset/Rate/Time/coverage и версионированные ошибки по contracts.md. Деньги передавать десятичными строками, валидировать на первой границе; поддержать явные unknown/partial. Домен не импортирует generated DTO. Генерацию выполнять из OpenAPI, добавить проверки round-trip BTC/USDT и неверных сумм. Включить read models объяснимых сумм и command status/recent API из contracts.md для неизвестного результата UI; command retention согласовать до Ready.
+Определить Money/Asset/Rate/Time/coverage и версионированные состояния `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted` по contracts.md. Деньги передавать десятичными строками и валидировать на первой границе; домен не импортирует generated DTO. Добавить explainable read models, command status/recent API и connection `deploymentGate.status=pending|admitted|blocked` и monotonic `admissionRevision`. Публичный контракт server-owned admission связывает environment, adapter/collector build digests, contract, allowlist, non-secret config и operator-permission revisions; sync разрешён только при совпадении текущего binding и `admitted`, иначе collector не запускается. Эта задача владеет transport/read model, а aggregate, repository и application transitions реализует task-1.3. Terminal detail хранится 90 дней после исхода, unresolved — до сверки плюс 90 дней; tombstone с `commandId`, scope, key/hash и outcome живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome. `/commands/recent` отдаёт 30 дней terminal и все unresolved; истёкшая detail возвращает `command_expired`, не разрешая повторный эффект по живому tombstone.
 
 ### Границы изменений
 
@@ -22,7 +22,7 @@
 - `backend/internal/delivery/`
 - `web/src/api/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -34,10 +34,11 @@
 - **REQ-063:** Пользователь, семья и членство моделируются отдельно; ограничение двух участников задаётся конфигурацией.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации, разрешения оператора и окружения.
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-002
 
@@ -95,6 +96,13 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Если binding уже неполон или устарел, сервер возвращает `provider_not_admitted` без job, collector IO и проводки. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding. Job/result несёт неизменяемые binding и `admissionRevision`; смена binding во время read отменяет работу best effort, а обязательная commit-time revalidation сохраняет stale result в quarantine без source record или проводки.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
@@ -107,15 +115,15 @@ make test-go PKG=./internal/money/... && make check-contracts
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Establish money precision and public boundary types before adapters and UI.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-1.1`.
 
@@ -123,7 +131,7 @@ Establish money precision and public boundary types before adapters and UI.
 
 ### Change and contracts
 
-Define Money/Asset/Rate/Time/coverage and versioned errors from contracts.md. Transport money as decimal strings and validate at the first boundary; support explicit unknown/partial states. Domain must not import generated DTOs. Generate from OpenAPI and test BTC/USDT round trips and invalid amounts. Include explainable-amount read models and command status/recent API from contracts.en.md for unknown UI outcomes; resolve command retention before Ready.
+Define Money/Asset/Rate/Time/coverage and versioned `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired` and `provider_not_admitted` states from contracts.en.md. Transport money as decimal strings and validate at the first boundary; the domain must not import generated DTOs. Add explainable read models, command status/recent APIs and connection `deploymentGate.status=pending|admitted|blocked` and monotonic `admissionRevision`. The public server-owned admission contract binds environment, adapter/collector build digests, contract, allowlist, non-secret configuration and operator-permission revisions; sync is permitted only when the current binding matches `admitted`, otherwise the collector never starts. This task owns the transport/read model; task-1.3 implements the aggregate, repository and application transitions. Terminal detail remains for 90 days after outcome, unresolved commands through reconciliation plus 90 days; a tombstone with `commandId`, scope, key/hash and outcome lives throughout unresolved state and for 400 days after terminal/reconciled outcome. `/commands/recent` returns 30 days of terminal commands and all unresolved commands; expired detail returns `command_expired` without permitting a repeated effect while the tombstone is live.
 
 ### Change boundaries
 
@@ -132,7 +140,7 @@ Define Money/Asset/Rate/Time/coverage and versioned errors from contracts.md. Tr
 - `backend/internal/delivery/`
 - `web/src/api/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -144,10 +152,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-063:** User, household and membership are separate models; the two-member limit is configured.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-002
 
@@ -205,6 +214,13 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** If the binding is already incomplete or stale, the server returns `provider_not_admitted` with no job, collector IO or posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding. Each job/result carries immutable binding and `admissionRevision`; a binding change during a read cancels work best effort, while mandatory commit-time revalidation retains a stale result in quarantine without a source record or posting.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
@@ -217,6 +233,6 @@ The `make` commands are a future contract established by task-1.1; they do not e
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

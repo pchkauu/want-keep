@@ -5,7 +5,7 @@
 
 Выбрать конфигурацию моделей по финансовым сценариям и лимиту $50.
 
-**Состояние:** Завершено: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, 0 критических ошибок, PNG/PDF 6/6, function 3/3. BLK-08 закрыт; MVP Not Ready.
+**Состояние:** Исследование OpenAI завершено: модель, strict schema, качество, стоимость и failure boundary выбраны. SDD Ready; gateway, авторизация и runtime budget остаются task-5.x/task-8.1.
 
 **Зависимости:** нет.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Владелец выбрал gpt-5.6-terra, reasoning.effort=xhigh для всех AI-задач. OAI-E01–E15, evidence/openai.md/en.md и results/prompts/eval/cost JSON фиксируют цены, retention, Standard foreground Responses, strict proposal, store=false, explicit cache без breakpoints, detail=high и предварительный input count. Финальный отдельный 206+3 eval: 206/206, visual 6/6, function 3/3, 0 критических ошибок; цена $0.445556. 301 OpenAI requests всего: $3.2926944 в общем лимите $7 с сохранением ранних неудач и оплаченного incomplete Luna. Калибровка на известных синтетических случаях, не holdout и не app acceptance. Dahl MiniMax/DeepSeek: отдельные ограниченные screen, high принят без подтверждения применения; unknown расходы остаются резервами, тариф пула не подтверждён. Альтернативы и автоматический downgrade в runtime не включать. Xhigh месячная смета $47.125, стресс $62.96875; при $50 задания ждут, обычный учёт работает. Допущения объёма/налоги/прочий расход сверить перед запуском. Изменение модели/effort/prompt/schema/pricing требует повторного допуска. Разблокированы контракты task-5.1/5.2/5.3/5.5 и BLK-08 в task-0.10; остальные зависимости и общий Not Ready сохраняются. Серверные validators/права/runtime очередей/locale и полный AC — последующие задачи.
+Владелец выбрал gpt-5.6-terra, reasoning.effort=xhigh для всех AI-задач. OAI-E01–E15, evidence/openai.md/en.md и results/prompts/eval/cost JSON фиксируют цены, retention, Standard foreground Responses, strict proposal, store=false, explicit cache без breakpoints, detail=high и предварительный input count. Финальный отдельный 206+3 eval: 206/206, visual 6/6, function 3/3, 0 критических ошибок; цена $0.445556. 301 OpenAI requests всего: $3.2926944 в общем лимите $7 с сохранением ранних неудач и оплаченного incomplete Luna. Калибровка на известных синтетических случаях, не holdout и не app acceptance. Dahl MiniMax/DeepSeek: отдельные ограниченные screen, high принят без подтверждения применения; unknown расходы остаются резервами, тариф пула не подтверждён. Альтернативы и автоматический downgrade в runtime не включать. Xhigh месячная смета $47.125, стресс $62.96875; при $50 задания ждут, обычный учёт работает. Допущения объёма/налоги/прочий расход сверить перед запуском. Изменение модели/effort/prompt/schema/pricing требует повторного допуска. Контракты task-5.1/5.2/5.3/5.5 разблокированы; task-0.10 завершила SDD gate. Серверные validators/права/runtime очередей/locale и полный AC остаются последующими задачами.
 
 ### Границы изменений
 
@@ -36,7 +36,7 @@
 - `spec/001-want-keep-mvp/tools/dahl_report.py`
 - `spec/001-want-keep-mvp/tools/test_dahl_eval.py`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -52,7 +52,7 @@
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-018
 
@@ -122,15 +122,15 @@ make docs-check
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Choose model configuration using financial cases and the $50 cap.
 
-**Status:** Complete: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, zero critical errors, PNG/PDF 6/6, function 3/3. BLK-08 closed; MVP Not Ready.
+**Status:** OpenAI research is complete: model, strict schema, quality, cost and failure boundary are selected. The SDD is Ready; gateway, authorization and runtime budget remain task-5.x/task-8.1 work.
 
 **Dependencies:** none.
 
@@ -138,7 +138,7 @@ Choose model configuration using financial cases and the $50 cap.
 
 ### Change and contracts
 
-The owner selected gpt-5.6-terra, reasoning.effort=xhigh for all AI tasks. OAI-E01–E15, evidence/openai.md/en.md and results/prompts/eval/cost JSON record pricing, retention, Standard foreground Responses, strict proposals, store=false, explicit cache without breakpoints, detail=high and input pre-counting. Final separate 206+3 evaluation: 206/206, visual 6/6, function 3/3, zero critical errors; cost USD 0.445556. All 301 OpenAI requests cost USD 3.2926944 within the shared USD 7 cap, retaining earlier failures and paid Luna incomplete output. Calibration on known synthetic cases, not holdout or app acceptance. Dahl MiniMax/DeepSeek: separate limited screens, requested high accepted without applied-setting confirmation; unknown costs remain reserved and pool pricing unverified. No runtime alternative or automatic downgrade. Xhigh monthly estimate USD 47.125, stress USD 62.96875; unaffordable work waits at USD 50 while ordinary accounting continues. Reconcile workload assumptions/taxes/other usage before launch. Model/effort/prompt/schema/pricing changes require requalification. Unblocks task-5.1/5.2/5.3/5.5 contracts and BLK-08 in task-0.10; other dependencies and overall Not Ready remain. Server validation/permissions/runtime queues/locale and full acceptance are subsequent tasks.
+The owner selected gpt-5.6-terra, reasoning.effort=xhigh for all AI tasks. OAI-E01–E15, evidence/openai.md/en.md and results/prompts/eval/cost JSON record pricing, retention, Standard foreground Responses, strict proposals, store=false, explicit cache without breakpoints, detail=high and input pre-counting. Final separate 206+3 evaluation: 206/206, visual 6/6, function 3/3, zero critical errors; cost USD 0.445556. All 301 OpenAI requests cost USD 3.2926944 within the shared USD 7 cap, retaining earlier failures and paid Luna incomplete output. Calibration on known synthetic cases, not holdout or app acceptance. Dahl MiniMax/DeepSeek: separate limited screens, requested high accepted without applied-setting confirmation; unknown costs remain reserved and pool pricing unverified. No runtime alternative or automatic downgrade. Xhigh monthly estimate USD 47.125, stress USD 62.96875; unaffordable work waits at USD 50 while ordinary accounting continues. Reconcile workload assumptions/taxes/other usage before launch. Model/effort/prompt/schema/pricing changes require requalification. The task-5.1/5.2/5.3/5.5 contracts are unblocked and task-0.10 completed the SDD gate. Server validation/permissions/runtime queues/locale and full acceptance remain subsequent work.
 
 ### Change boundaries
 
@@ -161,7 +161,7 @@ The owner selected gpt-5.6-terra, reasoning.effort=xhigh for all AI tasks. OAI-E
 - `spec/001-want-keep-mvp/tools/dahl_report.py`
 - `spec/001-want-keep-mvp/tools/test_dahl_eval.py`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -177,7 +177,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-018
 
@@ -247,6 +247,6 @@ The task-1.1 foundation already provides make. make docs-check validates documen
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

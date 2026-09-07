@@ -5,7 +5,7 @@
 
 Поднять воспроизводимую основу Go, React и сборщика без продуктовых заглушек, выдаваемых за функции.
 
-**Состояние:** Техническая основа реализована; общий барьер готовности task-0.10 остаётся открытым.
+**Состояние:** Техническая основа реализована; task-0.10 завершила общий SDD gate. Следующая задача по плану — task-1.2.
 
 **Зависимости:** `task-0.10`.
 
@@ -28,7 +28,7 @@
 - `scripts/check-openapi-state.sh`
 - `spec/001-want-keep-mvp/evidence/task-1.1-foundation.md`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -38,7 +38,7 @@
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-054
 
@@ -73,15 +73,15 @@ make check
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Establish reproducible Go, React and collector foundations without presenting stubs as features.
 
-**Status:** The technical foundation is implemented; the overall task-0.10 readiness gate remains open.
+**Status:** The technical foundation is implemented; task-0.10 completed the shared SDD gate. The next planned task is task-1.2.
 
 **Dependencies:** `task-0.10`.
 
@@ -104,7 +104,7 @@ Create the chosen modular layout and pin compatible tool/dependency versions. Im
 - `scripts/check-openapi-state.sh`
 - `spec/001-want-keep-mvp/evidence/task-1.1-foundation.md`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -114,7 +114,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-054
 
@@ -149,6 +149,6 @@ The `make` interface is provided by task-1.1. A missing suite fails explicitly; 
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

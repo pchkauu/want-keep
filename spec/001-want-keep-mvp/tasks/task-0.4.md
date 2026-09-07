@@ -5,7 +5,7 @@
 
 Зафиксировать проверяемый read-контракт Bybit для Funding USDT/USDC/ETH/BTC, Easy Earn и P2P и ограничения доступа.
 
-**Состояние:** Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit-api.md). RSA readOnly API успешно читает Funding USDT/USDC/ETH/BTC, Flexible Easy Earn и P2P. BYBIT-B01/B02/B05 закрыты для проверенного доступа, BYBIT-B03/B04 открыты под task-0.10, BYBIT-B06 отложен без блокировки. 18 наблюдений/источников, 12 синтетических сценариев; продуктовые AC не объявлены пройденными. task-4.4 и BLK-04 Not Ready.
+**Состояние:** Исследование Bybit и RSA read-only API завершено; task-0.10 закрепила route identity, candidate links, hourly collision и history-gap rules. SDD Ready; executable conformance остаётся gate task-4.4.
 
 **Зависимости:** нет.
 
@@ -23,7 +23,7 @@
 - `spec/001-want-keep-mvp/evidence/bybit-api.md`
 - `spec/001-want-keep-mvp/evidence/bybit-api.en.md`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -37,7 +37,7 @@
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-045
 
@@ -100,15 +100,15 @@ RU/EN содержат датированные BYBIT-E01–E18, матрицу 
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Record a verifiable Bybit read contract for Funding USDT/USDC/ETH/BTC, Easy Earn and P2P and its access limits.
 
-**Status:** Research completed on 2026-09-07: [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit-api.en.md). RSA readOnly API successfully reads Funding USDT/USDC/ETH/BTC, Flexible Easy Earn and P2P. BYBIT-B01/B02/B05 closed for verified access, BYBIT-B03/B04 open under task-0.10, BYBIT-B06 non-blocking deferred. 18 observations/sources, 12 synthetic scenarios; product ACs are not declared passed. task-4.4 and BLK-04 remain Not Ready.
+**Status:** Bybit research and RSA read-only API checks are complete; task-0.10 fixed route identity, candidate links, hourly collision and history-gap rules. The SDD is Ready; executable conformance remains the task-4.4 gate.
 
 **Dependencies:** none.
 
@@ -126,7 +126,7 @@ Under D-36 use official APIs for Funding USDT/USDC/ETH/BTC, used Easy Earn and P
 - `spec/001-want-keep-mvp/evidence/bybit-api.md`
 - `spec/001-want-keep-mvp/evidence/bybit-api.en.md`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -140,7 +140,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-045
 
@@ -203,6 +203,6 @@ The task-1.1 foundation provides make commands; financial provider/integration/E
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

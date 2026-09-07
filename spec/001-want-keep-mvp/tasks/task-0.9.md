@@ -5,7 +5,7 @@
 
 Подобрать проверяемую конфигурацию в DE/NL/BG до $40 с копиями на Mac.
 
-**Состояние:** Исследование завершено 2026-09-07 с эксплуатационными блокерами. Владелец выбрал сервер приложения в Германии 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в той же private VPC. Смета: 2 520 ₽/мес. по годовому тарифу; консервативно без скидки и с резервом 10% — 3 055.56 ₽/$35.29 при зафиксированном курсе, ниже $40. Текущий VPS 1 vCPU/<1 ГБ исследован read-only и не допущен как production. HOST-B01–HOST-B06 переданы task-8.1–task-8.3 и task-0.10/task-4.1; безопасная достижимость Alfa, hardening, нагрузка и backup/restore runtime не подтверждены. task-0.9 завершена, но AC приложения и MVP остаются Not Ready.
+**Состояние:** Исследование hosting завершено: target profile и бюджет выбраны. D-38 отделяет SDD Ready от provisioning; HOST-B01–B06 остаются runtime gates task-8.x/provider tasks.
 
 **Зависимости:** нет.
 
@@ -20,7 +20,7 @@ Evidence/hosting.md и .en.md фиксируют выбранные владел
 - `spec/001-want-keep-mvp/evidence/hosting.md`
 - `spec/001-want-keep-mvp/evidence/hosting.en.md`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -31,7 +31,7 @@ Evidence/hosting.md и .en.md фиксируют выбранные владел
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-048
 
@@ -73,15 +73,15 @@ RU/EN evidence совпадают по HOST-E01–HOST-E15 и HOST-B01–HOST-B0
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Identify a verifiable DE/NL/BG configuration under $40 with Mac backups.
 
-**Status:** Research completed on 2026-09-07 with operational blockers. The owner selected a German 2 vCPU/4 GB/50 GB application server and 1 vCPU/2 GB/20 GB managed PostgreSQL in the same private VPC. Estimate: RUB 2,520/month under annual pricing; conservative no-discount total plus 10% reserve is RUB 3,055.56/$35.29 at the recorded FX rate, below $40. The current 1 vCPU/<1 GB VPS was inspected read-only and is not admitted for production. HOST-B01–HOST-B06 are assigned to task-8.1–task-8.3 and task-0.10/task-4.1; safe Alfa reachability, hardening, load and backup/restore runtime remain unverified. task-0.9 is complete, but application ACs and the MVP remain Not Ready.
+**Status:** Hosting research is complete: target profile and budget are selected. D-38 separates SDD Ready from provisioning; HOST-B01–B06 remain task-8.x/provider runtime gates.
 
 **Dependencies:** none.
 
@@ -96,7 +96,7 @@ Evidence/hosting.md and .en.md record the owner-selected 2 vCPU/4 GB/50 GB VPS a
 - `spec/001-want-keep-mvp/evidence/hosting.md`
 - `spec/001-want-keep-mvp/evidence/hosting.en.md`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -107,7 +107,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-048
 
@@ -149,6 +149,6 @@ The task-1.1 foundation already provides the make interface. `make docs-check` e
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

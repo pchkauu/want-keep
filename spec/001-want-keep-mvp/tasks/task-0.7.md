@@ -5,7 +5,7 @@
 
 Подтвердить историческую и текущую оценку RUB, USD, USDT, USDC, BTC и ETH и покрытие обменных котировок.
 
-**Состояние:** Исследование завершено 2026-09-07: CBR/CoinGecko/Frankfurter contract, 18 evidence items и шесть blocker decisions записаны; TradingView отвергнут. FX-B02–FX-B04 / BLK-07 переданы task-0.10; task-6.1 и MVP Not Ready.
+**Состояние:** Исследование CBR/CoinGecko/Frankfurter завершено; D-40 закрепляет `valuation_unavailable`/`quote_unavailable`. SDD Ready; Demo key/quota/attribution и runtime adapter остаются task-6.1.
 
 **Зависимости:** нет.
 
@@ -13,14 +13,14 @@
 
 ### Изменение и контракты
 
-Evidence/fx.md и .en.md содержат датированные официальные источники, live boundary probes, матрицу кандидатов, формулу USD-кроссов, failure/cache/audit правила и FX-B01–FX-B06. Основной USD/RUB — XML Банка России; Frankfurter v2 только с providers=CBR — fallback/cross-check; CoinGecko Demo — отдельные BTC/USD, ETH/USD, USDT/USD и USDC/USD current/history не старше 365 дней. Default blend и peg USD/USDT/USDC=1 запрещены; похожие токены, включая USDC.E, не объединять без проверенной identity mapping. TradingView отвергнут: библиотеки требуют внешний datafeed, terms запрещают non-display price referencing. Reference valuation не заменяет provider executable buy/sell с обеими native amounts, applicable amount, timestamp, spread/fee. DE/NL/BG snapshot подтверждён, но не является SLA/VPS runtime. BLK-07 сохраняет FX-B02–FX-B04 под task-0.10; исследование не разблокирует task-6.1 до Ready.
+Evidence/fx.md и .en.md содержат датированные официальные источники, live boundary probes, матрицу кандидатов, формулу USD-кроссов, failure/cache/audit правила и FX-B01–FX-B06. Основной USD/RUB — XML Банка России; Frankfurter v2 только с providers=CBR — fallback/cross-check; CoinGecko Demo — отдельные BTC/USD, ETH/USD, USDT/USD и USDC/USD current/history не старше 365 дней. Default blend и peg USD/USDT/USDC=1 запрещены; похожие токены, включая USDC.E, не объединять без проверенной identity mapping. TradingView отвергнут: библиотеки требуют внешний datafeed, terms запрещают non-display price referencing. Reference valuation не заменяет provider executable buy/sell с обеими native amounts, applicable amount, timestamp, spread/fee. DE/NL/BG snapshot подтверждён, но не является SLA/VPS runtime. D-40 закрывает SDD-часть FX-B02/B03; Demo key/quota/attribution и работающий adapter остаются gate task-6.1.
 
 ### Границы изменений
 
 - `spec/001-want-keep-mvp/evidence/fx.md`
 - `spec/001-want-keep-mvp/evidence/fx.en.md`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -33,7 +33,7 @@ Evidence/fx.md и .en.md содержат датированные официа�
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-037
 
@@ -75,15 +75,15 @@ make docs-check проверяет SDD. Anonymous current/history/plan-limit и 
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Verify historical/current RUB, USD, USDT, USDC, BTC and ETH valuation and exchange-quote coverage.
 
-**Status:** Research completed on 2026-09-07: CBR/CoinGecko/Frankfurter contract, 18 evidence items and six blocker decisions recorded; TradingView rejected. FX-B02–FX-B04 / BLK-07 handed to task-0.10; task-6.1 and MVP Not Ready.
+**Status:** CBR/CoinGecko/Frankfurter research is complete; D-40 fixes `valuation_unavailable`/`quote_unavailable`. The SDD is Ready; Demo key/quota/attribution and runtime adapter remain task-6.1 work.
 
 **Dependencies:** none.
 
@@ -91,14 +91,14 @@ Verify historical/current RUB, USD, USDT, USDC, BTC and ETH valuation and exchan
 
 ### Change and contracts
 
-Evidence/fx.md and .en.md contain dated official sources, live boundary probes, a candidate matrix, USD-cross formula, failure/cache/audit rules and FX-B01–FX-B06. Primary USD/RUB is Bank of Russia XML; Frankfurter v2 with providers=CBR only is fallback/cross-check; CoinGecko Demo supplies separate BTC/USD, ETH/USD, USDT/USD and USDC/USD current/history no older than 365 days. Default blends and a USD/USDT/USDC=1 peg are forbidden; similar tokens, including USDC.E, are not merged without verified identity mapping. TradingView is rejected: libraries need an external datafeed and terms prohibit non-display price referencing. Reference valuation cannot replace provider-executable buy/sell with both native amounts, applicable amount, timestamp and spread/fee. DE/NL/BG snapshot reachability is established but is not SLA/VPS runtime. BLK-07 retains FX-B02–FX-B04 under task-0.10; research does not unblock task-6.1 before Ready.
+Evidence/fx.md and .en.md contain dated official sources, live boundary probes, a candidate matrix, USD-cross formula, failure/cache/audit rules and FX-B01–FX-B06. Primary USD/RUB is Bank of Russia XML; Frankfurter v2 with providers=CBR only is fallback/cross-check; CoinGecko Demo supplies separate BTC/USD, ETH/USD, USDT/USD and USDC/USD current/history no older than 365 days. Default blends and a USD/USDT/USDC=1 peg are forbidden; similar tokens, including USDC.E, are not merged without verified identity mapping. TradingView is rejected: libraries need an external datafeed and terms prohibit non-display price referencing. Reference valuation cannot replace provider-executable buy/sell with both native amounts, applicable amount, timestamp and spread/fee. DE/NL/BG snapshot reachability is established but is not SLA/VPS runtime. D-40 resolves the SDD portion of FX-B02/B03; Demo key/quota/attribution and a running adapter remain the task-6.1 gate.
 
 ### Change boundaries
 
 - `spec/001-want-keep-mvp/evidence/fx.md`
 - `spec/001-want-keep-mvp/evidence/fx.en.md`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -111,7 +111,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-037
 
@@ -153,6 +153,6 @@ make docs-check validates SDD. Anonymous current/history/plan-limit and DE/NL/BG
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

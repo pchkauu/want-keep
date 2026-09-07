@@ -5,7 +5,7 @@
 
 Нормализовать данные без утечки моделей платформ в домен.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-3.1`, `task-1.2`, `task-2.1`, `task-2.2`.
 
@@ -13,14 +13,14 @@
 
 ### Изменение и контракты
 
-Закрепить контракт коллектора и provider gateway: capability, source records, account references, coverage, balance snapshots, revisions, cursor, errors. Сохранять исходник до нормализации, namespace ID, связь счетов/карт и provenance значений. Отсутствующие поля/unsupported не становятся нулём. Golden-like contract fixtures должны быть синтетическими и проверять смысл, не только JSON shape.
+Закрепить контракт коллектора и provider gateway: capability, source records, account references, coverage, balance snapshots, revisions, cursor, errors. Сохранять исходник до нормализации, namespace ID, связь счетов/карт и provenance значений. Отсутствующие поля/unsupported не становятся нулём. Golden-like contract fixtures должны быть синтетическими и проверять смысл, не только JSON shape. Каждый server-issued job и result содержит immutable exact admission binding и `admissionRevision`; application commit принимает result только при совпадении current `admitted` revision в той же транзакции, что source/posting/outbox, иначе сохраняет evidence в quarantine без финансового эффекта.
 
 ### Границы изменений
 
 - `backend/internal/integrations/`
 - `collector/contracts/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -36,10 +36,11 @@
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации, разрешения оператора и окружения.
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-004
 
@@ -125,27 +126,34 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Если binding уже неполон или устарел, сервер возвращает `provider_not_admitted` без job, collector IO и проводки. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding. Job/result несёт неизменяемые binding и `admissionRevision`; смена binding во время read отменяет работу best effort, а обязательная commit-time revalidation сохраняет stale result в quarantine без source record или проводки.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
 make check-contracts && make test-integration AREA=ingestion
 ```
 
-Round-trip и ошибки контракта проверены; replay и частичное покрытие не меняют семантику.
+Round-trip и ошибки контракта проверены; replay и частичное покрытие не меняют семантику. Stale admission result не пересекает commit boundary.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Normalize data without leaking provider models into the domain.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-3.1`, `task-1.2`, `task-2.1`, `task-2.2`.
 
@@ -153,14 +161,14 @@ Normalize data without leaking provider models into the domain.
 
 ### Change and contracts
 
-Define collector/provider-gateway contracts: capability, source records, account references, coverage, balance snapshots, revisions, cursor and errors. Retain raw data before normalization, namespace IDs and track account/card relationships and provenance. Missing/unsupported fields never become zero. Synthetic contract fixtures test semantics, not only JSON shape.
+Define collector/provider-gateway contracts: capability, source records, account references, coverage, balance snapshots, revisions, cursor and errors. Retain raw data before normalization, namespace IDs and track account/card relationships and provenance. Missing/unsupported fields never become zero. Synthetic contract fixtures test semantics, not only JSON shape. Every server-issued job and result carries the immutable exact admission binding and `admissionRevision`; application commit accepts a result only when the current `admitted` revision matches in the same transaction as source/posting/outbox, otherwise it retains evidence in quarantine without a financial effect.
 
 ### Change boundaries
 
 - `backend/internal/integrations/`
 - `collector/contracts/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -176,10 +184,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-004
 
@@ -265,18 +274,25 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** If the binding is already incomplete or stale, the server returns `provider_not_admitted` with no job, collector IO or posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding. Each job/result carries immutable binding and `admissionRevision`; a binding change during a read cancels work best effort, while mandatory commit-time revalidation retains a stale result in quarantine without a source record or posting.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
 make check-contracts && make test-integration AREA=ingestion
 ```
 
-Contract round trips and errors pass; replay and partial coverage preserve semantics.
+Contract round trips and errors pass; replay and partial coverage preserve semantics. A stale-admission result cannot cross the commit boundary.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

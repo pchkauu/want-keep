@@ -4,7 +4,7 @@
 
 Date: 2026-09-07, Europe/Moscow. Task: [task-0.6 / Issue #6](https://github.com/pchkauu/want-keep/issues/6). The owner-provided Google Chrome session was inspected. Final verification base: `f12f215`; research started on `05ca027`, branch `docs/want-keep-mvp-sdd`.
 
-**Research completed with blocking findings for automation.** The USDT wallet, existing Grow deposits, existing cards and P2P archive are readable in the UI. Their structured responses were not obtained; automatic import is not implemented. BLK-06 remains open under task-0.10; task-4.6 and the MVP remain **Not Ready**. This completes research under the [README](../README.en.md) rule, not adapter acceptance.
+**Research is complete; automatic import is not implemented.** Wallet/Grow/cards/P2P UI is available, while structured responses were not obtained. The original EMCD-B02–B04 were handed to task-0.10; D-38/D-39 and the task-4.6 gate are recorded in the final section below.
 
 ## Current scope: D-34
 
@@ -88,12 +88,12 @@ Target-contract version 5 narrows EMCD only: D-34/REQ-047/AC-047. Links from tas
 | ID | Status | Resolution |
 | --- | --- | --- |
 | EMCD-B01 | CLOSED | UI access to all four included areas confirmed by E02–E16 |
-| EMCD-B02 | OPEN | task-0.10: structured read contract for selected products, automation terms, free access, auth/scopes/limits and allowlist. Mining API is not a substitute |
-| EMCD-B03 | OPEN | task-0.10: identity/revisions, precision/dates/statuses, full history and repeat/resume, reauthorization and second external account |
-| EMCD-B04 | OPEN | task-0.10: balance/reserve composition; Grow accrual/capitalization/payout linkage and exact forecast terms; card lifecycle/fees/FX; owner-side P2P and log linkage |
+| EMCD-B02 | RUNTIME GATE task-4.6 | task-4.6: structured read contract for selected products, automation terms, free access, auth/scopes/limits and allowlist. Mining API is not a substitute |
+| EMCD-B03 | SDD RESOLVED; RUNTIME GATE task-4.6 | task-4.6: identity/revisions, precision/dates/statuses, full history and repeat/resume, reauthorization and second external account |
+| EMCD-B04 | SDD RESOLVED; RUNTIME GATE task-4.6 | task-4.6: balance/reserve composition; Grow accrual/capitalization/payout linkage and exact forecast terms; card lifecycle/fees/FX; owner-side P2P and log linkage |
 | EMCD-B05 | DEFERRED, NON-BLOCKING | Products outside D-34; extend only following a future owner decision |
 
-The task-0.6 research outcome is complete. task-0.10 receives E01–E26, B02–B04 and verification scenarios; resolving them and the shared Ready gate enables task-4.6. UI access alone does not unblock the adapter. For a structured sample, the next step is a safe HAR recording of selected read screens/pages or supplied official schemas for the relevant personal API; originals stay outside Git and only checked synthetic projections are published. Authentication recording and revealing payment credentials are unnecessary.
+task-0.6 is complete as research. EMCD-B02–B04 became task-4.6 entry/deployment gates; structured samples come from a safe HAR or official schema and only synthetic projections are published. D-38/D-39 close the SDD, while UI access alone does not accept the adapter.
 
 ## Verification
 
@@ -102,3 +102,9 @@ Read-only UI observations and official-source checks were performed. Final-candi
 Not performed: credentialed HTTP replay/API calls, complete page import, reauth/second account, hourly runtime, allowlist enforcement, forecasts, application tests/build/E2E. Reasons: selected API contracts unavailable and financial workflows and EMCD adapter absent; the task-1.1 foundation exists. No runtime pass is claimed for AC-047/AC-041/AC-048/AC-070/AC-079/AC-087. The earlier Avida pass does not cover this research; current self review checks documentation.
 
 Final-candidate checks on base `f12f215`: `make docs-check` — pass, 87 REQ / 105 AC / 67 tasks / 35 screens / 67 GitHub mappings; 14 generator tests — pass. Six Decimal scenarios, 26 paired observations/IDs/RU/EN links, JSON, scoped EMCD catalog changes and absence of private IDs — pass. Publication content was checked separately; unfinished changes from another research task were preserved.
+
+## task-0.10 decision, 2026-09-07
+
+EMCD-B02–B04 above become task-4.6 entry/deployment gates. D-34 limits scope, and D-39 separates aggregate/wallet/Grow/card/P2P namespaces and forbids UI-derived postings. The signed-in Chrome tab confirmed access to selected sections and history/pagination controls without publishing values or opaque IDs; response bodies were not exported.
+
+Before deployment, prove permission, structured fixtures for every log, stable identity, full pagination/coverage, revisions/statuses/fees, balance/Grow/card/P2P lifecycle, reauthentication and two accounts. Unknown/collision records post no money. SDD Ready does not claim a running EMCD connector.

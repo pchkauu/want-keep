@@ -5,7 +5,7 @@
 
 Получить проверяемый контракт чтения дебетовой карты Ozon и связанного основного счёта.
 
-**Состояние:** Исследование завершено 2026-09-07 с блокирующими выводами: два HAR, 10 синтетических проекций, пять read-маршрутов, identity и комиссия описаны в [evidence RU](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.md). Семь страниц связаны курсорами, но конец истории не достигнут. Эксплуатация сессии и второй внешний аккаунт не проверены. OZON-B02/B04/B05 остаются в BLK-03 под проверкой task-0.10; task-4.3 заблокирована, Ready не объявлен.
+**Состояние:** Исследование Ozon и sanitized HAR projections завершены; task-0.10 закрепила D-39 identity и перенесла session/history/второй аккаунт в gate task-4.3. SDD Ready; connector не реализован.
 
 **Зависимости:** нет.
 
@@ -21,7 +21,7 @@
 - `spec/001-want-keep-mvp/evidence/ozon.en.md`
 - `spec/001-want-keep-mvp/evidence/ozon.samples.json`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -33,7 +33,7 @@
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-044
 
@@ -82,15 +82,15 @@ Evidence RU/EN и ozon.samples.json содержат реальные маршр
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Produce a verifiable read contract for the Ozon debit card and linked main account.
 
-**Status:** Research completed on 2026-09-07 with blocking findings: two HARs, 10 synthetic projections, five read routes, identity and a commission are documented in [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.en.md). Seven pages form a cursor chain but do not reach history completion. Session operation and a second external account are unverified. OZON-B02/B04/B05 remain within BLK-03 for task-0.10 verification; task-4.3 is blocked and Ready is not claimed.
+**Status:** Ozon research and sanitized HAR projections are complete; task-0.10 fixed D-39 identity and moved session/history/second-account checks into the task-4.3 gate. The SDD is Ready; the connector is not implemented.
 
 **Dependencies:** none.
 
@@ -106,7 +106,7 @@ Under D-32, verify the official API or acceptable authenticated-portal reading f
 - `spec/001-want-keep-mvp/evidence/ozon.en.md`
 - `spec/001-want-keep-mvp/evidence/ozon.samples.json`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -118,7 +118,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-044
 
@@ -167,6 +167,6 @@ The `make` commands are a future contract established by task-1.1; they do not e
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

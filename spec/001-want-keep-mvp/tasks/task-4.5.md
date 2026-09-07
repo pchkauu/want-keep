@@ -5,7 +5,7 @@
 
 Автоматически получать согласованные данные RUB-счетов, USDT, ETH и используемой карты Aifory по D-33.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-0.5`, `task-3.3`, `task-2.4`, `task-2.5`.
 
@@ -13,14 +13,14 @@
 
 ### Изменение и контракты
 
-Реализовать только разрешённый и структурированно подтверждённый в evidence/aifory read-контракт после закрытия AIFORY-B02–B04 в task-0.10. D-33 исключает остальные продукты из блокеров. RUB-группы отделены от счетов; ID не строится из имени офиса, адреса или /home/wallet. ETH хранит точные native amounts/network/fee. USD-карта отделена от USDT: нужны funding legs, gross/net, курс/база комиссии и lifecycle authorization/clearing/refund. Похожие pending/confirmed строки не объединять без доказанной связи и не списывать дважды. Сохранять все движения выбранных кошельков, включая операции отложенных сервисов. Проверить повтор, revisions, неполную историю/resume, session expiry, hourly refresh, выбранную дату, два внешних аккаунта и reauth; stale job после disconnect не применяется. Не использовать OCR/человеческие подписи как финансовый контракт. Нет открытия продуктов или платежей.
+Реализовать D-33: RUB-счета, USDT, ETH и используемую карту. До provider deployment получить разрешённый структурированный fixture из сессии, read allowlist, стабильную D-39 account/source identity, pagination/coverage, revisions/statuses/fees, card authorization/clearing/refund lifecycle, reauth и два независимых аккаунта. Flutter/UI-текст, имя офиса, адрес и `/home/wallet` не являются финансовым контрактом или identity. USD-карта отделена от USDT; funding legs, gross/net, rate/fee basis сохраняются явно. Похожие pending/confirmed строки без доказанной связи дают `source_ambiguous` и не списываются дважды. Unknown и history gaps остаются явными. Stale job после disconnect не применяется. Остальные продукты D-33 отложены без блокировки. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.
 
 ### Границы изменений
 
 - `backend/internal/integrations/aifory/`
 - `collector/src/providers/aifory/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -36,10 +36,11 @@
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации, разрешения оператора и окружения.
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-046
 
@@ -104,27 +105,34 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Если binding уже неполон или устарел, сервер возвращает `provider_not_admitted` без job, collector IO и проводки. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding. Job/result несёт неизменяемые binding и `admissionRevision`; смена binding во время read отменяет работу best effort, а обязательная commit-time revalidation сохраняет stale result в quarantine без source record или проводки.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
 make test-contract PROVIDER=aifory && make test-integration AREA=aifory
 ```
 
-RUB, USDT, ETH и используемая карта имеют синтетические contract scenarios и отдельный live readback; пройдены AIFORY-E03/E08–E14 edge cases после подтверждения структурированного контракта. Остальные продукты не требуются. Перед реализацией закрыты AIFORY-B02–B04 и Ready.
+RUB, USDT, ETH и используемая карта проходят синтетические fixtures и отдельный разрешённый live readback; доказаны identity, полный обход страниц, revisions, reauth, два аккаунта и deployment gate. Unknown и коллизии не проводят деньги.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Automatically retrieve consistent Aifory RUB-account, USDT, ETH and existing-card data under D-33.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-0.5`, `task-3.3`, `task-2.4`, `task-2.5`.
 
@@ -132,14 +140,14 @@ Automatically retrieve consistent Aifory RUB-account, USDT, ETH and existing-car
 
 ### Change and contracts
 
-Implement only the permitted structured read contract established in evidence/aifory after task-0.10 closes AIFORY-B02–B04. D-33 excludes other products from blockers. Separate RUB groups/accounts; do not derive identity from office names, addresses or /home/wallet. ETH retains exact native amounts/network/fees. Separate USD card from USDT: establish funding legs, gross/net, rate/fee basis and authorization/clearing/refund lifecycle. Do not merge similar pending/confirmed rows without proven linkage or debit them twice. Retain all selected-wallet movements, including deferred-service operations. Verify replay, revisions, incomplete history/resume, session expiry, hourly refresh, selected start date, two external accounts and reauth; reject stale jobs after disconnect. Do not use OCR/human labels as financial contracts. No product opening or payments.
+Implement D-33: RUB accounts, USDT, ETH and the existing card. Before provider deployment obtain an authorized structured fixture from the session, read allowlist, stable D-39 account/source identity, pagination/coverage, revisions/statuses/fees, card authorization/clearing/refund lifecycle, reauthentication and two independent accounts. Flutter/UI text, office name, address and `/home/wallet` are neither a financial contract nor identity. Keep the USD card separate from USDT and retain funding legs, gross/net and rate/fee basis explicitly. Similar pending/confirmed records without proven linkage yield `source_ambiguous` and are not charged twice. Unknown fields and history gaps stay explicit. A stale job cannot apply after disconnect. Other D-33 products are deferred without blocking. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again.
 
 ### Change boundaries
 
 - `backend/internal/integrations/aifory/`
 - `collector/src/providers/aifory/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -155,10 +163,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-046
 
@@ -223,18 +232,25 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** If the binding is already incomplete or stale, the server returns `provider_not_admitted` with no job, collector IO or posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding. Each job/result carries immutable binding and `admissionRevision`; a binding change during a read cancels work best effort, while mandatory commit-time revalidation retains a stale result in quarantine without a source record or posting.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
 make test-contract PROVIDER=aifory && make test-integration AREA=aifory
 ```
 
-RUB, USDT, ETH and the existing card have synthetic contract scenarios and separate live readback; AIFORY-E03/E08–E14 edge cases pass after structured-contract verification. Other products are not required. AIFORY-B02–B04 and Ready are resolved before implementation.
+RUB, USDT, ETH and the existing card pass synthetic fixtures and a separate authorized live readback; identity, complete pagination, revisions, reauthentication, two accounts and the deployment gate are proven. Unknown values and collisions do not post money.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

@@ -5,7 +5,7 @@
 
 Автоматически получать согласованные остатки и движения расчётного счёта ИП через RBO API по D-35.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-0.2`, `task-3.3`, `task-2.4`, `task-2.5`.
 
@@ -13,14 +13,14 @@
 
 ### Изменение и контракты
 
-Реализовать RBO API-коннектор только расчётного счёта ИП по D-35 после закрытия оставшихся RAIF-B02/B03/B04/B06 в task-0.10. Начальные evidence и синтетические JSON/XML находятся в evidence/raiffeisen*. Обрабатывать lower-camel-case поля accounts, явный алиас RUR→RUB, отдельные UUID id и 20-значный number/accountKeys, Decimal, CAMT.053.001.08 и вложенные записи без двойного учёта. Сохранять source status/code и только подтверждённые преобразования completed/COMPLETED, no-statements/NO_STATEMENTS. no-statements не означает нулевой остаток. NtryRef подтверждён на двух перекрывающихся отчётах, но reconnect/коррекции требуют проверки. Коды FCHG/NTRF не заменяют доказательство типа расхода или внутреннего перевода. Реализовать защищённый Code Flow по contracts, атомарную ротацию, allowlist чтения, почасовой импорт и полноту истории. Два внешних аккаунта участников изолированы; повторное подключение связывается с прежним источником, старое задание после отключения не применяется. Прочие продукты Raif отложены; Playwright возможен только при доказанном API-пробеле.
+Реализовать RBO API для расчётного счёта ИП по D-35. Account UUID и number/accountKeys хранить отдельно; RUR явно переводить в RUB. CAMT.053 допускает 1:N между entry и transaction details без двойной проводки. Identity: для каждого проводимого detail вычислять достаточный versioned `camtCrossReportFingerprint` из полей, доказанно неизменных между перекрывающимися camt.052/camt.053: непустых structured references, party/account/remittance и bank-code fields в документированном порядке. Он всегда становится canonical providerRecordId, даже если присутствует NtryRef/AcctSvcrRef/EndToEndId. Эти optional ID и statement/report ID сохраняются как aliases/provenance; aliases регистрируются атомарно с canonical source record. Amount/time исключены. Недостаточный fingerprint, один alias у разных fingerprints или один fingerprint для разных фактов даёт `source_ambiguous`, сохраняет evidence и не создаёт новую проводку. Corrections/reversals создают revisions. `no-statements` не означает нулевой остаток. При недоступном camt.052 показывать последний подтверждённый CLBD с `asOf`/coverage; available/locked/balance/fee без evidence остаются unknown. До provider deployment проверить Code Flow/rotation, allowlist, полноту истории, reauth, два аккаунта и stale jobs. Playwright допустим только при доказанном API-пробеле. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.
 
 ### Границы изменений
 
 - `backend/internal/integrations/raiffeisen/`
 - `collector/src/providers/raiffeisen/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -37,10 +37,11 @@
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации, разрешения оператора и окружения.
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-043
 
@@ -105,27 +106,34 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Если binding уже неполон или устарел, сервер возвращает `provider_not_admitted` без job, collector IO и проводки. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding. Job/result несёт неизменяемые binding и `admissionRevision`; смена binding во время read отменяет работу best effort, а обязательная commit-time revalidation сохраняет stale result в quarantine без source record или проводки.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
 make test-contract PROVIDER=raiffeisen && make test-integration AREA=raiffeisen
 ```
 
-Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.
+Синтетические CAMT fixtures покрывают 1:N, повтор, optional ID только в одном из camt.052/camt.053, canonical fingerprint/alias collision, correction/reversal, no-statements и unknown balance/fee; отдельный live readback доказывает доступ, историю, reauth и два аккаунта до deployment.
 
-Основа task-1.1 уже содержит make-команды; наличие команды не означает реализацию адаптера или прохождение live-проверок. Исследовательские проверки Raif: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Токены и исходные ответы подключаются только приватно; незакрытые RAIF-B02/B03/B04/B06 остаются барьером реализации.
+Основа task-1.1 содержит make-команды; наличие команды не означает реализованный адаптер. Локальные CAMT-контракты отделены от provider deployment gate: разрешения, Code Flow, второй аккаунт и production conformance проверяет task-4.2.
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Automatically retrieve consistent balances and movements of the individual entrepreneur current account through RBO API under D-35.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-0.2`, `task-3.3`, `task-2.4`, `task-2.5`.
 
@@ -133,14 +141,14 @@ Automatically retrieve consistent balances and movements of the individual entre
 
 ### Change and contracts
 
-Implement the RBO API connector for the individual entrepreneur current account only under D-35, after task-0.10 resolves RAIF-B02/B03/B04/B06. Initial evidence and synthetic JSON/XML are in evidence/raiffeisen*. Handle lower-camel-case account fields, explicit RUR→RUB alias, separate UUID id and 20-digit number/accountKeys, Decimal, CAMT.053.001.08 and nested entries without double posting. Preserve source status/code and only verified mappings for completed/COMPLETED and no-statements/NO_STATEMENTS. no-statements is not a zero balance. NtryRef was verified across two overlapping reports, but reconnect/correction behaviour needs testing. FCHG/NTRF codes do not establish expense or internal-transfer classification. Implement protected Code Flow under contracts, atomic rotation, a read allowlist, hourly imports and history completeness. Isolate members’ external accounts; reconnect links the existing source and stale jobs cannot apply after disconnect. Other Raif products are deferred; Playwright requires a proven API gap.
+Implement the RBO API for the individual entrepreneur current account under D-35. Keep Account UUID and number/accountKeys separate; map RUR explicitly to RUB. CAMT.053 permits a 1:N relation between an entry and transaction details without double posting. Identity: for every postable detail compute a sufficient versioned `camtCrossReportFingerprint` from fields proven invariant across overlapping camt.052/camt.053: non-empty structured references, party/account/remittance and bank-code fields in documented order. It is always the canonical providerRecordId even when NtryRef/AcctSvcrRef/EndToEndId is present. Those optional IDs and statement/report ID remain aliases/provenance; aliases are registered atomically with the canonical source record. Amount/time are excluded. An insufficient fingerprint, one alias mapped to different fingerprints or one fingerprint covering different facts yields `source_ambiguous`, retains evidence and creates no new posting. Corrections/reversals create revisions. `no-statements` is not a zero balance. When camt.052 is unavailable, show the last confirmed CLBD with `asOf`/coverage; available/locked/balance/fee without evidence stay unknown. Before provider deployment verify Code Flow/rotation, allowlist, history completeness, reauthentication, two accounts and stale jobs. Playwright is allowed only for a proven API gap. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again.
 
 ### Change boundaries
 
 - `backend/internal/integrations/raiffeisen/`
 - `collector/src/providers/raiffeisen/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -157,10 +165,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-043
 
@@ -225,18 +234,25 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** If the binding is already incomplete or stale, the server returns `provider_not_admitted` with no job, collector IO or posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding. Each job/result carries immutable binding and `admissionRevision`; a binding change during a read cancels work best effort, while mandatory commit-time revalidation retains a stale result in quarantine without a source record or posting.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
 make test-contract PROVIDER=raiffeisen && make test-integration AREA=raiffeisen
 ```
 
-All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result.
+Synthetic CAMT fixtures cover 1:N, replay, an optional ID present in only one of camt.052/camt.053, canonical fingerprint/alias collision, correction/reversal, no-statements and unknown balance/fee; a separate live readback proves access, history, reauthentication and two accounts before deployment.
 
-The task-1.1 foundation already contains make commands; a command existing does not establish an implemented adapter or passing live checks. Raif research checks: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Tokens and original responses stay private; unresolved RAIF-B02/B03/B04/B06 remain an implementation gate.
+The task-1.1 foundation provides make commands; command presence does not establish an implemented adapter. Local CAMT contracts are separate from the provider deployment gate: task-4.2 verifies permission, Code Flow, a second account and production conformance.
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

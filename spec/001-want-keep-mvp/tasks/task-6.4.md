@@ -5,7 +5,7 @@
 
 Сопоставлять вложения без ложной доходности от пополнения или FX.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-6.3`.
 
@@ -13,13 +13,13 @@
 
 ### Изменение и контракты
 
-Реализовать annualized money-weighted return (XIRR) по dated external contributions/withdrawals и terminal value согласно contracts.md. Показывать исходную/отчётную валюту и фактический доход отдельно. Отдельно обрабатывать отсутствие смены знака, нулевой период, неоднозначные корни и неполную историю; не подставлять 0%. Предположения/метод доступны пользователю.
+Реализовать XIRR Actual/365 по объединённым потокам одной календарной даты. Cash-flow decimal остаются точными; fractional power считать как `exp((days/365) × ln(1+r))` в decimal context минимум 50 значащих цифр, ROUND_HALF_EVEN, с доказанной общей погрешностью NPV `≤ 1e-24 × max(1, Σ|CF|)`. Требуются положительный и отрицательный потоки и ровно одна смена знака. Решать NPV=0 bisection от `rLow=-1+1e-12` до `rHigh=1 000 000`; bracket требует разные знаки boundary NPV либо границу в tolerance. Остановка: `|NPV| ≤ 1e-12 × max(1, Σ|CF|)` или ширина `≤ 1e-12 × max(1, |rMid|)`, максимум 512 итераций; результат — rMid, HALF_EVEN до 12 знаков после запятой. Если error bound/знак не доказан, нет bracket, несколько смен знака, нулевой период, missing valuation или convergence — объяснённый `unavailable`, не 0%. Проверить irregular 182-day и boundary vectors; показывать native/reporting currency, доход и метод отдельно от FX.
 
 ### Границы изменений
 
 - `backend/internal/returns/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -30,7 +30,7 @@
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-033
 
@@ -66,21 +66,21 @@
 make test-go PKG=./internal/returns/...
 ```
 
-Эталонные денежные потоки дают ожидаемую доходность; неподходящие данные возвращают объяснимую unavailable-оценку.
+`-1000/+1100` за 365 дней даёт 10%; `-1000/+1050` за 182 дня даёт `0.102795595422`. rLow/root-above-rHigh, отсутствие или несколько смен знака, same-day net zero, missing valuation, недоказанный numeric error и no convergence дают заданный boundary outcome либо `unavailable`.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Compare investments without treating contributions or FX as yield.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-6.3`.
 
@@ -88,13 +88,13 @@ Compare investments without treating contributions or FX as yield.
 
 ### Change and contracts
 
-Implement annualized money-weighted return (XIRR) from dated external contributions/withdrawals and terminal value per contracts.md. Show native/reporting currency and actual income separately. Handle no sign change, zero period, ambiguous roots and incomplete history explicitly; do not substitute 0%. Expose method/assumptions to the owner.
+Implement Actual/365 XIRR after aggregating flows on the same calendar date. Cash-flow decimals remain exact; evaluate fractional powers as `exp((days/365) × ln(1+r))` in a decimal context of at least 50 significant digits, ROUND_HALF_EVEN, with a proven total NPV error `≤ 1e-24 × max(1, Σ|CF|)`. Inputs require positive and negative flows and exactly one sign transition. Solve NPV=0 by bisection from `rLow=-1+1e-12` through `rHigh=1,000,000`; a bracket requires opposite boundary NPV signs or a boundary within tolerance. Stop at `|NPV| ≤ 1e-12 × max(1, Σ|CF|)` or interval width `≤ 1e-12 × max(1, |rMid|)`, with at most 512 iterations; return rMid rounded HALF_EVEN to 12 decimal places. If the error bound/sign is not established, no bracket exists, signs change more than once, the period is zero, valuation is missing or convergence fails, return explained `unavailable`, never 0%. Test irregular 182-day and boundary vectors; show native/reporting currency, income and method separately from FX.
 
 ### Change boundaries
 
 - `backend/internal/returns/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -105,7 +105,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-033
 
@@ -141,12 +141,12 @@ A criterion link establishes coverage; research or a partial task does not prove
 make test-go PKG=./internal/returns/...
 ```
 
-Reference cash flows give expected returns; unsuitable inputs return an explained unavailable result.
+`-1000/+1100` over 365 days returns 10%; `-1000/+1050` over 182 days returns `0.102795595422`. rLow/root-above-rHigh, no or multiple sign transitions, same-day net zero, missing valuation, unproven numeric error and non-convergence yield the specified boundary outcome or `unavailable`.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

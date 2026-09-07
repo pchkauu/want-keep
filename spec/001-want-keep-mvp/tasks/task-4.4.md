@@ -5,7 +5,7 @@
 
 Автоматически получать Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P по D-36 без повторного финансового эффекта.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-0.4`, `task-3.3`, `task-2.4`, `task-2.5`.
 
@@ -13,14 +13,14 @@
 
 ### Изменение и контракты
 
-После закрытия BYBIT-B03/B04 и Ready реализовать официальный read-only API по evidence/bybit и evidence/bybit-api. API-доступ владельца к Funding, Flexible и P2P доказан; read POST list/detail включить в явный allowlist, финансовые create/pay/release/ads/transfer/stake/redeem запрещены. FUND не подменять UTA. Связывать журнал с деталями детерминированно: совпадение суммы/времени лишь кандидат; неоднозначность уточнять. Не классифицировать финансовое состояние по localization labels. Сохранять 18-значные native decimals и расхождения snapshot/ledger, не списывать остаточную сумму автоматически. Учесть yield result.list, P2P ret_code/items, seconds internal-deposit/Funding против ms фильтров/деталей, отсутствие hourly id и политику коллизий. Principal, accrual/distribution/Funding и fee учитывать один раз; нулевая выплата не создаёт credit. Сохранять исходные P2P fiat amount/quantity/quote независимо, связывать банк отдельно; empty fee не ноль. Следовать cursor на коротких страницах, сохранять durable checkpoints/revisions/coverage. Проверить RSA readOnly и изоляцию/ротацию/отзыв двух владельцев. Collector добавлять только при доказанном новом пробеле API. Fixed и остальные неиспользуемые продукты не блокируют; движения включённых кошельков сохраняются.
+Реализовать официальный read-only API для Funding USDT/USDC/ETH/BTC, используемого Flexible Easy Earn и P2P по D-36; финансовые create/pay/release/ads/transfer/stake/redeem запрещены allowlist. Route-specific provider IDs живут в отдельных product/log namespaces D-39. Связи Funding/Earn/P2P по amount/time — только кандидаты. Если hourly record ID отсутствует, fallback `(coin, productId, hourlyDate)` допустим только в hourly namespace; различающийся payload создаёт `source_ambiguous`, сохраняет обе evidence revisions и не проводит деньги. Сохранять 18-значные decimals, cursor даже на короткой странице, coverage, seconds/ms semantics, revisions, native P2P fiat/quantity/quote и unknown fee. Principal, yield и funding legs учитываются один раз. До provider deployment проверить RSA readOnly, lifetime/history gaps, precision reconciliation, два аккаунта, rotation/revocation и stale jobs. Collector допускается только при новом доказанном API-пробеле; Fixed/прочие продукты не требуются. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.
 
 ### Границы изменений
 
 - `backend/internal/integrations/bybit/`
 - `collector/src/providers/bybit/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -37,10 +37,11 @@
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации, разрешения оператора и окружения.
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-045
 
@@ -112,6 +113,13 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Если binding уже неполон или устарел, сервер возвращает `provider_not_admitted` без job, collector IO и проводки. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding. Job/result несёт неизменяемые binding и `admissionRevision`; смена binding во время read отменяет работу best effort, а обязательная commit-time revalidation сохраняет stale result в quarantine без source record или проводки.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
@@ -124,15 +132,15 @@ make test-contract PROVIDER=bybit && make test-integration AREA=bybit
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Automatically read Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P under D-36 without duplicate financial effects.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-0.4`, `task-3.3`, `task-2.4`, `task-2.5`.
 
@@ -140,14 +148,14 @@ Automatically read Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P under D-36 
 
 ### Change and contracts
 
-After BYBIT-B03/B04 closure and Ready, implement official read-only APIs from evidence/bybit and evidence/bybit-api. Owner access to Funding, Flexible and P2P is proven; explicitly allowlist read POST list/detail, forbid financial create/pay/release/ads/transfer/stake/redeem. Do not substitute UTA for FUND. Link ledger/details deterministically: amount/time equality is only a candidate; clarify ambiguity. Do not classify financial state from localization labels. Preserve 18-place native decimals and snapshot/ledger differences without automatically spending residuals. Handle yield result.list, P2P ret_code/items, seconds for internal-deposit/Funding versus ms filters/details, missing hourly id and collision policy. Account for principal, accrual/distribution/Funding and fee once; zero yield creates no credit. Preserve P2P native fiat amount/quantity/quote independently and match the bank separately; empty fee is not zero. Follow cursors on short pages; retain durable checkpoints/revisions/coverage. Verify RSA readOnly and two-owner isolation/rotation/revocation. Add collector code only for a newly demonstrated API gap. Fixed and other unused products do not block; included-wallet movements remain.
+Implement official read-only APIs for Funding USDT/USDC/ETH/BTC, used Flexible Easy Earn and P2P under D-36; the allowlist forbids financial create/pay/release/ads/transfer/stake/redeem operations. Route-specific provider IDs live in separate D-39 product/log namespaces. Amount/time matches across Funding/Earn/P2P are candidates only. When an hourly record ID is absent, fallback `(coin, productId, hourlyDate)` is allowed only in the hourly namespace; a different payload yields `source_ambiguous`, retains both evidence revisions and posts no money. Preserve 18-place decimals, cursors even on short pages, coverage, seconds/ms semantics, revisions, native P2P fiat/quantity/quote and unknown fees. Account for principal, yield and funding legs once. Before provider deployment verify RSA read-only access, lifetime/history gaps, precision reconciliation, two accounts, rotation/revocation and stale jobs. A collector is allowed only for a newly proven API gap; Fixed/other products are not required. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again.
 
 ### Change boundaries
 
 - `backend/internal/integrations/bybit/`
 - `collector/src/providers/bybit/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -164,10 +172,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-045
 
@@ -239,6 +248,13 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** If the binding is already incomplete or stale, the server returns `provider_not_admitted` with no job, collector IO or posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding. Each job/result carries immutable binding and `admissionRevision`; a binding change during a read cancels work best effort, while mandatory commit-time revalidation retains a stale result in quarantine without a source record or posting.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
@@ -251,6 +267,6 @@ The task-1.1 foundation provides make commands; financial provider/integration/E
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

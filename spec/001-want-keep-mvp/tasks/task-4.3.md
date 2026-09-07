@@ -5,7 +5,7 @@
 
 Автоматически получать согласованные данные дебетовой карты Ozon и связанного основного счёта без двойного остатка.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-0.3`, `task-3.3`, `task-2.4`, `task-2.5`.
 
@@ -13,14 +13,14 @@
 
 ### Изменение и контракты
 
-Реализовать текущий контракт Ozon по D-32: дебетовая карта и связанный основной счёт, их остатки и операции. Кредитки, накопления и вклады — будущее расширение; их отсутствие не блокирует этот коннектор. Не подменять банковские операции заказами маркетплейса, UI-сводку «Доходы» семейным доходом или округлённый агрегат точной суммой. Реализовать только доказанный в evidence/ozon способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется. Поля и синтетические проекции: evidence/ozon.md и evidence/ozon.samples.json. Валюта RUR преобразуется в RUB; cents обрабатываются точно. Не использовать меняющийся accountToken или один groupID как ключ дедупликации: перевод и комиссия могут разделять groupID. lastOperationId — кандидат source ID, parentOperationId связывает комиссию; жизненный цикл сверяется отдельно. Учитывать status вместе с типом и meta, не проводить canceled или неизвестное сочетание. Отсутствие available/locked и исходной покупки возврата остаётся явным. Каждый next обрабатывается с сохранением coverage; конец HAR не означает конец истории.
+Реализовать текущий контракт Ozon по D-32: дебетовая карта и связанный основной счёт, их остатки и операции. Кредитки, накопления и вклады — будущее расширение; их отсутствие не блокирует этот коннектор. Не подменять банковские операции заказами маркетплейса, UI-сводку «Доходы» семейным доходом или округлённый агрегат точной суммой. Использовать синтетическую проекцию готовых HAR из evidence/ozon и реализовать только доказанный read allowlist, mappers и contract fixtures. Source identity следует D-39: accountToken и connection ID не являются account identity; route-specific record ID живёт в product/log namespace. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. До provider deployment проверить разрешение на session transport, lifecycle сессии, второй аккаунт и полный live readback; collector используется только при подтверждённой необходимости браузера. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется. Поля и синтетические проекции: evidence/ozon.md и evidence/ozon.samples.json. Валюта RUR преобразуется в RUB; cents обрабатываются точно. Не использовать меняющийся accountToken или один groupID как ключ дедупликации: перевод и комиссия могут разделять groupID. lastOperationId — кандидат source ID, parentOperationId связывает комиссию; жизненный цикл сверяется отдельно. Учитывать status вместе с типом и meta, не проводить canceled или неизвестное сочетание. Отсутствие available/locked и исходной покупки возврата остаётся явным. Каждый next обрабатывается с сохранением coverage; конец HAR не означает конец истории. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.
 
 ### Границы изменений
 
 - `backend/internal/integrations/ozon/`
 - `collector/src/providers/ozon/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -37,10 +37,11 @@
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации, разрешения оператора и окружения.
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-044
 
@@ -105,6 +106,13 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Если binding уже неполон или устарел, сервер возвращает `provider_not_admitted` без job, collector IO и проводки. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding. Job/result несёт неизменяемые binding и `admissionRevision`; смена binding во время read отменяет работу best effort, а обязательная commit-time revalidation сохраняет stale result в quarantine без source record или проводки.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
@@ -117,15 +125,15 @@ make test-contract PROVIDER=ozon && make test-integration AREA=ozon
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Automatically retrieve consistent Ozon debit-card and linked main-account data without duplicating the balance.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-0.3`, `task-3.3`, `task-2.4`, `task-2.5`.
 
@@ -133,14 +141,14 @@ Automatically retrieve consistent Ozon debit-card and linked main-account data w
 
 ### Change and contracts
 
-Implement the current Ozon contract under D-32: debit card and linked main account, their balances and transactions. Credit cards, savings and deposits are a future extension; their absence does not block this connector. Do not substitute marketplace orders for bank transactions, the UI Income summary for household income, or rounded aggregates for exact amounts. Implement only the access method established in evidence/ozon, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required. Member accounts remain isolated; reconnection of one real account links to the existing source. Stale results cannot apply after disconnect. Field shapes and synthetic projections: evidence/ozon.en.md and evidence/ozon.samples.json. Map RUR to RUB and process cents exactly. Never use rotating accountToken or groupID alone for deduplication: a transfer and its commission may share groupID. lastOperationId is a source-ID candidate and parentOperationId links the commission; reconcile lifecycle separately. Combine status with type/meta; never post canceled or unknown combinations. Missing available/locked fields and original refund purchase remain explicit. Process each next with persisted coverage; HAR completion is not history completion.
+Implement the current Ozon contract under D-32: debit card and linked main account, their balances and transactions. Credit cards, savings and deposits are a future extension; their absence does not block this connector. Do not substitute marketplace orders for bank transactions, the UI Income summary for household income, or rounded aggregates for exact amounts. Use the synthetic projection of the completed HAR evidence and implement only the proven read allowlist, mappers and contract fixtures. Source identity follows D-39: accountToken and connection ID are not account identity; a route-specific record ID lives in the product/log namespace. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Before provider deployment verify session-transport permission, session lifecycle, a second account and complete live readback; use the collector only when browser access is proven necessary. Member accounts remain isolated; reconnection of one real account links to the existing source. Stale results cannot apply after disconnect. Field shapes and synthetic projections: evidence/ozon.en.md and evidence/ozon.samples.json. Map RUR to RUB and process cents exactly. Never use rotating accountToken or groupID alone for deduplication: a transfer and its commission may share groupID. lastOperationId is a source-ID candidate and parentOperationId links the commission; reconcile lifecycle separately. Combine status with type/meta; never post canceled or unknown combinations. Missing available/locked fields and original refund purchase remain explicit. Process each next with persisted coverage; HAR completion is not history completion. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again.
 
 ### Change boundaries
 
 - `backend/internal/integrations/ozon/`
 - `collector/src/providers/ozon/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -157,10 +165,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-044
 
@@ -225,6 +234,13 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** If the binding is already incomplete or stale, the server returns `provider_not_admitted` with no job, collector IO or posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding. Each job/result carries immutable binding and `admissionRevision`; a binding change during a read cancels work best effort, while mandatory commit-time revalidation retains a stale result in quarantine without a source record or posting.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
@@ -237,6 +253,6 @@ The `make` commands are a future contract established by task-1.1; they do not e
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

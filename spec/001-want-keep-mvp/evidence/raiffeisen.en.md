@@ -2,7 +2,7 @@
 
 [Русский](raiffeisen.md)
 
-Date: 2026-09-07. Task: [task-0.2 / Issue #2](https://github.com/pchkauu/want-keep/issues/2). **Research completed with open contract questions; production account and historical statement reads verified.** BLK-02 open; task-4.2 and MVP Not Ready.
+Date: 2026-09-07. Task: [task-0.2 / Issue #2](https://github.com/pchkauu/want-keep/issues/2). **Research is complete; production account and historical statement reads are verified, while the connector is not implemented.** The original RAIF-B02/B03/B04/B06 were handed to task-0.10; D-39 and the task-4.2 runtime gate are recorded in the final section below.
 
 ## Scope and selected approach
 
@@ -132,16 +132,22 @@ Under the owner's explicit D-35 decision, the only mandatory Raif product is the
 | ID | Status | Evidence / remaining question |
 | --- | --- | --- |
 | RAIF-B01 | Closed for initial API access | Refresh and account GET from Mac, account GET from VPS — HTTP 200; not an ongoing integration |
-| RAIF-B02 | Partly closed: accounts/CAMT mapping | XSD, 1:N, reversal/pending and IDs across corrections needed. Profile verified on two reports |
-| RAIF-B03 | Open: completeness/history | Archive/retention/quotas, empty days, split/resume, late changes and camt.052↔053 replay |
-| RAIF-B04 | Open: authorization/operations | Refresh 30/180 days, reauth/revocation, second external account, ongoing protected storage, hourly import; callback still 503 |
+| RAIF-B02 | SDD RESOLVED; RUNTIME GATE task-4.2 | XSD, 1:N, reversal/pending and IDs across corrections needed. Profile verified on two reports |
+| RAIF-B03 | SDD RESOLVED; RUNTIME GATE task-4.2 | Archive/retention/quotas, empty days, split/resume, late changes and camt.052↔053 replay |
+| RAIF-B04 | RUNTIME GATE task-4.2 | Refresh 30/180 days, reauth/revocation, second external account, ongoing protected storage, hourly import; callback still 503 |
 | RAIF-B05 | Closed | D-35 replaces original retail scope with the entrepreneur current account only |
-| RAIF-B06 | Open under refined scope | Current/available/locked balance and exact fee semantics. 404 is not zero; unused products do not block |
+| RAIF-B06 | SDD RESOLVED; RUNTIME GATE task-4.2 | Current/available/locked balance and exact fee semantics. 404 is not zero; unused products do not block |
 
-Next checks: successful intraday on an available banking day, current balance source after no-statements, bank fee semantics, history depth, reauthorization and a second account. Do not move money for testing; do not retry refresh/generation after unknown outcomes without reconciliation. task-0.10 resolves remaining questions; task-4.2 and the entire MVP stay Not Ready.
+task-4.2 verifies intraday on an available banking day, current balance after no-statements, fee semantics, history depth, reauthentication and a second account. Tests move no money; unknown outcomes are reconciled first. D-39 closes SDD rules without replacing these runtime tests.
 
 ## Traceability and verification
 
 AC-043/REQ-043: account and historical statement live reads completed; full application criterion not passed. AC-041/REQ-041: overlap checked, full archive/resume unverified. AC-048/REQ-048: diagnostic allowlist tested synthetically; no financial commands executed. AC-079/REQ-065: one account stable across requests/hosts; reconnect and two members unverified. AC-087/REQ-073: one rotation and unknown-outcome guard verified; household authorization/stale-job revocation not implemented. AC-070 removed from Raif under D-35; other platforms' credit/savings requirements remain.
 
 [Verification](../verification.en.md) separates tests, API and infrastructure. Originals and credentials remain private; public examples contain no real amounts, personal data, account details, tokens or local credential paths. Code Flow, sandbox and full application runtime were not tested. Commit/push results and research-closure readback are recorded in [Issue #2](https://github.com/pchkauu/want-keep/issues/2); BLK-02 remains assigned to task-0.10.
+
+## task-0.10 decision, 2026-09-07
+
+RAIF-B02/B03/B04/B06 above move from a global SDD blocker into the executable task-4.2 gate. The target contract permits CAMT entry to 1:N transaction details. For every postable detail, a sufficient versioned `camtCrossReportFingerprint` built from fields proven invariant across overlapping camt.052/camt.053 is always the canonical providerRecordId. NtryRef/AcctSvcrRef/EndToEndId and statement/report ID are atomically registered as aliases/provenance and do not select an alternative key; amount/time are excluded. An insufficient fingerprint or ambiguous alias mapping yields `source_ambiguous`, retains evidence and creates no new posting. Corrections/reversals are retained as revisions.
+
+`no-statements` is not a zero balance. When camt.052 is unavailable, use the last confirmed CLBD with `asOf`/coverage; available/locked/balance/fee without evidence stay unknown. OAuth lifecycle, complete archive, corrections, a second account and live conformance are mandatory before provider deployment but do not block SDD development.

@@ -5,7 +5,7 @@
 
 Зафиксировать доказательства и ограничения чтения используемых карт, Grow, кошелька USDT и архива P2P EMCD по D-34.
 
-**Состояние:** Исследование завершено 2026-09-07 с блокерами автоматизации: UI четырёх областей проверен, EMCD-E01–E26 и шесть синтетических сценариев записаны. EMCD-B02–B04 / BLK-06 переданы task-0.10; task-4.6 и MVP Not Ready.
+**Состояние:** Исследование EMCD UI завершено; task-0.10 закрепила D-34/D-39 namespaces и unknown/collision behavior. SDD Ready; structured fixtures и conformance остаются gate task-4.6.
 
 **Зависимости:** нет.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Объём D-34: кошелёк USDT, существующие Coinhold/Grow, карты Plus/Light и исторические P2P-ордера. Майнинг не использовался никогда; его история, другие продукты и новые mining API-ключи не нужны. Evidence/emcd.md и .en.md содержат датированные UI-наблюдения, официальные источники, продуктовую матрицу, поля/ограничения и EMCD-B01–B05. Опубликованный Mining Pool API 1.3.0 не доказывает чтение выбранных продуктов. Структурированных request/response этих продуктов нет; emcd.samples.json — проектные сценарии, не provider fixtures. Отделить агрегат и дочерние остатки, accrual/capitalization/payout Grow, declined principal и fee карты, точные стороны P2P и его округлённый UI. Сохранить вопросы identity/revisions/history/reauth/второго аккаунта и чтения без внешних мутаций. BLK-06 закрывает task-0.10; исследование завершает evidence, но не разблокирует task-4.6 без закрытия контракта и Ready.
+Объём D-34: кошелёк USDT, существующие Coinhold/Grow, карты Plus/Light и исторические P2P-ордера. Майнинг не использовался никогда; его история, другие продукты и новые mining API-ключи не нужны. Evidence/emcd.md и .en.md содержат датированные UI-наблюдения, официальные источники, продуктовую матрицу, поля/ограничения и EMCD-B01–B05. Опубликованный Mining Pool API 1.3.0 не доказывает чтение выбранных продуктов. Структурированных request/response этих продуктов нет; emcd.samples.json — проектные сценарии, не provider fixtures. Отделить агрегат и дочерние остатки, accrual/capitalization/payout Grow, declined principal и fee карты, точные стороны P2P и его округлённый UI. Сохранить вопросы identity/revisions/history/reauth/второго аккаунта и чтения без внешних мутаций. D-38/D-39 закрывают SDD-часть; исследование завершает evidence, а structured fixtures и conformance остаются entry/deployment gate task-4.6.
 
 ### Границы изменений
 
@@ -21,7 +21,7 @@
 - `spec/001-want-keep-mvp/evidence/emcd.en.md`
 - `spec/001-want-keep-mvp/evidence/emcd.samples.json`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -37,7 +37,7 @@
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-047
 
@@ -93,15 +93,15 @@ RU/EN evidence разделяет подтверждённое UI-чтение, 
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Record reading evidence and limitations for used EMCD cards, Grow, USDT wallet and P2P archive under D-34.
 
-**Status:** Research completed on 2026-09-07 with automation blockers: four UI areas verified, EMCD-E01–E26 and six synthetic scenarios recorded. EMCD-B02–B04 / BLK-06 handed to task-0.10; task-4.6 and MVP Not Ready.
+**Status:** EMCD UI research is complete; task-0.10 fixed D-34/D-39 namespaces and unknown/collision behavior. The SDD is Ready; structured fixtures and conformance remain the task-4.6 gate.
 
 **Dependencies:** none.
 
@@ -109,7 +109,7 @@ Record reading evidence and limitations for used EMCD cards, Grow, USDT wallet a
 
 ### Change and contracts
 
-D-34 scope: USDT wallet, existing Coinhold/Grow, Plus/Light cards and historical P2P orders. Mining has never been used; its history, other products and new mining API keys are unnecessary. Evidence/emcd.md and .en.md contain dated UI observations, official sources, product matrix, fields/limitations and EMCD-B01–B05. Published Mining Pool API 1.3.0 does not establish selected-product reading. Their structured request/response pairs are unavailable; emcd.samples.json contains designed scenarios, not provider fixtures. Separate aggregates/child balances, Grow accrual/capitalization/payout, declined card principal/fees and exact P2P legs/rounded UI. Retain identity/revisions/history/reauth/second-account and read-only questions. task-0.10 resolves BLK-06; completed research does not unblock task-4.6 before contract closure and Ready.
+D-34 scope: USDT wallet, existing Coinhold/Grow, Plus/Light cards and historical P2P orders. Mining has never been used; its history, other products and new mining API keys are unnecessary. Evidence/emcd.md and .en.md contain dated UI observations, official sources, product matrix, fields/limitations and EMCD-B01–B05. Published Mining Pool API 1.3.0 does not establish selected-product reading. Their structured request/response pairs are unavailable; emcd.samples.json contains designed scenarios, not provider fixtures. Separate aggregates/child balances, Grow accrual/capitalization/payout, declined card principal/fees and exact P2P legs/rounded UI. Retain identity/revisions/history/reauth/second-account and read-only questions. D-38/D-39 resolve the SDD portion; research completes evidence, while structured fixtures and conformance remain the task-4.6 entry/deployment gate.
 
 ### Change boundaries
 
@@ -117,7 +117,7 @@ D-34 scope: USDT wallet, existing Coinhold/Grow, Plus/Light cards and historical
 - `spec/001-want-keep-mvp/evidence/emcd.en.md`
 - `spec/001-want-keep-mvp/evidence/emcd.samples.json`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -133,7 +133,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-047
 
@@ -189,6 +189,6 @@ The task-1.1 foundation provides make commands; financial provider/integration/E
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

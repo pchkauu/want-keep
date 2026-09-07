@@ -4,7 +4,7 @@
 
 Date: 2026-09-07, Europe/Moscow. Task: [task-0.5 / Issue #5](https://github.com/pchkauu/want-keep/issues/5). Repository baseline: `7189149`, branch `docs/want-keep-mvp-sdd`. Environment: the owner-provided authenticated portal in Google Chrome. Application and server API versions were not established.
 
-**Research completed with blocking automation findings.** RUB accounts, USDT, ETH and the existing virtual card were read through the interface. No structured provider contract or automatic import was verified. BLK-05 remains open under task-0.10; task-4.5 and the MVP remain **Not Ready**. Research may finish with these findings under the [README](../README.en.md) rule.
+**Research is complete; automatic import is not implemented.** Selected RUB/USDT/ETH/card UI areas were read, while no structured provider contract was proven. The original AIFORY-B02–B04 were handed to task-0.10; D-38/D-39 and the task-4.5 gate are recorded in the final section below.
 
 ## Current scope: D-33
 
@@ -108,12 +108,12 @@ Expected: `0.04000000 + 0.00300000 = 0.04300000`, remainder `0.00700000`; do not
 | ID | Status | Needed evidence and closure owner |
 | --- | --- | --- |
 | AIFORY-B01 | CLOSED | Access to the supplied tab confirmed; this does not test reauthorization |
-| AIFORY-B02 | OPEN | task-0.10: permitted free automatic access, operator consent, documented read contract, auth/limits/allowlist. No client-side fix substitutes for access permission |
-| AIFORY-B03 | OPEN | task-0.10: structured IDs/statuses/precision/time/coverage, full repeat/resume case, reauthorization and second external account; no human-name identity shortcut |
-| AIFORY-B04 | OPEN | task-0.10: card lifecycle linkage, funding gross/net/conversion, fees, refunds and holds; E10–E13 do not prove automatic matching |
+| AIFORY-B02 | RUNTIME GATE task-4.5 | task-4.5: permitted free automatic access, operator consent, documented read contract, auth/limits/allowlist. No client-side fix substitutes for access permission |
+| AIFORY-B03 | SDD RESOLVED; RUNTIME GATE task-4.5 | task-4.5: structured IDs/statuses/precision/time/coverage, full repeat/resume case, reauthorization and second external account; no human-name identity shortcut |
+| AIFORY-B04 | SDD RESOLVED; RUNTIME GATE task-4.5 | task-4.5: card lifecycle linkage, funding gross/net/conversion, fees, refunds and holds; E10–E13 do not prove automatic matching |
 | AIFORY-B05 | DEFERRED, NON-BLOCKING | Other D-33 products; investigate only after a future explicit scope extension |
 
-BLK-05 contains only AIFORY-B02–B04 for included products. task-0.5 finishes evidence collection and hands questions to task-0.10; task-4.5 receives concrete rules/scenarios but remains blocked. ETH valuation is handed to task-0.7 and the valuation implementation task; an unverified rate is not zero.
+AIFORY-B02–B04 are task-4.5 entry/deployment gates for included products; D-38/D-39 resolve their SDD portion. ETH valuation is handed to task-6.1; an unverified rate is not zero. Research is not runtime acceptance.
 
 ## Verification
 
@@ -122,3 +122,9 @@ Performed: read-only Chrome UI observations E02–E17, official-source inspectio
 Commands: `python3 spec/001-want-keep-mvp/tools/spec_tool.py check`, `python3 -m unittest discover -s spec/001-want-keep-mvp/tools -p 'test_*.py'`, `git diff --check`. These validate documentation/generation, not the application.
 
 Not performed: API/collector runtime, HAR capture, full history export, DE/NL/BG cold start, hourly sync, reauth/MFA/expiry, second account, replay/429/5xx, refund/reversal and full-card money reconciliation. Reason: no permitted verified structured contract or required runtime samples. Full AC-046, AC-041, AC-048, AC-079, AC-087 are not claimed as passed. Aifory credit/savings terms are not researched and do not block current scope.
+
+## task-0.10 decision, 2026-09-07
+
+AIFORY-B02–B04 above become task-4.5 entry/deployment gates instead of a global SDD blocker. D-33 limits scope and D-39 defines separate namespaces plus `source_ambiguous` without posting. The signed-in Chrome tab is available, but the application renders as a Flutter canvas; safe DOM reading exposes no structured financial fields. Response bodies were not exported.
+
+Permission, structured fixtures, stable identity, pagination/coverage, revisions/statuses/fees, card lifecycle/FX, reauthentication and two accounts are mandatory before deployment. UI labels/office/address/path are not identity. SDD Ready does not claim a running Aifory connector.

@@ -252,9 +252,9 @@ Source: `D-03`. Acceptance: [AC-041](acceptance_criteria.en.md#ac-041).
 
 ## REQ-042
 
-The Alfa-Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+Alfa automatically reads debit, current/savings, deposits and cashback under a verified contract.
 
-Source: `D-13`. Acceptance: [AC-042](acceptance_criteria.en.md#ac-042).
+Source: `D-37`. Acceptance: [AC-042](acceptance_criteria.en.md#ac-042).
 
 ## REQ-043
 
@@ -525,3 +525,9 @@ Source: `D-30`. Acceptance: [AC-103](acceptance_criteria.en.md#ac-103).
 Contextual pixel animations acknowledge milestones and warn about limits while preserving accessibility and truthful outcomes.
 
 Source: `D-31`. Acceptance: [AC-104](acceptance_criteria.en.md#ac-104).
+
+## REQ-088
+
+Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
+
+Source: `D-43`. Acceptance: [AC-106](acceptance_criteria.en.md#ac-106).

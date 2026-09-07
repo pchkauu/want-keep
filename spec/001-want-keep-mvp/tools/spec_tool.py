@@ -26,7 +26,11 @@ class SpecCatalog:
     self.screens = {item["id"]: item for item in self.data["screens"]}
     self.forms = {item["id"]: item for item in self.data["forms"]}
     self.ui_states = {item["id"]: item for item in self.data["ui_states"]}
+    self.readiness = self.data.get("readiness", {})
     self._ancestry = {}
+
+  def is_ready_for_development(self):
+    return self.readiness.get("status") == "ready_for_development"
 
   def task_requirements(self, task):
     return sorted({req for ac in task["acceptance"] for req in self.criteria[ac]["requirements"]})
@@ -36,6 +40,8 @@ class SpecCatalog:
       return task["status"][lang]
     if task["kind"] == "research":
       return {"ru": "Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.", "en": "Research — not started; live access and paid runs require securely supplied owner access."}[lang]
+    if self.is_ready_for_development():
+      return {"ru": "Не начато; задача ожидает собственные зависимости и entry gates.", "en": "Not started; the task awaits its own dependencies and entry gates."}[lang]
     return {"ru": "Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.", "en": "Blocked by dependencies and the SDD Ready gate; implementation has not started."}[lang]
 
   def task_verification_note(self, task, lang):
@@ -65,13 +71,16 @@ class SpecCatalog:
           state = self.ui_states[state_id]
           lines += [f"- **{state_id} — {state['title'][lang]}:** {state['behavior'][lang]}"]
         lines.append("")
-      lines += ["", ("Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию." if ru else "These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation."), "", "### " + ("Связанные требования" if ru else "Linked requirements"), ""]
-      lines += [f"- **{req}:** {self.requirements[req]['title'][lang]}" for req in reqs]
-      lines += ["", "### " + ("Критерии приёмки" if ru else "Acceptance criteria"), "", ("Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке." if ru else "A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below."), ""]
+      lines += ["", ("Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу." if ru else "Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work."), "", "### " + ("Связанные требования" if ru else "Linked requirements"), ""]
+      if task.get("requirements_display") == "ids":
+        lines += [("Полные формулировки проверяемого поведения приведены в AC ниже. REQ: " if ru else "The AC scenarios below contain the complete verifiable behavior. REQ: ") + ", ".join(f"`{req}`" for req in reqs) + "."]
+      else:
+        lines += [f"- **{req}:** {self.requirements[req]['title'][lang]}" for req in reqs]
+      lines += ["", "### " + ("Критерии приёмки" if ru else "Acceptance criteria"), "", ("Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже." if ru else "A link establishes coverage but does not prove the whole criterion; verification below records the exact result."), ""]
       for ac in task["acceptance"]:
         criterion = self.criteria[ac]
         lines += [f"#### {ac}", "", self.criterion_text(criterion, lang), ""]
-      lines += ["### " + ("Проверка результата" if ru else "Verification"), "", "```sh", task["verification"]["command"], "```", "", task["verification"]["expected"][lang], "", self.task_verification_note(task, lang), "", "### " + ("Передача следующему агенту" if ru else "Handoff to the next agent"), "", ("Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP." if ru else "Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready."), "", "**Commit boundary:** " + ("логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя." if ru else "this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization."), ""]
+      lines += ["### " + ("Проверка результата" if ru else "Verification"), "", "```sh", task["verification"]["command"], "```", "", task["verification"]["expected"][lang], "", self.task_verification_note(task, lang), "", "### " + ("Передача следующему агенту" if ru else "Handoff to the next agent"), "", ("Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата." if ru else "Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence."), "", "**Commit boundary:** " + ("commit/push/deploy требуют действующей авторизации пользователя." if ru else "commit/push/deploy require current user authorization."), ""]
     return "\n".join(lines).rstrip() + "\n"
 
   def generated(self):
@@ -91,7 +100,18 @@ class SpecCatalog:
       for ac in self.criteria.values():
         lines += ["", f"## {ac['id']}", "", ac["title"][lang], "", "REQ: " + ", ".join(f"`{req}`" for req in ac["requirements"]) + ".", "", self.criterion_text(ac, lang)]
       output[f"acceptance_criteria{suffix}.md"] = "\n".join(lines).rstrip() + "\n"
-      lines = ["# " + ("Backlog Want Keep MVP" if ru else "Want Keep MVP backlog"), "", notice, "", ("Полный backlog не является Ready-планом реализации. Сначала task-0.1–task-0.9 собирают доказательства, затем task-0.10 закрывает блокеры и проверяет SDD Ready. Все последующие задачи ждут этого барьера и собственных зависимостей. `plan.md` намеренно отсутствует до Ready. Карточки самодостаточны и содержат RU/EN." if ru else "The full backlog is not a Ready implementation plan. First task-0.1–task-0.9 collect evidence; task-0.10 then resolves blockers and reviews SDD readiness. All later tasks await that gate and their own dependencies. `plan.md` intentionally does not exist before Ready. Task cards are self-contained in RU/EN."), "", "| Task | " + ("Результат" if ru else "Outcome") + " | " + ("Зависимости" if ru else "Dependencies") + " | GitHub |", "| --- | --- | --- | --- |"]
+      backlog_intro = {
+        "ready": {
+          "ru": "Спецификация прошла task-0.10 и готова к разработке. Решение-полный порядок, параллелизм и entry/exit gates опубликованы в [plan.md](plan.md). Каждая задача по-прежнему ждёт собственные зависимости и runtime gates; Ready SDD не означает реализованный или принятый MVP. Карточки самодостаточны и содержат RU/EN.",
+          "en": "The specification passed task-0.10 and is ready for development. The decision-complete order, parallelism and entry/exit gates are published in [plan.en.md](plan.en.md). Each task still awaits its own dependencies and runtime gates; SDD Ready does not mean an implemented or accepted MVP. Task cards are self-contained in RU/EN.",
+        },
+        "not_ready": {
+          "ru": "Полный backlog не является Ready-планом реализации. Сначала task-0.1–task-0.9 собирают доказательства, затем task-0.10 закрывает блокеры и проверяет SDD Ready. Все последующие задачи ждут этого барьера и собственных зависимостей. `plan.md` намеренно отсутствует до Ready. Карточки самодостаточны и содержат RU/EN.",
+          "en": "The full backlog is not a Ready implementation plan. First task-0.1–task-0.9 collect evidence; task-0.10 then resolves blockers and reviews SDD readiness. All later tasks await that gate and their own dependencies. `plan.md` intentionally does not exist before Ready. Task cards are self-contained in RU/EN.",
+        },
+      }
+      readiness_key = "ready" if self.is_ready_for_development() else "not_ready"
+      lines = ["# " + ("Backlog Want Keep MVP" if ru else "Want Keep MVP backlog"), "", notice, "", backlog_intro[readiness_key][lang], "", "| Task | " + ("Результат" if ru else "Outcome") + " | " + ("Зависимости" if ru else "Dependencies") + " | GitHub |", "| --- | --- | --- | --- |"]
       for task in self.tasks.values():
         issue = f"[#{task['github_url'].rsplit('/', 1)[-1]}]({task['github_url']})" if task["github_url"] else ("не опубликована" if ru else "not published")
         lines.append(f"| [{task['id']}](tasks/{task['id']}.md) | {task['title'][lang]} | {', '.join(task['depends_on']) or '—'} | {issue} |")
@@ -139,6 +159,14 @@ class SpecCatalog:
 
   def validate_catalog(self):
     errors = []
+    if set(self.readiness) != {"status", "date", "gate_task"}:
+      errors.append("Invalid readiness metadata")
+    elif self.readiness["status"] not in ("not_ready", "ready_for_development"):
+      errors.append("Invalid readiness status")
+    elif not re.fullmatch(r"\d{4}-\d{2}-\d{2}", self.readiness["date"]):
+      errors.append("Invalid readiness date")
+    elif self.readiness["gate_task"] != "task-0.10":
+      errors.append("Invalid readiness gate task")
     if len(self.requirements) != len(self.data["requirements"]):
       errors.append("Duplicate REQ ID")
     if len(self.criteria) != len(self.data["requirements"]) + len(self.data["extra_acceptance"]):
@@ -172,6 +200,8 @@ class SpecCatalog:
         errors.append(f"Unresolved dependency in {task['id']}")
       if task["kind"] not in ("research", "specification", "implementation", "verification"):
         errors.append(f"Invalid task kind: {task['id']}")
+      if task.get("requirements_display") not in (None, "ids"):
+        errors.append(f"Invalid requirements display: {task['id']}")
       if "status" in task and (not isinstance(task["status"], dict) or set(task["status"]) != {"ru", "en"}):
         errors.append(f"Invalid task status translation: {task['id']}")
       for target in task["targets"]:
@@ -243,6 +273,12 @@ class SpecCatalog:
       for suffix in ("", ".en"):
         if not (self.root / f"{name}{suffix}.md").exists():
           errors.append(f"Missing hand-authored document: {name}{suffix}.md")
+    for suffix in ("", ".en"):
+      plan = self.root / f"plan{suffix}.md"
+      if self.is_ready_for_development() and not plan.exists():
+        errors.append(f"Missing Ready plan: {plan.name}")
+      if not self.is_ready_for_development() and plan.exists():
+        errors.append(f"Plan exists before Ready: {plan.name}")
     proposal = (self.root / "proposal.md").read_text() if (self.root / "proposal.md").exists() else ""
     for requirement in self.requirements.values():
       if requirement["decision"] not in proposal:

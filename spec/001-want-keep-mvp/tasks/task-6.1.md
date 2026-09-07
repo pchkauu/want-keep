@@ -5,7 +5,7 @@
 
 Сохранять историческую оценку и показывать текущие эквиваленты/котировки.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-0.7`, `task-2.2`, `task-3.2`.
 
@@ -13,14 +13,14 @@
 
 ### Изменение и контракты
 
-Реализовать подтверждённые источники исторических/текущих курсов и сервисных bid/ask по контракту. Фиксировать source/time/direction/amount/fee coverage. Историческую оценку не менять при обновлении текущей цены; исправление курса аудировать отдельно. Missing/stale/unsupported не считать нулём или peg; native amount остаётся доступен. Перевод/обмен использует фактические legs.
+Использовать CBR как основной USD/RUB, Frankfurter `providers=CBR` как fallback/cross-check и CoinGecko Demo для текущих и исторических ≤365 дней BTC/ETH/USDT/USDC в USD. Для более старой криптоистории возвращать `valuation_unavailable`, сохраняя native facts. Текущая цена не переписывает историческую оценку. Platform executable quote хранится только с направлением, amount, временем и известными fee/spread; иначе `quote_unavailable`. Reference rate никогда не подменяет platform quote. Missing/stale/unsupported не равны нулю или peg. Free-key quota, attribution и live probe являются task-6.1 configuration/runtime gate.
 
 ### Границы изменений
 
 - `backend/internal/valuation/`
 - `backend/internal/integrations/rates/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -36,7 +36,7 @@
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-003
 
@@ -113,15 +113,15 @@ RUB, USD, USDT, USDC, BTC и ETH, cross-rates без условного пари
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
 Preserve historical valuation and show current equivalents/quotes.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-0.7`, `task-2.2`, `task-3.2`.
 
@@ -129,14 +129,14 @@ Preserve historical valuation and show current equivalents/quotes.
 
 ### Change and contracts
 
-Implement verified historical/current rate sources and provider bid/ask contracts. Retain source/time/direction/amount/fee coverage. Current-price refresh does not change historical valuation; audit rate corrections separately. Missing/stale/unsupported is neither zero nor a peg; native amounts remain available. Transfers/exchanges use actual legs.
+Use CBR as the primary USD/RUB source, Frankfurter `providers=CBR` as fallback/cross-check, and CoinGecko Demo for current and ≤365-day historical BTC/ETH/USDT/USDC prices in USD. Older crypto history returns `valuation_unavailable` while preserving native facts. A current price never rewrites historical valuation. Retain a platform executable quote only with direction, amount, time and known fee/spread; otherwise return `quote_unavailable`. A reference rate never substitutes for a platform quote. Missing/stale/unsupported is neither zero nor a peg. Free-key quota, attribution and a live probe are task-6.1 configuration/runtime gates.
 
 ### Change boundaries
 
 - `backend/internal/valuation/`
 - `backend/internal/integrations/rates/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -152,7 +152,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-003
 
@@ -229,6 +229,6 @@ The `make` commands are a future contract established by task-1.1; they do not e
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

@@ -30,6 +30,10 @@ BYBIT-E11 — **confirmed**: `GET /v5/user/query-api` вернул `readOnly=1`,
 
 Использовать официальный API для Funding, Flexible Easy Earn и P2P. Пробел API, требующий браузера, в необходимых маршрутах не обнаружен. Identity/версии источника отделяются от финансового события; совпадения сумм/времени — кандидаты с проверкой неоднозначности, не разрешение автоматического слияния. Финансовая классификация не строится только на Funding localization keys. Неизвестные статусы/единицы дают видимую неразрешённую запись.
 
-BYBIT-B01/B02/B05 закрыты для проверенного доступа. BYBIT-B03/B04 остаются у task-0.10: детерминированные связи, сверка точности, границы истории, hourly identity и база Earn. task-0.9 отвечает за серверный доступ; task-4.4 — за исполняемые проверки контрактов, ошибок/отзыва, второго владельца и сквозную приёмку. Неиспользуемые продукты не блокируют. BLK-04 и общий Ready gate остаются **Not Ready** до закрытия контрактных решений.
+BYBIT-B01/B02/B05 закрыты для проверенного доступа. D-39 закрывает SDD-часть BYBIT-B03/B04: route-specific identity, candidate-only linkage, hourly collision и history-gap behavior. task-4.4 владеет executable conformance, error/revocation, вторым аккаунтом и end-to-end приёмкой. Неиспользуемые продукты не блокируют; финансовый runtime не заявлен.
 
 Проверены официальные read-ответы, исходные типы/единицы, пагинация всех запросов, точная Decimal-арифметика и replay. Документация проверяется `make docs-check`, синтетической арифметикой и RU/EN/diff/privacy review. Не выполнялись production-тесты адаптера, сопоставление с банком, все смены статусов, второй владелец/отзыв, VPS и E2E приложения. Исследование эти проверки не заменяет.
+
+## Решение task-0.10, 2026-09-07
+
+D-39 разрешает выявленные BYBIT-B03/B04 без ложного объединения: route namespaces, candidate-only links, hourly tuple fallback с collision detection и `source_partial` для history/lifetime gaps. task-4.4 превращает это evidence в executable fixtures и отдельно доказывает второй аккаунт, rotation/revocation и provider deployment gate.

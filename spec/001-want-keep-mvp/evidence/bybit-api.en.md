@@ -30,6 +30,10 @@ For balances, the additional verified route is [single-coin balance](https://byb
 
 Use official APIs for Funding, Flexible Easy Earn and P2P. No API gap requiring browser collection was demonstrated in the required reads. Keep raw source identity and revisions separate from economic-event identity; amount/time matches are candidates whose ambiguity must be resolved, not permission to merge automatically. Never derive financial classification solely from Funding localization keys. Unknown states/units produce a visible unresolved record.
 
-BYBIT-B01/B02/B05 are closed for observed access. BYBIT-B03/B04 remain with task-0.10 for deterministic linkage, precision-aware reconciliation, history boundaries, hourly identity and Earn basis. task-0.9 owns server access; task-4.4 owns executable conformance, error/revocation, second-owner and end-to-end acceptance. Unused products remain non-blocking. BLK-04 and the shared Ready gate stay **Not Ready** until the contract decisions are closed.
+BYBIT-B01/B02/B05 are closed for observed access. D-39 resolves the SDD part of BYBIT-B03/B04: route-specific identity, candidate-only linkage, hourly collision and history-gap behavior. task-4.4 owns executable conformance, error/revocation, a second account and end-to-end acceptance. Unused products do not block; no financial runtime is claimed.
 
 Checked: official read responses, source types/units, all requested pagination, exact Decimal arithmetic and replay comparisons. Documentation verification is `make docs-check`, plus synthetic arithmetic and RU/EN/diff/privacy review. Not run: production adapter tests, bank matching, all status transitions, second-owner/revocation, VPS or application E2E. This evidence does not substitute for those checks.
+
+## task-0.10 decision, 2026-09-07
+
+D-39 resolves observed BYBIT-B03/B04 without false merging: route namespaces, candidate-only links, hourly tuple fallback with collision detection and `source_partial` for history/lifetime gaps. task-4.4 turns this evidence into executable fixtures and separately proves a second account, rotation/revocation and the provider deployment gate.
