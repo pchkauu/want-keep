@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Использовать официальный Go SDK Responses API через gateway; модели/цены и token limits закрепить по исследованию. Хранить разговор в Want Keep, отправлять store=false, учитывать фактическую retention OpenAI. До запроса атомарно резервировать верхнюю оценку стоимости, после ответа сверять usage; неизвестную оплату держать зарезервированной до сверки. Ограничить параллелизм, повторы и месячный период бюджета.
+Использовать официальный Go SDK Responses API через gateway; модели/цены и token limits закрепить по исследованию. Хранить разговор в Want Keep, отправлять store=false, учитывать фактическую retention OpenAI. До запроса атомарно резервировать верхнюю оценку стоимости, после ответа сверять usage; неизвестную оплату держать зарезервированной до сверки. Ограничить параллелизм, повторы и месячный период бюджета. Применить evidence/openai.md: mode=explicit без cache breakpoints, store=false/foreground, Standard short-context, заранее подсчитать полный input, ограничить output с reasoning и резервировать cache-write максимум. Usage.input_tokens_details.cached_tokens/cache_write_tokens сверять раздельно; отсутствие write count — консервативный charge, не ноль. SDK retries=0, family concurrency≤2, модель/цены/права вне пользовательского текста. Невалидный usage/счёт выше резерва/неизвестный outcome останавливают новые вызовы до сверки; без автоматического повышения $50. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели.
 
 ### Границы изменений
 
@@ -113,7 +113,7 @@ make test-integration AREA=ai-budget
 
 Конкурентные запросы, неизвестный outcome, смена месяца, недоступность и неверная usage не позволяют незаметно превысить разрешённый бюджет.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.
 
 ### Передача следующему агенту
 
@@ -133,7 +133,7 @@ Call OpenAI through a budget-controlled domain contract.
 
 ### Change and contracts
 
-Use the official Go Responses API SDK behind a gateway; pin models/prices and token limits from research. Store conversations in Want Keep, request store=false and account for actual OpenAI retention. Atomically reserve a conservative cost ceiling before calls, reconcile usage afterward and keep unknown charges reserved until reconciliation. Bound concurrency, retries and the monthly spending period.
+Use the official Go Responses API SDK behind a gateway; pin models/prices and token limits from research. Store conversations in Want Keep, request store=false and account for actual OpenAI retention. Atomically reserve a conservative cost ceiling before calls, reconcile usage afterward and keep unknown charges reserved until reconciliation. Bound concurrency, retries and the monthly spending period. Apply evidence/openai.en.md: explicit mode with no cache breakpoints, store=false/foreground, Standard short context, pre-count full input, bound output including reasoning and reserve cache-write ceilings. Reconcile usage.input_tokens_details.cached_tokens/cache_write_tokens separately; absent write count retains a conservative charge, not zero. SDK retries=0, family concurrency≤2; models/prices/authority are outside user text. Invalid usage, over-reservation cost and unknown outcomes stop new calls pending reconciliation; never raise USD 50 automatically. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation.
 
 ### Change boundaries
 
@@ -233,7 +233,7 @@ make test-integration AREA=ai-budget
 
 Concurrent calls, unknown outcomes, month rollover, outage and invalid usage cannot silently exceed the authorized budget.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately.
 
 ### Handoff to the next agent
 

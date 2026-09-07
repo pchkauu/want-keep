@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Передавать AI рассчитанные доменом срезы, coverage и ссылки на операции; суммы/выводы валидировать против этих данных. Генерировать дневные/месячные сводки и ответы по запросу, помечать прогнозы и неполноту. Предложение нового бюджета остаётся proposal до решения владельца. Перегенерация учитывает версии данных и бюджет API, не запускается на каждый render.
+Передавать AI рассчитанные доменом срезы, coverage и ссылки на операции; суммы/выводы валидировать против этих данных. Генерировать дневные/месячные сводки и ответы по запросу, помечать прогнозы и неполноту. Предложение нового бюджета остаётся proposal до решения владельца. Перегенерация учитывает версии данных и бюджет API, не запускается на каждый render. Применить лимиты/модель из evidence/openai.md; объяснения проверять на противоречия источникам, forecast/partial и релевантность следующего действия. Числовой score eval не доказывает качество объяснения; добавить ручной протокол проверки. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели.
 
 ### Границы изменений
 
@@ -125,7 +125,7 @@ make eval-ai SUITE=insights && make test-integration AREA=insights
 
 Числа и ссылки воспроизводимы; недоказанные выводы не представлены как факт, plan changes требуют решения.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.
 
 ### Передача следующему агенту
 
@@ -145,7 +145,7 @@ Provide verifiable explanations of spending, income and plan progress.
 
 ### Change and contracts
 
-Provide AI with domain-calculated aggregates, coverage and transaction references; validate figures/claims against those inputs. Generate daily/monthly and on-demand explanations with forecast/incompleteness markers. A suggested budget stays a proposal until the owner decides. Regeneration uses data revisions and API budget, not each render.
+Provide AI with domain-calculated aggregates, coverage and transaction references; validate figures/claims against those inputs. Generate daily/monthly and on-demand explanations with forecast/incompleteness markers. A suggested budget stays a proposal until the owner decides. Regeneration uses data revisions and API budget, not each render. Apply model/limits from evidence/openai.en.md; check explanations for source contradictions, forecast/partial labeling and useful next actions. Numeric evaluation scores do not establish explanation quality; include a manual review protocol. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation.
 
 ### Change boundaries
 
@@ -257,7 +257,7 @@ make eval-ai SUITE=insights && make test-integration AREA=insights
 
 Figures and references reproduce; unsupported conclusions are not facts and plan changes require an owner decision.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately.
 
 ### Handoff to the next agent
 

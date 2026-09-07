@@ -2889,20 +2889,44 @@
       ],
       "targets": [
         "spec/001-want-keep-mvp/evidence/openai.md",
-        "spec/001-want-keep-mvp/evidence/openai.en.md"
+        "spec/001-want-keep-mvp/evidence/openai.en.md",
+        "spec/001-want-keep-mvp/evidence/openai.eval.json",
+        "spec/001-want-keep-mvp/evidence/openai.cost.json",
+        "spec/001-want-keep-mvp/assets/openai-eval/",
+        "spec/001-want-keep-mvp/tools/openai_eval.py",
+        "spec/001-want-keep-mvp/tools/openai_cases.py",
+        "spec/001-want-keep-mvp/tools/test_openai_eval.py",
+        "spec/001-want-keep-mvp/evidence/openai.results.json",
+        "spec/001-want-keep-mvp/evidence/openai.prompts.json",
+        "spec/001-want-keep-mvp/tools/openai_report.py",
+        "spec/001-want-keep-mvp/evidence/dahl.md",
+        "spec/001-want-keep-mvp/evidence/dahl.en.md",
+        "spec/001-want-keep-mvp/evidence/dahl.contract.json",
+        "spec/001-want-keep-mvp/evidence/dahl.results.json",
+        "spec/001-want-keep-mvp/tools/dahl_eval.py",
+        "spec/001-want-keep-mvp/tools/dahl_report.py",
+        "spec/001-want-keep-mvp/tools/test_dahl_eval.py"
       ],
       "behavior": {
-        "ru": "Сверить текущие модели, модальности, JSON/function-calling контракты, retention и цены по официальным источникам. Подготовить синтетический eval для переводов, чеков, неоднозначности и injection; измерить токены, ошибки, уточнения и стоимость на сотнях операций. Платные прогоны — только с предоставленным владельцем ключом и отдельным лимитом прогона; без него документировать метод и незакрытый quality gate. Начальные кандидаты Luna/Terra не означают доказанного качества.",
-        "en": "Check current models, modalities, JSON/function-calling contracts, retention and prices against official sources. Prepare a synthetic evaluation for transfers, receipts, ambiguity and injection; measure tokens, errors, clarifications and cost at hundreds-of-transactions scale. Paid runs require an owner-supplied key and an explicit run cap; otherwise document the method and outstanding quality gate. Initial Luna/Terra candidates do not establish quality."
+        "ru": "Владелец выбрал gpt-5.6-terra, reasoning.effort=xhigh для всех AI-задач. OAI-E01–E15, evidence/openai.md/en.md и results/prompts/eval/cost JSON фиксируют цены, retention, Standard foreground Responses, strict proposal, store=false, explicit cache без breakpoints, detail=high и предварительный input count. Финальный отдельный 206+3 eval: 206/206, visual 6/6, function 3/3, 0 критических ошибок; цена $0.445556. 301 OpenAI requests всего: $3.2926944 в общем лимите $7 с сохранением ранних неудач и оплаченного incomplete Luna. Калибровка на известных синтетических случаях, не holdout и не app acceptance. Dahl MiniMax/DeepSeek: отдельные ограниченные screen, high принят без подтверждения применения; unknown расходы остаются резервами, тариф пула не подтверждён. Альтернативы и автоматический downgrade в runtime не включать. Xhigh месячная смета $47.125, стресс $62.96875; при $50 задания ждут, обычный учёт работает. Допущения объёма/налоги/прочий расход сверить перед запуском. Изменение модели/effort/prompt/schema/pricing требует повторного допуска. Разблокированы контракты task-5.1/5.2/5.3/5.5 и BLK-08 в task-0.10; остальные зависимости и общий Not Ready сохраняются. Серверные validators/права/runtime очередей/locale и полный AC — последующие задачи.",
+        "en": "The owner selected gpt-5.6-terra, reasoning.effort=xhigh for all AI tasks. OAI-E01–E15, evidence/openai.md/en.md and results/prompts/eval/cost JSON record pricing, retention, Standard foreground Responses, strict proposals, store=false, explicit cache without breakpoints, detail=high and input pre-counting. Final separate 206+3 evaluation: 206/206, visual 6/6, function 3/3, zero critical errors; cost USD 0.445556. All 301 OpenAI requests cost USD 3.2926944 within the shared USD 7 cap, retaining earlier failures and paid Luna incomplete output. Calibration on known synthetic cases, not holdout or app acceptance. Dahl MiniMax/DeepSeek: separate limited screens, requested high accepted without applied-setting confirmation; unknown costs remain reserved and pool pricing unverified. No runtime alternative or automatic downgrade. Xhigh monthly estimate USD 47.125, stress USD 62.96875; unaffordable work waits at USD 50 while ordinary accounting continues. Reconcile workload assumptions/taxes/other usage before launch. Model/effort/prompt/schema/pricing changes require requalification. Unblocks task-5.1/5.2/5.3/5.5 contracts and BLK-08 in task-0.10; other dependencies and overall Not Ready remain. Server validation/permissions/runtime queues/locale and full acceptance are subsequent tasks."
       },
       "verification": {
-        "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
+        "command": "make docs-check",
         "expected": {
-          "ru": "Зафиксированы конфигурация/снимок цен, измеренный или явно непроверенный бюджет, результаты eval и критерии допуска к автоматическим командам.",
-          "en": "Record configuration/pricing snapshot, measured or explicitly unverified cost, evaluation results and gates for automatic commands."
+          "ru": "Официальный срез OAI-E01–E13, фактический отчёт eval, выбранный маршрут и ограничения, смета/неизмеренные части и критерии допуска; закрытие BLK-08 отдельно от полной приёмки приложения.",
+          "en": "Official OAI-E01–E13 snapshot, actual evaluation report, selected route/limits, estimate/unmeasured portions and qualification gates; BLK-08 closure is distinct from full application acceptance."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/8"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/8",
+      "status": {
+        "ru": "Завершено: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, 0 критических ошибок, PNG/PDF 6/6, function 3/3. BLK-08 закрыт; MVP Not Ready.",
+        "en": "Complete: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, zero critical errors, PNG/PDF 6/6, function 3/3. BLK-08 closed; MVP Not Ready."
+      },
+      "verification_note": {
+        "ru": "Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.",
+        "en": "The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately."
+      }
     },
     {
       "id": "task-0.9",
@@ -4119,8 +4143,8 @@
         "backend/internal/gateways/openai/"
       ],
       "behavior": {
-        "ru": "Использовать официальный Go SDK Responses API через gateway; модели/цены и token limits закрепить по исследованию. Хранить разговор в Want Keep, отправлять store=false, учитывать фактическую retention OpenAI. До запроса атомарно резервировать верхнюю оценку стоимости, после ответа сверять usage; неизвестную оплату держать зарезервированной до сверки. Ограничить параллелизм, повторы и месячный период бюджета.",
-        "en": "Use the official Go Responses API SDK behind a gateway; pin models/prices and token limits from research. Store conversations in Want Keep, request store=false and account for actual OpenAI retention. Atomically reserve a conservative cost ceiling before calls, reconcile usage afterward and keep unknown charges reserved until reconciliation. Bound concurrency, retries and the monthly spending period."
+        "ru": "Использовать официальный Go SDK Responses API через gateway; модели/цены и token limits закрепить по исследованию. Хранить разговор в Want Keep, отправлять store=false, учитывать фактическую retention OpenAI. До запроса атомарно резервировать верхнюю оценку стоимости, после ответа сверять usage; неизвестную оплату держать зарезервированной до сверки. Ограничить параллелизм, повторы и месячный период бюджета. Применить evidence/openai.md: mode=explicit без cache breakpoints, store=false/foreground, Standard short-context, заранее подсчитать полный input, ограничить output с reasoning и резервировать cache-write максимум. Usage.input_tokens_details.cached_tokens/cache_write_tokens сверять раздельно; отсутствие write count — консервативный charge, не ноль. SDK retries=0, family concurrency≤2, модель/цены/права вне пользовательского текста. Невалидный usage/счёт выше резерва/неизвестный outcome останавливают новые вызовы до сверки; без автоматического повышения $50. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели.",
+        "en": "Use the official Go Responses API SDK behind a gateway; pin models/prices and token limits from research. Store conversations in Want Keep, request store=false and account for actual OpenAI retention. Atomically reserve a conservative cost ceiling before calls, reconcile usage afterward and keep unknown charges reserved until reconciliation. Bound concurrency, retries and the monthly spending period. Apply evidence/openai.en.md: explicit mode with no cache breakpoints, store=false/foreground, Standard short context, pre-count full input, bound output including reasoning and reserve cache-write ceilings. Reconcile usage.input_tokens_details.cached_tokens/cache_write_tokens separately; absent write count retains a conservative charge, not zero. SDK retries=0, family concurrency≤2; models/prices/authority are outside user text. Invalid usage, over-reservation cost and unknown outcomes stop new calls pending reconciliation; never raise USD 50 automatically. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation."
       },
       "verification": {
         "command": "make test-integration AREA=ai-budget",
@@ -4129,7 +4153,11 @@
           "en": "Concurrent calls, unknown outcomes, month rollover, outage and invalid usage cannot silently exceed the authorized budget."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/35"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/35",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.",
+        "en": "The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately."
+      }
     },
     {
       "id": "task-5.2",
@@ -4169,8 +4197,8 @@
         "backend/internal/clarifications/"
       ],
       "behavior": {
-        "ru": "Запускать проверку каждой содержательной версии операции. AI возвращает структурированные предложения через allowlist команд; application проверяет сумму/счёт/валюту, expectedVersion, ownership, evidence и разрешения. Применять допустимые классификации/связи идемпотентно, сомнительные оставлять в очереди; личные бюджет/цели требуют решения владельца, общие — любого уполномоченного участника. Никакого SQL, произвольного HTTP или доступа к секретам у модели.",
-        "en": "Review every material transaction version. AI returns structured proposals through an allowlist of commands; the application validates amount/account/currency, expectedVersion, ownership, evidence and permissions. Apply allowed classifications/links idempotently, queue uncertainty and require the personal owner’s decision for personal budgets/goals and any authorized member’s decision for shared ones. Models have no SQL, arbitrary HTTP or secret access."
+        "ru": "Запускать проверку каждой содержательной версии операции. AI возвращает структурированные предложения через allowlist команд; application проверяет сумму/счёт/валюту, expectedVersion, ownership, evidence и разрешения. Применять допустимые классификации/связи идемпотентно, сомнительные оставлять в очереди; личные бюджет/цели требуют решения владельца, общие — любого уполномоченного участника. Никакого SQL, произвольного HTTP или доступа к секретам у модели. Модельный score task-0.8 не заменяет серверный валидатор: добавить regression-сценарии из openai_cases.py для неверной суммы, неизвестной комиссии, повторного расхода, чужой личной цели и устаревшей revision. Смена alias/prompt/schema требует повторного допуска. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели.",
+        "en": "Review every material transaction version. AI returns structured proposals through an allowlist of commands; the application validates amount/account/currency, expectedVersion, ownership, evidence and permissions. Apply allowed classifications/links idempotently, queue uncertainty and require the personal owner’s decision for personal budgets/goals and any authorized member’s decision for shared ones. Models have no SQL, arbitrary HTTP or secret access. task-0.8 model scores do not replace server validation: add regressions derived from openai_cases.py for wrong amounts, unknown fees, duplicate expenses, foreign personal goals and stale revisions. Alias/prompt/schema changes require requalification. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation."
       },
       "verification": {
         "command": "make test-integration AREA=ai-commands && make eval-ai SUITE=transactions",
@@ -4179,7 +4207,11 @@
           "en": "Every version is tracked; invalid/refusal/stale/injection outputs are rejected; automatic effects preserve invariants and audit."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/36"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/36",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.",
+        "en": "The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately."
+      }
     },
     {
       "id": "task-5.3",
@@ -4214,8 +4246,8 @@
         "backend/internal/attachments/"
       ],
       "behavior": {
-        "ru": "Обработать фото и PDF через ограниченный pipeline с проверкой формата/размера/страниц до AI. Извлекать позиции, суммы, валюту, дату, продавца и скидки с provenance. Проверять итог арифметически, привязывать выбранный счёт, выявлять duplicate attachment и match candidates. Нерелевантное пропускать с причиной; неполное уточнять; не исполнять активный контент или URL документа.",
-        "en": "Process photos and PDFs through a bounded pipeline validating format/size/pages before AI. Extract items, amounts, currency, date, merchant and discounts with provenance. Validate totals arithmetically, bind the selected account and detect duplicate attachments/match candidates. Skip irrelevant content with a reason, clarify incomplete data and never execute document content or URLs."
+        "ru": "Обработать фото и PDF через ограниченный pipeline с проверкой формата/размера/страниц до AI. Извлекать позиции, суммы, валюту, дату, продавца и скидки с provenance. Проверять итог арифметически, привязывать выбранный счёт, выявлять duplicate attachment и match candidates. Нерелевантное пропускать с причиной; неполное уточнять; не исполнять активный контент или URL документа. Сохранить лимиты 10 MiB/10 страниц, обрабатывать страницы с detail=high и ограниченным input/output; проверить максимум, мелкие/нечитаемые суммы, mixed receipts и injection отдельно от чистых синтетических assets/openai-eval. Inline PDF/изображения не создают долгоживущие Files objects; никакого перехода по ссылкам в документе. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели.",
+        "en": "Process photos and PDFs through a bounded pipeline validating format/size/pages before AI. Extract items, amounts, currency, date, merchant and discounts with provenance. Validate totals arithmetically, bind the selected account and detect duplicate attachments/match candidates. Skip irrelevant content with a reason, clarify incomplete data and never execute document content or URLs. Preserve the 10 MiB/10-page limits; process pages with detail=high and bounded input/output. Test boundaries, small/unreadable amounts, mixed receipts and injection beyond the clean assets/openai-eval fixtures. Inline PDF/images create no persistent Files objects; never follow document links. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation."
       },
       "verification": {
         "command": "make test-integration AREA=receipts && make eval-ai SUITE=receipts",
@@ -4224,7 +4256,11 @@
           "en": "Valid, partial, repeated and malicious documents follow required states; allocation total equals payment."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/37"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/37",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.",
+        "en": "The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately."
+      }
     },
     {
       "id": "task-5.4",
@@ -4303,8 +4339,8 @@
         "backend/internal/insights/"
       ],
       "behavior": {
-        "ru": "Передавать AI рассчитанные доменом срезы, coverage и ссылки на операции; суммы/выводы валидировать против этих данных. Генерировать дневные/месячные сводки и ответы по запросу, помечать прогнозы и неполноту. Предложение нового бюджета остаётся proposal до решения владельца. Перегенерация учитывает версии данных и бюджет API, не запускается на каждый render.",
-        "en": "Provide AI with domain-calculated aggregates, coverage and transaction references; validate figures/claims against those inputs. Generate daily/monthly and on-demand explanations with forecast/incompleteness markers. A suggested budget stays a proposal until the owner decides. Regeneration uses data revisions and API budget, not each render."
+        "ru": "Передавать AI рассчитанные доменом срезы, coverage и ссылки на операции; суммы/выводы валидировать против этих данных. Генерировать дневные/месячные сводки и ответы по запросу, помечать прогнозы и неполноту. Предложение нового бюджета остаётся proposal до решения владельца. Перегенерация учитывает версии данных и бюджет API, не запускается на каждый render. Применить лимиты/модель из evidence/openai.md; объяснения проверять на противоречия источникам, forecast/partial и релевантность следующего действия. Числовой score eval не доказывает качество объяснения; добавить ручной протокол проверки. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели.",
+        "en": "Provide AI with domain-calculated aggregates, coverage and transaction references; validate figures/claims against those inputs. Generate daily/monthly and on-demand explanations with forecast/incompleteness markers. A suggested budget stays a proposal until the owner decides. Regeneration uses data revisions and API budget, not each render. Apply model/limits from evidence/openai.en.md; check explanations for source contradictions, forecast/partial labeling and useful next actions. Numeric evaluation scores do not establish explanation quality; include a manual review protocol. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation."
       },
       "verification": {
         "command": "make eval-ai SUITE=insights && make test-integration AREA=insights",
@@ -4313,7 +4349,11 @@
           "en": "Figures and references reproduce; unsupported conclusions are not facts and plan changes require an owner decision."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/39"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/39",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.",
+        "en": "The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately."
+      }
     },
     {
       "id": "task-6.1",
