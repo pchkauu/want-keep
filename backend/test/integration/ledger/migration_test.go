@@ -4,7 +4,6 @@ package ledger_test
 
 import (
 	"io/fs"
-	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -21,7 +20,7 @@ func TestMigrationPreservesLegacyFactsAndImmutableHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range names {
-		if strings.HasPrefix(name, "008_") {
+		if name >= "008_" {
 			continue
 		}
 		data, err := fs.ReadFile(migrations.Files, name)

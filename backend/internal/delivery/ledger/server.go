@@ -56,6 +56,11 @@ func New(s *application.Service, q *application.Queries, e *commands.Executor, c
 	h.mux.HandleFunc("POST /api/v1/transactions", h.create)
 	h.mux.HandleFunc("GET /api/v1/transactions/{transactionId}", h.read)
 	h.mux.HandleFunc("POST /api/v1/transfers", h.transfer)
+	h.mux.HandleFunc("POST /api/v1/transactions/{transactionId}/corrections", h.correct)
+	h.mux.HandleFunc("POST /api/v1/transactions/{transactionId}/undo", h.undo)
+	h.mux.HandleFunc("POST /api/v1/transactions/{transactionId}/exclude", h.exclude)
+	h.mux.HandleFunc("GET /api/v1/transactions/{transactionId}/history", h.history)
+	h.mux.HandleFunc("GET /api/v1/transactions/{transactionId}/revisions/{revision}", h.revision)
 	return h, nil
 }
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

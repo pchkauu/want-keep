@@ -7,37 +7,65 @@ type Rule = components["schemas"]["RuleInput"];
 export const correction: Correction = {
   expectedRevision: 1,
   reason: "Correct receipt amount",
-  amount: { amount: "0.000000000000000001", asset: "ETH" },
+  principal: [
+    {
+      accountId: "10000000-0000-4000-8000-000000000001",
+      money: { amount: "-0.000000000000000001", asset: "ETH" },
+      role: "principal",
+    },
+  ],
 };
 
 export const numericMoney: Correction = {
   expectedRevision: 1,
   reason: "Invalid numeric transport",
-  amount: {
-    // @ts-expect-error Regression assertion: generated money must stay a string.
-    amount: 0.1,
-    asset: "ETH",
-  },
+  principal: [
+    {
+      accountId: "10000000-0000-4000-8000-000000000001",
+      money: {
+        // @ts-expect-error Regression assertion: generated money must stay a string.
+        amount: 0.1,
+        asset: "ETH",
+      },
+      role: "principal",
+    },
+  ],
 };
 
 export const unsupportedAsset: Correction = {
   expectedRevision: 1,
   reason: "Invalid source alias",
-  amount: {
-    amount: "1",
-    // @ts-expect-error Regression assertion: external aliases are not domain assets.
-    asset: "USDC.E",
-  },
+  principal: [
+    {
+      accountId: "10000000-0000-4000-8000-000000000001",
+      money: {
+        amount: "1",
+        // @ts-expect-error Regression assertion: external aliases are not domain assets.
+        asset: "USDC.E",
+      },
+      role: "principal",
+    },
+  ],
 };
 
 // @ts-expect-error Regression assertion: correction requires expectedRevision.
-export const missingRevision: Correction = { reason: "Missing revision" };
+export const missingRevision: Correction = {
+  reason: "Missing revision",
+  note: "Correction",
+};
 
 export const forgedActor: Correction = {
   expectedRevision: 1,
   reason: "Invalid actor assignment",
+  note: "Correction",
   // @ts-expect-error Regression assertion: command input cannot choose the actor.
   actorId: "10000000-0000-4000-8000-000000000001",
+};
+export const legacyAmount: Correction = {
+  expectedRevision: 1,
+  reason: "Incomplete money edit",
+  // @ts-expect-error A money correction must identify the complete principal group.
+  amount: { amount: "500", asset: "RUB" },
 };
 
 export const message: Message = { text: "A purchase", attachmentIds: [] };

@@ -3,12 +3,15 @@ package application
 import (
 	"context"
 	"errors"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 )
 
 type SourceRepository interface {
+	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
+	SaveSourceFact(context.Context, ledger.SourceRecord, ledger.Revision, string) error
 	Source(context.Context, household.Principal, ledger.SourceKey) (ledger.SourceRecord, bool, error)
 	SaveSource(context.Context, ledger.SourceRecord, ledger.SourceInput) (ledger.SourceRecord, error)
 	RecordProvenance(context.Context, ledger.SourceRecord, ledger.SourceInput) error
@@ -31,6 +34,17 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 	}
 	if err := p.RequireHousehold(input.Key.HouseholdID); err != nil {
 		return ledger.SourceOutcome{}, err
+	}
+	if input.Operation != nil {
+		raw := input.Operation.Clone()
+		raw.Revision = 1
+		raw.ActorID = p.UserID()
+		raw.HumanOverride = false
+		raw.Protections = map[ledger.Field]ledger.Protection{}
+		raw.FieldVersions = map[ledger.Field]uint64{}
+		raw.AccountingState = ledger.IncludedInAccounting
+		raw.DecisionID, raw.ReviewState = "", ""
+		input.Operation = &raw
 	}
 	if input.Operation != nil && input.Operation.Validate() != nil {
 		input.Operation = nil
@@ -101,18 +115,81 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		if err != nil {
 			return result, err
 		}
-		if found && previous.HumanOverride {
-			result.PreservedOverride = true
-			return result, nil
-		}
 		expected := uint64(0)
+		raw := input.Operation.Clone()
+		raw.Origin = "source"
+		raw.ActorID = p.UserID()
+		zone, e := s.repository.AccountTimezone(ctx, p)
+		if e != nil {
+			return result, e
+		}
+		raw, e = raw.InTimezone(zone)
+		if e != nil {
+			return result, e
+		}
+		for i, posting := range raw.Postings {
+			a, e := s.writer.accounts.Account(ctx, p, posting.AccountID)
+			if e != nil {
+				return result, e
+			}
+			if posting.Funding == "" {
+				raw.Postings[i].Funding = ledger.OwnFunds
+				if a.Product == "credit_card" {
+					raw.Postings[i].Funding = ledger.UnknownFunds
+				}
+			}
+		}
+		r := raw.Clone()
+		conflict := ""
 		if found {
 			expected = previous.Revision
+			var differs bool
+			r, differs, err = previous.MergeSource(raw)
+			if err != nil {
+				return result, err
+			}
+			result.PreservedOverride = len(previous.Protections) > 0 || previous.HumanOverride
+			if differs {
+				conflict = "protected_fields"
+			}
+			if _, legacy := previous.Protections[ledger.LegacyField]; legacy || previous.HumanOverride && len(previous.Protections) == 0 {
+				return result, s.repository.SaveSourceFact(ctx, current, raw, "legacy_protection")
+			}
 		}
-		r := *input.Operation
-		r.Postings = append([]ledger.Posting(nil), r.Postings...)
-		r.Origin = "source"
+		r.Revision = expected + 1
+		r.ActorID = p.UserID()
+		r.DecisionID = ""
+		// The storage boundary records commit-time observation separately from provider fetch time.
+		r.RecordedAt = calendar.Instant{}
+		r, err = r.InTimezone(zone)
+		if err != nil {
+			return result, err
+		}
+		if r.FieldVersions == nil {
+			r.FieldVersions = map[ledger.Field]uint64{}
+		}
+		for _, f := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField} {
+			if !found || !previous.FieldEqual(r, f) {
+				r.FieldVersions[f] = r.Revision
+			}
+		}
+		var prior *ledger.Revision
+		if found {
+			prior = &previous
+		}
+		if r.CheckSuccessor(prior) != nil {
+			if !found {
+				return result, s.repository.RecordUnresolvedTransaction(ctx, input)
+			}
+			return result, s.repository.SaveSourceFact(ctx, current, raw, "invalid_merge")
+		}
+		if found && previous.SameFacts(r) {
+			return result, s.repository.SaveSourceFact(ctx, current, raw, conflict)
+		}
 		if err = s.writer.Append(ctx, p, r, expected); err != nil {
+			return result, err
+		}
+		if err = s.repository.SaveSourceFact(ctx, current, raw, conflict); err != nil {
 			return result, err
 		}
 	}

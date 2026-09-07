@@ -64,7 +64,10 @@ func (s *Store) AppendRevision(ctx context.Context, r ledger.Revision, expected 
 			return err
 		}
 	}
-	return s.saveTransactionDetails(ctx, r)
+	if err = s.saveTransactionDetails(ctx, r); err != nil {
+		return err
+	}
+	return s.saveLedgerAudit(ctx, r)
 }
 func (s *Store) CurrentLedgerRevision(ctx context.Context, p household.Principal, id string) (ledger.Revision, bool, error) {
 	q, err := s.reader(ctx, p)
@@ -93,7 +96,7 @@ func (s *Store) LedgerRevision(ctx context.Context, p household.Principal, id st
 	var ns int16
 	err = q.QueryRow(ctx, `SELECT actor_id,reason,economic_type,state,occurred_at,occurred_ns,cash_date,expense_month,human_override,payer_state,COALESCE(payer_member_id::text,'') FROM want_keep.operation_revisions WHERE household_id=$1 AND operation_id=$2 AND revision=$3`, p.HouseholdID(), id, revision).Scan(&r.ActorID, &r.Reason, &r.Type, &r.State, &at, &ns, &date, &month, &r.HumanOverride, &r.PayerState, &r.PayerMemberID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return r, ErrNotFound
+		return r, errors.Join(ErrNotFound, ledger.ErrNotFound)
 	}
 	if err != nil {
 		return r, err
@@ -134,6 +137,9 @@ func (s *Store) LedgerRevision(ctx context.Context, p household.Principal, id st
 	}
 	rows.Close()
 	if err = s.loadTransactionDetails(ctx, q, p, &r); err != nil {
+		return r, err
+	}
+	if err = s.loadLedgerAudit(ctx, q, p, &r); err != nil {
 		return r, err
 	}
 	return r, r.Validate()

@@ -306,7 +306,7 @@ Task: [task-7.2](tasks/task-7.2.md).
 
 **Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
 
-**Explanation and details:** Linked movements/imports, AI reasoning and audit expand with authors/revisions.
+**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -316,7 +316,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 REQ: REQ-010, REQ-012, REQ-067, REQ-072. AC: AC-010, AC-012, AC-081, AC-086.
 
-Task: [task-7.2](tasks/task-7.2.md).
+Task: [task-7.2](tasks/task-7.2.md), [task-2.3](tasks/task-2.3.md).
 
 ### SCR-011 — Receipt
 
@@ -962,11 +962,11 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 #### FORM-06 — Correction, matching and undo
 
-**Fields:** Existing records, proposed fields/link, reason, expectedRevision; before/after comparison.
+**Fields:** Transaction, expectedRevision and reason; complete principal and separate fees, purchase time, payer, merchant/note. Omission retains a field; empty text clears it. Undo: decisionId and all participant expectedRevisions; exclusion is a separate action. Compare before/after and source values.
 
-**Validation and permissions:** Either member for accounting facts; server validates amounts/evidence. Undo retains history and never overwrites a later partner edit.
+**Validation and permissions:** Both members correct facts. The server preserves principal accounts/assets and validates monetary groups, rights, versions and provenance; the form cannot assign actor. Undo preserves later independent fields and rejects overlaps/ABA. Matching, categories and shares are activated by their owning tasks.
 
-**Outcome:** New audit revision and refreshed reports, or conflict preserving input.
+**Outcome:** New decision and financial revisions with history, or no_change/conflict without effect or lost input. Exclusion does not change bank state; undo recomputes the current effect.
 
 #### FORM-07 — Receipt and item allocation
 

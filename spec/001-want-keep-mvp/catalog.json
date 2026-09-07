@@ -3553,8 +3553,8 @@
         "en": "Add revisions, corrections and audit"
       },
       "goal": {
-        "ru": "Сохранять пользовательские правки и объяснять каждое изменение.",
-        "en": "Preserve owner corrections and explain every change."
+        "ru": "Исправлять семейные финансовые факты, сохранять пользовательские поля и объяснять каждое решение.",
+        "en": "Correct household financial facts, preserve user-selected fields and explain every decision."
       },
       "depends_on": [
         "task-2.2"
@@ -3572,20 +3572,33 @@
       ],
       "targets": [
         "backend/internal/ledger/",
-        "backend/internal/audit/"
+        "backend/internal/accounts/",
+        "backend/internal/storage/",
+        "backend/internal/delivery/ledger/",
+        "backend/migrations/009_transaction_corrections_audit.sql",
+        "api/",
+        "backend/test/integration/audit/"
       ],
       "behavior": {
-        "ru": "Применять финансовые изменения через версионированные команды и корректирующие/сторнирующие записи; сохранять исходник, actor, reason и связи evidence. Отмена AI-связи пересчитывает проекции; повторный импорт не стирает override. Изменение предметных полей ставит новую AI-проверку, сама отметка review не создаёт бесконечный цикл.",
-        "en": "Apply financial changes through versioned commands and correcting/reversing entries; retain original, actor, reason and evidence links. Undoing an AI link refreshes projections; reimport preserves overrides. Material field changes enqueue new AI review; setting review status does not cause an infinite loop."
+        "ru": "Решения исправляют principal согласованным комплектом, отдельную группу комиссий, дату, плательщика, продавца и комментарий. Поля защищаются независимо от банковского lifecycle; raw source и эффективная revision разделены. Undo по decisionId и версиям всех участников сохраняет поздние независимые изменения, отвергает пересечения и A → B → A. included/excluded независимо от posted/reversed/cancelled; восстановление использует актуальный источник. Решение, проекции, audit/outbox, один review-запрос на revision и исход команды атомарны. История API содержит до/после, доказательства, исходные значения и причины невозможности отмены. Результат review проверяет актуальную версию/права/защиту без вызова OpenAI и без цикла событий.",
+        "en": "Decisions correct the complete principal group, separate fees, purchase time, payer, merchant and note. Fields are protected independently from bank lifecycle; normalized source and effective revision are separate. Undo by decisionId and all current participant revisions retains later independent edits and rejects overlaps and A → B → A. included/excluded is independent from posted/reversed/cancelled; restoration uses current source facts. Decision, projections, audit/outbox, one review request per revision and command outcome are atomic. History API exposes before/after, evidence, source values and undo rejection reasons. Review results check current version/rights/protections without calling OpenAI or causing an event loop."
       },
       "verification": {
-        "command": "make test-integration AREA=audit",
+        "command": "make test-go PKG=./internal/ledger/... && make test-integration AREA=audit && make test-audit-race",
         "expected": {
-          "ru": "Конфликт версий и stale AI отвергаются; undo и повторный импорт воспроизводят правильную историю.",
-          "en": "Version conflicts and stale AI are rejected; undo and reimport reproduce correct history."
+          "ru": "Исправления шести активов, выборочная и составная отмена, исключение, merge источника, review, ABA, concurrency, replay/rollback/restart, история, права, миграция и retention проходят без повторного эффекта.",
+          "en": "Six-asset corrections, selective/compound undo, exclusion, source merge, review, ABA, concurrency, replay/rollback/restart, history, permissions, migration and retention pass without duplicate effects."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/19"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/19",
+      "status": {
+        "ru": "Реализованы backend/API исправлений, отмены, исключения, истории и сохраняемый контракт review. Сопоставление, категории, доли, возвраты, OpenAI и экраны остаются профильным задачам.",
+        "en": "Correction, undo, exclusion and history backend/API and a persisted review contract are implemented. Matching, categories, shares, refunds, OpenAI and screens remain with their owning tasks."
+      },
+      "note": {
+        "ru": "Task-2.2 включена в базу; команды существуют. Доказательства и границы: evidence/task-2.3-audit.md. Обязательны make check, audit/ledger/accounts/storage/identity/household integration/race и privacy. Эксплуатационная готовность не подтверждается.",
+        "en": "Task-2.2 is included in the base; commands exist. Evidence and boundaries: evidence/task-2.3-audit.en.md. Require make check, audit/ledger/accounts/storage/identity/household integration/race and privacy. This does not confirm operational readiness."
+      }
     },
     {
       "id": "task-2.4",
@@ -6171,16 +6184,16 @@
         "en": "Correction, matching and undo"
       },
       "fields": {
-        "ru": "Существующие записи, предлагаемые поля/связь, основание, expectedRevision; сравнение до/после.",
-        "en": "Existing records, proposed fields/link, reason, expectedRevision; before/after comparison."
+        "ru": "Операция, expectedRevision, основание; полный principal и отдельные fees, дата покупки, payer, merchant/note. Пропуск сохраняет поле, пустой текст очищает. Undo: decisionId и expectedRevisions всех участников; исключение — отдельное действие. Сравнение до/после и с источником.",
+        "en": "Transaction, expectedRevision and reason; complete principal and separate fees, purchase time, payer, merchant/note. Omission retains a field; empty text clears it. Undo: decisionId and all participant expectedRevisions; exclusion is a separate action. Compare before/after and source values."
       },
       "rules": {
-        "ru": "Оба member для фактов; суммы и доказательства проверяет сервер. Undo не стирает историю и не перезаписывает позднюю правку партнёра.",
-        "en": "Either member for accounting facts; server validates amounts/evidence. Undo retains history and never overwrites a later partner edit."
+        "ru": "Оба участника исправляют факты. Сервер сохраняет счета/активы principal, проверяет группы сумм, права, версии и происхождение; actor не задаётся формой. Undo сохраняет поздние независимые поля и отвергает пересечение/ABA. Сопоставление, категории и доли активируются профильными задачами.",
+        "en": "Both members correct facts. The server preserves principal accounts/assets and validates monetary groups, rights, versions and provenance; the form cannot assign actor. Undo preserves later independent fields and rejects overlaps/ABA. Matching, categories and shares are activated by their owning tasks."
       },
       "result": {
-        "ru": "Новая audit-версия и обновлённые отчёты либо conflict с сохранением ввода.",
-        "en": "New audit revision and refreshed reports, or conflict preserving input."
+        "ru": "Новое решение и финансовые revisions с историей, либо no_change/conflict без эффекта и потери ввода. Исключение не меняет банковский статус; undo пересчитывает текущий эффект.",
+        "en": "New decision and financial revisions with history, or no_change/conflict without effect or lost input. Exclusion does not change bank state; undo recomputes the current effect."
       }
     },
     {
@@ -6949,8 +6962,8 @@
         "en": "Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011."
       },
       "detail": {
-        "ru": "Связанные переводы/импорты, AI-основание и audit раскрываются с авторами и версиями.",
-        "en": "Linked movements/imports, AI reasoning and audit expand with authors/revisions."
+        "ru": "История до/после с автором, временем, decisionId и основаниями; отдельные банковское и учётное состояния. Защищённые поля сравниваются с нормализованным источником; review показывает безопасное обоснование и ссылки на evidence. Для выбранного решения видны возможность undo и причина отказа.",
+        "en": "Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason."
       },
       "rights": {
         "ru": "Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.",
@@ -6991,7 +7004,8 @@
         "AC-086"
       ],
       "tasks": [
-        "task-7.2"
+        "task-7.2",
+        "task-2.3"
       ]
     },
     {

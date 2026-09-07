@@ -34,15 +34,26 @@ type SourceReference struct {
 	ConnectionID string
 }
 type View struct {
-	Revision ledger.Revision
-	Sources  []SourceReference
-	Coverage reporting.Coverage
+	Revision    ledger.Revision
+	Sources     []SourceReference
+	Coverage    reporting.Coverage
+	SourceFacts []SourceFact
+	Review      *ReviewResult
+}
+type SourceFact struct {
+	SourceID string
+	Revision uint64
+	Fact     ledger.Revision
+	Conflict string
 }
 type QueryRepository interface {
+	HistoryRepository
+	ReviewRepository
 	TransactionCoverage(context.Context, household.Principal) (reporting.Coverage, error)
 	CurrentLedgerRevision(context.Context, household.Principal, string) (ledger.Revision, bool, error)
 	TransactionReferences(context.Context, household.Principal, Filter, Cursor, int) ([]ledger.Revision, *Cursor, error)
-	TransactionSources(context.Context, household.Principal, string) ([]SourceReference, error)
+	TransactionSources(context.Context, household.Principal, string, uint64) ([]SourceReference, error)
+	TransactionSourceFacts(context.Context, household.Principal, string, uint64) ([]SourceFact, error)
 }
 type Queries struct{ repository QueryRepository }
 
@@ -79,11 +90,22 @@ func (q *Queries) List(ctx context.Context, p household.Principal, f Filter, c C
 	return out, next, nil
 }
 func (q *Queries) view(ctx context.Context, p household.Principal, r ledger.Revision) (View, error) {
-	sources, err := q.repository.TransactionSources(ctx, p, r.OperationID)
+	review, reviewed, err := q.repository.ReviewResult(ctx, p, r.OperationID, r.Revision)
+	if err != nil {
+		return View{}, err
+	}
+	facts, err := q.repository.TransactionSourceFacts(ctx, p, r.OperationID, r.Revision)
+	if err != nil {
+		return View{}, err
+	}
+	sources, err := q.repository.TransactionSources(ctx, p, r.OperationID, r.Revision)
 	if err != nil {
 		return View{}, err
 	}
 	reasons := []string{}
+	if r.SourceConflict {
+		reasons = append(reasons, "source_conflict")
+	}
 	if r.Origin != "manual" {
 		reasons = append(reasons, "source_history_not_reconciled")
 	}
@@ -101,7 +123,11 @@ func (q *Queries) view(ctx context.Context, p household.Principal, r ledger.Revi
 		state = reporting.Partial
 	}
 	coverage, err := reporting.NewCoverage(state, reasons)
-	return View{Revision: r, Sources: sources, Coverage: coverage}, err
+	v := View{Revision: r, Sources: sources, Coverage: coverage, SourceFacts: facts}
+	if reviewed {
+		v.Review = &review
+	}
+	return v, err
 }
 
 func (q *Queries) Coverage(ctx context.Context, p household.Principal) (reporting.Coverage, error) {

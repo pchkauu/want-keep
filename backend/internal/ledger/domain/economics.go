@@ -148,7 +148,7 @@ func (r Revision) Components() ([]EconomicComponent, error) {
 		return nil, err
 	}
 	result := []EconomicComponent{}
-	if r.State != Posted {
+	if r.State != Posted || r.Accounting() == ExcludedFromAccounting {
 		return result, nil
 	}
 	for _, p := range r.Postings {

@@ -89,12 +89,12 @@ func (s *Store) TransactionReferences(ctx context.Context, p household.Principal
 	return result, next, nil
 }
 
-func (s *Store) TransactionSources(ctx context.Context, p household.Principal, id string) ([]application.SourceReference, error) {
+func (s *Store) TransactionSources(ctx context.Context, p household.Principal, id string, revision uint64) ([]application.SourceReference, error) {
 	q, err := s.reader(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.Query(ctx, `SELECT DISTINCT s.provider,a.stable_id,s.product,s.log,s.provider_record_id,s.revision,pr.connection_id FROM want_keep.source_records s JOIN want_keep.external_accounts a ON (a.household_id,a.id)=(s.household_id,s.external_account_id) JOIN want_keep.source_provenance pr ON (pr.household_id,pr.source_id,pr.revision)=(s.household_id,s.id,s.revision) WHERE s.household_id=$1 AND s.operation_id=$2 ORDER BY s.provider,a.stable_id,s.product,s.log,s.provider_record_id,s.revision,pr.connection_id`, p.HouseholdID(), id)
+	rows, err := q.Query(ctx, `SELECT DISTINCT s.provider,a.stable_id,s.product,s.log,s.provider_record_id,link.source_revision,pr.connection_id FROM want_keep.ledger_revision_sources link JOIN want_keep.source_records s ON (s.household_id,s.id)=(link.household_id,link.source_id) JOIN want_keep.external_accounts a ON (a.household_id,a.id)=(s.household_id,s.external_account_id) JOIN want_keep.source_provenance pr ON (pr.household_id,pr.source_id,pr.revision)=(link.household_id,link.source_id,link.source_revision) WHERE link.household_id=$1 AND link.operation_id=$2 AND link.revision=$3 ORDER BY s.provider,a.stable_id,s.product,s.log,s.provider_record_id,link.source_revision,pr.connection_id`, p.HouseholdID(), id, revision)
 	if err != nil {
 		return nil, err
 	}
