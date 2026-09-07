@@ -1,0 +1,188 @@
+.token-preview {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: var(--wk-space-8) var(--wk-space-12);
+  font-size: var(--wk-text-body);
+  line-height: var(--wk-leading-body);
+}
+.token-preview__header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--wk-space-6);
+  padding-block-end: var(--wk-space-6);
+}
+.token-preview__header > div {
+  min-width: 0;
+}
+.token-preview__logo {
+  width: 28px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+}
+.token-preview__logo img {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+.token-preview__label {
+  color: var(--wk-sand);
+  font-size: var(--wk-text-small);
+  letter-spacing: 0.06em;
+}
+.token-preview__panel {
+  padding-block: var(--wk-space-8);
+  margin-block: var(--wk-space-8);
+}
+.token-preview h2 {
+  font-size: var(--wk-text-heading);
+  line-height: var(--wk-leading-heading);
+}
+.token-preview p {
+  overflow-wrap: anywhere;
+}
+.token-preview__brand {
+  font-size: var(--wk-text-heading);
+}
+.token-preview__amounts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: var(--wk-space-6);
+}
+.token-preview__amounts > div {
+  min-width: 0;
+  padding: var(--wk-space-6);
+  background: var(--card);
+  border-radius: var(--wk-radius-panel);
+}
+.token-preview__amounts span {
+  color: var(--muted-foreground);
+}
+.token-preview__amounts p {
+  font-size: var(--wk-text-heading);
+  margin-block: var(--wk-space-2);
+}
+.token-preview__states {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: var(--wk-space-4);
+}
+.token-preview__states label {
+  display: grid;
+  gap: var(--wk-space-2);
+  max-width: 100%;
+}
+.token-preview__control {
+  font: inherit;
+  color: var(--foreground);
+  background: var(--background);
+  border: 0;
+  border-radius: var(--radius);
+  padding: var(--wk-space-2) var(--wk-space-4);
+  max-width: 100%;
+  transition: background-color var(--wk-motion-fast) var(--wk-motion-ease);
+}
+.token-preview__control:hover:not(:disabled) {
+  background: var(--popover);
+}
+.token-preview__control:active:not(:disabled) {
+  background: var(--accent);
+}
+.token-preview__control--primary {
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+.token-preview__control--primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+.token-preview__control--primary:active:not(:disabled) {
+  background: var(--primary-active);
+}
+.token-preview__control--selected {
+  color: var(--accent-readable);
+  background: var(--accent);
+}
+.token-preview__control:disabled {
+  color: var(--disabled-foreground);
+  background: var(--disabled);
+  cursor: not-allowed;
+}
+.token-preview .token-preview__control:focus-visible,
+.token-preview summary:focus-visible {
+  outline: none;
+  background: var(--wk-focus-fill);
+  color: var(--wk-focus-foreground);
+}
+.token-preview__statuses {
+  list-style: none;
+  padding: 0;
+}
+.token-preview__success {
+  color: var(--success);
+}
+.token-preview__warning {
+  color: var(--warning);
+}
+.token-preview__error {
+  color: var(--destructive);
+}
+.token-preview__pairs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--wk-space-4);
+}
+.token-preview__pairs article {
+  min-width: 0;
+  padding-bottom: var(--wk-space-4);
+}
+.token-preview__pairs small {
+  color: var(--muted-foreground);
+}
+.token-preview__swatch {
+  padding: var(--wk-space-4);
+  font-size: var(--wk-text-heading);
+  font-weight: 600;
+}
+
+.token-preview__wordmark {
+  font-size: var(--wk-text-heading);
+}
+.token-preview__edition {
+  margin-inline-start: auto;
+  color: var(--muted-foreground);
+  font-size: var(--wk-text-small);
+  letter-spacing: 0.06em;
+}
+input.token-preview__control {
+  background: var(--card);
+}
+.token-preview__control::placeholder {
+  color: var(--muted-foreground);
+}
+.token-preview__control:focus-visible::placeholder {
+  color: var(--wk-focus-foreground);
+}
+.token-preview details {
+  margin-block-start: var(--wk-space-8);
+  color: var(--muted-foreground);
+}
+.token-preview summary {
+  cursor: pointer;
+}
+.token-preview__statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wk-space-6);
+  margin-block-start: var(--wk-space-8);
+}
+@media (max-width: 900px) {
+  .token-preview__edition {
+    display: none;
+  }
+  .token-preview__header button {
+    margin-inline-start: auto;
+  }
+}

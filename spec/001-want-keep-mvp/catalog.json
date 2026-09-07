@@ -1835,8 +1835,8 @@
       "id": "REQ-077",
       "decision": "D-30",
       "title": {
-        "ru": "Только тёмная тема с токенами Want Keep и сдержанной pixel-айдентикой.",
-        "en": "Dark-only Want Keep tokens and restrained pixel identity."
+        "ru": "Тёмные токены Want Keep: сдержанный киберпанк и архитектурный ритм Ближнего Востока.",
+        "en": "Dark Want Keep tokens: restrained cyberpunk and Middle Eastern architectural rhythm."
       },
       "acceptance": {
         "id": "AC-094",
@@ -1849,8 +1849,8 @@
           "en": "Backgrounds, surfaces, accents and states are inspected."
         },
         "then": {
-          "ru": "Фон #1A1A1A, поверхности #202020–#262626, бренд #5F4EF5; нет переключателя светлой темы. Семантические статусы имеют текст/значок, разделители тонкие, тени минимальны.",
-          "en": "Base #1A1A1A, surfaces #202020–#262626, brand #5F4EF5; no light-theme selector. Semantic states have text/icons, thin separators and minimal shadows."
+          "ru": "Фон #1A1A1A, рабочие поверхности #202020–#262626, бренд #5F4EF5; нет светлой темы. Брендовые плоскости #111114/#18171E, редкие песочные акценты #C7AF8F. Нет обводок карточек/полей; группировка заливкой, пространством и типографикой. Фокус заметен инверсией заливки; статусы имеют текст/значок.",
+          "en": "Base #1A1A1A, working surfaces #202020–#262626, brand #5F4EF5; no light theme. Brand planes #111114/#18171E, sparse sand accents #C7AF8F. No card/field outlines; group through fills, space and typography. Focus uses visible inverted fill; statuses have text/icons."
         },
         "level": "manual+e2e"
       }
@@ -1865,8 +1865,8 @@
       "acceptance": {
         "id": "AC-095",
         "given": {
-          "ru": "Есть RU/EN строки, RUB/USD/USDT/BTC и длинные точные суммы.",
-          "en": "RU/EN strings, RUB/USD/USDT/BTC and long precise amounts exist."
+          "ru": "Есть RU/EN строки, RUB/USD/USDT/USDC/BTC/ETH и длинные точные суммы.",
+          "en": "RU/EN strings, RUB/USD/USDT/USDC/BTC/ETH and long precise amounts exist."
         },
         "when": {
           "ru": "Проверяются загруженные и недоступные шрифты.",
@@ -5323,8 +5323,8 @@
         "web/public/brand/"
       ],
       "behavior": {
-        "ru": "По design.md создать semantic colors/spacing/radius/type/motion tokens; сохранить logo_512px.svg без изменения пропорций. Локально разместить Pixelify Sans и Manrope с лицензиями и fallback. Рассчитать контраст каждой пары; брендовый фиолетовый не использовать как мелкий текст на тёмном фоне. Без темы light.",
-        "en": "Implement semantic color/spacing/radius/type/motion tokens from design.en.md; preserve logo_512px.svg proportions. Host Pixelify Sans and Manrope locally with licenses and fallbacks. Calculate each contrast pair; do not use brand purple as small text on dark surfaces. No light theme."
+        "ru": "Единый источник CSS-токенов: графит, обсидиановые брендовые плоскости, фиолетовый и песочный акцент по референсам пользователя. Без обводок; видимый фокус через инверсию. Сохранить shadcn/Tailwind-алиасы, logo_512px.svg побайтно, полные локальные variable Pixelify Sans/Manrope с OFL, закреплёнными источниками и SHA-256. Точные суммы остаются строками; табличные цифры — Manrope. Длительности и reduced motion без финансовых триггеров. /__design/tokens не входит в production bundle.",
+        "en": "One CSS token source: graphite, obsidian brand planes, violet and sand accent following user references. No outlines; visible focus through inversion. Preserve shadcn/Tailwind aliases, byte-identical logo_512px.svg, full local variable Pixelify Sans/Manrope with OFL, pinned sources and SHA-256. Exact amounts remain strings; tabular figures use Manrope. Durations/reduced motion without financial triggers. /__design/tokens stays outside the production bundle."
       },
       "verification": {
         "command": "make test-web FILTER=design-tokens",
@@ -5333,7 +5333,15 @@
           "en": "Tokens are reproducible, RU/EN fonts and long amounts are readable, licenses included and contrast matrix attached."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/57"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/57",
+      "status": {
+        "ru": "Реализована визуальная основа и dev/test-образцы; task-1.1 включена в базу. Продуктовые экраны и общий каталог компонентов остаются последующим задачам.",
+        "en": "Visual foundation and dev/test specimens implemented; task-1.1 is included in the base. Product screens and the full component catalog remain downstream."
+      },
+      "verification_note": {
+        "ru": "Команды существуют: make check; make test-web FILTER=design-tokens; make e2e SCENARIO=design-tokens; git diff --check. Матрица: design-contrast.md; покрытие шрифтов и границы: evidence/task-7.10-design.md. По уточнению пользователя ручная проверка этой задачи использует Chrome; Arc остаётся последующей продуктовой приёмке.",
+        "en": "Commands exist: make check; make test-web FILTER=design-tokens; make e2e SCENARIO=design-tokens; git diff --check. Matrix: design-contrast.md; font coverage and boundaries: evidence/task-7.10-design.en.md. Per user refinement this task uses Chrome for manual verification; Arc remains later product acceptance."
+      }
     },
     {
       "id": "task-7.11",

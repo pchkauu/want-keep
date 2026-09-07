@@ -26,6 +26,8 @@
   "include": [
     "src",
     "tests",
+    "e2e",
+    "playwright.config.ts",
     "eslint.config.js",
     "vite.config.ts",
     "vitest.config.ts"

@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "../design-system/theme.css";
+@import "../design-system/typography.css";
 
 :root {
   color: var(--foreground);
@@ -9,6 +10,7 @@
   font-family: var(--wk-font-interface);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  color-scheme: only dark;
 }
 
 * {
@@ -18,7 +20,7 @@
 html,
 body,
 #root {
-  min-width: 320px;
+  min-width: 0;
   min-height: 100%;
   margin: 0;
 }
@@ -35,37 +37,72 @@ body {
   display: grid;
   min-height: 100vh;
   place-items: center;
-  padding: 48px;
+  padding: var(--wk-space-12);
 }
 
 .foundation-shell__content {
-  width: min(100%, 520px);
-  padding: 40px;
-  border-width: 1px;
-  border-radius: 8px;
+  width: min(100%, 640px);
+  padding: var(--wk-space-8);
+  text-align: center;
+}
+
+.foundation-shell__logo {
+  display: block;
+  height: 56px;
+  width: auto;
+  margin: 0 auto var(--wk-space-12);
 }
 
 .foundation-shell .foundation-shell__eyebrow {
-  margin: 0 0 12px;
+  margin: 0 0 var(--wk-space-3);
   color: var(--accent-readable);
-  font:
-    600 14px/1.4 "Pixelify Sans",
-    monospace;
-  letter-spacing: 0.04em;
+  font: var(--wk-weight-label) var(--wk-text-small) / var(--wk-leading-body)
+    var(--wk-font-interface);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .foundation-shell h1 {
   margin: 0;
   color: var(--foreground);
-  font:
-    600 48px/1.1 "Pixelify Sans",
-    monospace;
+  font: var(--wk-weight-heading) var(--wk-text-display) /
+    var(--wk-leading-heading) var(--wk-font-brand);
+}
+
+.foundation-shell h1 span {
+  color: var(--primary);
+}
+
+.foundation-shell__signal {
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  gap: 4px;
+  height: 20px;
+  margin: var(--wk-space-12) auto;
+}
+.foundation-shell__signal span {
+  width: 4px;
+  height: 8px;
+  background: var(--wk-sand);
+}
+.foundation-shell__signal span:nth-child(2) {
+  height: 20px;
+  background: var(--primary);
+}
+.foundation-shell .foundation-shell__status {
+  color: var(--foreground);
+  font-size: var(--wk-text-small);
+}
+.foundation-shell .foundation-shell__notice {
+  max-width: 320px;
+  margin: var(--wk-space-2) auto 0;
+  font-size: var(--wk-text-small);
 }
 
 .foundation-shell p {
-  margin: 20px 0 0;
+  margin: var(--wk-space-6) 0 0;
   color: var(--muted-foreground);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: var(--wk-text-body);
+  line-height: var(--wk-leading-body);
 }

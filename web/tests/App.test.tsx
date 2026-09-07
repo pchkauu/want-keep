@@ -9,7 +9,7 @@ describe("application foundation", () => {
   it("renders an explicit non-product shell", () => {
     const markup = renderToStaticMarkup(<App />);
 
-    expect(markup).toContain("Want Keep");
+    expect(markup.replace(/<[^>]+>/g, "")).toContain("WANT KEEP");
     expect(markup).toContain("Product workflows are intentionally unavailable");
   });
 

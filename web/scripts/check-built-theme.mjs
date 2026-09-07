@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { URL } from "node:url";
+import { ThemeContract } from "./design/theme-contract.ts";
 
 const assetDirectory = new URL("../dist/assets/", import.meta.url);
 const assetNames = await readdir(assetDirectory);
@@ -42,39 +43,49 @@ function tokenColor(name) {
     : color;
 }
 
-function relativeLuminance(color) {
-  const channels = [1, 3, 5].map(
-    (offset) => Number.parseInt(color.slice(offset, offset + 2), 16) / 255,
-  );
-  const linearChannels = channels.map((channel) =>
-    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
-  );
-  return (
-    0.2126 * linearChannels[0] +
-    0.7152 * linearChannels[1] +
-    0.0722 * linearChannels[2]
-  );
+const sourceCss = await readFile(
+  new URL("../src/design-system/theme.css", import.meta.url),
+  "utf8",
+);
+const theme = new ThemeContract(sourceCss);
+for (const pair of theme.matrix()) {
+  if (!pair.passes) throw new Error(`Source contrast failed: ${pair.id}`);
 }
-
-function contrastRatio(firstColor, secondColor) {
-  const luminances = [
-    relativeLuminance(firstColor),
-    relativeLuminance(secondColor),
-  ].sort((left, right) => right - left);
-  return (luminances[0] + 0.05) / (luminances[1] + 0.05);
-}
-
-for (const [foregroundToken, backgroundToken, minimum] of [
-  ["--accent-readable", "--card", 4.5],
-  ["--input", "--card", 3],
-]) {
-  const ratio = contrastRatio(
-    tokenColor(foregroundToken),
-    tokenColor(backgroundToken),
-  );
-  if (ratio < minimum) {
-    throw new Error(
-      `${foregroundToken} on ${backgroundToken} has ${ratio.toFixed(2)}:1 contrast; expected at least ${minimum}:1`,
-    );
+for (const [name, color] of theme.tokens) {
+  if (/^#[a-f0-9]{6}$/i.test(color) && tokenColor(name) !== color) {
+    throw new Error(`Compiled color changed: ${name}`);
   }
+}
+const manifest = JSON.parse(
+  await readFile(
+    new URL("../public/fonts/manifest.json", import.meta.url),
+    "utf8",
+  ),
+);
+for (const item of manifest) {
+  const original = await readFile(
+    new URL(`../public/fonts/${item.file}`, import.meta.url),
+  );
+  const built = await readFile(
+    new URL(`../dist/fonts/${item.file}`, import.meta.url),
+  );
+  if (!original.equals(built))
+    throw new Error(`Built font changed: ${item.file}`);
+  if (!compiledCss.includes(`/fonts/${item.file.toLowerCase()}`))
+    throw new Error(`Font face missing: ${item.file}`);
+}
+const scripts = await Promise.all(
+  assetNames
+    .filter((name) => name.endsWith(".js"))
+    .map((name) => readFile(new URL(name, assetDirectory), "utf8")),
+);
+if (
+  /token-preview|Design foundation|tokens-preview|\/__design\/tokens|Предельная длина/.test(
+    scripts.join("\n"),
+  ) ||
+  compiledCss.includes(".token-preview")
+) {
+  throw new Error(
+    "Development token specimens leaked into the production build",
+  );
 }
