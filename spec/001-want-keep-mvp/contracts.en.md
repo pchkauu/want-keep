@@ -2,7 +2,7 @@
 
 [Русский](contracts.md)
 
-Target project contract version 6; family and desktop amendment 2026-09-07. No actual API or database schema exists yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
+Target project contract version 7; family, desktop, D-36/USDC and FX amendments dated 2026-09-07. No actual API or database schema exists yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
 
 ## Domain entities
 
@@ -36,6 +36,16 @@ Purchases have actual cash dates and expense-budget months. Refunds have their o
 Refunding USD 4 of a USD 10 purchase originally valued at RUB 900 reduces historical expense by RUB 360. Actual receipt/conversion amounts and FX differences remain separate. Item/discount allocations exactly equal payment; allocate rounding remainders deterministically by largest fractional remainder, breaking ties by stable item ID.
 
 Historical rate snapshots are fixed to transaction dates. Current quote updates do not alter them; correcting an erroneous historical price creates an audited valuation revision. Missing prices produce unavailable/partial, never zero, a current price substituted for history or USD/USDT/USDC=1. Native amounts stay accessible.
+
+## Reference-rate contract
+
+[task-0.7 evidence](evidence/fx.en.md) selects Bank of Russia as primary USD/RUB, Frankfurter v2 only with `providers=CBR` as fallback/cross-check, and CoinGecko Demo for separate BTC/USD, ETH/USD, USDT/USD and USDC/USD observations at most 365 days old. Default blends are forbidden. TradingView is not a data source. Crypto history older than 365 days remains unavailable pending task-0.10.
+
+For `P_USD(X,D)`, USD per one asset unit, calculate `R(S→T,D) = P_USD(S,D) / P_USD(T,D)`. `P_USD(USD,D)=1`; `P_USD(RUB,D)=1/CBR_USD_RUB(D)`. Each leg retains provider asset ID, requested date, observed/effective time, fetchedAt, granularity, source/transport and revision. Calculation and inversion use Decimal; rounding happens only at an explicit presentation boundary.
+
+Historical CBR uses the latest effective date `≤ D`; a weekend creates no new observation. CoinGecko history is a daily UTC snapshot for the operation date in the budget timezone. If a leg is missing, outside available depth or a current response lacks the required timestamp, the cross and dependent conclusions are partial/unavailable. The latest cache may be displayed as stale with dates but cannot rewrite history.
+
+Reference valuation does not replace an actual exchange. An executed quote needs both native amounts, direction, applicable amount, provider timestamp and known spread/fees from the source operation. Missing fields display as unknown/quote unavailable. A primary/cross-check mismatch retains both observations and creates diagnostics without hidden averaging.
 
 ## Daily allowances
 

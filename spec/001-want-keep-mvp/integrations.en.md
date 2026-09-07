@@ -29,9 +29,11 @@ Prefer official read APIs with least privilege. Browser collection is allowed wi
 
 ## Rates
 
-task-0.7 must prove free current/historical RUB, USD, USDT, USDC, BTC, ETH and required cross coverage. Reference valuation is not an executable quote. Buy/sell needs direction, applicable amount, timestamp and fee coverage. Unknown fees are not zero; USD/USDT/USDC are not automatically equal.
+[task-0.7 research](evidence/fx.en.md) completed on 2026-09-07. Primary USD/RUB comes from official Bank of Russia XML; Frankfurter v2 is allowed only with `providers=CBR` as fallback/cross-check. BTC/USD, ETH/USD, USDT/USD and USDC/USD use separate CoinGecko Demo observations for current values and history up to 365 days. Crosses use exact Decimal arithmetic through USD; default blended rates and a USD/USDT/USDC=1 assumption are forbidden. Similar tokens, including USDC.E, are not merged without verified identity mapping.
 
-No specific rate provider is selected in this package: full history or executable prices cannot be promised without verification. Missing mandatory free access remains a blocker.
+TradingView was rejected: charting libraries do not supply market data, and its terms prohibit automated price referencing/non-display processing. A reference price is not an executable quote. Provider buy/sell needs direction, applicable amount, timestamp and spread/fee from a verified source contract; unknown fields remain unavailable/unknown.
+
+BLK-07 retains FX-B02–FX-B04 until task-0.10: a decision for crypto history older than 365 days, provider executable quotes and a keyed CoinGecko Demo probe/attribution. The research Issue can close, while task-6.1 and the MVP remain Not Ready.
 
 ## Closure order
 

@@ -20,7 +20,7 @@ Prepared proposal, 87 REQ, 105 AC, architecture, contracts/formulas, glossary, M
 | BLK-04 | Bybit Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P under D-36 | task-0.10, task-0.4 evidence | [Research](evidence/bybit.en.md): BYBIT-B02–B05 — read-only private API, shapes/linkage/history, Earn lifecycle and P2P eligibility/read contract. Other products are unnecessary |
 | BLK-05 | Aifory: RUB, USDT, ETH and existing USD card under D-33 | task-0.10, task-0.5 evidence | [Research](evidence/aifory.en.md): AIFORY-B02–B04 — automation permission, structured read contract, identity/history/reauth, card lifecycle/fees/FX. Other products not required |
 | BLK-06 | EMCD: USDT wallet, used Grow/crypto cards and P2P history under D-34 | task-0.10, evidence task-0.6 | [Research](evidence/emcd.en.md): EMCD-B02–B04 — structured read/access, identity/history/reauth, balances/Grow/card/P2P. Mining has never been used; other products are unnecessary |
-| BLK-07 | Free current/historical FX valuation and provider quotes | task-0.7 | All pairs/periods/fees/source policies or a decision on unavailability |
+| BLK-07 | Free current/historical FX valuation and provider quotes | task-0.10, task-0.7 evidence | [Research](evidence/fx.en.md): CBR + CoinGecko Demo cover current/≤365d; FX-B02–FX-B04 — >365d crypto history, provider executable quotes and keyed Demo probe/attribution |
 | BLK-08 | OpenAI models, measured quality/cost and request limits | task-0.8 | Financial-invariant evaluation with tokens/errors and selected versions/limits |
 | BLK-09 | Concrete VPS/reachability/cost and Mac backup retention | task-0.9 | Dated ≤$40 estimate, reachability, retention/capacity and recovery design |
 | BLK-10 | Full structured grace/accrual terms, exact API boundaries and XIRR solver | task-0.10 | Verified input contracts, algorithms/vectors, updated RU/EN and independent Ready review |
@@ -32,6 +32,14 @@ BLK-01–BLK-06 need separately and securely supplied owner access. None was sup
 [RU evidence](evidence/alfa.md) / [EN evidence](evidence/alfa.en.md): 20 dated sources/observations, mandatory-product and cashback matrix, published retail schemas, synthetic examples, documentation contradictions and ALFA-B01–ALFA-B06. ALFA-B01 is closed for the live session; ALFA-B02–ALFA-B06 remain open within BLK-01. Research output is complete under the README rule; full AC-042 and AC-041/AC-048/AC-070/AC-079/AC-087 are not claimed as passed.
 
 Research checks are separate from application checks: local spec validation, generator tests, RU/EN IDs/examples/links and diff review. Rendering the card from catalog.json requires RU/EN status support; the default-status test uses a copy without status instead of assuming task-0.1 will always be unstarted. This task's REQ/AC and dependencies are unchanged. Runtime API/collector, full history, reauth and second account were not tested for the evidence-listed reasons. Verdict remains Not Ready; downstream implementation is blocked.
+
+## Rates: task-0.7 research completion, 2026-09-07
+
+[RU evidence](evidence/fx.md) / [EN](evidence/fx.en.md): CBR selected as primary USD/RUB; Frankfurter `providers=CBR` as fallback/cross-check; CoinGecko Demo for separate BTC/USD, ETH/USD, USDT/USD and USDC/USD current and ≤365-day history. USD-cross formula, prohibition on merging USDC.E, effective-date policy, cache/failure/audit rules, 18 evidence items and FX-B01–FX-B06 are recorded in both languages.
+
+TradingView was tested and rejected: libraries require an external datafeed, while its terms prohibit automated price referencing/non-display processing. CBR/CoinGecko returned HTTP 200 from DE/NL/BG; Frankfurter succeeded from DE/BG and then three NL networks after one probe-local DNS failure. This is a dated snapshot, not an SLA or actual VPS runtime.
+
+Research is complete under the README rule. BLK-07 retains FX-B02–FX-B04 under task-0.10: a decision for crypto history older than 365 days, provider-specific executable quotes/fees, and CoinGecko Demo key creation/verification with attribution. task-6.1 and the MVP remain Not Ready. Application AC-037/AC-038/AC-039/AC-074 are not claimed as passed.
 
 ## Checks for this stage
 

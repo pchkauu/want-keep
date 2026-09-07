@@ -5,7 +5,7 @@
 
 Подтвердить историческую и текущую оценку RUB, USD, USDT, USDC, BTC и ETH и покрытие обменных котировок.
 
-**Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
+**Состояние:** Исследование завершено 2026-09-07: CBR/CoinGecko/Frankfurter contract, 18 evidence items и шесть blocker decisions записаны; TradingView отвергнут. FX-B02–FX-B04 / BLK-07 переданы task-0.10; task-6.1 и MVP Not Ready.
 
 **Зависимости:** нет.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Проверить бесплатность, условия использования, USD/RUB, BTC, ETH, USDT и USDC-кроссы, историческую глубину, точность timestamp и rate limits. Отдельно описать справочную оценку и котировки покупки/продажи сервисов, включая комиссии и доступность из DE/NL/BG. USD, USDT и USDC не равны автоматически; похожие токены не объединять. D-36 добавляет USDC, не меняя исходные суммы.
+Evidence/fx.md и .en.md содержат датированные официальные источники, live boundary probes, матрицу кандидатов, формулу USD-кроссов, failure/cache/audit правила и FX-B01–FX-B06. Основной USD/RUB — XML Банка России; Frankfurter v2 только с providers=CBR — fallback/cross-check; CoinGecko Demo — отдельные BTC/USD, ETH/USD, USDT/USD и USDC/USD current/history не старше 365 дней. Default blend и peg USD/USDT/USDC=1 запрещены; похожие токены, включая USDC.E, не объединять без проверенной identity mapping. TradingView отвергнут: библиотеки требуют внешний datafeed, terms запрещают non-display price referencing. Reference valuation не заменяет provider executable buy/sell с обеими native amounts, applicable amount, timestamp, spread/fee. DE/NL/BG snapshot подтверждён, но не является SLA/VPS runtime. BLK-07 сохраняет FX-B02–FX-B04 под task-0.10; исследование не разблокирует task-6.1 до Ready.
 
 ### Границы изменений
 
@@ -66,12 +66,12 @@
 ### Проверка результата
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-Матрица покрывает все нужные пары и периоды либо перечисляет точные блокеры; выбранные источники и правила кросс-курсов воспроизводимы.
+RU/EN evidence совпадает по FX-E01–FX-E18 и FX-B01–FX-B06; выбранные источники, даты, Decimal-кроссы и unavailable-поведение воспроизводимы. Реальные rates/keys/cookies/IP не опубликованы. Закрытие research не выдаётся за прохождение application AC или BLK-07/Ready.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+make docs-check проверяет SDD. Anonymous current/history/plan-limit и DE/NL/BG probes подтверждают только датированный публичный доступ. Demo key, длительный runtime, crypto history >365d и executable provider quotes не проверены и перечислены как открытые решения.
 
 ### Передача следующему агенту
 
@@ -83,7 +83,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 Verify historical/current RUB, USD, USDT, USDC, BTC and ETH valuation and exchange-quote coverage.
 
-**Status:** Research — not started; live access and paid runs require securely supplied owner access.
+**Status:** Research completed on 2026-09-07: CBR/CoinGecko/Frankfurter contract, 18 evidence items and six blocker decisions recorded; TradingView rejected. FX-B02–FX-B04 / BLK-07 handed to task-0.10; task-6.1 and MVP Not Ready.
 
 **Dependencies:** none.
 
@@ -91,7 +91,7 @@ Verify historical/current RUB, USD, USDT, USDC, BTC and ETH valuation and exchan
 
 ### Change and contracts
 
-Verify free access, usage terms, USD/RUB, BTC, ETH, USDT and USDC crosses, history depth, timestamp precision and rate limits. Distinguish reference valuation from provider buy/sell quotes, including fees and DE/NL/BG reachability. USD, USDT and USDC are not automatically equal; do not merge similar tokens. D-36 adds USDC without changing native amounts.
+Evidence/fx.md and .en.md contain dated official sources, live boundary probes, a candidate matrix, USD-cross formula, failure/cache/audit rules and FX-B01–FX-B06. Primary USD/RUB is Bank of Russia XML; Frankfurter v2 with providers=CBR only is fallback/cross-check; CoinGecko Demo supplies separate BTC/USD, ETH/USD, USDT/USD and USDC/USD current/history no older than 365 days. Default blends and a USD/USDT/USDC=1 peg are forbidden; similar tokens, including USDC.E, are not merged without verified identity mapping. TradingView is rejected: libraries need an external datafeed and terms prohibit non-display price referencing. Reference valuation cannot replace provider-executable buy/sell with both native amounts, applicable amount, timestamp and spread/fee. DE/NL/BG snapshot reachability is established but is not SLA/VPS runtime. BLK-07 retains FX-B02–FX-B04 under task-0.10; research does not unblock task-6.1 before Ready.
 
 ### Change boundaries
 
@@ -144,12 +144,12 @@ A criterion link establishes coverage; research or a partial task does not prove
 ### Verification
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-The matrix covers required pairs/periods or identifies precise blockers; chosen sources and cross-rate rules are reproducible.
+RU/EN evidence aligns on FX-E01–FX-E18 and FX-B01–FX-B06; selected sources, dates, Decimal crosses and unavailable behavior are reproducible. No actual rates/keys/cookies/IP are published. Research closure is not presented as passing application ACs or BLK-07/Ready.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+make docs-check validates SDD. Anonymous current/history/plan-limit and DE/NL/BG probes establish dated public access only. Demo key, long-running runtime, >365-day crypto history and executable provider quotes remain untested and are listed as open decisions.
 
 ### Handoff to the next agent
 

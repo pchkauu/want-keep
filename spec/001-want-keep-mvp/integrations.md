@@ -29,9 +29,11 @@
 
 ## Курсы
 
-task-0.7 должен доказать бесплатное текущее/историческое покрытие RUB, USD, USDT, USDC, BTC, ETH и нужных кроссов. Справочная цена не является исполнимой котировкой. Для buy/sell нужны направление, применимая сумма, timestamp и fee coverage. Неизвестная комиссия не 0; USD/USDT/USDC не равны автоматически.
+[Исследование task-0.7](evidence/fx.md) завершено 2026-09-07. Основной USD/RUB — официальный XML Банка России; Frankfurter v2 допустим только с `providers=CBR` как fallback/cross-check. BTC/USD, ETH/USD, USDT/USD и USDC/USD — отдельные CoinGecko Demo observations: current и история до 365 дней. Кроссы вычисляются через USD точной Decimal-арифметикой; default blended rates и предположение USD/USDT/USDC=1 запрещены. Похожие токены, включая USDC.E, не объединяются без проверенной identity mapping.
 
-В этом пакете конкретный rate provider не выбран: нельзя обещать полную историю или исполнимую цену без подтверждения. Отсутствие бесплатного обязательного источника остаётся блокером.
+TradingView отвергнут: charting libraries не поставляют market data, а terms запрещают automated price referencing/non-display processing. Справочная цена не является исполнимой котировкой. Provider buy/sell требует direction, applicable amount, timestamp, spread/fee из подтверждённого source contract; неизвестные поля остаются unavailable/unknown.
+
+BLK-07 сохраняет FX-B02–FX-B04 до task-0.10: решение для crypto history старше 365 дней, provider executable quotes и keyed CoinGecko Demo probe/attribution. Research Issue может быть закрыт, но task-6.1 и MVP остаются Not Ready.
 
 ## Порядок закрытия
 

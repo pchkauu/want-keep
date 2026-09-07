@@ -20,7 +20,7 @@ Verdict: Not Ready
 | BLK-04 | Bybit Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P по D-36 | task-0.10, evidence task-0.4 | [Исследование](evidence/bybit.md): BYBIT-B02–B05 — read-only private API, формы/связи/история, Earn lifecycle и P2P eligibility/read-контракт. Остальные продукты не требуются |
 | BLK-05 | Aifory: RUB, USDT, ETH и используемая карта USD по D-33 | task-0.10, evidence task-0.5 | [Исследование](evidence/aifory.md): AIFORY-B02–B04 — право автоматизации, структурированный read-контракт, identity/history/reauth, card lifecycle/fees/FX. Другие продукты не требуются |
 | BLK-06 | EMCD: кошелёк USDT, используемые Grow/криптокарты и история P2P по D-34 | task-0.10, evidence task-0.6 | [Исследование](evidence/emcd.md): EMCD-B02–B04 — structured read/access, identity/history/reauth, балансы/Grow/card/P2P. Майнинг не использовался никогда; другие продукты не требуются |
-| BLK-07 | Бесплатная текущая/историческая FX-оценка и сервисные котировки | task-0.7 | Все пары/периоды/fees/source policies либо решение по недоступности |
+| BLK-07 | Бесплатная текущая/историческая FX-оценка и сервисные котировки | task-0.10, evidence task-0.7 | [Исследование](evidence/fx.md): CBR + CoinGecko Demo закрывают current/≤365d; FX-B02–FX-B04 — crypto history >365d, provider executable quotes и keyed Demo probe/attribution |
 | BLK-08 | Модели OpenAI, измеренное качество/стоимость, ограничения запросов | task-0.8 | Eval с финансовыми инвариантами, токенами/ошибками, выбранные версии/лимиты |
 | BLK-09 | Конкретный VPS/доступность/смета и политика хранения копий Mac | task-0.9 | Датированная смета ≤$40, достижимость, retention/capacity и recovery design |
 | BLK-10 | Полные структурированные условия grace/accrual, точные границы API и solver XIRR | task-0.10 | Подтверждённые input contracts, алгоритмы/векторы, обновлённые RU/EN и независимый Ready review |
@@ -32,6 +32,14 @@ Verdict: Not Ready
 [RU evidence](evidence/alfa.md) / [EN evidence](evidence/alfa.en.md): 20 датированных источников/наблюдений, матрица обязательных продуктов и кэшбэка, опубликованные retail-схемы, синтетические примеры, противоречия документации и ALFA-B01–ALFA-B06. ALFA-B01 закрыт для live-сеанса; ALFA-B02–ALFA-B06 открыты и остаются частью BLK-01. Исследовательский результат завершён согласно README; полный AC-042 и AC-041/AC-048/AC-070/AC-079/AC-087 не объявляются пройденными.
 
 Критерии исследования проверяются отдельно от приложения: локальный spec check, тесты генератора, RU/EN IDs/примеры/ссылки и diff review. Обновление карточки из catalog.json требует поддержки статуса RU/EN; тест значения по умолчанию использует копию без status, а не предположение, что task-0.1 навсегда «не начато». REQ/AC и зависимости этой задачи не меняются. Runtime API/сборщик, полная история, reauth и второй аккаунт не проверены по причинам в evidence. Verdict остаётся Not Ready; следующая реализация заблокирована.
+
+## Курсы: завершение исследования task-0.7, 2026-09-07
+
+[RU evidence](evidence/fx.md) / [EN](evidence/fx.en.md): CBR выбран основным USD/RUB; Frankfurter `providers=CBR` — fallback/cross-check; CoinGecko Demo — отдельные BTC/USD, ETH/USD, USDT/USD и USDC/USD current и history ≤365 дней. Формула USD-кроссов, запрет слияния USDC.E, effective-date policy, cache/failure/audit правила, 18 evidence items и FX-B01–FX-B06 записаны попарно.
+
+TradingView проверен и отвергнут: библиотеки требуют внешний datafeed, а terms запрещают automated price referencing/non-display processing. CBR/CoinGecko дали HTTP 200 из DE/NL/BG; Frankfurter подтвердился из DE/BG и повторно из трёх NL networks после единичной probe DNS failure. Это датированный snapshot, не SLA или фактический VPS runtime.
+
+Research завершён по правилу README. BLK-07 сохраняет FX-B02–FX-B04 под task-0.10: решение для crypto history старше 365 дней, provider-specific executable quotes/fees и создание/проверка CoinGecko Demo key с attribution. task-6.1 и MVP остаются Not Ready. AC-037/AC-038/AC-039/AC-074 в приложении не заявлены как пройденные.
 
 ## Проверки этого этапа
 

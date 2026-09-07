@@ -2,7 +2,7 @@
 
 [English](contracts.en.md)
 
-Контракт проекта версии 6, целевой; семейное и desktop-уточнение 2026-09-07. Реальных API или схемы БД ещё нет. Здесь закреплены общие правила; provider-specific поля и условия закрываются task-0.1–task-0.10 до реализации. REQ/AC имеют приоритет над предположением адаптера.
+Контракт проекта версии 7, целевой; семейное, desktop, D-36/USDC и FX-уточнения 2026-09-07. Реальных API или схемы БД ещё нет. Здесь закреплены общие правила; provider-specific поля и условия закрываются task-0.1–task-0.10 до реализации. REQ/AC имеют приоритет над предположением адаптера.
 
 ## Доменные сущности
 
@@ -36,6 +36,16 @@ Pending влияет на доступность через hold, а факти�
 При возврате USD 4 из покупки USD 10 с исходной оценкой RUB 900 исторический расход уменьшается на RUB 360. Реальная сумма поступления/обмена и FX-разница показываются отдельно. Сумма распределения позиций/скидок точно совпадает с оплатой; остаток округления распределяется детерминированно по наибольшим дробным остаткам, при равенстве — по стабильному ID позиции.
 
 Исторический rate snapshot фиксируется по дате операции. Обновление текущих котировок его не меняет; исправление ошибочной исторической цены создаёт аудируемую valuation revision. Неизвестная цена даёт unavailable/partial, а не 0, текущую цену вместо исторической или USD/USDT/USDC=1. Отчёт сохраняет доступ к native amounts.
+
+## Контракт справочных курсов
+
+[Evidence task-0.7](evidence/fx.md) выбирает Банк России как основной USD/RUB, Frankfurter v2 только с `providers=CBR` как fallback/cross-check и CoinGecko Demo для отдельных BTC/USD, ETH/USD, USDT/USD и USDC/USD observations не старше 365 дней. Default blend запрещён. TradingView не является источником данных. Crypto history старше 365 дней остаётся unavailable до решения task-0.10.
+
+Для `P_USD(X,D)` — USD за единицу актива — кросс вычисляется как `R(S→T,D) = P_USD(S,D) / P_USD(T,D)`. `P_USD(USD,D)=1`, `P_USD(RUB,D)=1/CBR_USD_RUB(D)`. Каждая leg хранит provider asset ID, requested date, observed/effective time, fetchedAt, granularity, source/transport и revision. Расчёт и обратный курс используют Decimal; округление выполняется только на заданной границе отображения.
+
+Для исторического CBR выбирается последняя effective date `≤ D`; выходной не создаёт новую observation. CoinGecko history — дневная UTC snapshot для даты операции в timezone бюджета. Если leg отсутствует, выходит за доступную глубину или current response не содержит требуемый timestamp, cross и зависимые выводы partial/unavailable. Последний cache можно показать как stale с датами, но нельзя переписать им историю.
+
+Reference valuation не заменяет фактический обмен. Executed quote требует обе native amounts, direction, applicable amount, provider timestamp и известные spread/fees из source operation. Отсутствие этих полей отображается как unknown/quote unavailable. Mismatch между primary/cross-check сохраняет обе observations и создаёт диагностику, без скрытого усреднения.
 
 ## Дневные лимиты
 
