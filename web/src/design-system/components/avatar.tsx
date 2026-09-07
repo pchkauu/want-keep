@@ -10,9 +10,9 @@ export function Avatar({
   src?: string;
 }) {
   return (
-    <Primitive.Root className="wk-avatar" aria-label={name}>
+    <Primitive.Root className="wk-avatar" role="img" aria-label={name}>
       {src && <Primitive.Image src={src} alt="" />}
-      <Primitive.Fallback>{initials}</Primitive.Fallback>
+      <Primitive.Fallback aria-hidden="true">{initials}</Primitive.Fallback>
     </Primitive.Root>
   );
 }

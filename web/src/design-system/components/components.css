@@ -426,7 +426,14 @@
   transition: width var(--wk-motion-normal);
 }
 .wk-progress-track[data-indeterminate] {
-  background: var(--muted-foreground);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--muted-foreground) 0 4px,
+    var(--secondary) 4px 8px
+  );
+}
+.wk-progress-indicator[data-indeterminate] {
+  display: none;
 }
 .wk-legend {
   border: 0;

@@ -113,7 +113,10 @@ test("calendar validation and selection inside a dialog restore focus", async ({
     .getByRole("button", { name: "Открыть форму", exact: true })
     .click();
   const dialog = page.getByRole("dialog", { name: "Новая запись · образец" });
-  const input = dialog.getByLabel("Дата операции", { exact: true });
+  const input = dialog.getByRole("textbox", {
+    name: "Дата операции",
+    exact: true,
+  });
   await input.fill("31.02.2026");
   await input.press("Tab");
   await expect(input).toHaveValue("31.02.2026");
@@ -149,7 +152,9 @@ for (const timezoneId of ["Pacific/Honolulu", "Asia/Tokyo", "Europe/Berlin"]) {
     const context = await browser.newContext({ timezoneId });
     const page = await context.newPage();
     await page.goto("http://127.0.0.1:4180/__design/components");
-    await page.getByLabel("Дата операции", { exact: true }).fill("29.03.2026");
+    await page
+      .getByRole("textbox", { name: "Дата операции", exact: true })
+      .fill("29.03.2026");
     await page
       .getByRole("button", { name: "Открыть календарь: Дата операции" })
       .click();
@@ -157,9 +162,9 @@ for (const timezoneId of ["Pacific/Honolulu", "Asia/Tokyo", "Europe/Berlin"]) {
       "29",
     );
     await page.keyboard.press("Enter");
-    await expect(page.getByLabel("Дата операции", { exact: true })).toHaveValue(
-      "29.03.2026",
-    );
+    await expect(
+      page.getByRole("textbox", { name: "Дата операции", exact: true }),
+    ).toHaveValue("29.03.2026");
     await context.close();
   });
 }
@@ -258,7 +263,7 @@ test("focus, errors, selected state, reduced motion and font failure retain read
     "Finance. Clearer. Closer.",
   );
   await expect(
-    page.getByLabel("Transaction date", { exact: true }),
+    page.getByRole("textbox", { name: "Transaction date", exact: true }),
   ).toHaveValue("09/07/2026");
   await page.getByRole("button", { name: "Show toast", exact: true }).click();
   await expect(
@@ -275,17 +280,23 @@ test("focus, errors, selected state, reduced motion and font failure retain read
 test("locale switches reformat a valid date and retain an invalid draft", async ({
   page,
 }) => {
-  await page.getByLabel("Дата операции", { exact: true }).fill("29.02.2024");
+  await page
+    .getByRole("textbox", { name: "Дата операции", exact: true })
+    .fill("29.02.2024");
   await page.getByRole("button", { name: "English", exact: true }).click();
   await expect(
-    page.getByLabel("Transaction date", { exact: true }),
+    page.getByRole("textbox", { name: "Transaction date", exact: true }),
   ).toHaveValue("02/29/2024");
-  await page.getByLabel("Transaction date", { exact: true }).fill("02/30/2024");
+  await page
+    .getByRole("textbox", { name: "Transaction date", exact: true })
+    .fill("02/30/2024");
   await page.getByRole("button", { name: "Русский", exact: true }).click();
-  await expect(page.getByLabel("Дата операции", { exact: true })).toHaveValue(
-    "02/30/2024",
-  );
-  await page.getByLabel("Дата операции", { exact: true }).press("Tab");
+  await expect(
+    page.getByRole("textbox", { name: "Дата операции", exact: true }),
+  ).toHaveValue("02/30/2024");
+  await page
+    .getByRole("textbox", { name: "Дата операции", exact: true })
+    .press("Tab");
   await expect(
     page.getByText("Проверьте дату. Формат: ДД.ММ.ГГГГ", { exact: true }),
   ).toBeVisible();
@@ -335,4 +346,133 @@ test("rendered action, selection and field states meet text contrast", async ({
       await expect(control).toHaveCSS("border-width", "0px");
     }
   }
+});
+
+for (const [value, key] of [
+  ["01.01.0001", "ArrowLeft"],
+  ["31.12.9999", "ArrowRight"],
+]) {
+  test(`calendar preserves the supported boundary ${value}`, async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const date = page.getByRole("textbox", {
+      name: "Дата операции",
+      exact: true,
+    });
+    await date.fill(value);
+    await page
+      .getByRole("button", { name: "Открыть календарь: Дата операции" })
+      .click();
+    await expect(page.locator(".wk-calendar button:focus")).toHaveCount(1);
+    await page.keyboard.press(key);
+    await page.keyboard.press("Enter");
+    await expect(date).toHaveValue(value);
+    expect(errors).toEqual([]);
+  });
+}
+
+test("portaled controls inherit the selected document language", async ({
+  page,
+}) => {
+  for (const locale of ["ru", "en"]) {
+    if (locale === "en")
+      await page.getByRole("button", { name: "English", exact: true }).click();
+    const ru = locale === "ru";
+    await page
+      .getByRole("button", {
+        name: ru ? "Открыть форму" : "Open form",
+        exact: true,
+      })
+      .click();
+    const dialog = page.getByRole("dialog");
+    expect(
+      await dialog.evaluate((element) =>
+        element.closest("[lang]")?.getAttribute("lang"),
+      ),
+    ).toBe(locale);
+    await dialog
+      .getByRole("combobox", { name: ru ? "Актив" : "Asset" })
+      .click();
+    const option = page.getByRole("option", { name: "BTC", exact: true });
+    expect(
+      await option.evaluate((element) =>
+        element.closest("[lang]")?.getAttribute("lang"),
+      ),
+    ).toBe(locale);
+    await option.click();
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("button", {
+        name: ru ? "Показать toast" : "Show toast",
+        exact: true,
+      })
+      .click();
+    const toast = page.locator(".wk-toast").last();
+    await expect(toast).toBeVisible();
+    expect(
+      await toast.evaluate((element) =>
+        element.closest("[lang]")?.getAttribute("lang"),
+      ),
+    ).toBe(locale);
+    await toast
+      .getByRole("button", {
+        name: ru ? "Закрыть уведомление" : "Close notification",
+      })
+      .click();
+  }
+});
+
+test("avatar names survive loaded images and failed-image fallback", async ({
+  page,
+}) => {
+  const avatar = page.getByRole("img", {
+    name: "Профиль с изображением",
+    exact: true,
+  });
+  await expect(avatar).toHaveAccessibleName("Профиль с изображением");
+  await expect(avatar.locator("img")).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Участник А", exact: true }),
+  ).toHaveCount(2);
+  await page.route("**/brand/logo_512px.svg", (route) => route.abort());
+  await page.reload();
+  await expect(avatar).toHaveAccessibleName("Профиль с изображением");
+  await expect(avatar.locator("img")).toHaveCount(0);
+  await expect(avatar).toHaveText("WK");
+});
+
+test("unknown progress stays distinct from completion and is localized", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const unknown = page.getByRole("progressbar", {
+    name: "Обработка",
+    exact: true,
+  });
+  const complete = page.getByRole("progressbar", {
+    name: "Готово",
+    exact: true,
+  });
+  await expect(unknown).toHaveAttribute(
+    "aria-valuetext",
+    "Объём пока неизвестен",
+  );
+  await expect(unknown).not.toHaveAttribute("aria-valuenow");
+  await expect(unknown.locator(".wk-progress-indicator")).not.toBeVisible();
+  await expect(unknown.locator(".wk-progress-track")).toHaveCSS(
+    "background-image",
+    /repeating-linear-gradient/,
+  );
+  await expect(complete).toHaveAttribute("aria-valuenow", "100");
+  await expect(complete.locator(".wk-progress-indicator")).toBeVisible();
+  await expect(complete.locator(".wk-progress-track")).toHaveCSS(
+    "background-image",
+    "none",
+  );
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await expect(
+    page.getByRole("progressbar", { name: "Processing", exact: true }),
+  ).toHaveAttribute("aria-valuetext", "Total progress is not yet known");
 });

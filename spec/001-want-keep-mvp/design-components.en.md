@@ -12,7 +12,6 @@ User refinement for #58: shapes and composition from the new reference, with the
 
 Adapted shadcn portions retain the MIT notice in `web/src/design-system/components/LICENSE.shadcn`. Registry previews were inspected before adaptation; committed project sources are authoritative.
 
-
 ## Public interfaces
 
 | Family | Contract |
@@ -40,6 +39,8 @@ The catalog demonstrates UISTATE-01–17. Applicable states are covered at their
 Unknown retains the draft and prevents duplicate submission; an explicit simulated original-command check moves the specimen to confirmed. Conflict compares saved and entered versions. Session expiry hides the synthetic draft. These examples verify presentation behavior; server guarantees remain in task-1.3 and feature tasks.
 
 Component boundaries contain no generated DTOs, API clients or feature code. Keyboard focus inverts fill and text, including error/selected/hover combinations. Fonts are local. Reduced motion zeroes ordinary transitions; MOT-01–05 remain task-7.15. The catalog does not prove full WCAG compliance or AC-102.
+
+The supported calendar interval is 0001-01-01…9999-12-31. Navigation, selection and CalendarDate.fromDate enforce its bounds; conversion rejects BC/out-of-range/invalid dates. Avatar exposes its supplied name with image semantics even when its image fails. Unknown progress uses a static neutral pattern without a completed fill; description supplies its localized accessible value. The catalog locale owner sets document language for portals and restores the prior value on unmount.
 
 ## Verification and handoff
 

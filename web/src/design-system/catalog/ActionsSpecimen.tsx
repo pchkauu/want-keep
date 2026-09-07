@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Button } from "../components/button";
 import { Badge } from "../components/badge";
+import { Avatar } from "../components/avatar";
 import { ToggleGroup, ToggleItem } from "../components/toggle-group";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../components/tooltip";
 import type { CatalogLocale } from "./catalog-locale";
@@ -130,6 +131,11 @@ export function ActionsSpecimen({ locale }: { locale: CatalogLocale }) {
           {ru ? "Требует внимания" : "Needs attention"}
         </Badge>
         <Badge tone="error">{ru ? "Ошибка" : "Error"}</Badge>
+        <Avatar
+          name={ru ? "Профиль с изображением" : "Profile image"}
+          initials="WK"
+          src="/brand/logo_512px.svg"
+        />
       </div>
       <p role="status" className="wk-description">
         {result}

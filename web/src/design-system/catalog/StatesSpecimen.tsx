@@ -202,6 +202,13 @@ export function StatesSpecimen({ locale }: { locale: CatalogLocale }) {
             ru ? "Объём пока неизвестен" : "Total progress is not yet known"
           }
         />
+        <Progress
+          label={ru ? "Готово" : "Complete"}
+          value={100}
+          description={
+            ru ? "100% · образец завершён" : "100% · sample completed"
+          }
+        />
       </div>
       <ChartLegend
         label={ru ? "Легенда аналитики · образец" : "Analytics legend · sample"}

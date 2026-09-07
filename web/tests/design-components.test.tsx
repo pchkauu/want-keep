@@ -8,6 +8,8 @@ import { MoneyField } from "@/design-system/components/money-field";
 import { CalendarDate } from "@/design-system/components/calendar-date";
 import { Button } from "@/design-system/components/button";
 import { Sidebar } from "@/design-system/components/sidebar";
+import { Avatar } from "@/design-system/components/avatar";
+import { Progress } from "@/design-system/components/progress";
 import { stateScenarios } from "@/design-system/catalog/state-scenarios";
 
 describe("design-components money input", () => {
@@ -84,6 +86,35 @@ describe("design-components calendar dates", () => {
 });
 
 describe("design-components public surface", () => {
+  it("rejects out-of-contract years and invalid Date values before formatting", () => {
+    for (const year of [0, -1, 10000]) {
+      const date = new Date(2000, 0, 1);
+      date.setFullYear(year);
+      expect(() => CalendarDate.fromDate(date)).toThrow(
+        "invalid_calendar_date",
+      );
+      expect(date.getFullYear()).toBe(year);
+    }
+    expect(() => CalendarDate.fromDate(new Date(NaN))).toThrow(
+      "invalid_calendar_date",
+    );
+  });
+  it("gives avatars a nameable role and progress a supplied accessible value", () => {
+    const avatar = renderToStaticMarkup(
+      <Avatar name="Участник А" initials="A" />,
+    );
+    expect(avatar).toContain('role="img"');
+    expect(avatar).toContain('aria-label="Участник А"');
+    const progress = renderToStaticMarkup(
+      <Progress
+        label="Обработка"
+        value={null}
+        description="Объём неизвестен"
+      />,
+    );
+    expect(progress).toContain('aria-valuetext="Объём неизвестен"');
+    expect(progress).not.toContain("aria-valuenow=");
+  });
   it("defaults ordinary actions to non-submit buttons", () => {
     expect(renderToStaticMarkup(<Button>Action</Button>)).toContain(
       'type="button"',

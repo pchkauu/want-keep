@@ -24,6 +24,13 @@ const sections = [
 
 export function ComponentCatalog() {
   const [locale, setLocale] = useState<CatalogLocale>("ru");
+  useEffect(() => {
+    const previous = document.documentElement.lang;
+    document.documentElement.lang = locale;
+    return () => {
+      document.documentElement.lang = previous;
+    };
+  }, [locale]);
   const [current, setCurrent] = useState(
     () => window.location.hash.slice(1) || "actions",
   );

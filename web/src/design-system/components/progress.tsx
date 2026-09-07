@@ -10,7 +10,11 @@ export function Progress({
   description: string;
 }) {
   return (
-    <Primitive.Root value={value} className="wk-progress">
+    <Primitive.Root
+      value={value}
+      getAriaValueText={() => description}
+      className="wk-progress"
+    >
       <Primitive.Label className="wk-label">{label}</Primitive.Label>
       <Primitive.Track className="wk-progress-track">
         <Primitive.Indicator className="wk-progress-indicator" />

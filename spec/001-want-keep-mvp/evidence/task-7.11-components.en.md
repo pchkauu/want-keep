@@ -14,8 +14,8 @@ The catalog and its styles are excluded from the production bundle. shadcn alias
 
 | Check | Result |
 | --- | --- |
-| `make test-web FILTER=design-components` | 47 unit/component checks: 6 assets, exact/intermediate strings, 256/257 characters, calendar, semantics, UISTATE and import boundaries |
-| `make e2e SCENARIO=all` | 21 passing Chromium scenarios: 14 components + 7 tokens; the same files run through separate CI targets |
+| `make test-web FILTER=design-components` | 49 unit/component checks: 6 assets, exact/intermediate strings, 256/257 characters, calendar, semantics, UISTATE and import boundaries |
+| `make e2e SCENARIO=design-components` + `design-tokens` | 26 passing Chromium scenarios: 19 components + 7 tokens; the same files run through separate CI targets |
 | Computed styles | Normal/hover/active/focus contrast, selected/error; no outlines; reduced motion; font fallback |
 | Chromium reference viewports | 1280×720, 1440×900 and corresponding 640×360, 720×450 CSS areas for enlarged content |
 | Actual Chrome | Chrome 152.0.7977.76, macOS 26.5.1 (25F80); 100%: 1378×899 CSS/DPR 2, 200%: 689×449 CSS/DPR 4. Composition, long amounts, dialog, reachable submission and absence of page overflow verified; restored to 100% |
@@ -23,6 +23,8 @@ The catalog and its styles are excluded from the production bundle. shadcn alias
 | `git diff --check` | Checked before each publication |
 
 Initial checks found and fixed clearing a selected date on repeated selection and an assistive-technology-hidden toast dismiss button. Tabs follow Base UI: arrows move focus and Enter selects. A locale switch reformats a valid date and preserves an invalid draft. Sandbox restrictions on the local port and Go cache were resolved by running authorized checks with required access; they were not product failures.
+
+Round 1 independently confirmed four issues: calendar year boundaries, avatar accessible names, indeterminate progress and portal language. Corrections include unit and browser regression cases. The boundary test locator was narrowed to textbox semantics because a closing popover shared its label. Affected checks were repeated; unchanged token scenarios retain their passing evidence. Actual Chrome also confirmed Russian portal language and localized unknown progress after correction. The published correction requires a fresh Avida round.
 
 ## Evidence limits
 

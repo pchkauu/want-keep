@@ -5,7 +5,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
 } from "lucide-react";
-import type { DateLocale } from "./calendar-date";
+import { CalendarDate, type DateLocale } from "./calendar-date";
 
 export type CalendarProps = {
   locale: DateLocale;
@@ -14,12 +14,17 @@ export type CalendarProps = {
 };
 
 export function Calendar({ locale, value, onValueChange }: CalendarProps) {
+  const first = CalendarDate.toDate(CalendarDate.minimum);
+  const last = CalendarDate.toDate(CalendarDate.maximum);
   return (
     <DayPicker
       mode="single"
       required
       locale={locale === "ru" ? ru : enUS}
       selected={value}
+      startMonth={first}
+      endMonth={last}
+      disabled={[{ before: first }, { after: last }]}
       onSelect={onValueChange}
       weekStartsOn={1}
       autoFocus
