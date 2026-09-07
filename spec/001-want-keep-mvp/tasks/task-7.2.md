@@ -95,7 +95,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Следующее действие:** Исправить FORM-06/07, вернуть FORM-08, явный долг FORM-09; чек → SCR-011.
 
-**Объяснение и детализация:** Связанные переводы/импорты, AI-основание и audit раскрываются с авторами и версиями.
+**Объяснение и детализация:** История до/после с автором, временем, decisionId и основаниями; отдельные банковское и учётное состояния. Защищённые поля сравниваются с нормализованным источником; review показывает безопасное обоснование и ссылки на evidence. Для выбранного решения видны возможность undo и причина отказа.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -169,11 +169,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-06 — Исправление, сопоставление и отмена
 
-**Поля:** Существующие записи, предлагаемые поля/связь, основание, expectedRevision; сравнение до/после.
+**Поля:** Операция, expectedRevision, основание; полный principal и отдельные fees, дата покупки, payer, merchant/note. Пропуск сохраняет поле, пустой текст очищает. Undo: decisionId и expectedRevisions всех участников; исключение — отдельное действие. Сравнение до/после и с источником.
 
-**Проверки и права:** Оба member для фактов; суммы и доказательства проверяет сервер. Undo не стирает историю и не перезаписывает позднюю правку партнёра.
+**Проверки и права:** Оба участника исправляют факты. Сервер сохраняет счета/активы principal, проверяет группы сумм, права, версии и происхождение; actor не задаётся формой. Undo сохраняет поздние независимые поля и отвергает пересечение/ABA. Сопоставление, категории и доли активируются профильными задачами.
 
-**Результат:** Новая audit-версия и обновлённые отчёты либо conflict с сохранением ввода.
+**Результат:** Новое решение и финансовые revisions с историей, либо no_change/conflict без эффекта и потери ввода. Исключение не меняет банковский статус; undo пересчитывает текущий эффект.
 
 #### FORM-07 — Чек и распределение позиций
 
@@ -513,7 +513,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
 
-**Explanation and details:** Linked movements/imports, AI reasoning and audit expand with authors/revisions.
+**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -587,11 +587,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-06 — Correction, matching and undo
 
-**Fields:** Existing records, proposed fields/link, reason, expectedRevision; before/after comparison.
+**Fields:** Transaction, expectedRevision and reason; complete principal and separate fees, purchase time, payer, merchant/note. Omission retains a field; empty text clears it. Undo: decisionId and all participant expectedRevisions; exclusion is a separate action. Compare before/after and source values.
 
-**Validation and permissions:** Either member for accounting facts; server validates amounts/evidence. Undo retains history and never overwrites a later partner edit.
+**Validation and permissions:** Both members correct facts. The server preserves principal accounts/assets and validates monetary groups, rights, versions and provenance; the form cannot assign actor. Undo preserves later independent fields and rejects overlaps/ABA. Matching, categories and shares are activated by their owning tasks.
 
-**Outcome:** New audit revision and refreshed reports, or conflict preserving input.
+**Outcome:** New decision and financial revisions with history, or no_change/conflict without effect or lost input. Exclusion does not change bank state; undo recomputes the current effect.
 
 #### FORM-07 — Receipt and item allocation
 

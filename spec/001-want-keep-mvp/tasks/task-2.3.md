@@ -3,9 +3,9 @@
 
 ## RU
 
-Сохранять пользовательские правки и объяснять каждое изменение.
+Исправлять семейные финансовые факты, сохранять пользовательские поля и объяснять каждое решение.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализованы backend/API исправлений, отмены, исключения, истории и сохраняемый контракт review. Сопоставление, категории, доли, возвраты, OpenAI и экраны остаются профильным задачам.
 
 **Зависимости:** `task-2.2`.
 
@@ -13,12 +13,87 @@
 
 ### Изменение и контракты
 
-Применять финансовые изменения через версионированные команды и корректирующие/сторнирующие записи; сохранять исходник, actor, reason и связи evidence. Отмена AI-связи пересчитывает проекции; повторный импорт не стирает override. Изменение предметных полей ставит новую AI-проверку, сама отметка review не создаёт бесконечный цикл.
+Решения исправляют principal согласованным комплектом, отдельную группу комиссий, дату, плательщика, продавца и комментарий. Поля защищаются независимо от банковского lifecycle; raw source и эффективная revision разделены. Undo по decisionId и версиям всех участников сохраняет поздние независимые изменения, отвергает пересечения и A → B → A. included/excluded независимо от posted/reversed/cancelled; восстановление использует актуальный источник. Решение, проекции, audit/outbox, один review-запрос на revision и исход команды атомарны. История API содержит до/после, доказательства, исходные значения и причины невозможности отмены. Результат review проверяет актуальную версию/права/защиту без вызова OpenAI и без цикла событий.
 
 ### Границы изменений
 
 - `backend/internal/ledger/`
-- `backend/internal/audit/`
+- `backend/internal/accounts/`
+- `backend/internal/storage/`
+- `backend/internal/delivery/ledger/`
+- `backend/migrations/009_transaction_corrections_audit.sql`
+- `api/`
+- `backend/test/integration/audit/`
+
+### Экранный контракт
+
+### SCR-010 — Карточка операции
+
+`/transactions/:id`
+
+**Вопрос:** Правильно ли учтена эта покупка?
+
+**Главный ответ:** Сумма, назначение, плательщик и доли одной операции.
+
+**Структура сверху вниз:** Результат учёта → счёт/дата/статус → личные/общие доли → чек → исправить/возврат.
+
+**Следующее действие:** Исправить FORM-06/07, вернуть FORM-08, явный долг FORM-09; чек → SCR-011.
+
+**Объяснение и детализация:** История до/после с автором, временем, decisionId и основаниями; отдельные банковское и учётное состояния. Защищённые поля сравниваются с нормализованным источником; review показывает безопасное обоснование и ссылки на evidence. Для выбранного решения видны возможность undo и причина отказа.
+
+**Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
+
+Forms: FORM-06, FORM-07, FORM-08, FORM-09.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-14.
+
+#### FORM-06 — Исправление, сопоставление и отмена
+
+**Поля:** Операция, expectedRevision, основание; полный principal и отдельные fees, дата покупки, payer, merchant/note. Пропуск сохраняет поле, пустой текст очищает. Undo: decisionId и expectedRevisions всех участников; исключение — отдельное действие. Сравнение до/после и с источником.
+
+**Проверки и права:** Оба участника исправляют факты. Сервер сохраняет счета/активы principal, проверяет группы сумм, права, версии и происхождение; actor не задаётся формой. Undo сохраняет поздние независимые поля и отвергает пересечение/ABA. Сопоставление, категории и доли активируются профильными задачами.
+
+**Результат:** Новое решение и финансовые revisions с историей, либо no_change/conflict без эффекта и потери ввода. Исключение не меняет банковский статус; undo пересчитывает текущий эффект.
+
+#### FORM-07 — Чек и распределение позиций
+
+**Поля:** Фото/PDF, обязательный счёт списания включая наличные; позиции, скидки, категории, personal/shared и доли % или суммы.
+
+**Проверки и права:** Оба member; лимиты файлов по контракту, позиции/скидки/доли точно равны оплате. Неоднозначность уточняется; AI не исполняет инструкции файла.
+
+**Результат:** Создано/связано с существующим/ожидает уточнения/документ не подходит с причиной. Одно подтверждённое списание.
+
+#### FORM-08 — Возврат покупки
+
+**Поля:** Исходная покупка, возвращаемые позиции/доли/сумма, счёт поступления и фактическая дата.
+
+**Проверки и права:** Оба member; совокупный возврат не больше покупки; исходные исторические FX и распределение по возвращённой части сохраняются.
+
+**Результат:** Исходный месяц покупки пересчитан; деньги поступили текущей датой; FX отдельно.
+
+#### FORM-09 — Явный долг и возмещение
+
+**Поля:** Кто кому, сумма/валюта, основание/расход; при погашении существующий семейный перевод и сумма связи.
+
+**Проверки и права:** Только явное действие member; не выводить долг из долей. Нельзя повторно погасить одним переводом сверх его суммы; долг не капитал семьи.
+
+**Результат:** Непогашенный остаток обновлён без нового семейного расхода.
+
+- **UISTATE-01 — Загрузка:** Скелетон структуры и подпись загрузки; суммы не подменяются нулями.
+- **UISTATE-02 — Обновление:** Сохранить предыдущие данные и контекст, показать время последнего успеха; блокировать только конфликтующие действия.
+- **UISTATE-03 — Пусто:** Объяснить полезный результат и предложить первое действие: счёт, чек, план или цель.
+- **UISTATE-05 — Частичные данные:** Назвать отсутствующий источник/период и последствия для суммы; доступные блоки работают; неизвестное обозначить отдельно.
+- **UISTATE-06 — Устаревшие данные:** Показать дату последнего успеха и влияние на решение; дать обновить или перейти к подключению.
+- **UISTATE-07 — Ошибка:** Понятная причина и следующий шаг у проблемного блока; ввод и исправные данные сохранить, диагностику раскрывать отдельно.
+- **UISTATE-08 — Offline:** Показать отсутствие связи; не обещать сохранение. Чувствительные черновики только в памяти текущей вкладки, без новой offline-очереди.
+- **UISTATE-09 — Сохранение:** Немедленно показать прогресс текущего действия и не допускать дублирующую отправку команды.
+- **UISTATE-10 — Исход неизвестен:** Сохранить ID команды/ввод, запросить её результат; не создавать новую финансовую команду вслепую. После перезагрузки сверять серверный список недавних команд.
+- **UISTATE-11 — Конфликт версии:** Показать авторов и различия, сохранить мой ввод; загрузить актуальную версию и дать повторно применить выбранные изменения после проверки.
+- **UISTATE-12 — Недостаточно прав:** Финансовые данные доступны семье; запрещённое изменение объясняет владельца. Сервер отклоняет команду независимо от видимости кнопки.
+- **UISTATE-13 — Сессия истекла:** Закрыть защищённое содержимое; вход для того же участника, безопасный возврат по внутреннему маршруту. Чужой вход не получает прежний черновик.
+- **UISTATE-14 — Ожидание AI:** Отличать очередь, обработку, уточнение и паузу из-за лимита/API; обычный учёт доступен, результат не выдумывать.
+- **UISTATE-16 — Подтверждено:** После подтверждённого сервером результата показать что изменилось, ссылку на объект и доступное исправление; не полагаться на исчезающий toast.
+
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -107,10 +182,10 @@
 ### Проверка результата
 
 ```sh
-make test-integration AREA=audit
+make test-go PKG=./internal/ledger/... && make test-integration AREA=audit && make test-audit-race
 ```
 
-Конфликт версий и stale AI отвергаются; undo и повторный импорт воспроизводят правильную историю.
+Исправления шести активов, выборочная и составная отмена, исключение, merge источника, review, ABA, concurrency, replay/rollback/restart, история, права, миграция и retention проходят без повторного эффекта.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
@@ -122,9 +197,9 @@ make test-integration AREA=audit
 
 ## EN
 
-Preserve owner corrections and explain every change.
+Correct household financial facts, preserve user-selected fields and explain every decision.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Correction, undo, exclusion and history backend/API and a persisted review contract are implemented. Matching, categories, shares, refunds, OpenAI and screens remain with their owning tasks.
 
 **Dependencies:** `task-2.2`.
 
@@ -132,12 +207,87 @@ Preserve owner corrections and explain every change.
 
 ### Change and contracts
 
-Apply financial changes through versioned commands and correcting/reversing entries; retain original, actor, reason and evidence links. Undoing an AI link refreshes projections; reimport preserves overrides. Material field changes enqueue new AI review; setting review status does not cause an infinite loop.
+Decisions correct the complete principal group, separate fees, purchase time, payer, merchant and note. Fields are protected independently from bank lifecycle; normalized source and effective revision are separate. Undo by decisionId and all current participant revisions retains later independent edits and rejects overlaps and A → B → A. included/excluded is independent from posted/reversed/cancelled; restoration uses current source facts. Decision, projections, audit/outbox, one review request per revision and command outcome are atomic. History API exposes before/after, evidence, source values and undo rejection reasons. Review results check current version/rights/protections without calling OpenAI or causing an event loop.
 
 ### Change boundaries
 
 - `backend/internal/ledger/`
-- `backend/internal/audit/`
+- `backend/internal/accounts/`
+- `backend/internal/storage/`
+- `backend/internal/delivery/ledger/`
+- `backend/migrations/009_transaction_corrections_audit.sql`
+- `api/`
+- `backend/test/integration/audit/`
+
+### Screen contract
+
+### SCR-010 — Transaction details
+
+`/transactions/:id`
+
+**Question:** Is this purchase accounted for correctly?
+
+**Primary answer:** Amount, purpose, payer and shares of one transaction.
+
+**Top-down structure:** Accounting outcome → account/date/status → personal/shared shares → receipt → correction/refund.
+
+**Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
+
+**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason.
+
+**Permissions:** Both members read/correct facts for any household account; actor from session.
+
+Forms: FORM-06, FORM-07, FORM-08, FORM-09.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-14.
+
+#### FORM-06 — Correction, matching and undo
+
+**Fields:** Transaction, expectedRevision and reason; complete principal and separate fees, purchase time, payer, merchant/note. Omission retains a field; empty text clears it. Undo: decisionId and all participant expectedRevisions; exclusion is a separate action. Compare before/after and source values.
+
+**Validation and permissions:** Both members correct facts. The server preserves principal accounts/assets and validates monetary groups, rights, versions and provenance; the form cannot assign actor. Undo preserves later independent fields and rejects overlaps/ABA. Matching, categories and shares are activated by their owning tasks.
+
+**Outcome:** New decision and financial revisions with history, or no_change/conflict without effect or lost input. Exclusion does not change bank state; undo recomputes the current effect.
+
+#### FORM-07 — Receipt and item allocation
+
+**Fields:** Photo/PDF, required debit account including cash; items, discounts, categories, personal/shared and percentage or amount shares.
+
+**Validation and permissions:** Either member; file limits from contract, items/discounts/shares exactly equal payment. Ambiguity requires clarification; AI never executes file instructions.
+
+**Outcome:** Created/linked to existing/awaiting clarification/document unsuitable with reason. One confirmed debit.
+
+#### FORM-08 — Purchase refund
+
+**Fields:** Original purchase, returned items/shares/amount, receiving account and actual date.
+
+**Validation and permissions:** Either member; cumulative refund cannot exceed purchase; original historical FX and refunded-part allocation are retained.
+
+**Outcome:** Original purchase month recalculated; cash arrives on actual date; FX separate.
+
+#### FORM-09 — Explicit debt and reimbursement
+
+**Fields:** Debtor/creditor, amount/currency, reason/expense; for settlement an existing household transfer and linked amount.
+
+**Validation and permissions:** Explicit member action only; never infer debt from shares. One transfer cannot settle beyond its amount; debt is not household wealth.
+
+**Outcome:** Outstanding balance updated without another household expense.
+
+- **UISTATE-01 — Loading:** Structural skeleton and loading label; amounts are never replaced by zero.
+- **UISTATE-02 — Refreshing:** Keep previous data/context and last-success time; block only conflicting actions.
+- **UISTATE-03 — Empty:** Explain the useful outcome and offer a first account, receipt, plan or goal action.
+- **UISTATE-05 — Partial data:** Name the missing source/period and its effect on the amount; available sections work and unknowns stay explicit.
+- **UISTATE-06 — Stale data:** Show last-success date and impact on the decision; offer refresh or connection details.
+- **UISTATE-07 — Error:** Plain cause and next step beside the affected section; preserve input/healthy data and expand diagnostics separately.
+- **UISTATE-08 — Offline:** Show missing connectivity and do not promise saved data. Sensitive drafts remain only in current-tab memory, without a new offline queue.
+- **UISTATE-09 — Saving:** Immediately show current-action progress and prevent duplicate command submission.
+- **UISTATE-10 — Unknown outcome:** Keep command ID/input and query its result; never blindly create another financial command. After reload reconcile the server list of recent commands.
+- **UISTATE-11 — Version conflict:** Show authors/differences and keep my input; load current version and allow chosen changes to be reapplied after validation.
+- **UISTATE-12 — Insufficient permission:** Household can read financial data; forbidden edits explain ownership. Server rejects the command regardless of button visibility.
+- **UISTATE-13 — Session expired:** Hide protected contents; require the same member to sign in and return through a safe internal route. Another identity never receives the prior draft.
+- **UISTATE-14 — AI waiting:** Distinguish queued, processing, clarification and budget/API pause; ordinary accounting remains available and results are not invented.
+- **UISTATE-16 — Confirmed:** After server-confirmed outcome show what changed, an object link and available correction; do not rely on a disappearing toast.
+
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -226,10 +376,10 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make test-integration AREA=audit
+make test-go PKG=./internal/ledger/... && make test-integration AREA=audit && make test-audit-race
 ```
 
-Version conflicts and stale AI are rejected; undo and reimport reproduce correct history.
+Six-asset corrections, selective/compound undo, exclusion, source merge, review, ABA, concurrency, replay/rollback/restart, history, permissions, migration and retention pass without duplicate effects.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 
