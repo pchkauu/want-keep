@@ -8,12 +8,14 @@ import (
 	"time"
 
 	households "github.com/pchkauu/want-keep/backend/internal/household/application"
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	identity "github.com/pchkauu/want-keep/backend/internal/identity/domain"
 )
 
 type Service struct {
 	repo         Repository
 	households   households.Repository
+	invitations  *households.Invitations
 	verifier     Verifier
 	rpID, origin string
 	maximum      int
@@ -24,7 +26,7 @@ func NewService(repo Repository, h households.Repository, v Verifier, rpID, orig
 	if repo == nil || h == nil || v == nil || rpID == "" || origin == "" || maximum < 1 || clock == nil {
 		return nil, identity.ErrUnavailable
 	}
-	return &Service{repo: repo, households: h, verifier: v, rpID: rpID, origin: origin, maximum: maximum, clock: clock}, nil
+	return &Service{repo: repo, households: h, invitations: households.NewInvitations(h), verifier: v, rpID: rpID, origin: origin, maximum: maximum, clock: clock}, nil
 }
 func (s *Service) now() time.Time { return s.clock().UTC().Truncate(time.Microsecond) }
 func (s *Service) access(ctx context.Context, token identity.Token) (Access, error) {
@@ -124,7 +126,7 @@ func (s *Service) finish(ctx context.Context, r RequestContext, id string, fn fu
 		if err == nil {
 			return nil
 		}
-		if errors.Is(err, identity.ErrAttempt) || errors.Is(err, identity.ErrUnauthorized) || errors.Is(err, identity.ErrBootstrap) || errors.Is(err, identity.ErrFreshAuthentication) || errors.Is(err, identity.ErrCounter) {
+		if errors.Is(err, household.ErrInvitation) || errors.Is(err, household.ErrInvitationExpired) || errors.Is(err, household.ErrInvitationUsed) || errors.Is(err, household.ErrInvitationRevoked) || errors.Is(err, household.ErrInvitationRevision) || errors.Is(err, household.ErrMemberLimit) || errors.Is(err, identity.ErrAlreadyAuthenticated) || errors.Is(err, identity.ErrAttempt) || errors.Is(err, identity.ErrUnauthorized) || errors.Is(err, identity.ErrBootstrap) || errors.Is(err, identity.ErrFreshAuthentication) || errors.Is(err, identity.ErrCounter) {
 			rejection = err
 			event := "ceremony_rejected"
 			if errors.Is(err, identity.ErrCounter) {

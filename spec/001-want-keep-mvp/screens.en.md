@@ -158,11 +158,11 @@ Task: [task-7.1](tasks/task-7.1.md).
 
 **Primary answer:** Verified private invitation to a specific household.
 
-**Top-down structure:** Household/inviter after verification → name → own passkey → own codes.
+**Top-down structure:** Invitation check → household/inviter → name/language/currency → own passkey → own recovery codes.
 
 **Next action:** Accept → SCR-005; expired invitation explains obtaining a new one from the member.
 
-**Explanation and details:** Used invitation and full membership have distinct understandable states.
+**Explanation and details:** Expiry, use, revocation and a full household are distinct. An already signed-in user signs out first. After a lost registration response, sign in with the new passkey and regenerate codes after fresh own authentication if needed.
 
 **Permissions:** Before sign-in only own authentication; financial data hidden.
 
@@ -832,7 +832,7 @@ Task: [task-7.14](tasks/task-7.14.md), [task-7.15](tasks/task-7.15.md).
 
 **Top-down structure:** Members/invitation → shared-access explanation → personal/shared resources and rules.
 
-**Next action:** If capacity allows, issue/renew invitation FORM-02; own access methods SCR-033.
+**Next action:** When capacity exists, issue/reissue after own passkey confirmation within 5 minutes; revoke with an active session. Show metadata/revision first; never reread the secret.
 
 **Explanation and details:** No role changing, member exit/replacement or partner recovery in MVP.
 
@@ -932,7 +932,7 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 **Fields:** Member/household name, language, timezone/currency; private invitation, joining member name and passkey.
 
-**Validation and permissions:** Single-use operator bootstrap; invitation is household-bound, expiring and single-use; configured maximum 2 active members.
+**Validation and permissions:** Operator bootstrap is one-time. One random invitation lasts 24 hours; issue/reissue requires own authentication within 5 minutes and expectedRevision. Revocation uses CSRF without fresh auth. Acceptance checks browser/purpose/revision, inviter membership and capacity atomically with a new passkey/session/codes.
 
 **Outcome:** Membership created, personal recovery codes shown; proceed to onboarding. Secrets excluded from URL logs/analytics.
 

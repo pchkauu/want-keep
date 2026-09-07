@@ -173,6 +173,152 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+    description: 'Issue or replace one invitation. Requires own authentication newer than five minutes, current membership, CSRF and expectedRevision. Secret responses are never retained or replayed.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/household.yaml#/InvitationMutationInput"
+
+  get:
+    operationId: household_invitations
+    tags:
+    - household
+    summary: household read
+    parameters: []
+    responses:
+      '200':
+        description: Success; private no-store response. Session/enrollment secrets are never replayed.
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              enum: [no-store]
+          Set-Cookie:
+            description: Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain.
+            schema:
+              type: string
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/household.yaml#/InvitationState"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+
+"/household/invitations/{id}/revoke":
+  post:
+    operationId: household_revoke_invitation
+    tags:
+    - household
+    summary: Revoke current invitation
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/money.yaml#/ID
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '200':
+        description: Success; private no-store response. Session/enrollment secrets are never replayed.
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              enum: [no-store]
+          Set-Cookie:
+            description: Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain.
+            schema:
+              type: string
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/household.yaml#/InvitationState"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: 'Revoke with active membership, CSRF and expectedRevision. Invalidates pending enrollment. No fresh authentication required.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/household.yaml#/InvitationMutationInput"
+
+"/invitations/preview":
+  post:
+    operationId: household_preview_invitation
+    tags:
+    - household
+    summary: Preview invitation without financial access
+    parameters: []
+    responses:
+      '200':
+        description: Success; private no-store response. Session/enrollment secrets are never replayed.
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              enum: [no-store]
+          Set-Cookie:
+            description: Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain.
+            schema:
+              type: string
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/household.yaml#/InvitationPreview"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    security: []
     description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
       and authorization purpose; does not use financial-command retention.'
     requestBody:
@@ -180,7 +326,7 @@
       content:
         application/json:
           schema:
-            "$ref": "../schemas/commands.yaml#/EmptyInput"
+            "$ref": "../schemas/household.yaml#/InvitationTokenInput"
 "/invitations/accept":
   post:
     operationId: household_accept
@@ -203,7 +349,7 @@
         content:
           application/json:
             schema:
-              "$ref": "../schemas/household.yaml#/Me"
+              "$ref": "../schemas/auth.yaml#/InitialEnrollmentResult"
       '400':
         "$ref": "../components.yaml#/responses/Problem"
       '401':

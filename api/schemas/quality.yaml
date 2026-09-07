@@ -38,6 +38,9 @@ ErrorCode:
   - attachment_not_ready
   - private_storage_unavailable
   - backup_stale
+  - invitation_invalid
+  - invitation_revoked
+  - already_authenticated
   - invitation_expired
   - invitation_used
   - member_limit_reached

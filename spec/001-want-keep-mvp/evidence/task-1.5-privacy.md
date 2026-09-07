@@ -4,7 +4,7 @@
 
 ## Реализация и эксплуатационная передача
 
-`privacy/cryptobox` владеет AES-256-GCM и keyring; `connections/access` — разрешениями, `connections/credentials` — plaintext непосредственно перед адаптером. Attachment domain/application управляют идентичностью загрузки, доступом и валидацией; files/processor/storage/delivery — внешние границы. Общая HTTP-защита вынесена в delivery/http/security, WebAuthn остаётся в identity. Миграция 005 добавляет метаданные, ciphertext, grants и неизменяемый privacy audit; история 001–004 сохранена.
+`privacy/cryptobox` владеет AES-256-GCM и keyring; `connections/access` — разрешениями, `connections/credentials` — plaintext непосредственно перед адаптером. Attachment domain/application управляют идентичностью загрузки, доступом и валидацией; files/processor/storage/delivery — внешние границы. Общая HTTP-защита вынесена в delivery/http/security, WebAuthn остаётся в identity. Миграция 006 добавляет метаданные, ciphertext, grants и неизменяемый privacy audit; история 001–005 сохранена.
 
 Из backend оператор запускает `go run ./cmd/privacy-keygen --purpose attachments --output /private/path/attachment-keyring` и отдельно `--purpose connections`. CLI не печатает и не перезаписывает ключи. Каталог объектов создаётся владельцем процесса с 0700. API использует пути из `WANT_KEEP_ATTACHMENT_KEYRING`, `WANT_KEEP_CONNECTION_KEYRING`, `WANT_KEEP_ATTACHMENT_DIRECTORY`, `WANT_KEEP_DOCUMENT_PROCESSOR_SOCKET`; значения ключей не передаются через argv/environment. Отсутствие этих ресурсов отключает только зависимые функции. Для повторного чтения после рестарта нужны прежние key IDs; backup должен сохранять keyring отдельно от ciphertext, не теряя старые ключи.
 
@@ -33,3 +33,6 @@
 Остальные части AC остаются профильным задачам: AC-015/022 — распознавание/сопоставление чека, AC-048/087 — реальные платформы и OAuth/MFA, AC-050/060 — полный AI gateway и prompt-injection сценарий, AC-068/078/090 — UI/семейные продуктовые действия, AC-072/088 — доставка уведомлений. Разрешённое принятое вложение может быть AI input; секреты никогда не являются AI input. Не заявляются реальные банки, AI-вызовы, Chrome/Arc, UI и production. SDD — Ready for development; эксплуатационная готовность не подтверждена.
 
 Дополнительные регрессии: косвенный Launch проходит весь путь HTTP/БД/закреплённого процессора и отклоняется; гибель qpdf внутри проверки оставляет тот же uploadId в ожидании, затем здоровый процессор его принимает. Тесты супервизора синхронизируют остановку с созданием файлов и проверяют очистку, последующий документ, перезапуск и эксклюзивное владение каталогом. Ограничитель вывода скрывает методы bytes.Buffer, которые могли обойти проверку размера через io.Copy.
+
+
+Согласование с task-1.6 сохраняет её invitation/ownership policies и миграцию 005. Не развёрнутая миграция privacy перенесена в 006; существующие production-данные не изменяются. Общая доставка использует единый Origin/CSRF/session guard; connection читает и household, и secret purpose.

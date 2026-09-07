@@ -47,7 +47,10 @@ func (s *Service) Begin(ctx context.Context, token identity.Token, id string, pu
 	err := s.sessions.WithinSession(ctx, token, func(ctx context.Context, a identityapp.Access) error {
 		return s.repo.WithinHousehold(ctx, a.Principal, func(ctx context.Context) error {
 			c, err := s.repo.Connection(ctx, a.Principal, id)
-			if err != nil || c.Owner != a.Principal.UserID() || c.SecretPurpose != purpose {
+			if err != nil || c.SecretPurpose != purpose {
+				return domain.ErrSecretAccess
+			}
+			if err = (domain.ExternalOwnership{HouseholdID: c.HouseholdID, OwnerID: c.Owner}).RequireAuthentication(a.Principal); err != nil {
 				return domain.ErrSecretAccess
 			}
 			now, err := s.repo.DatabaseTime(ctx)
@@ -68,7 +71,10 @@ func (s *Service) Complete(ctx context.Context, token identity.Token, grantID st
 				return domain.ErrSecretAccess
 			}
 			c, err := s.repo.Connection(ctx, a.Principal, g.ConnectionID)
-			if err != nil || c.Owner != a.Principal.UserID() || c.SecretPurpose != purpose {
+			if err != nil || c.SecretPurpose != purpose {
+				return domain.ErrSecretAccess
+			}
+			if err = (domain.ExternalOwnership{HouseholdID: c.HouseholdID, OwnerID: c.Owner}).RequireAuthentication(a.Principal); err != nil {
 				return domain.ErrSecretAccess
 			}
 			now, err := s.repo.DatabaseTime(ctx)
@@ -120,6 +126,9 @@ func (s *Service) Disconnect(ctx context.Context, token identity.Token, id strin
 		return s.repo.WithinHousehold(ctx, a.Principal, func(ctx context.Context) error {
 			c, err := s.repo.Connection(ctx, a.Principal, id)
 			if err != nil {
+				return domain.ErrSecretAccess
+			}
+			if err = (domain.ExternalOwnership{HouseholdID: c.HouseholdID, OwnerID: c.Owner}).RequireManage(a.Principal); err != nil {
 				return domain.ErrSecretAccess
 			}
 			if c.Generation != generation {

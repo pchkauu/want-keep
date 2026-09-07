@@ -15,7 +15,7 @@ E2E_WEB_DIR ?= web
 
 .DEFAULT_GOAL := help
 
-.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-contract e2e eval-ai check-deploy backup-check restore-check
+.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-household-race test-contract e2e eval-ai check-deploy backup-check restore-check
 
 help:
 	@echo "Want Keep repository commands"
@@ -111,6 +111,9 @@ else
 		cd backend && $(GO) test -count=1 -tags=integration "./$${suite_path#backend/}/..."
 
 endif
+
+test-household-race:
+	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/household/...
 
 test-identity-race:
 	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/identity/...

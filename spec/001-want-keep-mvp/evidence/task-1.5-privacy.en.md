@@ -4,7 +4,7 @@ Result: backend/API for encrypted secrets, household uploads and safe PNG previe
 
 ## Implementation and operational handoff
 
-`privacy/cryptobox` owns AES-256-GCM/keyrings; `connections/access` owns permissions; `connections/credentials` handles plaintext immediately before the adapter. Attachment domain/application own upload identity, access and validation; files/processor/storage/delivery are outer boundaries. Shared HTTP protection lives in delivery/http/security; WebAuthn remains in identity. Migration 005 adds metadata, ciphertext, grants and immutable privacy audit; migrations 001–004 are preserved.
+`privacy/cryptobox` owns AES-256-GCM/keyrings; `connections/access` owns permissions; `connections/credentials` handles plaintext immediately before the adapter. Attachment domain/application own upload identity, access and validation; files/processor/storage/delivery are outer boundaries. Shared HTTP protection lives in delivery/http/security; WebAuthn remains in identity. Migration 006 adds metadata, ciphertext, grants and immutable privacy audit; migrations 001–005 are preserved.
 
 From backend, the operator runs `go run ./cmd/privacy-keygen --purpose attachments --output /private/path/attachment-keyring`, separately with `--purpose connections`. The CLI neither prints nor overwrites keys. The process owner creates a 0700 object directory. API loads paths from `WANT_KEEP_ATTACHMENT_KEYRING`, `WANT_KEEP_CONNECTION_KEYRING`, `WANT_KEEP_ATTACHMENT_DIRECTORY`, `WANT_KEEP_DOCUMENT_PROCESSOR_SOCKET`; key values never enter argv/environment. Missing resources disable only dependent functions. Restart reads require previous key IDs; backups must preserve keyrings separately from ciphertext without losing old keys.
 
@@ -33,3 +33,6 @@ Coverage includes four formats, 10/11 PDF pages, 10 MiB, MIME/damage/encryption/
 Remaining AC portions stay with their owners: AC-015/022 receipt extraction/matching, AC-048/087 live platforms and OAuth/MFA, AC-050/060 complete AI gateway and prompt-injection scenarios, AC-068/078/090 UI/household product actions, AC-072/088 notification delivery. Authorized accepted attachments may be AI input; secrets never are. Live banks, AI calls, Chrome/Arc, UI and production are not claimed as verified. SDD is Ready for development; operational readiness is not established.
 
 Additional regressions cover indirect Launch through HTTP/DB/the pinned processor; a killed qpdf leaves the same uploadId pending, then healthy processing accepts it. Supervisor tests synchronize cancellation with file creation and check cleanup, the next document, restart and exclusive workspace ownership. The output limiter hides bytes.Buffer methods that could bypass size validation through io.Copy.
+
+
+Integration with task-1.6 preserves its invitation/ownership policies and migration 005. The undeployed privacy migration is now 006; no production data is changed. Shared delivery retains one Origin/CSRF/session guard; connections load both household and secret purpose.

@@ -18,14 +18,14 @@ func (r identitySetupRow) domain() *identity.Setup {
 	return &identity.Setup{Name: r.Name, HouseholdName: r.HouseholdName, Timezone: r.Timezone, Locale: r.Locale, ReportingAsset: r.ReportingAsset, UserID: household.UserID(r.UserID), HouseholdID: household.HouseholdID(r.HouseholdID), MembershipID: household.MembershipID(r.MembershipID), Handle: r.Handle}
 }
 
-const identityAttemptColumns = `id,browser_hash,token_hash,session_hash,challenge,rp_id,origin,grant_id,purpose,COALESCE(user_id::text,''),generation,created_at,expires_at,consumed,setup`
+const identityAttemptColumns = `id,browser_hash,token_hash,session_hash,challenge,rp_id,origin,grant_id,purpose,COALESCE(user_id::text,''),generation,created_at,expires_at,consumed,setup,COALESCE(invitation_revision,0)`
 
 type identityAttemptRow struct{ attempt identity.Attempt }
 
 func (r *identityAttemptRow) scan(row interface{ Scan(...any) error }) error {
 	a := &r.attempt
 	var setup []byte
-	err := row.Scan(&a.ID, &a.BrowserHash, &a.TokenHash, &a.SessionHash, &a.Challenge, &a.RPID, &a.Origin, &a.GrantID, &a.Purpose, &a.UserID, &a.Generation, &a.CreatedAt, &a.ExpiresAt, &a.Consumed, &setup)
+	err := row.Scan(&a.ID, &a.BrowserHash, &a.TokenHash, &a.SessionHash, &a.Challenge, &a.RPID, &a.Origin, &a.GrantID, &a.Purpose, &a.UserID, &a.Generation, &a.CreatedAt, &a.ExpiresAt, &a.Consumed, &setup, &a.InvitationRevision)
 	if err != nil {
 		return err
 	}
@@ -68,8 +68,8 @@ func (s *Store) SaveIdentityAttempt(ctx context.Context, a identity.Attempt) err
 			return s.identityError(err)
 		}
 	}
-	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.identity_attempts(id,browser_hash,token_hash,session_hash,challenge,rp_id,origin,grant_id,purpose,user_id,generation,created_at,expires_at,consumed,setup)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,NULLIF($10,'')::uuid,$11,$12,$13,$14,$15) ON CONFLICT(id) DO UPDATE SET consumed=EXCLUDED.consumed`, a.ID, a.BrowserHash, a.TokenHash, a.SessionHash, a.Challenge, a.RPID, a.Origin, a.GrantID, a.Purpose, string(a.UserID), a.Generation, a.CreatedAt, a.ExpiresAt, a.Consumed, setup)
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.identity_attempts(id,browser_hash,token_hash,session_hash,challenge,rp_id,origin,grant_id,purpose,user_id,generation,created_at,expires_at,consumed,setup,invitation_revision)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,NULLIF($10,'')::uuid,$11,$12,$13,$14,$15,NULLIF($16,0)) ON CONFLICT(id) DO UPDATE SET consumed=EXCLUDED.consumed`, a.ID, a.BrowserHash, a.TokenHash, a.SessionHash, a.Challenge, a.RPID, a.Origin, a.GrantID, a.Purpose, string(a.UserID), a.Generation, a.CreatedAt, a.ExpiresAt, a.Consumed, setup, a.InvitationRevision)
 	return s.identityError(err)
 }
 func (s *Store) ConsumeRecoveryCode(ctx context.Context, hash string) (household.UserID, error) {

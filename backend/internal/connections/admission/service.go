@@ -11,6 +11,7 @@ import (
 )
 
 type Connection struct {
+	HouseholdID   household.HouseholdID
 	ID, Provider  string
 	Owner         household.UserID
 	Generation    uint64
@@ -118,6 +119,9 @@ func (s *Service) RequestSync(ctx context.Context, p household.Principal, id str
 		return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
 			c, err := s.repository.Connection(ctx, p, id)
 			if err != nil {
+				return err
+			}
+			if err = (connections.ExternalOwnership{HouseholdID: c.HouseholdID, OwnerID: c.Owner}).RequireManage(p); err != nil {
 				return err
 			}
 			if !c.Authorized || c.Provider != b.Provider {

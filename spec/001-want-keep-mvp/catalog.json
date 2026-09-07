@@ -3341,7 +3341,7 @@
         "backend/internal/attachments/",
         "backend/internal/delivery/",
         "backend/internal/storage/",
-        "backend/migrations/005_privacy.sql",
+        "backend/migrations/006_privacy.sql",
         "backend/cmd/",
         "backend/test/integration/privacy/",
         "deploy/document-processor/",
@@ -3394,22 +3394,35 @@
       ],
       "targets": [
         "backend/internal/household/",
-        "backend/internal/auth/",
-        "backend/migrations/",
-        "api/openapi.yaml"
+        "backend/internal/identity/",
+        "backend/internal/delivery/identity/",
+        "backend/internal/storage/",
+        "backend/internal/connections/",
+        "backend/migrations/005_household_invitations.sql",
+        "api/",
+        "backend/test/integration/household/",
+        "backend/test/integration/identity/"
       ],
       "behavior": {
-        "ru": "Создать User/Household/Membership и доменную policy границы по contracts: оба читают/правят операции и подключения, личные планы/цели — владелец. Bootstrap и одноразовое ограниченное приглашение создают отдельные входы; лимит 2 из конфигурации. Не добавлять выход, смену партнёра или конструктор ролей. Проверять принадлежность и ревизию атомарно; API principal не берётся из payload.",
-        "en": "Create User/Household/Membership and domain boundary policy per contracts: both read/edit transactions and connections; personal plans/goals are owner-editable. Bootstrap and a restricted single-use invitation create separate sign-ins; limit 2 comes from configuration. Add no exit, partner replacement or role builder. Check scope and revision atomically; API principal never comes from payload."
+        "ru": "Закрытое присоединение создаёт отдельный passkey, сессию и личные recovery-коды атомарно с членством. Одно приглашение: 256 бит, hash, 24 часа, revision; выдача/перевыпуск требуют собственной auth до 5 минут, отзыв — активной сессии. Перевыпуск и отзыв запрещают завершение старых попыток. Оба видят семейные данные и исправляют операции; личные ресурсы защищены текущим владельцем. Управление connection отделено от банковской авторизации внешнего владельца. User/Household/Membership и actor/owner/payer остаются отдельными; лимит 2 задаётся конфигурацией.",
+        "en": "Closed joining creates a separate passkey, session and personal recovery codes atomically with membership. One invitation: 256 bits, hash, 24 hours, revision; issue/reissue requires own authentication within 5 minutes, revocation an active session. Reissue and revocation fence older attempts. Both read family data and correct accounting; current ownership protects personal resources. Connection management is separate from bank authentication by the external owner. User/Household/Membership and actor/owner/payer remain separate; the default cap of 2 is configured."
       },
       "verification": {
-        "command": "make test-go PKG=./internal/household/...\nmake test-integration AREA=household\nmake check-contracts",
+        "command": "make check\nmake test-integration AREA=household\nmake test-integration AREA=identity\nmake test-integration AREA=storage\nmake test-household-race\nmake test-identity-race\nmake test-storage-race",
         "expected": {
-          "ru": "Проверены два отдельных входа, повтор/истечение приглашения, лимит, разрешённые/запрещённые действия, подмена actor, чужие family IDs и конкурентная запись.",
-          "en": "Two separate sign-ins, invitation replay/expiry, limit, allowed/denied actions, actor spoofing, foreign household IDs and concurrent writes are covered."
+          "ru": "PostgreSQL-политики и HTTP/WebAuthn приглашения проходят сценарии двух входов, replay/expiry/revoke/reissue, rollback/unknown response, гонок и семейной изоляции. Тесты новых маршрутов находятся в identity suite и используют общий криптографический fixture; household suite проверяет транзакционные права.",
+          "en": "PostgreSQL policies and HTTP/WebAuthn invitations cover independent sign-ins, replay/expiry/revoke/reissue, rollback/unknown response, races and household isolation. New route tests live in the identity suite and reuse its cryptographic fixture; the household suite verifies transactional permissions."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/16"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/16",
+      "status": {
+        "ru": "Реализованы backend/API приглашения и семейные политики; продуктовые UI/AI/файлы/уведомления остаются профильным задачам.",
+        "en": "Invitation backend/API and household policies implemented; product UI/AI/files/notifications remain with their owning tasks."
+      },
+      "verification_note": {
+        "ru": "Доказательства и границы: evidence/task-1.6-household.md. Отсутствие изолированной БД завершает integration ошибкой. Закрытие задачи не доказывает UI/AI retrieval, файловый доступ, банковский MFA, push delivery или production.",
+        "en": "Evidence and boundaries: evidence/task-1.6-household.en.md. Missing isolated DB fails integration. Closing this task does not prove UI/AI retrieval, file access, bank MFA, push delivery or production."
+      }
     },
     {
       "id": "task-2.1",
@@ -6043,8 +6056,8 @@
         "en": "Member/household name, language, timezone/currency; private invitation, joining member name and passkey."
       },
       "rules": {
-        "ru": "Однократный операторский bootstrap; invitation ограничен семьёй, сроком и одноразовым использованием; конфигурация максимум 2 активных участника.",
-        "en": "Single-use operator bootstrap; invitation is household-bound, expiring and single-use; configured maximum 2 active members."
+        "ru": "Операторский bootstrap однократен. Приглашение одно, случайное, на 24 часа; выдача/перевыпуск требуют собственной auth до 5 минут и expectedRevision. Отзыв с CSRF не требует свежей auth. Принятие проверяет browser/purpose/revision, inviter membership и лимит атомарно с новым passkey/сессией/кодами.",
+        "en": "Operator bootstrap is one-time. One random invitation lasts 24 hours; issue/reissue requires own authentication within 5 minutes and expectedRevision. Revocation uses CSRF without fresh auth. Acceptance checks browser/purpose/revision, inviter membership and capacity atomically with a new passkey/session/codes."
       },
       "result": {
         "ru": "Создано членство, показаны личные recovery-коды; далее onboarding. Секреты не в URL журналов/аналитики.",
@@ -6482,16 +6495,16 @@
         "en": "Verified private invitation to a specific household."
       },
       "structure": {
-        "ru": "Семья/пригласивший после проверки → имя → свой passkey → свои коды.",
-        "en": "Household/inviter after verification → name → own passkey → own codes."
+        "ru": "Проверка приглашения → семья/пригласивший → имя/язык/валюта → свой passkey → свои коды.",
+        "en": "Invitation check → household/inviter → name/language/currency → own passkey → own recovery codes."
       },
       "action": {
         "ru": "Принять → SCR-005; истёкшее приглашение ведёт к запросу нового у участника.",
         "en": "Accept → SCR-005; expired invitation explains obtaining a new one from the member."
       },
       "detail": {
-        "ru": "Использованное приглашение и полный состав имеют разные понятные статусы.",
-        "en": "Used invitation and full membership have distinct understandable states."
+        "ru": "Истечение, использование, отзыв и полный состав различаются. Уже вошедший пользователь сначала выходит. При потере ответа регистрации — вход созданным passkey и при необходимости новые коды после своей свежей auth.",
+        "en": "Expiry, use, revocation and a full household are distinct. An already signed-in user signs out first. After a lost registration response, sign in with the new passkey and regenerate codes after fresh own authentication if needed."
       },
       "rights": {
         "ru": "До входа только собственная авторизация; финансовые данные скрыты.",
@@ -8309,8 +8322,8 @@
         "en": "Members/invitation → shared-access explanation → personal/shared resources and rules."
       },
       "action": {
-        "ru": "Если есть место, выдать/обновить приглашение FORM-02; свои средства входа SCR-033.",
-        "en": "If capacity allows, issue/renew invitation FORM-02; own access methods SCR-033."
+        "ru": "Если есть место, выдать/перевыпустить приглашение после собственного passkey-подтверждения до 5 минут; отозвать действующей сессией. Сначала показать метаданные/revision; секрет повторно не читается.",
+        "en": "When capacity exists, issue/reissue after own passkey confirmation within 5 minutes; revoke with an active session. Show metadata/revision first; never reread the secret."
       },
       "detail": {
         "ru": "Нет смены ролей, выхода/замены участника и восстановления партнёром в MVP.",

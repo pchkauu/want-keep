@@ -22,7 +22,7 @@ D-46: два приватных keyring, AES-256-GCM/AAD, owner/session/generati
 - `backend/internal/attachments/`
 - `backend/internal/delivery/`
 - `backend/internal/storage/`
-- `backend/migrations/005_privacy.sql`
+- `backend/migrations/006_privacy.sql`
 - `backend/cmd/`
 - `backend/test/integration/privacy/`
 - `deploy/document-processor/`
@@ -152,7 +152,7 @@ D-46: two private keyrings, AES-256-GCM/AAD, owner/session/generation/purpose gr
 - `backend/internal/attachments/`
 - `backend/internal/delivery/`
 - `backend/internal/storage/`
-- `backend/migrations/005_privacy.sql`
+- `backend/migrations/006_privacy.sql`
 - `backend/cmd/`
 - `backend/test/integration/privacy/`
 - `deploy/document-processor/`

@@ -5,7 +5,7 @@
 
 Создать семью, членство и права на ресурсы.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализованы backend/API приглашения и семейные политики; продуктовые UI/AI/файлы/уведомления остаются профильным задачам.
 
 **Зависимости:** `task-1.4`.
 
@@ -13,14 +13,19 @@
 
 ### Изменение и контракты
 
-Создать User/Household/Membership и доменную policy границы по contracts: оба читают/правят операции и подключения, личные планы/цели — владелец. Bootstrap и одноразовое ограниченное приглашение создают отдельные входы; лимит 2 из конфигурации. Не добавлять выход, смену партнёра или конструктор ролей. Проверять принадлежность и ревизию атомарно; API principal не берётся из payload.
+Закрытое присоединение создаёт отдельный passkey, сессию и личные recovery-коды атомарно с членством. Одно приглашение: 256 бит, hash, 24 часа, revision; выдача/перевыпуск требуют собственной auth до 5 минут, отзыв — активной сессии. Перевыпуск и отзыв запрещают завершение старых попыток. Оба видят семейные данные и исправляют операции; личные ресурсы защищены текущим владельцем. Управление connection отделено от банковской авторизации внешнего владельца. User/Household/Membership и actor/owner/payer остаются отдельными; лимит 2 задаётся конфигурацией.
 
 ### Границы изменений
 
 - `backend/internal/household/`
-- `backend/internal/auth/`
-- `backend/migrations/`
-- `api/openapi.yaml`
+- `backend/internal/identity/`
+- `backend/internal/delivery/identity/`
+- `backend/internal/storage/`
+- `backend/internal/connections/`
+- `backend/migrations/005_household_invitations.sql`
+- `api/`
+- `backend/test/integration/household/`
+- `backend/test/integration/identity/`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -98,14 +103,18 @@
 ### Проверка результата
 
 ```sh
-make test-go PKG=./internal/household/...
+make check
 make test-integration AREA=household
-make check-contracts
+make test-integration AREA=identity
+make test-integration AREA=storage
+make test-household-race
+make test-identity-race
+make test-storage-race
 ```
 
-Проверены два отдельных входа, повтор/истечение приглашения, лимит, разрешённые/запрещённые действия, подмена actor, чужие family IDs и конкурентная запись.
+PostgreSQL-политики и HTTP/WebAuthn приглашения проходят сценарии двух входов, replay/expiry/revoke/reissue, rollback/unknown response, гонок и семейной изоляции. Тесты новых маршрутов находятся в identity suite и используют общий криптографический fixture; household suite проверяет транзакционные права.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Доказательства и границы: evidence/task-1.6-household.md. Отсутствие изолированной БД завершает integration ошибкой. Закрытие задачи не доказывает UI/AI retrieval, файловый доступ, банковский MFA, push delivery или production.
 
 ### Передача следующему агенту
 
@@ -117,7 +126,7 @@ make check-contracts
 
 Implement household membership and resource permissions.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Invitation backend/API and household policies implemented; product UI/AI/files/notifications remain with their owning tasks.
 
 **Dependencies:** `task-1.4`.
 
@@ -125,14 +134,19 @@ Implement household membership and resource permissions.
 
 ### Change and contracts
 
-Create User/Household/Membership and domain boundary policy per contracts: both read/edit transactions and connections; personal plans/goals are owner-editable. Bootstrap and a restricted single-use invitation create separate sign-ins; limit 2 comes from configuration. Add no exit, partner replacement or role builder. Check scope and revision atomically; API principal never comes from payload.
+Closed joining creates a separate passkey, session and personal recovery codes atomically with membership. One invitation: 256 bits, hash, 24 hours, revision; issue/reissue requires own authentication within 5 minutes, revocation an active session. Reissue and revocation fence older attempts. Both read family data and correct accounting; current ownership protects personal resources. Connection management is separate from bank authentication by the external owner. User/Household/Membership and actor/owner/payer remain separate; the default cap of 2 is configured.
 
 ### Change boundaries
 
 - `backend/internal/household/`
-- `backend/internal/auth/`
-- `backend/migrations/`
-- `api/openapi.yaml`
+- `backend/internal/identity/`
+- `backend/internal/delivery/identity/`
+- `backend/internal/storage/`
+- `backend/internal/connections/`
+- `backend/migrations/005_household_invitations.sql`
+- `api/`
+- `backend/test/integration/household/`
+- `backend/test/integration/identity/`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -210,14 +224,18 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make test-go PKG=./internal/household/...
+make check
 make test-integration AREA=household
-make check-contracts
+make test-integration AREA=identity
+make test-integration AREA=storage
+make test-household-race
+make test-identity-race
+make test-storage-race
 ```
 
-Two separate sign-ins, invitation replay/expiry, limit, allowed/denied actions, actor spoofing, foreign household IDs and concurrent writes are covered.
+PostgreSQL policies and HTTP/WebAuthn invitations cover independent sign-ins, replay/expiry/revoke/reissue, rollback/unknown response, races and household isolation. New route tests live in the identity suite and reuse its cryptographic fixture; the household suite verifies transactional permissions.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Evidence and boundaries: evidence/task-1.6-household.en.md. Missing isolated DB fails integration. Closing this task does not prove UI/AI retrieval, file access, bank MFA, push delivery or production.
 
 ### Handoff to the next agent
 

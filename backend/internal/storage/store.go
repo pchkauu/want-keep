@@ -68,15 +68,17 @@ func (s *Store) Close() { s.pool.Close() }
 
 type transactionKey struct{}
 type transactionScope struct {
-	store            *Store
-	tx               pgx.Tx
-	principal        household.Principal
-	householdLocked  bool
-	admissionKey     string
-	syncJobID        string
-	syncConnectionID string
-	root             *transactionScope
-	rollbackFailure  error
+	store                 *Store
+	tx                    pgx.Tx
+	principal             household.Principal
+	householdLocked       bool
+	identityLocked        bool
+	invitationHouseholdID household.HouseholdID
+	admissionKey          string
+	syncJobID             string
+	syncConnectionID      string
+	root                  *transactionScope
+	rollbackFailure       error
 }
 
 func (s *Store) scope(ctx context.Context) (*transactionScope, error) {
@@ -161,6 +163,7 @@ func (s *Store) nestedTransaction(ctx context.Context, parent *transactionScope,
 		return err
 	}
 	parent.principal, parent.householdLocked = child.principal, child.householdLocked
+	parent.identityLocked, parent.invitationHouseholdID = child.identityLocked, child.invitationHouseholdID
 	parent.admissionKey = child.admissionKey
 	parent.syncJobID, parent.syncConnectionID = child.syncJobID, child.syncConnectionID
 	return nil
@@ -179,6 +182,9 @@ func (s *Store) WithinHousehold(ctx context.Context, p household.Principal, fn f
 		return err
 	}
 	return s.transact(ctx, func(ctx context.Context, scope *transactionScope) error {
+		if scope.invitationHouseholdID != "" {
+			return ErrTransactionRequired
+		}
 		if scope.householdLocked {
 			if scope.principal != p {
 				return household.ErrForbidden
@@ -211,7 +217,7 @@ func (s *Store) requireRead(ctx context.Context, p household.Principal) error {
 func (s *Store) WithinAdmission(ctx context.Context, provider, environment string, fn func(context.Context) error) error {
 	key := fmt.Sprintf("%d:%s%s", len(provider), provider, environment)
 	return s.transact(ctx, func(ctx context.Context, scope *transactionScope) error {
-		if scope.householdLocked {
+		if scope.householdLocked || scope.invitationHouseholdID != "" {
 			return errors.New("admission lock must precede household lock")
 		}
 		if scope.admissionKey != "" && scope.admissionKey != key {

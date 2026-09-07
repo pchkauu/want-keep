@@ -36,7 +36,7 @@ func newSecretFixture(t *testing.T, purpose connections.SecretPurpose) *secretFi
 	f := newFixture(t)
 	sf := &secretFixture{fixture: f, connection: uuid.NewString(), purpose: purpose, binding: connections.Binding{Provider: "raiffeisen", Environment: "test", AdapterBuildDigest: "sha256:" + strings.Repeat("a", 64), CollectorImageDigest: "sha256:" + strings.Repeat("b", 64), ContractVersion: "10", AllowlistRevision: "1", NonSecretConfigRevision: "1", OperatorPermissionRevision: "1"}}
 	if err := f.store.WithinHousehold(testContext, f.a, func(ctx context.Context) error {
-		return f.store.CreateConnection(ctx, admission.Connection{ID: sf.connection, Provider: "raiffeisen", Owner: f.a.UserID(), Generation: 1, Authorized: true, SecretPurpose: purpose})
+		return f.store.CreateConnection(ctx, admission.Connection{HouseholdID: f.a.HouseholdID(), ID: sf.connection, Provider: "raiffeisen", Owner: f.a.UserID(), Generation: 1, Authorized: true, SecretPurpose: purpose})
 	}); err != nil {
 		t.Fatal(err)
 	}

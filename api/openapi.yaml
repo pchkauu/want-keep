@@ -34,6 +34,10 @@ paths:
     "$ref": "./paths/household.yaml#/~1household"
   "/household/invitations":
     "$ref": "./paths/household.yaml#/~1household~1invitations"
+  "/household/invitations/{id}/revoke":
+    "$ref": "./paths/household.yaml#/~1household~1invitations~1{id}~1revoke"
+  "/invitations/preview":
+    "$ref": "./paths/household.yaml#/~1invitations~1preview"
   "/invitations/accept":
     "$ref": "./paths/household.yaml#/~1invitations~1accept"
   "/accounts":
@@ -205,6 +209,20 @@ components:
     Limit:
       "$ref": "./components.yaml#/parameters/Limit"
   schemas:
+    HouseholdMember:
+      "$ref": "./schemas/household.yaml#/HouseholdMember"
+    InvitationState:
+      "$ref": "./schemas/household.yaml#/InvitationState"
+    InvitationMutationInput:
+      "$ref": "./schemas/household.yaml#/InvitationMutationInput"
+    InvitationTokenInput:
+      "$ref": "./schemas/household.yaml#/InvitationTokenInput"
+    InvitationPreview:
+      "$ref": "./schemas/household.yaml#/InvitationPreview"
+    InvitationEnrollmentInput:
+      "$ref": "./schemas/household.yaml#/InvitationEnrollmentInput"
+    ExistingEnrollmentInput:
+      "$ref": "./schemas/auth.yaml#/ExistingEnrollmentInput"
     LoginOptionsInput:
       "$ref": "./schemas/auth.yaml#/LoginOptionsInput"
     EnrollmentResult:

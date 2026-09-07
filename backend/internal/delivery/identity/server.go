@@ -11,6 +11,7 @@ import (
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/contract"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/generated"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/security"
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	application "github.com/pchkauu/want-keep/backend/internal/identity/application"
 	identity "github.com/pchkauu/want-keep/backend/internal/identity/domain"
 )
@@ -49,6 +50,7 @@ func New(service *application.Service, c Config) (*Server, error) {
 	s.mux.HandleFunc("POST /api/v1/auth/logout", s.logout)
 	s.mux.HandleFunc("POST /api/v1/auth/session/activity", s.activity)
 	s.mux.HandleFunc("GET /api/v1/me", s.me)
+	s.registerHouseholdRoutes()
 	s.mux.HandleFunc("GET /api/v1/security/passkeys", s.passkeys)
 	s.mux.HandleFunc("GET /api/v1/security/sessions", s.sessions)
 	s.mux.HandleFunc("DELETE /api/v1/security/passkeys/{credentialId}", s.revokePasskey)
@@ -132,6 +134,22 @@ func (s *Server) clearCookie(w http.ResponseWriter) {
 func (s *Server) problem(w http.ResponseWriter, err error) {
 	status, code, message := 503, generated.ErrorCode("service_unavailable"), "Access could not be confirmed. Try again later."
 	switch {
+	case errors.Is(err, household.ErrForbidden):
+		status, code, message = 403, "forbidden", "This action is unavailable for your account."
+	case errors.Is(err, household.ErrInvitation):
+		status, code, message = 400, "invitation_invalid", "This invitation is unavailable. Ask the member for a new one."
+	case errors.Is(err, household.ErrInvitationExpired):
+		status, code, message = 409, "invitation_expired", "This invitation has expired. Ask the member for a new one."
+	case errors.Is(err, household.ErrInvitationRevoked):
+		status, code, message = 409, "invitation_revoked", "This invitation was revoked. Ask the member for a new one."
+	case errors.Is(err, household.ErrInvitationUsed):
+		status, code, message = 409, "invitation_used", "This invitation was already accepted. Sign in with your passkey."
+	case errors.Is(err, household.ErrInvitationRevision):
+		status, code, message = 409, "version_conflict", "The invitation changed. Refresh its status before another action."
+	case errors.Is(err, household.ErrMemberLimit):
+		status, code, message = 409, "member_limit_reached", "The household has no available membership slots."
+	case errors.Is(err, identity.ErrAlreadyAuthenticated):
+		status, code, message = 409, "already_authenticated", "Sign out before registering a separate household member."
 	case errors.Is(err, identity.ErrUnauthorized):
 		status, code, message = 401, "unauthorized", "Sign in with your own passkey or use another recovery code."
 	case errors.Is(err, identity.ErrAttempt), errors.Is(err, identity.ErrCounter):

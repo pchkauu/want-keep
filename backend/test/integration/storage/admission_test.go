@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 )
@@ -24,11 +25,29 @@ func (f *fixture) connection() string {
 	f.t.Helper()
 	id := uuid.NewString()
 	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
-		return f.store.CreateConnection(ctx, admission.Connection{ID: id, Provider: "raiffeisen", Owner: f.p.UserID(), Generation: 1, Authorized: true})
+		return f.store.CreateConnection(ctx, admission.Connection{HouseholdID: f.family.ID, ID: id, Provider: "raiffeisen", Owner: f.p.UserID(), Generation: 1, Authorized: true})
 	}); err != nil {
 		f.t.Fatal(err)
 	}
 	return id
+}
+
+func TestConnectionCarriesVerifiedHouseholdAndPreservesExternalOwner(t *testing.T) {
+	f := newFixture(t)
+	id := f.connection()
+	c, err := f.store.Connection(testContext, f.q, id)
+	if err != nil || c.HouseholdID != f.family.ID || c.Owner != f.p.UserID() {
+		t.Fatal("connection identity lost", c, err)
+	}
+	owner := connections.ExternalOwnership{HouseholdID: c.HouseholdID, OwnerID: c.Owner}
+	if owner.RequireManage(f.q) != nil || !errors.Is(owner.RequireAuthentication(f.q), household.ErrForbidden) {
+		t.Fatal("partner impersonates external owner")
+	}
+	c.ID = uuid.NewString()
+	c.HouseholdID = "foreign"
+	if err = f.store.WithinHousehold(testContext, f.q, func(ctx context.Context) error { return f.store.CreateConnection(ctx, c) }); !errors.Is(err, household.ErrForbidden) {
+		t.Fatal("foreign connection ownership accepted", err)
+	}
 }
 func (f *fixture) admit(b connections.Binding) *admission.Service {
 	f.t.Helper()

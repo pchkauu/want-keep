@@ -14,14 +14,15 @@ import (
 )
 
 var (
-	ErrUnauthorized        = errors.New("unauthorized")
-	ErrAttempt             = errors.New("authentication attempt rejected")
-	ErrFreshAuthentication = errors.New("fresh authentication required")
-	ErrLastPasskey         = errors.New("last passkey cannot be revoked")
-	ErrBootstrap           = errors.New("bootstrap unavailable")
-	ErrRateLimited         = errors.New("authentication rate limited")
-	ErrCounter             = errors.New("authenticator counter rejected")
-	ErrUnavailable         = errors.New("identity storage unavailable")
+	ErrUnauthorized         = errors.New("unauthorized")
+	ErrAttempt              = errors.New("authentication attempt rejected")
+	ErrFreshAuthentication  = errors.New("fresh authentication required")
+	ErrLastPasskey          = errors.New("last passkey cannot be revoked")
+	ErrBootstrap            = errors.New("bootstrap unavailable")
+	ErrRateLimited          = errors.New("authentication rate limited")
+	ErrCounter              = errors.New("authenticator counter rejected")
+	ErrUnavailable          = errors.New("identity storage unavailable")
+	ErrAlreadyAuthenticated = errors.New("sign out before accepting invitation")
 )
 
 const (
@@ -42,6 +43,7 @@ const (
 	AddPasskey       Purpose = "add_passkey"
 	Recovery         Purpose = "recovery"
 	RecoveryGrant    Purpose = "recovery_grant"
+	Invitation       Purpose = "invitation"
 )
 
 // Tokens are random bearer secrets. Their digests, never their plaintext, are persisted.
@@ -147,6 +149,7 @@ type Attempt struct {
 	CreatedAt, ExpiresAt                                                      time.Time
 	Consumed                                                                  bool
 	Setup                                                                     *Setup
+	InvitationRevision                                                        uint64
 }
 
 func (a Attempt) Require(browserHash string, now time.Time, purpose Purpose) error {
