@@ -19,7 +19,7 @@ for (const viewport of [
     page.on("request", (request) => {
       if (
         request.resourceType() === "font" &&
-        new URL(request.url()).origin !== "http://127.0.0.1:4179"
+        new URL(request.url()).origin !== "http://127.0.0.1:4180"
       )
         externalFonts.push(request.url());
     });
