@@ -225,3 +225,7 @@ The server configures model, reasoning, permitted tools and pricing, outside cha
 The 10 MiB/10-page upload limits remain. Page splitting preserves source evidence and cannot create separate expenses without matching. Research does not replace server regression/authorization/retry checks. This clarifies the target AI contract; no existing AI API/store requires data migration.
 
 The task-1.2 foundation aligns with contract version 10: D-41 retention/recovery and D-43 admission are checked at domain/DTO level. The SDD is Ready for development; runtime ACs remain with subsequent tasks.
+
+## Storage task-1.3 — contract 10
+
+Internal application/repository boundaries, D-39/D-41/D-43 transactions, precision, migrations, roles and downstream handoff are specified in the [implementation report](evidence/task-1.3-storage.en.md). Public OpenAPI is unchanged. Source/page and checkpoint are atomic; command registration precedes execution; financial effect and terminal outcome commit together. Transaction callbacks must not perform external IO.

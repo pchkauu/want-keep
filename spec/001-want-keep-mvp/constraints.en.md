@@ -92,3 +92,7 @@ Financial source identity includes household, provider and a verified real exter
 ## Desktop and presentation
 
 Design, screens and navigation are UI contracts supplementing the API: [design](design.en.md), [screens](screens.en.md), [navigation](navigation.en.md). Design system narrowly owns tokens/primitives/motion; features own user tasks. Server returns amounts, explanations and statuses; client never repeats financial formulas. States and animation events do not control the ledger. The foundation pins Base UI/shadcn and dark base tokens; fonts, components and user screens belong to later UI tasks.
+
+## PostgreSQL task-1.3
+
+pgx v5.10.0 stays in storage; domain/application never import the driver or pgx.Tx. Architecture tests recognize connections/admission as an application boundary. Test PostgreSQL 17.11 is digest-pinned; task-8.1 confirms the production major. READ COMMITTED uses admission-before-household lock order; maintenance is separate from application. [Storage contract and execution](evidence/task-1.3-storage.en.md).

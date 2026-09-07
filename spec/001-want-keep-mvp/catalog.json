@@ -3227,7 +3227,16 @@
         "backend/migrations/",
         "backend/internal/storage/",
         "backend/internal/jobs/",
-        "backend/internal/connections/admission/"
+        "backend/internal/connections/admission/",
+        "backend/internal/commands/",
+        "backend/internal/accounts/",
+        "backend/internal/ledger/",
+        "backend/internal/goals/",
+        "backend/internal/household/application/",
+        "backend/cmd/migrate/",
+        "backend/cmd/command-retention/",
+        "backend/test/integration/storage/",
+        ".github/workflows/ci.yml"
       ],
       "behavior": {
         "ru": "Добавить миграции для семьи/участников, счетов, неизменяемых source records, операций/проводок, revisions, command records, idempotency tombstones и outbox/jobs. Денежные поля NUMERIC сохраняют точность источника. Source uniqueness следует D-39 и включает household, provider, стабильный внешний счёт, product/log namespace и provider record ID; connection/session ID остаётся provenance. Коллизия сохраняет evidence как `source_ambiguous` без проводки. Транзакционно обеспечить uniqueness, version-check и резервы. Реализовать независимые retention jobs: terminal detail 90 дней после исхода; unresolved до сверки плюс 90 дней; tombstone с `commandId` живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome; финансовый source/audit не удаляется вместе с command detail. Реализовать `ProviderDeploymentAdmission` в `backend/internal/connections/admission/`: aggregate и repository interface принадлежат application boundary, storage adapter сохраняет provider/host evidence и exact binding. Application service атомарно объединяет оба pass, повышает `admissionRevision` при каждой смене state/evidence/binding и в одной транзакции проверяет admission с созданием sync job. Job и result несут неизменяемые binding/revision. Collector повторно проверяет их перед provider IO; storage повторно сверяет current admitted revision в транзакции записи source revision/posting/outbox. Stale result сохраняется только в quarantine, без финансового эффекта. Revoke/change инвалидирует не начатые jobs, запрашивает best-effort cancel уже начатых и всегда блокирует их commit. Покрыть restart, concurrent combine/sync, revoke до/после начала IO и binding-change races. Регистрация предшествует исполнению; эффект и terminal result атомарны. Уникальность household+actor+key; type/hash неизменны, replay до повторного version check. Pending после неизвестного исхода требует сверки; not_found не разрешает новый ключ. Статусы доступны только инициатору; права на результат проверяются отдельно.",
@@ -3242,8 +3251,12 @@
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/13",
       "verification_note": {
-        "ru": "Make предоставляет точку входа test-integration, но suite storage создаётся этой задачей. Обязательны проверки PostgreSQL: миграции на пустой БД, точное хранение сумм, crash/retry, конкурирующие записи, проверка версий и атомарность финансового эффекта с terminal command status. Live banking и browser E2E относятся к последующим задачам.",
-        "en": "Make provides the test-integration entry point, but this task must implement the storage suite. PostgreSQL checks are mandatory: empty-database migrations, exact amounts, crash/retry, concurrent writes, revision checks and atomic financial effect plus terminal command status. Live banking and browser E2E belong to subsequent tasks."
+        "ru": "Suite реализована на PostgreSQL 17.11 с закреплённым digest и pgx 5.10.0. Обязательны make check, make test-integration AREA=storage, make test-storage-race и git diff --check; отсутствие БД — ошибка. Доказательства и ограничения: evidence/task-1.3-storage.md. Live banking, HTTP/auth, browser E2E и production deploy не заявляются пройденными.",
+        "en": "The suite uses PostgreSQL 17.11 at a pinned digest and pgx 5.10.0. Required: make check, make test-integration AREA=storage, make test-storage-race and git diff --check; a missing DB fails. Evidence and limits: evidence/task-1.3-storage.en.md. Live banking, HTTP/auth, browser E2E and production deployment are not claimed as passed."
+      },
+      "status": {
+        "ru": "Хранилище контракта 10 реализовано; PostgreSQL integration и race suite проверяют транзакционные границы. Публикация/review/CI — в issue #13. SDD Ready for development; продуктовая и эксплуатационная приёмка остаются у следующих задач.",
+        "en": "Contract 10 storage is implemented; PostgreSQL integration and race suites verify transaction boundaries. Publication/review/CI are recorded in issue #13. The SDD is Ready for development; product and operational acceptance remain with subsequent tasks."
       }
     },
     {

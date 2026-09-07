@@ -17,6 +17,18 @@ jobs:
     timeout-minutes: 15
     env:
       WANT_KEEP_ENV: test
+    services:
+      postgres:
+        image: postgres:17.11@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675
+        env:
+          POSTGRES_DB: want_keep_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-admin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d want_keep_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,3 +54,10 @@ jobs:
 
       - name: Verify repository
         run: make check
+
+      - name: Verify PostgreSQL storage and transaction races
+        env:
+          WANT_KEEP_TEST_DATABASE_URL: postgres://postgres:synthetic-admin@127.0.0.1:5432/want_keep_test?sslmode=disable
+        run: |
+          make test-integration AREA=storage
+          make test-storage-race

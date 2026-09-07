@@ -92,3 +92,7 @@ CI, synthetic integration, live source readback, physical-device push и restore
 ## Desktop и представление
 
 Дизайн, экраны и навигация являются контрактами UI, дополняющими API: [design](design.md), [screens](screens.md), [navigation](navigation.md). Design system — узкий владелец токенов/примитивов/motion; features владеют задачами пользователя. Сервер возвращает суммы, объяснения и статусы, клиент не повторяет денежные формулы. Состояния и animation events не управляют финансовым журналом. Foundation закрепляет Base UI/shadcn и тёмные базовые токены; шрифты, компоненты и пользовательские экраны принадлежат последующим UI-задачам.
+
+## PostgreSQL task-1.3
+
+pgx v5.10.0 остаётся в storage; domain/application не импортируют драйвер или pgx.Tx. Application boundary connections/admission распознаётся архитектурным тестом. Тестовая БД PostgreSQL 17.11 закреплена digest; production major подтверждает task-8.1. READ COMMITTED + admission-before-household lock order; maintenance отделён от application. [Контракт хранения и запуск](evidence/task-1.3-storage.md).

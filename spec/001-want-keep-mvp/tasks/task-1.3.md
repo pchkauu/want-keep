@@ -5,7 +5,7 @@
 
 Сделать сохранение учёта, версий и заданий атомарным.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Хранилище контракта 10 реализовано; PostgreSQL integration и race suite проверяют транзакционные границы. Публикация/review/CI — в issue #13. SDD Ready for development; продуктовая и эксплуатационная приёмка остаются у следующих задач.
 
 **Зависимости:** `task-1.2`.
 
@@ -21,6 +21,15 @@
 - `backend/internal/storage/`
 - `backend/internal/jobs/`
 - `backend/internal/connections/admission/`
+- `backend/internal/commands/`
+- `backend/internal/accounts/`
+- `backend/internal/ledger/`
+- `backend/internal/goals/`
+- `backend/internal/household/application/`
+- `backend/cmd/migrate/`
+- `backend/cmd/command-retention/`
+- `backend/test/integration/storage/`
+- `.github/workflows/ci.yml`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -113,7 +122,7 @@ make test-integration AREA=storage
 
 Миграции применяются к пустой БД; crash/retry и конкуренция не дают частичных проводок или двойных эффектов. Admission переживает restart; неполный/устаревший binding не создаёт job, а revoke/change до IO не допускает provider IO, а после начала IO commit-time fence не допускает source record или проводку.
 
-Make предоставляет точку входа test-integration, но suite storage создаётся этой задачей. Обязательны проверки PostgreSQL: миграции на пустой БД, точное хранение сумм, crash/retry, конкурирующие записи, проверка версий и атомарность финансового эффекта с terminal command status. Live banking и browser E2E относятся к последующим задачам.
+Suite реализована на PostgreSQL 17.11 с закреплённым digest и pgx 5.10.0. Обязательны make check, make test-integration AREA=storage, make test-storage-race и git diff --check; отсутствие БД — ошибка. Доказательства и ограничения: evidence/task-1.3-storage.md. Live banking, HTTP/auth, browser E2E и production deploy не заявляются пройденными.
 
 ### Передача следующему агенту
 
@@ -125,7 +134,7 @@ Make предоставляет точку входа test-integration, но sui
 
 Make accounting, revision and job persistence atomic.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Contract 10 storage is implemented; PostgreSQL integration and race suites verify transaction boundaries. Publication/review/CI are recorded in issue #13. The SDD is Ready for development; product and operational acceptance remain with subsequent tasks.
 
 **Dependencies:** `task-1.2`.
 
@@ -141,6 +150,15 @@ Add migrations for households/members, accounts, immutable source records, trans
 - `backend/internal/storage/`
 - `backend/internal/jobs/`
 - `backend/internal/connections/admission/`
+- `backend/internal/commands/`
+- `backend/internal/accounts/`
+- `backend/internal/ledger/`
+- `backend/internal/goals/`
+- `backend/internal/household/application/`
+- `backend/cmd/migrate/`
+- `backend/cmd/command-retention/`
+- `backend/test/integration/storage/`
+- `.github/workflows/ci.yml`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -233,7 +251,7 @@ make test-integration AREA=storage
 
 Migrations apply to an empty DB; crash/retry and concurrency create neither partial postings nor duplicate effects. Admission survives restart; an incomplete/stale binding creates no job, and revocation/change before IO prevents provider IO, while after IO starts the commit-time fence prevents a source record or posting.
 
-Make provides the test-integration entry point, but this task must implement the storage suite. PostgreSQL checks are mandatory: empty-database migrations, exact amounts, crash/retry, concurrent writes, revision checks and atomic financial effect plus terminal command status. Live banking and browser E2E belong to subsequent tasks.
+The suite uses PostgreSQL 17.11 at a pinned digest and pgx 5.10.0. Required: make check, make test-integration AREA=storage, make test-storage-race and git diff --check; a missing DB fails. Evidence and limits: evidence/task-1.3-storage.en.md. Live banking, HTTP/auth, browser E2E and production deployment are not claimed as passed.
 
 ### Handoff to the next agent
 
