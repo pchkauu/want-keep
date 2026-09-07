@@ -2179,6 +2179,8 @@ export interface components {
       | "invalid_allocation"
       | "invalid_availability"
       | "version_conflict"
+      | "decision_conflict"
+      | "no_change"
       | "duplicate_command"
       | "command_final"
       | "source_reauth_required"
@@ -2218,12 +2220,7 @@ export interface components {
       purpose: "bootstrap" | "add_passkey" | "recovery";
     };
     ExistingTransaction: {
-      /** @enum {string} */
-      accountingState?: "included" | "excluded";
-      decisionId?: components["schemas"]["ID"];
       expectedRevision: components["schemas"]["Revision"];
-      protectedFields?: components["schemas"]["FieldProtection"][];
-      sourceConflict?: boolean;
       transactionId: components["schemas"]["ID"];
     };
     ExpenseAllocation:

@@ -24,6 +24,8 @@ ErrorCode:
   - invalid_allocation
   - invalid_availability
   - version_conflict
+  - decision_conflict
+  - no_change
   - duplicate_command
   - command_final
   - source_reauth_required

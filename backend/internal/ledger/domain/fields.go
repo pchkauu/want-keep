@@ -44,7 +44,7 @@ func (r Revision) FieldEqual(other Revision, field Field) bool {
 		}
 		for i, p := range a {
 			q := b[i]
-			if p.AccountID != q.AccountID || p.Role != q.Role || p.Funding != q.Funding || p.Treatment != q.Treatment || p.Money.Asset() != q.Money.Asset() || !p.SameMoney(q) {
+			if p.AccountID != q.AccountID || p.Role != q.Role || p.Funding != q.Funding || (p.Treatment != q.Treatment && !(p.MovesMoney() && q.MovesMoney())) || p.Money.Asset() != q.Money.Asset() || !p.SameMoney(q) {
 				return false
 			}
 		}

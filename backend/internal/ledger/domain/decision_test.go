@@ -91,3 +91,37 @@ func TestSelectiveUndoChecksFieldOriginNotOnlyValue(t *testing.T) {
 		t.Fatal("undo mutated input")
 	}
 }
+
+func TestFeeNoOpInheritsExistingFunding(t *testing.T) {
+	e := examples{}
+	for _, funding := range []ledger.FundingKind{ledger.OwnFunds, ledger.CreditFunds, ledger.UnknownFunds} {
+		r := e.expense()
+		r.FeeKnowledge = ledger.KnownFees
+		r.Postings = append(r.Postings, ledger.Posting{AccountID: "cash", Money: e.money("-10", money.RUB), Role: ledger.Fee, Funding: funding, Treatment: ledger.Movement})
+		fees := []ledger.Posting{{AccountID: "cash", Money: e.money("-10.00", money.RUB), Role: ledger.Fee}}
+		if _, _, err := r.Correct(ledger.Correction{Fees: &fees}); !errors.Is(err, ledger.ErrNoChange) {
+			t.Fatalf("funding=%s: %v", funding, err)
+		}
+		if fees[0].Funding != "" {
+			t.Fatal("input mutated")
+		}
+	}
+}
+
+func TestMatchingSourceDoesNotConflictWithFinancialProvenance(t *testing.T) {
+	raw := (examples{}).expense()
+	current := raw.Clone()
+	current.Revision = 3
+	current.FieldVersions[ledger.PrincipalField] = 3
+	if current.ConflictsWithSource(&raw) {
+		t.Fatal("matching source falsely conflicts with financial revision")
+	}
+	current.Protections[ledger.PrincipalField] = ledger.Protection{DecisionID: "decision", Revision: 2}
+	if current.ConflictsWithSource(&raw) {
+		t.Fatal("matching protected value falsely conflicts")
+	}
+	raw.Postings[0].Money = (examples{}).money("-700", money.RUB)
+	if !current.ConflictsWithSource(&raw) {
+		t.Fatal("contradicting source not detected")
+	}
+}

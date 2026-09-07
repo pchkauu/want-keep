@@ -100,7 +100,7 @@ func (q *Queries) undoAvailability(ctx context.Context, p household.Principal, d
 		if err != nil {
 			return "", nil, err
 		}
-		next, err := r.UndoFields(e, before, source)
+		next, err := (decisionRestorer{q.repository}).restore(ctx, p, r, e, before, source)
 		if err != nil {
 			return "invalid_restore", affected, nil
 		}

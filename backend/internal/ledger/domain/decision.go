@@ -99,9 +99,6 @@ func (d Decision) Validate() error {
 			fields[f] = true
 		}
 	}
-	if len(d.Evidence) > 100 {
-		return ErrInvalidRevision
-	}
 	for _, e := range d.Evidence {
 		if e.Validate() != nil {
 			return ErrInvalidRevision
@@ -176,7 +173,26 @@ func (r Revision) UndoFields(entry DecisionEntry, before Revision, source *Revis
 			delete(next.Protections, f)
 		}
 	}
+	next.HumanOverride = len(next.Protections) > 0
 	return next, nil
+}
+
+// ReapplySource resolves retained source updates without replacing independent later decisions.
+func (r Revision) ReapplySource(source Revision, independent []Field) (Revision, error) {
+	merged, _, err := r.MergeSource(source)
+	if err != nil {
+		return r, err
+	}
+	for _, field := range independent {
+		if err := merged.CopyField(r, field); err != nil {
+			return r, err
+		}
+	}
+	merged, err = merged.InTimezone(r.Timezone)
+	if err != nil || merged.Validate() != nil || r.State.RequireNext(merged.State) != nil {
+		return r.Clone(), nil
+	}
+	return merged, nil
 }
 
 // MergeSource retains only explicit human choices; provider state remains authoritative.
@@ -185,6 +201,7 @@ func (r Revision) MergeSource(source Revision) (Revision, bool, error) {
 		return r.Clone(), true, nil
 	}
 	next := source.Clone()
+	next.Revision = r.Revision
 	next.Protections = maps.Clone(r.Protections)
 	next.FieldVersions = maps.Clone(r.FieldVersions)
 	next.AccountingState = r.Accounting()

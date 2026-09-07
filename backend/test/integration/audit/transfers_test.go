@@ -22,6 +22,12 @@ func TestTransferExchangeAndThirdAssetFeeCorrections(t *testing.T) {
 	principal[1].Money.Amount = "2000"
 	fees := []any{map[string]any{"accountId": a, "role": "fee", "money": map[string]any{"asset": "RUB", "amount": "-10"}}, map[string]any{"accountId": fee, "role": "fee", "money": map[string]any{"asset": "BTC", "amount": "-0.00001"}}}
 	r = c.correct(r, map[string]any{"principal": principal, "fees": fees})
+	beforeDecisions, beforeReviews, beforeEvents := f.count("ledger_decisions"), f.count("ledger_review_requests"), f.count("outbox")
+	unchanged := decode[generated.CommandFailed](t, c.call("POST", "/transactions/"+r.Id+"/corrections", uuid.NewString(), map[string]any{"expectedRevision": r.Revision, "reason": "Same fee values", "fees": fees}, 202))
+	if unchanged.Error.Code != "no_change" || c.transaction(r.Id).Revision != r.Revision || f.count("ledger_decisions") != beforeDecisions || f.count("ledger_review_requests") != beforeReviews || f.count("outbox") != beforeEvents {
+		t.Fatal("unchanged fees created accounting work")
+	}
+
 	f.balance(a, "owned", "17990")
 	f.balance(b, "owned", "2000")
 	f.balance(fee, "owned", "0.99999")

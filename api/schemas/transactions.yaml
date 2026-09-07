@@ -614,9 +614,6 @@ Reimbursement:
       minLength: 1
       maxLength: 2000
   required:
-  - accountingState
-  - protectedFields
-  - sourceConflict
   - id
   - revision
   - creditorMemberId
@@ -705,12 +702,6 @@ ExistingTransaction:
   type: object
   additionalProperties: false
   properties:
-    accountingState: { type: string, enum: [included, excluded] }
-    decisionId: { $ref: './money.yaml#/ID' }
-    protectedFields:
-      type: array
-      items: { $ref: './transactions.yaml#/FieldProtection' }
-    sourceConflict: { type: boolean }
     transactionId:
       "$ref": "./money.yaml#/ID"
     expectedRevision:

@@ -38,12 +38,23 @@ func (r Revision) Correct(c Correction) (Revision, []Field, error) {
 		if !slices.Contains([]Type{Income, Expense, Transfer, Exchange}, r.Type) {
 			return r, nil, ErrFeatureUnavailable
 		}
-		for _, p := range *c.Fees {
+		old := r.rolePostings(Fee)
+		proposed := slices.Clone(*c.Fees)
+		for i, p := range proposed {
+			if i < len(old) && p.AccountID == old[i].AccountID && p.Money.Asset() == old[i].Money.Asset() {
+				if p.Funding == "" {
+					p.Funding = old[i].Funding
+				}
+				if p.Treatment == "" {
+					p.Treatment = old[i].Treatment
+				}
+			}
 			if p.Role != Fee || p.Treatment == Included || p.Treatment == Valuation {
 				return r, nil, ErrInvalidRevision
 			}
+			proposed[i] = p
 		}
-		next.replaceRole(Fee, *c.Fees)
+		next.replaceRole(Fee, proposed)
 		next.FeeKnowledge = KnownFees
 		if !r.FieldEqual(next, FeesField) {
 			fields = append(fields, FeesField)

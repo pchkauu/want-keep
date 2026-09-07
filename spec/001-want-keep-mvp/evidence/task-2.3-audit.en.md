@@ -12,6 +12,8 @@ The audit suite checks six assets through HTTP/SQL, 5000 − 500 → 5000 − 70
 
 It checks atomic compound decisions and undo, rollback before commit, restart/replay after a lost acknowledgement, competing revisions with a barrier, changed payload/target, household isolation, field spoofing, Origin/CSRF, exact pagination and history. Review is tested without OpenAI: one request per revision, result replay, stale responses, rejection of protected/monetary proposals, evidence, rollback and no loop from recording a review. Migration over 008 preserves legacy_all and unknown time; roles and triggers prevent history mutation. D-41 cleanup removes command data while retaining financial decisions and audit.
 
+Regression coverage includes retained pending/posted conflict resolution on undo, independent later review suggestions, identical omitted-default fees, 101 source versions and a 51-operation decision with 102 evidence references. Contract tests cover live/expired failure outcomes and closed reimbursement/link schemas.
+
 ## Acceptance boundaries
 
 | Criteria | Task-2.3 evidence | Subsequent verification |

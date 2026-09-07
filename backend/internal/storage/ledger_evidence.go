@@ -14,7 +14,7 @@ func (s *Store) RevisionEvidence(ctx context.Context, p household.Principal, id 
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.Query(ctx, `SELECT 'source',source_id,source_revision FROM want_keep.ledger_revision_sources WHERE household_id=$1 AND operation_id=$2 AND revision=$3
+	rows, err := q.Query(ctx, `SELECT 'source',source_id,max(source_revision) FROM want_keep.ledger_revision_sources WHERE household_id=$1 AND operation_id=$2 AND revision=$3 GROUP BY source_id
  UNION SELECT 'attachment',attachment_id,1 FROM want_keep.transaction_details WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND attachment_id IS NOT NULL
  UNION SELECT 'review',operation_id,revision FROM want_keep.ledger_review_results WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY 1,2,3`, p.HouseholdID(), id, revision)
 	if err != nil {

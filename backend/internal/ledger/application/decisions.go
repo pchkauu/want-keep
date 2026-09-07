@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"slices"
 	"sort"
 
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
@@ -143,9 +144,15 @@ func (s *Service) Undo(ctx context.Context, p household.Principal, id string, ex
 		if err != nil {
 			return command.Result{}, s.reject(err)
 		}
-		r, err = r.UndoFields(entry, before, source)
+		prior := r
+		r, err = (decisionRestorer{s.repository}).restore(ctx, p, r, entry, before, source)
 		if err != nil {
 			return command.Result{}, s.rejectDecision(err)
+		}
+		for _, field := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField} {
+			if !prior.FieldEqual(r, field) && !slices.Contains(entry.Fields, field) {
+				entry.Fields = append(entry.Fields, field)
+			}
 		}
 		next = append(next, r.WithDecision(undo, entry.Fields))
 		undo.Entries = append(undo.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: entry.Fields})
