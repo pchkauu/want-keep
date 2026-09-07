@@ -85,7 +85,7 @@ make test-integration AREA=backup && make backup-check MODE=synthetic
 
 Недоступный Mac, оборванный download и повреждённый manifest не дают ложный successful backup; полноценный набор проверяется.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже предоставляет `make test-integration` и `make backup-check` как fail-fast интерфейсы. До реализации task-8.2 эти suites обязаны завершаться понятной ошибкой; исследовательский retention/flow не доказывает созданную или восстановимую копию.
 
 ### Передача следующему агенту
 
@@ -177,7 +177,7 @@ make test-integration AREA=backup && make backup-check MODE=synthetic
 
 Unreachable Mac, interrupted download and corrupt manifest never produce false success; complete sets verify.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already provides `make test-integration` and `make backup-check` as fail-fast interfaces. Until task-8.2 implements them, these suites must fail clearly; the researched retention/flow does not establish an existing or recoverable backup.
 
 ### Handoff to the next agent
 

@@ -116,7 +116,7 @@ make restore-check MODE=synthetic
 
 Восстановление укладывается в четыре часа на целевом профиле, данные/файлы согласованы; реальный доступ владельца проверяется отдельно.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже предоставляет `make restore-check` как fail-fast интерфейс. До реализации task-8.3 suite обязана завершаться понятной ошибкой; RTO ≤4 часов подтверждается только измеренным восстановлением полного набора в чистую среду.
 
 ### Передача следующему агенту
 
@@ -239,7 +239,7 @@ make restore-check MODE=synthetic
 
 Recovery completes within four hours on the target profile with consistent data/files; real owner access is checked separately.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already provides `make restore-check` as a fail-fast interface. Until task-8.3 implements it, the suite must fail clearly; RTO ≤4 hours is established only by a measured restore of a complete set into a clean environment.
 
 ### Handoff to the next agent
 

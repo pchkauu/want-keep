@@ -126,7 +126,7 @@ make check-deploy && make test-integration AREA=health
 
 Контейнеры и ограничения проверены; отказ коннектора/AI не останавливает учёт; нет публичной БД или секретов в логах.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже предоставляет `make check-deploy` и `make test-integration` как fail-fast интерфейсы. До реализации task-8.1 эти suites обязаны завершаться понятной ошибкой; наличие команды не доказывает deployment, hardening, managed DB или runtime health.
 
 ### Передача следующему агенту
 
@@ -259,7 +259,7 @@ make check-deploy && make test-integration AREA=health
 
 Containers/limits are verified; connector/AI failure does not stop accounting; no public DB or logged secrets.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already provides `make check-deploy` and `make test-integration` as fail-fast interfaces. Until task-8.1 implements them, these suites must fail clearly; command presence does not establish deployment, hardening, managed DB or runtime health.
 
 ### Handoff to the next agent
 

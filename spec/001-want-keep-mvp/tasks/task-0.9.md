@@ -69,7 +69,7 @@ make docs-check
 
 RU/EN evidence совпадают по HOST-E01–HOST-E15 и HOST-B01–HOST-B06; выбранные компоненты, смета, security/backup gates и ограничения reachability воспроизводимы. IP, секреты и финансовые данные не опубликованы; provisioning/runtime не выданы за пройденные AC.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже предоставляет make-интерфейс. `make docs-check` существует и проверяет этот исследовательский результат; live/manual server evidence отделено от CI. Команды будущих deploy/integration/backup/restore suites намеренно завершаются ошибкой до реализации соответствующих задач, а не сообщают пустой успех.
 
 ### Передача следующему агенту
 
@@ -145,7 +145,7 @@ make docs-check
 
 RU/EN evidence align on HOST-E01–HOST-E15 and HOST-B01–HOST-B06; selected components, estimate, security/backup gates and reachability limits are reproducible. No IPs, secrets or financial data are published, and provisioning/runtime are not presented as passing ACs.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already provides the make interface. `make docs-check` exists and verifies this research output; live/manual server evidence is separate from CI. Commands for future deploy/integration/backup/restore suites intentionally fail until their owning tasks implement them rather than reporting an empty success.
 
 ### Handoff to the next agent
 

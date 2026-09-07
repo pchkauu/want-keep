@@ -2941,7 +2941,11 @@
           "en": "RU/EN evidence align on HOST-E01–HOST-E15 and HOST-B01–HOST-B06; selected components, estimate, security/backup gates and reachability limits are reproducible. No IPs, secrets or financial data are published, and provisioning/runtime are not presented as passing ACs."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/9"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/9",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже предоставляет make-интерфейс. `make docs-check` существует и проверяет этот исследовательский результат; live/manual server evidence отделено от CI. Команды будущих deploy/integration/backup/restore suites намеренно завершаются ошибкой до реализации соответствующих задач, а не сообщают пустой успех.",
+        "en": "The task-1.1 foundation already provides the make interface. `make docs-check` exists and verifies this research output; live/manual server evidence is separate from CI. Commands for future deploy/integration/backup/restore suites intentionally fail until their owning tasks implement them rather than reporting an empty success."
+      }
     },
     {
       "id": "task-0.10",
@@ -5420,7 +5424,11 @@
           "en": "Containers/limits are verified; connector/AI failure does not stop accounting; no public DB or logged secrets."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/63"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/63",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже предоставляет `make check-deploy` и `make test-integration` как fail-fast интерфейсы. До реализации task-8.1 эти suites обязаны завершаться понятной ошибкой; наличие команды не доказывает deployment, hardening, managed DB или runtime health.",
+        "en": "The task-1.1 foundation already provides `make check-deploy` and `make test-integration` as fail-fast interfaces. Until task-8.1 implements them, these suites must fail clearly; command presence does not establish deployment, hardening, managed DB or runtime health."
+      }
     },
     {
       "id": "task-8.2",
@@ -5461,7 +5469,11 @@
           "en": "Unreachable Mac, interrupted download and corrupt manifest never produce false success; complete sets verify."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/64"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/64",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже предоставляет `make test-integration` и `make backup-check` как fail-fast интерфейсы. До реализации task-8.2 эти suites обязаны завершаться понятной ошибкой; исследовательский retention/flow не доказывает созданную или восстановимую копию.",
+        "en": "The task-1.1 foundation already provides `make test-integration` and `make backup-check` as fail-fast interfaces. Until task-8.2 implements them, these suites must fail clearly; the researched retention/flow does not establish an existing or recoverable backup."
+      }
     },
     {
       "id": "task-8.3",
@@ -5504,7 +5516,11 @@
           "en": "Recovery completes within four hours on the target profile with consistent data/files; real owner access is checked separately."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/65"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/65",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже предоставляет `make restore-check` как fail-fast интерфейс. До реализации task-8.3 suite обязана завершаться понятной ошибкой; RTO ≤4 часов подтверждается только измеренным восстановлением полного набора в чистую среду.",
+        "en": "The task-1.1 foundation already provides `make restore-check` as a fail-fast interface. Until task-8.3 implements it, the suite must fail clearly; RTO ≤4 hours is established only by a measured restore of a complete set into a clean environment."
+      }
     },
     {
       "id": "task-9.1",
