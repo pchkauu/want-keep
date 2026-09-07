@@ -194,14 +194,14 @@ func TestCommitFenceAndLeaseCannotBeBypassed(t *testing.T) {
 		t.Fatal("checkpoint not saved")
 	}
 	_, err = service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:repeat", Cursor: "", Coverage: "complete"}, func(context.Context) error { t.Error("repeated old page executed"); return nil })
-	if !errors.Is(err, jobs.ErrStaleAttempt) {
-		t.Fatal("old cursor accepted")
+	if err != nil || f.count("quarantine") != 1 {
+		t.Fatal("old cursor not quarantined")
 	}
 	if err = f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error { return f.store.Disconnect(ctx, id) }); err != nil {
 		t.Fatal(err)
 	}
 	applied, err = service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:disconnected", Cursor: "p2", Coverage: "complete", Complete: true}, func(context.Context) error { t.Error("disconnected commit"); return nil })
-	if err != nil || applied || f.count("quarantine") != 1 {
+	if err != nil || applied || f.count("quarantine") != 2 {
 		t.Fatal("connection generation bypass")
 	}
 }
@@ -234,5 +234,49 @@ func TestAdmissionLockAndIssuedMetadataAreProtected(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("cross-store transaction silently escaped")
+	}
+}
+
+func TestLeaseExpiresDuringPageCommitQuarantinesAfterRollback(t *testing.T) {
+	f := newFixture(t)
+	service := f.admit(binding())
+	issued := f.issued(service, f.connection(), binding())
+	account := f.account(money.RUB, "100")
+	r := f.revision(uuid.NewString(), account, "-10", money.RUB, 1)
+	appliedWrites := make(chan struct{})
+	continueCommit := make(chan struct{})
+	type result struct {
+		applied bool
+		err     error
+	}
+	done := make(chan result, 1)
+	go func() {
+		applied, err := service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:lease-expired-during-commit", NextCursor: "p2", Coverage: "complete", Complete: true}, func(ctx context.Context) error {
+			if err := f.writer.Append(ctx, f.p, r, 0); err != nil {
+				return err
+			}
+			close(appliedWrites)
+			<-continueCommit
+			return nil
+		})
+		done <- result{applied, err}
+	}()
+	select {
+	case <-appliedWrites:
+	case early := <-done:
+		t.Fatalf("page failed before barrier: %v", early.err)
+	}
+	_, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET lease_until=clock_timestamp()-INTERVAL '1 second' WHERE household_id=$1 AND id=$2`, f.family.ID, issued.ID)
+	close(continueCommit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := <-done
+	if got.err != nil || got.applied || f.count("postings") != 0 || f.count("operation_revisions") != 0 || f.count("outbox") != 0 || f.count("quarantine") != 1 || f.available(account) != "100" {
+		t.Fatalf("late expiry was not quarantined atomically: %+v", got)
+	}
+	current, err := f.store.Job(testContext, f.p, issued.ID)
+	if err != nil || current.Cursor != "" {
+		t.Fatal("expired attempt advanced checkpoint")
 	}
 }

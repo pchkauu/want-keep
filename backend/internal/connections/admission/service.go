@@ -2,6 +2,7 @@ package admission
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
@@ -194,7 +195,7 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 				return err
 			}
 			if err = s.requireCurrent(ctx, p, issued); err != nil {
-				return s.repository.Quarantine(ctx, current, page.EvidenceRef, "stale_result")
+				return err
 			}
 			if current.Cursor != page.Cursor {
 				return jobs.ErrStaleAttempt
@@ -217,5 +218,19 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 			return nil
 		})
 	})
+	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
+		// The failed transaction has rolled back before retaining the stale evidence.
+		return false, s.quarantineResult(ctx, p, issued.ID, page.EvidenceRef)
+	}
 	return applied && err == nil, err
+}
+
+func (s *Service) quarantineResult(ctx context.Context, p household.Principal, jobID, evidence string) error {
+	return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
+		current, err := s.repository.Job(ctx, p, jobID)
+		if err != nil {
+			return err
+		}
+		return s.repository.Quarantine(ctx, current, evidence, "stale_result")
+	})
 }

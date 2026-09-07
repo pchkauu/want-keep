@@ -75,3 +75,5 @@ WANT_KEEP_ENV=production go run ./cmd/command-retention -mode tombstones -batch 
 ```
 
 The variables are `WANT_KEEP_MIGRATION_DATABASE_URL` and `WANT_KEEP_MAINTENANCE_DATABASE_URL`. Retention CLI executes one bounded batch. The task-8.x scheduler runs both modes independently, observes errors/lag and drains remaining work under a work limit. Application rollback does not delete schema/history. Production major, secrets, scheduling and monitoring belong to task-8.1/8.3; production was not changed here.
+
+Review: a confirmed correction with the current source revision resolves ambiguity even with an unchanged hash; replay creates no effect. A stale lease/result/cursor is quarantined after page rollback; ordinary storage failures remain errors rather than being treated as successful handling. A PostgreSQL barrier test covers lease expiry during apply.

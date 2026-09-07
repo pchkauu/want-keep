@@ -75,3 +75,5 @@ WANT_KEEP_ENV=production go run ./cmd/command-retention -mode tombstones -batch 
 ```
 
 Соответствующие переменные: `WANT_KEEP_MIGRATION_DATABASE_URL`, `WANT_KEEP_MAINTENANCE_DATABASE_URL`. Retention CLI выполняет один ограниченный batch; scheduler task-8.x запускает режимы независимо, наблюдает ошибки/lag и повторяет до исчерпания очереди с ограничением работы. Rollback приложения не удаляет схему/историю. Production major, секреты, расписание и мониторинг закрепляются в task-8.1/8.3; здесь production не изменён.
+
+Review: подтверждённая correction с текущей source revision снимает неоднозначность даже при том же hash; повтор не создаёт эффект. Любой stale lease/result/cursor сохраняется в quarantine после отката страницы; обычные ошибки хранения остаются ошибками и не превращаются в успешную обработку. Барьерный PostgreSQL-тест проверяет истечение lease во время apply.

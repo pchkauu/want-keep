@@ -152,3 +152,38 @@ func TestFailedPageDoesNotAdvanceCheckpoint(t *testing.T) {
 		t.Fatal("import bypassed commit fence")
 	}
 }
+
+func TestConfirmedCorrectionResolvesAmbiguousSourceExactlyOnce(t *testing.T) {
+	for _, changed := range []bool{false, true} {
+		name := "same_hash"
+		if changed {
+			name = "changed_hash"
+		}
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			service := f.admit(binding())
+			connection := f.connection()
+			account := f.account(money.USD, "100")
+			operation := f.revision(uuid.NewString(), account, "-20", money.USD, 1)
+			input := ledger.SourceInput{Key: ledger.SourceKey{HouseholdID: f.family.ID, Provider: "raiffeisen", ExternalAccountID: "stable", Product: "current", Log: "statement", RecordID: "ambiguous"}, PayloadHash: strings.Repeat("a", 64), EvidenceRef: "synthetic:ambiguous", Classification: "ambiguous", Operation: &operation}
+			first, err := f.importSource(service, connection, input)
+			if err != nil || !first.Record.Ambiguous || f.count("postings") != 0 {
+				t.Fatalf("initial ambiguity: %v", err)
+			}
+			input.Classification = "correction"
+			input.ExpectedRevision = first.Record.Revision
+			input.EvidenceRef = "synthetic:resolved"
+			if changed {
+				input.PayloadHash = strings.Repeat("b", 64)
+			}
+			resolved, err := f.importSource(service, connection, input)
+			if err != nil || resolved.Record.Ambiguous || resolved.Duplicate || resolved.Record.ID != first.Record.ID || resolved.Record.Revision != 2 || f.available(account) != "80" {
+				t.Fatalf("resolution failed: %+v %v", resolved, err)
+			}
+			repeated, err := f.importSource(service, connection, input)
+			if err != nil || !repeated.Duplicate || repeated.Record.Ambiguous || f.count("postings") != 1 || f.count("source_revisions") != 2 || f.available(account) != "80" {
+				t.Fatalf("resolution replay: %+v %v", repeated, err)
+			}
+		})
+	}
+}
