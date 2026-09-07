@@ -14,7 +14,7 @@ Prepared proposal, 87 REQ, 105 AC, architecture, contracts/formulas, glossary, M
 
 | ID | Unknown | Closure owner | Required evidence |
 | --- | --- | --- | --- |
-| BLK-01 | Alfa retail read access/full coverage | task-0.1 | Verified contracts and per-product readback; securely supplied owner access |
+| BLK-01 | Automatic Alfa retail reading/full coverage | task-0.10, task-0.1 evidence | [Research completed with blockers](evidence/alfa.en.md): UI read, retail API published; needs authorised automatic contract, identity/history/reauth/second account, credit card and exact terms |
 | BLK-02 | Raif Russia retail read access/full coverage | task-0.2 | The equivalent for Raif |
 | BLK-03 | Automatic Ozon Bank reading | task-0.3 | The equivalent for Ozon, without marketplace substitution |
 | BLK-04 | Full Bybit Funding/Spot/Earn/P2P/futures, net/gross and permissions | task-0.4 | Each log/product verified separately |
@@ -25,7 +25,13 @@ Prepared proposal, 87 REQ, 105 AC, architecture, contracts/formulas, glossary, M
 | BLK-09 | Concrete VPS/reachability/cost and Mac backup retention | task-0.9 | Dated ≤$40 estimate, reachability, retention/capacity and recovery design |
 | BLK-10 | Full structured grace/accrual terms, exact API boundaries and XIRR solver | task-0.10 | Verified input contracts, algorithms/vectors, updated RU/EN and independent Ready review |
 
-BLK-01–BLK-06 need separately and securely supplied owner access. None was supplied during this stage. Marketing pages, mocks or corporate API availability do not close these blockers.
+BLK-01–BLK-06 need separately and securely supplied owner access. None was supplied in the initial 2026-09-06 stage; subsequent research is recorded separately. Marketing pages, mocks or corporate API availability do not close these blockers.
+
+## Alfa-Bank: task-0.1 research completion, 2026-09-07
+
+[RU evidence](evidence/alfa.md) / [EN evidence](evidence/alfa.en.md): 20 dated sources/observations, mandatory-product and cashback matrix, published retail schemas, synthetic examples, documentation contradictions and ALFA-B01–ALFA-B06. ALFA-B01 is closed for the live session; ALFA-B02–ALFA-B06 remain open within BLK-01. Research output is complete under the README rule; full AC-042 and AC-041/AC-048/AC-070/AC-079/AC-087 are not claimed as passed.
+
+Research checks are separate from application checks: local spec validation, generator tests, RU/EN IDs/examples/links and diff review. Rendering the card from catalog.json requires RU/EN status support; the default-status test uses a copy without status instead of assuming task-0.1 will always be unstarted. This task's REQ/AC and dependencies are unchanged. Runtime API/collector, full history, reauth and second account were not tested for the evidence-listed reasons. Verdict remains Not Ready; downstream implementation is blocked.
 
 ## Checks for this stage
 

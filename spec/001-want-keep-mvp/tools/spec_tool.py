@@ -32,6 +32,8 @@ class SpecCatalog:
     return sorted({req for ac in task["acceptance"] for req in self.criteria[ac]["requirements"]})
 
   def task_status(self, task, lang):
+    if "status" in task:
+      return task["status"][lang]
     if task["kind"] == "research":
       return {"ru": "Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.", "en": "Research — not started; live access and paid runs require securely supplied owner access."}[lang]
     return {"ru": "Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.", "en": "Blocked by dependencies and the SDD Ready gate; implementation has not started."}[lang]
@@ -165,6 +167,8 @@ class SpecCatalog:
         errors.append(f"Unresolved dependency in {task['id']}")
       if task["kind"] not in ("research", "specification", "implementation", "verification"):
         errors.append(f"Invalid task kind: {task['id']}")
+      if "status" in task and (not isinstance(task["status"], dict) or set(task["status"]) != {"ru", "en"}):
+        errors.append(f"Invalid task status translation: {task['id']}")
       for target in task["targets"]:
         if Path(target).is_absolute() or ".." in Path(target).parts or ".git" in Path(target).parts:
           errors.append(f"Unsafe target: {target}")

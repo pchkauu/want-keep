@@ -76,6 +76,25 @@ class SpecCatalogTest(unittest.TestCase):
       for identifier in baseline.tasks:
         self.assertEqual(baseline.task_body(baseline.tasks[identifier]), mapped.task_body(mapped.tasks[identifier]))
 
+  def test_task_progress_is_rendered_in_both_languages(self):
+    catalog = SpecCatalog(self.source)
+    task = copy.deepcopy(catalog.tasks["task-0.3"])
+    task["status"] = {"ru": "Частичное чтение; контракт не закрыт.", "en": "Partial reading; contract unresolved."}
+    body = catalog.task_body(task)
+    for status in task["status"].values():
+      self.assertIn(status, body)
+    self.assertNotIn("Research — not started", body)
+    task.pop("status")
+    self.assertIn("Research — not started", catalog.task_body(task))
+
+  def test_task_progress_requires_both_languages(self):
+    errors = self.errors_for(lambda data: data["tasks"][0].update(status={"ru": "Начато"}))
+    self.assertTrue(any("Invalid task status translation" in error for error in errors))
+
+  def test_task_progress_rejects_nonstructured_status(self):
+    errors = self.errors_for(lambda data: data["tasks"][0].update(status="started"))
+    self.assertTrue(any("Invalid task status translation" in error for error in errors))
+
 
 if __name__ == "__main__":
   unittest.main()

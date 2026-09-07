@@ -5,7 +5,7 @@
 
 Получить проверяемую матрицу доступа к обязательным продуктам Альфа-Банк.
 
-**Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
+**Состояние:** Исследование завершено 2026-09-07 с блокирующими выводами: live-чтение доступных продуктов и кэшбэка, опубликованные retail API, синтетические примеры и ALFA-B01–ALFA-B06 записаны в [evidence RU](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/alfa.md). ALFA-B02–ALFA-B06 и BLK-01 открыты: автоматический read-доступ, identity/полнота/reauth/второй аккаунт, кредитка, точные условия и FX/cashback lifecycle. task-4.1 и task-0.10 не разблокированы; исследование не означает Ready.
 
 **Зависимости:** нет.
 
@@ -100,7 +100,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 Produce a verifiable access matrix for mandatory Alfa-Bank products.
 
-**Status:** Research — not started; live access and paid runs require securely supplied owner access.
+**Status:** Research completed on 2026-09-07 with blocking findings: live reading of available products and cashback, published retail APIs, synthetic examples and ALFA-B01–ALFA-B06 are recorded in [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/alfa.en.md). ALFA-B02–ALFA-B06 and BLK-01 remain open: automatic read access, identity/completeness/reauth/second account, credit card, exact terms and FX/cashback lifecycle. task-4.1 and task-0.10 remain blocked; completed research does not mean Ready.
 
 **Dependencies:** none.
 

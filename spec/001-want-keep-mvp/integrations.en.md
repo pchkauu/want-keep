@@ -2,13 +2,13 @@
 
 [Русский](integrations.md)
 
-Public-documentation snapshot: 2026-09-06. No personal bank/crypto session was connected; live access, history completeness and product coverage remain unverified. Public documentation or marketing descriptions do not establish personal-account access.
+Public-documentation snapshot: 2026-09-06; research updates are dated in the rows below. Confirmed reading of individual products, history completeness and automation readiness are assessed separately. Public documentation or marketing descriptions do not establish personal-account access.
 
 ## Mandatory coverage
 
-| Platform | Products | Publicly established | Open work and task |
+| Platform | Products | Established | Open work and task |
 | --- | --- | --- | --- |
-| Alfa-Bank | Debit/credit cards, current/savings, deposits | The portal describes APIs including individual account information. The described onboarding involves a contract/Alfa-Business. | Personal-pilot eligibility, scopes, all products, retail history/grace/quotes; task-0.1 → task-4.1. |
+| Alfa-Bank | Debit/credit cards, current/savings, deposits; cashback | 2026-09-07: [research completed with blockers](evidence/alfa.en.md). Live reading of current/savings accounts, two deposit types, transactions and cashback; published retail accounts/cards/operations/loyalty APIs. | BLK-01 remains open: eligibility and verified automatic read contract, identity/completeness/reauth, second account, missing credit card, exact terms and FX/cashback lifecycle. task-0.1 completes research; task-4.1 and task-0.10 remain blocked. |
 | Raiffeisenbank Russia | Debit/credit cards, current/savings, deposits | An API portal and statement workflows exist. | Personal-retail applicability, contract/permissions and every product; task-0.2 → task-4.2. |
 | Ozon Bank | Debit/credit cards, current/savings, deposits | Service identity was confirmed by the owner; this research did not establish a public personal-account API. | Verify the bank specifically, automatic access and every product; task-0.3 → task-4.3. |
 | Bybit | Funding, Spot, Earn, P2P, futures | V5 documents wallet balance and the Unified-account log. The UTA log has time-window/pagination limits and does not prove Funding/Earn/P2P coverage. | Full log/endpoint set, key permissions, region, history and net/gross semantics; task-0.4 → task-4.4. |
