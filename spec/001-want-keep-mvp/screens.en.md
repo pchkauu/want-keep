@@ -278,11 +278,11 @@ Task: [task-7.2](tasks/task-7.2.md), [task-7.7](tasks/task-7.7.md), [task-7.15](
 
 **Primary answer:** Transaction purpose and a meaningful selected-period total.
 
-**Top-down structure:** Search/month/account/payer/allocation/category/status → totals → date/merchant/amount/shares rows.
+**Top-down structure:** Search/month/account/payer/allocation/category/merchant/item/status → totals → date/merchant/amount/share rows.
 
 **Next action:** Open SCR-010; enter FORM-04 or receipt in SCR-024.
 
-**Explanation and details:** Transfers/exchanges marked as movement excluded from income/expense; filters never change accounting semantics.
+**Explanation and details:** Category, merchant and item filters are independent; uncategorized expense remains visible. Items form one payment without a duplicate total. Transfers/exchanges are marked as movements excluded from income/expense; filters never change accounting semantics.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -292,7 +292,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 REQ: REQ-006, REQ-008, REQ-014, REQ-067. AC: AC-006, AC-008, AC-014, AC-081.
 
-Task: [task-7.2](tasks/task-7.2.md).
+Task: [task-7.2](tasks/task-7.2.md), [task-2.6](tasks/task-2.6.md).
 
 ### SCR-010 — Transaction details
 
@@ -300,13 +300,13 @@ Task: [task-7.2](tasks/task-7.2.md).
 
 **Question:** Is this purchase accounted for correctly?
 
-**Primary answer:** Amount, purpose, payer and shares of one transaction.
+**Primary answer:** Amount, category, merchant, items, allocation and payer for one transaction.
 
-**Top-down structure:** Accounting outcome → account/date/status → personal/shared shares → receipt → correction/refund.
+**Top-down structure:** Accounting outcome → account/date/status → category/merchant → item gross/discount/net → shares → receipt → correct/undo/refund.
 
 **Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
 
-**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason.
+**Explanation and details:** Before/after history shows actor, time, decisionId, rationale, bank and accounting states, classification, protected fields, origin and selective undo. Raw source merchant is separate from merchantId; an AI proposal remains a proposal and cannot change the fact without a command.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -314,9 +314,9 @@ Forms: FORM-06, FORM-07, FORM-08, FORM-09.
 
 States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-14.
 
-REQ: REQ-010, REQ-012, REQ-067, REQ-072. AC: AC-010, AC-012, AC-081, AC-086.
+REQ: REQ-010, REQ-012, REQ-067, REQ-072, REQ-014, REQ-016. AC: AC-010, AC-012, AC-081, AC-086, AC-014, AC-016.
 
-Task: [task-7.2](tasks/task-7.2.md), [task-2.3](tasks/task-2.3.md).
+Task: [task-7.2](tasks/task-7.2.md), [task-2.3](tasks/task-2.3.md), [task-2.6](tasks/task-2.6.md).
 
 ### SCR-011 — Receipt
 
@@ -330,7 +330,7 @@ Task: [task-7.2](tasks/task-7.2.md), [task-2.3](tasks/task-2.3.md).
 
 **Next action:** Clarify/allocate FORM-07/12; open SCR-010.
 
-**Explanation and details:** Uncertain fields labelled; unsuitable document explained and unsafe content never executed.
+**Explanation and details:** Item gross, discount and net explain one payment; a receipt-wide discount is allocated deterministically. Incomplete discounts or a mismatch require clarification without an invented item. Uncertain fields are labelled, unsuitable documents are explained and unsafe content is never executed. OCR/PDF remains task-5.3.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -340,7 +340,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 REQ: REQ-015, REQ-016, REQ-017, REQ-060, REQ-067. AC: AC-015, AC-016, AC-017, AC-060, AC-081.
 
-Task: [task-7.3](tasks/task-7.3.md).
+Task: [task-7.3](tasks/task-7.3.md), [task-2.6](tasks/task-2.6.md).
 
 ### SCR-012 — Balance reconciliation
 
@@ -878,11 +878,11 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 **Primary answer:** Clear categories, merchants and expense-allocation rules.
 
-**Top-down structure:** Categories/subcategories → merchants → rules/priority → example preview.
+**Top-down structure:** Categories/subcategories and archive → merchants/confirmed aliases → rules/priority → example preview.
 
 **Next action:** Create/correct FORM-15; inspect affected transactions SCR-009.
 
-**Explanation and details:** Merchant is not automatically a subcategory; personal/shared rule never edits partner’s personal plan.
+**Explanation and details:** Starter labels use stable RU/EN keys and a custom name is not translated. A merchant never becomes a subcategory; archival preserves history. An AI proposal requires user confirmation; a personal/shared rule never edits a partner personal plan.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -892,7 +892,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 REQ: REQ-014, REQ-019, REQ-067. AC: AC-014, AC-019, AC-081.
 
-Task: [task-7.14](tasks/task-7.14.md).
+Task: [task-7.14](tasks/task-7.14.md), [task-2.6](tasks/task-2.6.md).
 
 ### SCR-035 — Accounting and backup health
 
@@ -948,7 +948,7 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 **Fields:** Type, account, date/time, amount/currency, category/subcategory, merchant, purpose/shares, note/receipt.
 
-**Validation and permissions:** Either member records on any household account; actor comes from session, payer is independent. Amount >0, asset matches account. Confirmed account/amount/date produce posted household facts even with unresolved allocation; unknown monetary facts require clarification. Task-2.2 accepts only unresolved allocation and rejects category/shares as feature_unavailable; task-2.6/2.8 enable categories and shares.
+**Validation and permissions:** Either member records on any household account; actor comes from session and payer is independent. Amount >0 and asset matches the account. An expense may reference active household category and merchant; allocation remains unresolved until task-2.8. Confirmed account/amount/date produce a posted household fact even without classification.
 
 **Outcome:** One transaction, visible allocation and AI status, linked receipt; confirmed outcome and link.
 
@@ -962,9 +962,9 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 #### FORM-06 — Correction, matching and undo
 
-**Fields:** Transaction, expectedRevision and reason; complete principal and separate fees, purchase time, payer, merchant/note. Omission retains a field; empty text clears it. Undo: decisionId and all participant expectedRevisions; exclusion is a separate action. Compare before/after and source values.
+**Fields:** Transaction, expectedRevision and reason; complete principal and fees, date, payer, raw merchant/note; category and merchant identity via set|clear, items via replace|clear. Undo uses decisionId and expectedRevisions; compare before/after and source.
 
-**Validation and permissions:** Both members correct facts. The server preserves principal accounts/assets and validates monetary groups, rights, versions and provenance; the form cannot assign actor. Undo preserves later independent fields and rejects overlaps/ABA. Matching, categories and shares are activated by their owning tasks.
+**Validation and permissions:** Both members correct household facts. The server retains actor, principal accounts/assets and provenance, validates active categories/merchants and replaces the complete item set atomically. Items and discounts equal principal exactly; top-level category with items is forbidden. Undo preserves later independent fields. Matching and shares remain with their owning tasks.
 
 **Outcome:** New decision and financial revisions with history, or no_change/conflict without effect or lost input. Exclusion does not change bank state; undo recomputes the current effect.
 
@@ -972,7 +972,7 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 **Fields:** Photo/PDF, required debit account including cash; items, discounts, categories, personal/shared and percentage or amount shares.
 
-**Validation and permissions:** Either member; file limits from contract, items/discounts/shares exactly equal payment. Ambiguity requires clarification; AI never executes file instructions.
+**Validation and permissions:** Either member; file limits follow the contract. Task-2.6 atomically validates items, assets and discounts against one payment, allocates a known receipt-wide discount deterministically and requires clarification for incomplete data. Task-5.3/2.4/2.8 own OCR/PDF, matching and personal/shared shares.
 
 **Outcome:** Created/linked to existing/awaiting clarification/document unsuitable with reason. One confirmed debit.
 
@@ -1034,8 +1034,8 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 #### FORM-15 — Categories and rules
 
-**Fields:** Category/subcategory name, merchant/condition, category/allocation result, applicability.
+**Fields:** Category/subcategory name, parent and state; merchant name, state and confirmed aliases. Rules/conditions and bulk application remain a separate contract.
 
-**Validation and permissions:** Either member; affected-transaction preview, category-cycle/share validity checks. No bulk history rewriting without a separate explicit decision.
+**Validation and permissions:** Either member manages the household catalog. Two acyclic levels, unique active names and one active confirmed alias owner per household are enforced. Archival preserves history; restore rechecks conflicts. An AI proposal is not applied without a user command.
 
-**Outcome:** Versioned rule saved; ambiguous matches become clarifications and historical data changes use separate audited commands.
+**Outcome:** A versioned category or merchant is saved; no_change/conflict creates no effect. Historical references remain available.

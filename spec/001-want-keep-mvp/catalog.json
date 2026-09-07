@@ -3687,8 +3687,8 @@
         "en": "Separate categories, merchants and items"
       },
       "goal": {
-        "ru": "Дать независимую категоризацию с сохранением правок владельца.",
-        "en": "Provide independent classification while retaining owner corrections."
+        "ru": "Раздельно классифицировать семейные расходы по категории, продавцу и позициям без повторного финансового эффекта.",
+        "en": "Classify household expenses independently by category, merchant and receipt items without duplicate financial effects."
       },
       "depends_on": [
         "task-2.3"
@@ -3699,20 +3699,35 @@
         "AC-054"
       ],
       "targets": [
-        "backend/internal/categories/"
+        "backend/internal/categories/",
+        "backend/internal/ledger/",
+        "backend/internal/storage/",
+        "backend/internal/delivery/categories/",
+        "backend/internal/delivery/ledger/",
+        "backend/migrations/010_categories_merchants_items.sql",
+        "api/",
+        "backend/test/integration/categories/"
       ],
       "behavior": {
-        "ru": "Создать редактируемые категории/подкатегории, отдельного продавца с подтверждёнными алиасами и позиции чеков. Категории расхода не кодировать названиями продавцов. AI работает через этот публичный контракт; неоднозначный продавец/категория обозначается явно, исправления сохраняют историю и не меняют утверждённый бюджет.",
-        "en": "Create editable categories/subcategories, separate merchants with verified aliases and receipt items. Do not encode merchants as expense types. AI uses this public contract; ambiguous merchants/categories stay explicit; corrections preserve history without changing approved budgets."
+        "ru": "Семейный каталог содержит двухуровневые starter/custom категории со стабильными RU/EN-ключами, revisions и архивом, а также отдельных продавцов и подтверждённые уникальные алиасы. Ledger версионирует category, merchant identity и атомарный item set с точными gross/discount/net, защитой полей и selective undo. Общая скидка распределяется largest remainder по стабильному item ID; позиции равны principal и не удваивают расход. Review сохраняет предложение, но не применяет его и не меняет каталог. API даёт guarded-команды, историю и repeatable-read фильтры.",
+        "en": "The household catalog contains two-level starter/custom categories with stable RU/EN keys, revisions and archival, plus separate merchants and unique confirmed aliases. Ledger versions category, merchant identity and an atomic item set with exact gross/discount/net, field protection and selective undo. A receipt-wide discount uses largest remainder with stable item ID; items equal principal and never duplicate expense. Review stores a proposal without applying it or mutating the catalog. The API provides guarded commands, history and repeatable-read filters."
       },
       "verification": {
-        "command": "make test-go PKG=./internal/categories/...",
+        "command": "make test-go PKG=./internal/categories/... && make test-integration AREA=categories && make test-categories-race",
         "expected": {
-          "ru": "Независимые срезы и исправления работают на RU/EN; повторная классификация не теряет owner override.",
-          "en": "Independent dimensions and corrections work in RU/EN; reclassification preserves owner overrides."
+          "ru": "Стартовый каталог, иерархия, продавцы/алиасы, шесть активов, точные позиции/скидки, correction/undo, review proposal, права, replay, миграция, фильтры и пагинация проходят без частичной записи и повторного расхода.",
+          "en": "Starter catalog, hierarchy, merchants/aliases, six assets, exact items/discounts, correction/undo, review proposal, permissions, replay, migration, filters and pagination pass without partial writes or duplicate expense."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/22"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/22",
+      "status": {
+        "ru": "Реализованы backend/API каталога категорий и продавцов, классификация операций и позиции чеков. UI, OCR/PDF, реальный OpenAI, отчёты и распределение по участникам остаются профильным задачам.",
+        "en": "Category and merchant catalog backend/API, transaction classification and receipt items are implemented. UI, OCR/PDF, real OpenAI, reports and member allocation remain with their owning tasks."
+      },
+      "verification_note": {
+        "ru": "Зависимость task-2.3 включена в базу; команды существуют. Доказательства и границы: evidence/task-2.6-classification.md. Обязательны make check, categories/audit/ledger/accounts/storage/identity/household integration/race и privacy suite. Это не подтверждает эксплуатационную готовность.",
+        "en": "Dependency task-2.3 is included in the base; commands exist. Evidence and boundaries: evidence/task-2.6-classification.en.md. Require make check, categories/audit/ledger/accounts/storage/identity/household integration/race and privacy suite. This does not confirm operational readiness."
+      }
     },
     {
       "id": "task-2.7",
@@ -6150,8 +6165,8 @@
         "en": "Type, account, date/time, amount/currency, category/subcategory, merchant, purpose/shares, note/receipt."
       },
       "rules": {
-        "ru": "Оба участника заносят факт на любой счёт семьи; actor из сессии, payer отдельно. Сумма >0, актив совпадает со счётом. Подтверждённые счёт/сумма/дата дают posted и семейный факт даже при unresolved назначении; неизвестные денежные факты требуют уточнения. Task-2.2 принимает только unresolved allocation и отклоняет category/shares как feature_unavailable; категории и доли подключат task-2.6/2.8.",
-        "en": "Either member records on any household account; actor comes from session, payer is independent. Amount >0, asset matches account. Confirmed account/amount/date produce posted household facts even with unresolved allocation; unknown monetary facts require clarification. Task-2.2 accepts only unresolved allocation and rejects category/shares as feature_unavailable; task-2.6/2.8 enable categories and shares."
+        "ru": "Оба участника заносят факт на любой счёт семьи; actor из сессии, payer отдельно. Сумма >0, актив совпадает со счётом. Для расхода можно назначить активные category и merchant своей семьи; allocation остаётся unresolved до task-2.8. Подтверждённые счёт/сумма/дата дают posted и семейный факт даже без классификации.",
+        "en": "Either member records on any household account; actor comes from session and payer is independent. Amount >0 and asset matches the account. An expense may reference active household category and merchant; allocation remains unresolved until task-2.8. Confirmed account/amount/date produce a posted household fact even without classification."
       },
       "result": {
         "ru": "Одна операция, видимые назначения и AI-статус, связь чека; подтверждённый результат и ссылка.",
@@ -6184,12 +6199,12 @@
         "en": "Correction, matching and undo"
       },
       "fields": {
-        "ru": "Операция, expectedRevision, основание; полный principal и отдельные fees, дата покупки, payer, merchant/note. Пропуск сохраняет поле, пустой текст очищает. Undo: decisionId и expectedRevisions всех участников; исключение — отдельное действие. Сравнение до/после и с источником.",
-        "en": "Transaction, expectedRevision and reason; complete principal and separate fees, purchase time, payer, merchant/note. Omission retains a field; empty text clears it. Undo: decisionId and all participant expectedRevisions; exclusion is a separate action. Compare before/after and source values."
+        "ru": "Операция, expectedRevision, основание; полный principal и fees, дата, payer, raw merchant/note; category и merchant identity через set|clear, позиции через replace|clear. Undo: decisionId и expectedRevisions; сравнение до/после и с источником.",
+        "en": "Transaction, expectedRevision and reason; complete principal and fees, date, payer, raw merchant/note; category and merchant identity via set|clear, items via replace|clear. Undo uses decisionId and expectedRevisions; compare before/after and source."
       },
       "rules": {
-        "ru": "Оба участника исправляют факты. Сервер сохраняет счета/активы principal, проверяет группы сумм, права, версии и происхождение; actor не задаётся формой. Undo сохраняет поздние независимые поля и отвергает пересечение/ABA. Сопоставление, категории и доли активируются профильными задачами.",
-        "en": "Both members correct facts. The server preserves principal accounts/assets and validates monetary groups, rights, versions and provenance; the form cannot assign actor. Undo preserves later independent fields and rejects overlaps/ABA. Matching, categories and shares are activated by their owning tasks."
+        "ru": "Оба участника исправляют семейные факты. Сервер сохраняет actor, счета/активы principal и происхождение, проверяет активные категории/продавцов и меняет полный item set атомарно. Позиции и скидки точно равны principal; top-level category с позициями запрещена. Undo сохраняет поздние независимые поля. Сопоставление и доли остаются профильным задачам.",
+        "en": "Both members correct household facts. The server retains actor, principal accounts/assets and provenance, validates active categories/merchants and replaces the complete item set atomically. Items and discounts equal principal exactly; top-level category with items is forbidden. Undo preserves later independent fields. Matching and shares remain with their owning tasks."
       },
       "result": {
         "ru": "Новое решение и финансовые revisions с историей, либо no_change/conflict без эффекта и потери ввода. Исключение не меняет банковский статус; undo пересчитывает текущий эффект.",
@@ -6207,8 +6222,8 @@
         "en": "Photo/PDF, required debit account including cash; items, discounts, categories, personal/shared and percentage or amount shares."
       },
       "rules": {
-        "ru": "Оба member; лимиты файлов по контракту, позиции/скидки/доли точно равны оплате. Неоднозначность уточняется; AI не исполняет инструкции файла.",
-        "en": "Either member; file limits from contract, items/discounts/shares exactly equal payment. Ambiguity requires clarification; AI never executes file instructions."
+        "ru": "Оба участника; лимиты файлов по контракту. Task-2.6 атомарно проверяет позиции, активы и скидки против одной оплаты, распределяет известную общую скидку детерминированно и требует уточнение при неполных данных. OCR/PDF, сопоставление и personal/shared доли выполняют task-5.3/2.4/2.8.",
+        "en": "Either member; file limits follow the contract. Task-2.6 atomically validates items, assets and discounts against one payment, allocates a known receipt-wide discount deterministically and requires clarification for incomplete data. Task-5.3/2.4/2.8 own OCR/PDF, matching and personal/shared shares."
       },
       "result": {
         "ru": "Создано/связано с существующим/ожидает уточнения/документ не подходит с причиной. Одно подтверждённое списание.",
@@ -6355,16 +6370,16 @@
         "en": "Categories and rules"
       },
       "fields": {
-        "ru": "Название категории/подкатегории, продавец/условие, результат категории и назначения, область применения.",
-        "en": "Category/subcategory name, merchant/condition, category/allocation result, applicability."
+        "ru": "Название категории/подкатегории, родитель и состояние; имя продавца, состояние и подтверждённые алиасы. Правила/условия и массовое применение остаются отдельным контрактом.",
+        "en": "Category/subcategory name, parent and state; merchant name, state and confirmed aliases. Rules/conditions and bulk application remain a separate contract."
       },
       "rules": {
-        "ru": "Оба member; preview затронутых операций, проверка циклов категории/валидности долей. История не переписывается массово без отдельного явного решения.",
-        "en": "Either member; affected-transaction preview, category-cycle/share validity checks. No bulk history rewriting without a separate explicit decision."
+        "ru": "Оба участника управляют семейным каталогом. Допустимы два уровня без циклов, уникальные активные имена и один активный подтверждённый алиас на продавца семьи. Архив сохраняет историю; восстановление повторно проверяет конфликты. Предложение AI не применяется без пользовательской команды.",
+        "en": "Either member manages the household catalog. Two acyclic levels, unique active names and one active confirmed alias owner per household are enforced. Archival preserves history; restore rechecks conflicts. An AI proposal is not applied without a user command."
       },
       "result": {
-        "ru": "Правило сохранено с версией; неоднозначные совпадения в уточнения, прошлые данные меняются отдельными audit-командами.",
-        "en": "Versioned rule saved; ambiguous matches become clarifications and historical data changes use separate audited commands."
+        "ru": "Версионированная категория или продавец сохранены; no_change/conflict не создают эффекта. Исторические ссылки остаются доступны.",
+        "en": "A versioned category or merchant is saved; no_change/conflict creates no effect. Historical references remain available."
       }
     }
   ],
@@ -6886,16 +6901,16 @@
         "en": "Transaction purpose and a meaningful selected-period total."
       },
       "structure": {
-        "ru": "Поиск/месяц/счёт/плательщик/назначение/категория/статус → итоги → строки дата/продавец/сумма/доли.",
-        "en": "Search/month/account/payer/allocation/category/status → totals → date/merchant/amount/shares rows."
+        "ru": "Поиск/месяц/счёт/плательщик/назначение/category/merchant/item/status → итоги → строки дата/продавец/сумма/доли.",
+        "en": "Search/month/account/payer/allocation/category/merchant/item/status → totals → date/merchant/amount/share rows."
       },
       "action": {
         "ru": "Открыть SCR-010; занести FORM-04 или чек в SCR-024.",
         "en": "Open SCR-010; enter FORM-04 or receipt in SCR-024."
       },
       "detail": {
-        "ru": "Переводы/обмены помечены как движение, исключённое из доходов/расходов; фильтр не меняет расчётную семантику.",
-        "en": "Transfers/exchanges marked as movement excluded from income/expense; filters never change accounting semantics."
+        "ru": "Фильтры category, merchant и item независимы; некатегоризированный расход остаётся видимым. Позиции образуют одну оплату без повторного итога. Переводы/обмены помечены как движения, исключённые из доходов/расходов; фильтр не меняет расчётную семантику.",
+        "en": "Category, merchant and item filters are independent; uncategorized expense remains visible. Items form one payment without a duplicate total. Transfers/exchanges are marked as movements excluded from income/expense; filters never change accounting semantics."
       },
       "rights": {
         "ru": "Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.",
@@ -6935,7 +6950,8 @@
         "AC-081"
       ],
       "tasks": [
-        "task-7.2"
+        "task-7.2",
+        "task-2.6"
       ]
     },
     {
@@ -6950,20 +6966,20 @@
         "en": "Is this purchase accounted for correctly?"
       },
       "answer": {
-        "ru": "Сумма, назначение, плательщик и доли одной операции.",
-        "en": "Amount, purpose, payer and shares of one transaction."
+        "ru": "Сумма, категория, продавец, позиции, назначение и плательщик одной операции.",
+        "en": "Amount, category, merchant, items, allocation and payer for one transaction."
       },
       "structure": {
-        "ru": "Результат учёта → счёт/дата/статус → личные/общие доли → чек → исправить/возврат.",
-        "en": "Accounting outcome → account/date/status → personal/shared shares → receipt → correction/refund."
+        "ru": "Результат учёта → счёт/дата/статус → category/merchant → позиции gross/discount/net → доли → чек → исправить/отменить/возврат.",
+        "en": "Accounting outcome → account/date/status → category/merchant → item gross/discount/net → shares → receipt → correct/undo/refund."
       },
       "action": {
         "ru": "Исправить FORM-06/07, вернуть FORM-08, явный долг FORM-09; чек → SCR-011.",
         "en": "Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011."
       },
       "detail": {
-        "ru": "История до/после с автором, временем, decisionId и основаниями; отдельные банковское и учётное состояния. Защищённые поля сравниваются с нормализованным источником; review показывает безопасное обоснование и ссылки на evidence. Для выбранного решения видны возможность undo и причина отказа.",
-        "en": "Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason."
+        "ru": "История до/после показывает автора, время, decisionId, основание, банковское и учётное состояния, classification, защищённые поля, origin и selective undo. Raw merchant источника отделён от merchantId; AI proposal виден как предложение и не меняет факт без команды.",
+        "en": "Before/after history shows actor, time, decisionId, rationale, bank and accounting states, classification, protected fields, origin and selective undo. Raw source merchant is separate from merchantId; an AI proposal remains a proposal and cannot change the fact without a command."
       },
       "rights": {
         "ru": "Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.",
@@ -6995,17 +7011,22 @@
         "REQ-010",
         "REQ-012",
         "REQ-067",
-        "REQ-072"
+        "REQ-072",
+        "REQ-014",
+        "REQ-016"
       ],
       "acceptance": [
         "AC-010",
         "AC-012",
         "AC-081",
-        "AC-086"
+        "AC-086",
+        "AC-014",
+        "AC-016"
       ],
       "tasks": [
         "task-7.2",
-        "task-2.3"
+        "task-2.3",
+        "task-2.6"
       ]
     },
     {
@@ -7032,8 +7053,8 @@
         "en": "Clarify/allocate FORM-07/12; open SCR-010."
       },
       "detail": {
-        "ru": "Недостоверные поля выделены текстом; неподходящий документ объяснён, небезопасный файл не исполняется.",
-        "en": "Uncertain fields labelled; unsuitable document explained and unsafe content never executed."
+        "ru": "Gross, discount и net позиции объясняют одну оплату; общая скидка распределена детерминированно. Неполные скидки или расхождение требуют уточнения, без выдуманной позиции. Недостоверные поля выделяются, неподходящий документ объясняется, небезопасное содержимое не исполняется. OCR/PDF остаётся task-5.3.",
+        "en": "Item gross, discount and net explain one payment; a receipt-wide discount is allocated deterministically. Incomplete discounts or a mismatch require clarification without an invented item. Uncertain fields are labelled, unsuitable documents are explained and unsafe content is never executed. OCR/PDF remains task-5.3."
       },
       "rights": {
         "ru": "Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.",
@@ -7074,7 +7095,8 @@
         "AC-081"
       ],
       "tasks": [
-        "task-7.3"
+        "task-7.3",
+        "task-2.6"
       ]
     },
     {
@@ -8503,16 +8525,16 @@
         "en": "Clear categories, merchants and expense-allocation rules."
       },
       "structure": {
-        "ru": "Категории/подкатегории → продавцы → правила/приоритет → preview примеров.",
-        "en": "Categories/subcategories → merchants → rules/priority → example preview."
+        "ru": "Категории/подкатегории и архив → продавцы/подтверждённые алиасы → правила/приоритет → preview примеров.",
+        "en": "Categories/subcategories and archive → merchants/confirmed aliases → rules/priority → example preview."
       },
       "action": {
         "ru": "Создать/исправить FORM-15; проверить затронутые операции SCR-009.",
         "en": "Create/correct FORM-15; inspect affected transactions SCR-009."
       },
       "detail": {
-        "ru": "Продавец не подкатегория автоматически; правило personal/shared не меняет чужой личный план.",
-        "en": "Merchant is not automatically a subcategory; personal/shared rule never edits partner’s personal plan."
+        "ru": "Starter labels имеют стабильные RU/EN-ключи, custom name не переводится. Продавец не становится подкатегорией; архив сохраняет историю. AI proposal требует пользовательского подтверждения; правило personal/shared не меняет чужой личный план.",
+        "en": "Starter labels use stable RU/EN keys and a custom name is not translated. A merchant never becomes a subcategory; archival preserves history. An AI proposal requires user confirmation; a personal/shared rule never edits a partner personal plan."
       },
       "rights": {
         "ru": "Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.",
@@ -8548,7 +8570,8 @@
         "AC-081"
       ],
       "tasks": [
-        "task-7.14"
+        "task-7.14",
+        "task-2.6"
       ]
     },
     {
