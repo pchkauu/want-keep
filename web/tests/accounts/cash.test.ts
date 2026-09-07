@@ -109,6 +109,58 @@ describe("cash account precision and command recovery", () => {
     await controller.submit();
     expect(api.create).not.toHaveBeenCalled();
   });
+  it("replays durable pending with the same immutable request, including after another lost response", async () => {
+    const { api, controller } = fixture();
+    vi.spyOn(api, "create")
+      .mockRejectedValueOnce(new ApiFailure("network_unconfirmed"))
+      .mockRejectedValueOnce(new ApiFailure("network_unconfirmed"))
+      .mockResolvedValue({
+        id: "original-key",
+        state: "succeeded",
+        accountId: "account",
+      });
+    vi.spyOn(api, "command").mockResolvedValue({
+      id: "original-key",
+      state: "pending",
+    });
+    await controller.loadRecent();
+    await controller.submit();
+    expect(controller.snapshot().retryOriginal).toBe(true);
+    controller.draft({ amount: "999" });
+    await controller.retry();
+    expect(controller.snapshot().retryOriginal).toBe(true);
+    await controller.retry();
+    expect(api.create).toHaveBeenCalledTimes(3);
+    for (const call of vi.mocked(api.create).mock.calls)
+      expect(call).toEqual(["original-key", draft, "alex"]);
+    expect(controller.snapshot().confirmed).toEqual(account);
+  });
+  it("reconstructs a recent pending request without replacing its key and permits correcting a rejected mismatch", async () => {
+    const { api, controller } = fixture();
+    vi.mocked(api.recent).mockResolvedValue({
+      items: [{ id: "saved-key", state: "pending" }],
+      cursor: undefined,
+    });
+    vi.spyOn(api, "create")
+      .mockRejectedValueOnce(new ApiFailure("duplicate_command", 409))
+      .mockResolvedValue({
+        id: "saved-key",
+        state: "succeeded",
+        accountId: "account",
+      });
+    await controller.loadRecent();
+    controller.restore("unrelated");
+    expect(controller.snapshot().recoveryId).toBeUndefined();
+    controller.restore("saved-key");
+    controller.draft({ ...draft, amount: "999" });
+    await controller.submit();
+    expect(controller.snapshot().error?.code).toBe("duplicate_command");
+    expect(controller.snapshot().creation).toBeUndefined();
+    controller.draft(draft);
+    await controller.submit();
+    expect(api.create).toHaveBeenNthCalledWith(2, "saved-key", draft, "alex");
+    expect(controller.snapshot().confirmed).toEqual(account);
+  });
   it("clears drafts and ignores in-flight results when the actor changes", async () => {
     const { api, controller } = fixture();
     let resolve!: (value: {

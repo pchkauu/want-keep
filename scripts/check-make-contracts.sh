@@ -53,7 +53,15 @@ EXPECTED_CWD="$fixture_web" \
 EXPECTED_ARGUMENTS="exec playwright test -- e2e/tooling.spec.ts" \
   make -s -C "$repository_root" e2e SCENARIO=tooling E2E_WEB_DIR="$fixture_web" NPM="$fake_npm"
 EXPECTED_CWD="$fixture_web" \
-EXPECTED_ARGUMENTS="exec playwright test --" \
+EXPECTED_ARGUMENTS="exec playwright test -- e2e/tooling.spec.ts" \
   make -s -C "$repository_root" e2e SCENARIO=all E2E_WEB_DIR="$fixture_web" NPM="$fake_npm"
+
+aggregate=$(make -n --no-print-directory -C "$repository_root" e2e SCENARIO=all)
+for command in 'sh scripts/test-access.sh' 'e2e/design-components.spec.ts' 'e2e/design-tokens.spec.ts'; do
+  if ! printf '%s\n' "$aggregate" | grep -Fq "$command"; then
+    echo "Aggregate E2E dispatch omitted $command." >&2
+    exit 1
+  fi
+done
 
 echo "Make command contracts are valid."

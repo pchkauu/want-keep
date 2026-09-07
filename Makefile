@@ -128,7 +128,13 @@ test-contract:
 	$(NPM) --prefix collector run test -- "contracts/$(PROVIDER)"
 
 e2e:
-ifeq ($(SCENARIO),access)
+ifeq ($(SCENARIO),all)
+	@if ! find "$(E2E_WEB_DIR)/e2e" -type f -name '*.spec.ts' -print -quit | grep -q .; then echo "E2E suite has no scenarios." >&2; exit 2; fi
+	@for suite in "$(E2E_WEB_DIR)"/e2e/*.spec.ts; do \
+		name="$${suite##*/}"; \
+		$(MAKE) e2e SCENARIO="$${name%.spec.ts}" || exit $$?; \
+	done
+else ifeq ($(SCENARIO),access)
 	sh scripts/test-access.sh
 else
 	@if [ -z "$(SCENARIO)" ]; then echo "SCENARIO=<name|all> is required." >&2; exit 2; fi

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router";
+import { ApiFailure } from "@/api/http";
 import { Button } from "@/design-system/components/button";
 import { useLocale } from "@/locales/locale";
 import { AuthLayout } from "./AuthLayout";
@@ -27,6 +28,13 @@ export function LoginPage({
           disabled={action.busy || status === "checking"}
           onClick={() =>
             void action.run(async () => {
+              await controller.verify();
+              if (!action.isLive() || controller.snapshot().status === "active")
+                return;
+              if (
+                !["anonymous", "expired"].includes(controller.snapshot().status)
+              )
+                throw new ApiFailure("service_unavailable");
               const ticket = controller.ticket();
               const member = await api.login(action.webauthn, "login");
               if (!action.isLive()) return;

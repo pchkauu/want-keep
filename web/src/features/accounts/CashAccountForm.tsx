@@ -38,18 +38,30 @@ export function CashAccountForm({
       {state.recent.length > 0 && (
         <section className="access-notice">
           <h3>{t("recentCommands")}</h3>
-          {state.recent.map((command) => (
-            <Button
-              key={command.id}
-              variant="secondary"
-              disabled={state.busy}
-              onClick={() => void controller.check(command.id)}
-            >
-              {t("retry")}
-            </Button>
+          {state.recent.map((command, index) => (
+            <div className="access-actions" key={command.id}>
+              <span>
+                {t("commandPending")} {index + 1}
+              </span>
+              <Button
+                variant="secondary"
+                disabled={state.busy}
+                onClick={() => void controller.check(command.id)}
+              >
+                {t("retry")}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={locked}
+                onClick={() => controller.restore(command.id)}
+              >
+                {t("restoreRequest")}
+              </Button>
+            </div>
           ))}
         </section>
       )}
+      {state.recoveryId && <p role="status">{t("restoreRequestHint")}</p>}
       <form
         className="access-form"
         onSubmit={(event) => {
@@ -132,9 +144,13 @@ export function CashAccountForm({
         {!creation && (
           <Button
             type="submit"
-            disabled={locked || !state.checkedRecent || state.recent.length > 0}
+            disabled={
+              locked ||
+              !state.checkedRecent ||
+              (state.recent.length > 0 && !state.recoveryId)
+            }
           >
-            {t("createAccount")}
+            {t(state.recoveryId ? "retrySame" : "createAccount")}
           </Button>
         )}
       </form>
@@ -183,6 +199,17 @@ export function CashAccountForm({
                 {t("retrySame")}
               </Button>
             )}
+            {creation.state === "pending" &&
+              !state.retryOriginal &&
+              state.recent.some((x) => x.id === creation.id) && (
+                <Button
+                  variant="secondary"
+                  disabled={state.busy}
+                  onClick={() => controller.restore(creation.id)}
+                >
+                  {t("restoreRequest")}
+                </Button>
+              )}
           </div>
         </div>
       )}

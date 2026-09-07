@@ -77,3 +77,5 @@ flowchart TD
 | Access | SCR-001 → SCR-002 → SCR-006: sign in and recover own access only in actual Chrome and Arc. |
 
 UX outcomes follow AC-102; a successful click-through without correct understanding of amounts does not satisfy the criterion.
+
+After local expiry, sign-in first re-reads /me: a live shared cookie restores the session without another prompt or idle renewal. A pending command permits explicit original-request replay. After reload, the user may reconstruct the fields with the same key; the server checks the hash and rejects any difference without an effect.

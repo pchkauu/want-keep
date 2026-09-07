@@ -16,6 +16,7 @@ export type CashState = {
   retryOriginal: boolean;
   recent: readonly Creation[];
   checkedRecent: boolean;
+  recoveryId?: string;
 };
 
 export class CashController {
@@ -26,7 +27,7 @@ export class CashController {
     recent: [],
     checkedRecent: false,
   };
-  private payload?: CashDraft;
+  private request?: { id: string; draft: CashDraft };
   private listeners = new Set<() => void>();
   private epoch = 0;
   readonly api: AccountsApi;
@@ -58,18 +59,19 @@ export class CashController {
   }
   reset() {
     if (this.state.busy || this.state.creation?.state === "pending") return;
-    this.payload = undefined;
+    this.request = undefined;
     this.update({
       draft: CashAccount.empty(),
       creation: undefined,
       confirmed: undefined,
       error: undefined,
       retryOriginal: false,
+      recoveryId: undefined,
     });
   }
   clear() {
     this.epoch++;
-    this.payload = undefined;
+    this.request = undefined;
     this.update({
       draft: CashAccount.empty(),
       creation: undefined,
@@ -79,6 +81,19 @@ export class CashController {
       checkedRecent: false,
       retryOriginal: false,
       busy: false,
+      recoveryId: undefined,
+    });
+  }
+  restore(id: string) {
+    if (this.state.busy || this.request) return;
+    if (!this.state.recent.some((x) => x.id === id && x.state === "pending"))
+      return;
+    this.update({
+      creation: undefined,
+      confirmed: undefined,
+      recoveryId: id,
+      draft: CashAccount.empty(),
+      error: undefined,
     });
   }
   private async run(action: (epoch: number) => Promise<void>) {
@@ -124,36 +139,46 @@ export class CashController {
       if (
         !this.state.checkedRecent ||
         this.state.creation ||
-        this.state.recent.some((x) => x.state === "pending")
+        (!this.state.recoveryId &&
+          this.state.recent.some((x) => x.state === "pending"))
       )
         return;
       CashAccount.validate(this.state.draft);
-      const id = this.key();
-      this.payload = { ...this.state.draft };
+      const id = this.state.recoveryId ?? this.key();
+      this.request = { id, draft: { ...this.state.draft } };
       this.update({ creation: { id, state: "pending" }, retryOriginal: false });
-      try {
-        await this.finish(
-          await this.api.create(id, this.payload, this.userId),
-          epoch,
-        );
-      } catch (error) {
-        if (epoch !== this.epoch) return;
-        // Even a timeout before receiving headers may follow a committed creation.
-        await this.reconcile(id, epoch);
-        if (this.snapshot().creation?.state === "pending") throw error;
-      }
+      await this.executeRequest(epoch);
     });
   check = (id: string) => this.run((epoch) => this.reconcile(id, epoch));
   retry = () =>
     this.run(async (epoch) => {
-      const creation = this.state.creation;
-      if (!creation || !this.payload || !this.state.retryOriginal) return;
-      this.update({ retryOriginal: false });
+      if (!this.request || !this.state.retryOriginal) return;
+      await this.executeRequest(epoch);
+    });
+  private async executeRequest(epoch: number) {
+    const request = this.request;
+    if (!request) return;
+    try {
       await this.finish(
-        await this.api.create(creation.id, this.payload, this.userId),
+        await this.api.create(request.id, request.draft, this.userId),
         epoch,
       );
-    });
+    } catch (error) {
+      if (epoch !== this.epoch) return;
+      if (
+        error instanceof ApiFailure &&
+        error.code === "duplicate_command" &&
+        this.state.recoveryId === request.id
+      ) {
+        this.request = undefined;
+        this.update({ creation: undefined, retryOriginal: false });
+        throw error;
+      }
+      // Even a timeout before receiving headers may follow a committed creation.
+      await this.reconcile(request.id, epoch);
+      if (this.state.creation?.state === "pending") throw error;
+    }
+  }
   private async reconcile(id: string, epoch: number) {
     try {
       await this.finish(await this.api.command(id), epoch);
@@ -164,13 +189,20 @@ export class CashController {
         error.status === 404 &&
         this.state.creation?.id === id
       )
-        this.update({ retryOriginal: Boolean(this.payload) });
+        this.update({ retryOriginal: this.request?.id === id });
       throw error;
     }
   }
   private async finish(creation: Creation, epoch: number) {
     if (epoch !== this.epoch) return;
-    this.update({ creation, retryOriginal: false });
+    this.update({
+      creation,
+      confirmed: undefined,
+      recoveryId:
+        creation.state === "pending" ? this.state.recoveryId : undefined,
+      retryOriginal:
+        creation.state === "pending" && this.request?.id === creation.id,
+    });
     if (creation.state === "succeeded" && creation.accountId) {
       const confirmed = await this.api.read(creation.accountId);
       if (epoch === this.epoch)

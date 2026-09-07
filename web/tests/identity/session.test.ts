@@ -47,6 +47,34 @@ describe("identity session boundaries", () => {
     vi.advanceTimersByTime(10);
     expect(session.snapshot().status).toBe("expired");
   });
+  it("reconciles local expiry with a live shared cookie without renewing idle time", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(start);
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const api = new IdentityApi(new HttpClient(request));
+    const session = new SessionController(api);
+    session.accept(member);
+    vi.advanceTimersByTime(1800_000);
+    expect(session.snapshot().status).toBe("expired");
+    const renewed = {
+      ...member,
+      idleExpiresAt: new Date(start + 3500_000).toISOString(),
+    };
+    vi.spyOn(api, "me").mockResolvedValue(renewed);
+    vi.spyOn(api, "activity");
+    await session.verify();
+    expect(session.snapshot()).toEqual({ status: "active", member: renewed });
+    expect(api.activity).not.toHaveBeenCalled();
+    await api.logout();
+    expect(request).toHaveBeenCalledWith(
+      "/api/v1/auth/logout",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-CSRF-Token": "csrf-a" }),
+      }),
+    );
+  });
   it("rejects a result issued before invalidation and clears drafts on another identity", () => {
     vi.useFakeTimers();
     vi.setSystemTime(start);

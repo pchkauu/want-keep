@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { authenticator } from "./access/authenticator";
+import { AccountWriteFault } from "./access/database-fault";
 
 test("closed household, separate passkeys, cash command, invitation and personal recovery", async ({
   browser,
@@ -101,22 +102,79 @@ test("closed household, separate passkeys, cash command, invitation and personal
     ).toHaveValue("01.09.2026");
     await page.getByRole("button", { name: "EN", exact: true }).click();
     let accountPosts = 0;
+    const commandKeys: (string | undefined)[] = [];
+    const writeFault = new AccountWriteFault();
+    writeFault.install();
     await page.route("**/api/v1/accounts", async (route) => {
       if (route.request().method() !== "POST") {
         await route.continue();
         return;
       }
       accountPosts++;
-      await route.fetch(); // Commit succeeds; only the browser response is lost.
+      commandKeys.push(route.request().headers()["idempotency-key"]);
+      const response = await route.fetch();
+      if (accountPosts <= 2) {
+        expect(response.status()).toBe(500);
+        if (accountPosts === 2) writeFault.remove();
+      } else if (accountPosts === 3) {
+        expect(response.status()).toBe(409);
+        await route.fulfill({ response });
+        return;
+      } else expect(response.ok()).toBe(true);
       await route.abort("failed");
     });
     await page
       .getByRole("button", { name: "Add account", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Account added: Cash at start" }),
+      page.getByRole("button", {
+        name: "Retry with the original key",
+        exact: true,
+      }),
     ).toBeVisible();
     expect(accountPosts).toBe(1);
+    await page
+      .getByRole("button", { name: "Retry with the original key", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: "Retry with the original key",
+        exact: true,
+      }),
+    ).toBeEnabled();
+    expect(accountPosts).toBe(2);
+    await page.reload();
+    await page
+      .getByRole("button", {
+        name: "Restore the original request",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByLabel("Account name", { exact: true })
+      .fill("Cash at start");
+    await page
+      .getByRole("textbox", { name: "Tracking start date", exact: true })
+      .fill("09/01/2026");
+    await page.getByLabel("Opening balance", { exact: true }).fill("999");
+    await page
+      .getByRole("button", { name: "Retry with the original key", exact: true })
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      "The fields differ from the original request",
+    );
+    await page
+      .getByLabel("Opening balance", { exact: true })
+      .fill("12345678901234567890.123456789012345678");
+    await page
+      .getByRole("button", { name: "Retry with the original key", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Account added: Cash at start" }),
+    ).toBeVisible();
+    expect(accountPosts).toBe(4);
+    expect(commandKeys[0]).toBeTruthy();
+    expect(new Set(commandKeys).size).toBe(1);
     await expect(page.locator(".access-notice .access-amount")).toHaveText(
       "12,345,678,901,234,567,890.123456789012345678 RUB",
     );
@@ -285,6 +343,20 @@ test("closed household, separate passkeys, cash command, invitation and personal
     await expect(
       page.getByRole("button", { name: "Log in with Passkeys", exact: true }),
     ).toBeVisible();
+    // Only the tab clock expired: the real server cookie is still active.
+    await page.clock.setSystemTime(new Date());
+    let unnecessaryLogin = 0;
+    page.on("request", (request) => {
+      if (request.url().endsWith("/auth/login/options")) unnecessaryLogin++;
+    });
+    await page
+      .getByRole("button", { name: "Log in with Passkeys", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/onboarding$/);
+    await expect(page.getByLabel("Account name", { exact: true })).toHaveValue(
+      "Unsaved cash",
+    );
+    expect(unnecessaryLogin).toBe(0);
     expect(errors).toEqual([]);
   } finally {
     await first.close();

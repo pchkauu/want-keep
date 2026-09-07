@@ -31,6 +31,7 @@ export WANT_KEEP_ACCESS_ORIGIN="$WANT_KEEP_ORIGIN"
 export WANT_KEEP_LISTEN_ADDR="127.0.0.1:$api_port"
 export WANT_KEEP_DEV_API="http://127.0.0.1:$api_port"
 export WANT_KEEP_ACCESS_BOOTSTRAP_FILE="$private_dir/bootstrap-token"
+export WANT_KEEP_ACCESS_DATABASE_CONTAINER="$project"
 export WANT_KEEP_ACCESS_E2E=1
 # This launcher owns disposable resources only. Production configuration is never used.
 (cd backend && go run ./cmd/migrate && go run ./cmd/identity-bootstrap --output "$WANT_KEEP_ACCESS_BOOTSTRAP_FILE" && go build -o "$private_dir/api" ./cmd/api)

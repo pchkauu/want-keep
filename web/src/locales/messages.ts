@@ -160,6 +160,11 @@ export const ru = {
   commandUnknown:
     "Проверяем исход создания. Не отправляйте новую команду вместо этой.",
   retrySame: "Повторить с прежним ключом",
+  restoreRequest: "Восстановить исходный запрос",
+  restoreRequestHint:
+    "Введите исходные название, актив, принадлежность, дату и остаток. Сервер сравнит запрос с сохранённой командой; другие данные не будут выполнены. Новый ключ не создаётся.",
+  duplicate_command:
+    "Данные отличаются от исходного запроса. Проверьте все поля: прежняя команда сохранена без изменений.",
   recentCommands: "Незавершённые создания счетов",
   commandFailed:
     "Счёт не был создан. Исправьте данные и отправьте новую команду.",
@@ -339,6 +344,11 @@ export const en: Record<MessageKey, string> = {
   commandUnknown:
     "Checking the creation outcome. Do not send a new command in its place.",
   retrySame: "Retry with the original key",
+  restoreRequest: "Restore the original request",
+  restoreRequestHint:
+    "Re-enter the original name, asset, ownership, date and balance. The server compares the request with the saved command; different data will not be executed. No new key is created.",
+  duplicate_command:
+    "The fields differ from the original request. Check every field; the original command remains unchanged.",
   recentCommands: "Unresolved account creations",
   commandFailed:
     "The account was not created. Correct the fields and submit a new command.",
