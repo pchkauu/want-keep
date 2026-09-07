@@ -19,7 +19,7 @@ This verdict permits implementation under [plan.en.md](plan.en.md). It does not 
 | BLK | SDD status | Decision | Remaining runtime/acceptance work |
 | --- | --- | --- | --- |
 | BLK-01 Alfa | Resolved by D-37/D-39 | Debit/current/savings/deposit/cashback scope; Alfa credit card deferred; unknown/ambiguous fails closed | task-4.1 permission/fixture/identity/history/reauth/2 accounts/Alfa route |
-| BLK-02 Raiffeisen | Resolved by D-39 | CAMT 1:N, scoped ID/fallback, revisions/reversals, CLBD/unknown balance rules | task-4.2 OAuth/full history/corrections/2 accounts/conformance |
+| BLK-02 Raiffeisen | Resolved by D-39 | CAMT 1:N, canonical cross-report fingerprint, atomic optional-ID aliases, revisions/reversals, CLBD/unknown balance rules | task-4.2 OAuth/full history/corrections/2 accounts/conformance |
 | BLK-03 Ozon | Resolved by D-38/D-39 | Synthetic HAR projection is sufficient for design; rotating token/group is not identity | task-4.3 session permission/lifecycle/history end/2 accounts |
 | BLK-04 Bybit | Resolved by D-39 | Route IDs, candidate-only links, hourly tuple collision policy | task-4.4 precision/history/rotation/revocation/2 accounts |
 | BLK-05 Aifory | Resolved by D-38/D-39 | Scope and safe boundary are fixed without invented Flutter fields | task-4.5 permission/structured fixtures/card lifecycle/reauth/2 accounts |

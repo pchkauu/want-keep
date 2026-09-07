@@ -21,7 +21,7 @@
 
 Read allowlist задаётся на route/action уровне. Любые payment, transfer, trade, product-open, P2P create/pay/release, stake/redeem и другие внешние изменения запрещены. API предпочтительнее browser collector; collector допускается только при доказанном API-пробеле и разрешении владельца. Пароль/MFA вводит внешний владелец, секреты не попадают в Git, AI, логи или fixtures.
 
-D-43 связывает admission с environment, adapter/collector build, contract, allowlist, non-secret config и operator permission. task-4.x подтверждает provider evidence, task-8.x — host/deployment evidence; только admission service объединяет оба pass. Stale/missing binding даёт `provider_not_admitted` до collector IO. Pre-admission conformance идёт в quarantine без source records и проводок.
+D-43 связывает admission с environment, adapter/collector build, contract, allowlist, non-secret config и operator permission. Application boundary `backend/internal/connections/admission/` и storage adapter task-1.3 владеют aggregate/repository и атомарным combine/invalidate. task-4.x подтверждает provider evidence, task-8.x — host/deployment evidence; только admission service объединяет оба pass. Stale/missing binding даёт `provider_not_admitted` до job/collector IO. Pre-admission conformance идёт в quarantine без source records и проводок.
 
 D-39 задаёт identity: `household + provider + stable external account + product/log namespace + provider record ID`. Сумма, время, текст, connection/session и UI-label не являются identity. Provider-specific immutable fallback должен быть документирован; collision даёт `source_ambiguous`, сохраняет evidence и не проводит деньги.
 
@@ -30,7 +30,7 @@ D-39 задаёт identity: `household + provider + stable external account + pr
 ## Provider-specific решения
 
 - **Bybit:** IDs относятся к конкретному route namespace. Cross-log amount/time — только кандидат. Hourly fallback `(coin, productId, hourlyDate)` разрешён в hourly namespace; differing payload — collision. Короткая страница с cursor не завершает импорт.
-- **Raiffeisen:** Account UUID и number/accountKeys различаются. CAMT entry допускает 1:N details. NtryRef/AcctSvcrRef/EndToEndId применяются только при наличии и доказанном scope; statement/report ID — provenance. Fallback — transaction-scoped fingerprint полей, доказанно стабильных между camt.052/camt.053, без amount/time; недостаточная identity даёт `source_ambiguous` без проводки. Corrections/reversals создают revisions. Если camt.052 недоступен, показывается последний подтверждённый CLBD с `asOf`; available/locked/fee остаются unknown.
+- **Raiffeisen:** Account UUID и number/accountKeys различаются. CAMT entry допускает 1:N details. Достаточный versioned `camtCrossReportFingerprint` всегда является canonical providerRecordId между camt.052/camt.053; optional NtryRef/AcctSvcrRef/EndToEndId и statement/report ID регистрируются атомарно как aliases/provenance. Amount/time исключены. Недостаточный fingerprint или неоднозначное alias mapping даёт `source_ambiguous`, сохраняет evidence и не создаёт новую проводку. Corrections/reversals создают revisions. Если camt.052 недоступен, показывается последний подтверждённый CLBD с `asOf`; available/locked/fee остаются unknown.
 - **Ozon:** accountToken/connection и groupID не являются identity; parent relation связывает комиссию, не объединяя финансовые эффекты.
 - **Alfa/Aifory/EMCD:** авторизованные UI-наблюдения подтверждают scope, но stable source fields получает только structured fixture в task-4.x. До этого ни UI-текст, ни DOM-selector не создаёт проводку.
 

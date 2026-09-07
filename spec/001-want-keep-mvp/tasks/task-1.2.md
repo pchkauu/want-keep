@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Определить Money/Asset/Rate/Time/coverage и версионированные состояния `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted` по contracts.md. Деньги передавать десятичными строками и валидировать на первой границе; домен не импортирует generated DTO. Добавить explainable read models, command status/recent API и connection `deploymentGate.status=pending|admitted|blocked`. Server-owned admission связывается с environment, adapter/collector build digests, contract, allowlist, non-secret config и operator-permission revisions; sync разрешён только при совпадении текущего binding и `admitted`, иначе collector не запускается. Terminal detail хранится 90 дней после исхода, unresolved — до сверки плюс 90 дней; tombstone с `commandId`, scope, key/hash и outcome живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome. `/commands/recent` отдаёт 30 дней terminal и все unresolved; истёкшая detail возвращает `command_expired`, не разрешая повторный эффект по живому tombstone.
+Определить Money/Asset/Rate/Time/coverage и версионированные состояния `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted` по contracts.md. Деньги передавать десятичными строками и валидировать на первой границе; домен не импортирует generated DTO. Добавить explainable read models, command status/recent API и connection `deploymentGate.status=pending|admitted|blocked`. Публичный контракт server-owned admission связывает environment, adapter/collector build digests, contract, allowlist, non-secret config и operator-permission revisions; sync разрешён только при совпадении текущего binding и `admitted`, иначе collector не запускается. Эта задача владеет transport/read model, а aggregate, repository и application transitions реализует task-1.3. Terminal detail хранится 90 дней после исхода, unresolved — до сверки плюс 90 дней; tombstone с `commandId`, scope, key/hash и outcome живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome. `/commands/recent` отдаёт 30 дней terminal и все unresolved; истёкшая detail возвращает `command_expired`, не разрешая повторный эффект по живому tombstone.
 
 ### Границы изменений
 
@@ -22,7 +22,7 @@
 - `backend/internal/delivery/`
 - `web/src/api/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -38,7 +38,7 @@
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-002
 
@@ -115,9 +115,9 @@ make test-go PKG=./internal/money/... && make check-contracts
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
@@ -131,7 +131,7 @@ Establish money precision and public boundary types before adapters and UI.
 
 ### Change and contracts
 
-Define Money/Asset/Rate/Time/coverage and versioned `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired` and `provider_not_admitted` states from contracts.en.md. Transport money as decimal strings and validate at the first boundary; the domain must not import generated DTOs. Add explainable read models, command status/recent APIs and connection `deploymentGate.status=pending|admitted|blocked`. Server-owned admission binds environment, adapter/collector build digests, contract, allowlist, non-secret configuration and operator-permission revisions; sync is permitted only when the current binding matches `admitted`, otherwise the collector never starts. Terminal detail remains for 90 days after outcome, unresolved commands through reconciliation plus 90 days; a tombstone with `commandId`, scope, key/hash and outcome lives throughout unresolved state and for 400 days after terminal/reconciled outcome. `/commands/recent` returns 30 days of terminal commands and all unresolved commands; expired detail returns `command_expired` without permitting a repeated effect while the tombstone is live.
+Define Money/Asset/Rate/Time/coverage and versioned `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired` and `provider_not_admitted` states from contracts.en.md. Transport money as decimal strings and validate at the first boundary; the domain must not import generated DTOs. Add explainable read models, command status/recent APIs and connection `deploymentGate.status=pending|admitted|blocked`. The public server-owned admission contract binds environment, adapter/collector build digests, contract, allowlist, non-secret configuration and operator-permission revisions; sync is permitted only when the current binding matches `admitted`, otherwise the collector never starts. This task owns the transport/read model; task-1.3 implements the aggregate, repository and application transitions. Terminal detail remains for 90 days after outcome, unresolved commands through reconciliation plus 90 days; a tombstone with `commandId`, scope, key/hash and outcome lives throughout unresolved state and for 400 days after terminal/reconciled outcome. `/commands/recent` returns 30 days of terminal commands and all unresolved commands; expired detail returns `command_expired` without permitting a repeated effect while the tombstone is live.
 
 ### Change boundaries
 
@@ -140,7 +140,7 @@ Define Money/Asset/Rate/Time/coverage and versioned `source_partial`, `source_am
 - `backend/internal/delivery/`
 - `web/src/api/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -156,7 +156,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-002
 
@@ -233,6 +233,6 @@ The `make` commands are a future contract established by task-1.1; they do not e
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

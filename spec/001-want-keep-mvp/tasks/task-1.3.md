@@ -13,15 +13,16 @@
 
 ### Изменение и контракты
 
-Добавить миграции для семьи/участников, счетов, неизменяемых source records, операций/проводок, revisions, command records, idempotency tombstones и outbox/jobs. Денежные поля NUMERIC сохраняют точность источника. Source uniqueness следует D-39 и включает household, provider, стабильный внешний счёт, product/log namespace и provider record ID; connection/session ID остаётся provenance. Коллизия сохраняет evidence как `source_ambiguous` без проводки. Транзакционно обеспечить uniqueness, version-check и резервы. Реализовать независимые retention jobs: terminal detail 90 дней после исхода; unresolved до сверки плюс 90 дней; tombstone с `commandId` живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome; финансовый source/audit не удаляется вместе с command detail.
+Добавить миграции для семьи/участников, счетов, неизменяемых source records, операций/проводок, revisions, command records, idempotency tombstones и outbox/jobs. Денежные поля NUMERIC сохраняют точность источника. Source uniqueness следует D-39 и включает household, provider, стабильный внешний счёт, product/log namespace и provider record ID; connection/session ID остаётся provenance. Коллизия сохраняет evidence как `source_ambiguous` без проводки. Транзакционно обеспечить uniqueness, version-check и резервы. Реализовать независимые retention jobs: terminal detail 90 дней после исхода; unresolved до сверки плюс 90 дней; tombstone с `commandId` живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome; финансовый source/audit не удаляется вместе с command detail. Реализовать `ProviderDeploymentAdmission` в `backend/internal/connections/admission/`: aggregate и repository interface принадлежат application boundary, storage adapter сохраняет provider/host evidence и exact binding. Application service атомарно объединяет оба pass, инвалидирует admission при смене binding/revocation/failed check и в одной транзакции проверяет admission с созданием sync job. Collector повторно проверяет выданный binding перед provider IO. Покрыть restart, concurrent combine/sync, revocation и binding-change races.
 
 ### Границы изменений
 
 - `backend/migrations/`
 - `backend/internal/storage/`
 - `backend/internal/jobs/`
+- `backend/internal/connections/admission/`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -35,10 +36,11 @@
 - **REQ-070:** Сумма индивидуальных дневных лимитов не превышает семейный предел одной валюты; счёт плательщика не меняет долю расходов.
 - **REQ-072:** Конкурирующие изменения, ответы на уточнения и отмены проверяют версию и текущие права, сохраняя обоих авторов.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации и окружения.
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-012
 
@@ -96,21 +98,28 @@
 - **Тогда:** Проверка общего доступного остатка и резерв атомарны: проходит максимум одна команда; отказ не уменьшает другой резерв, оба видят актуальный остаток.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Сервер возвращает `provider_not_admitted`, collector не запускается и проводок нет. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding; любое расхождение снова закрывает sync.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
 make test-integration AREA=storage
 ```
 
-Миграции применяются к пустой БД; crash/retry и конкуренция не дают частичных проводок или двойных эффектов.
+Миграции применяются к пустой БД; crash/retry и конкуренция не дают частичных проводок или двойных эффектов. Admission переживает restart; неполный/устаревший binding не создаёт job, а concurrent revoke/change не допускает provider IO или проводку.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
@@ -124,15 +133,16 @@ Make accounting, revision and job persistence atomic.
 
 ### Change and contracts
 
-Add migrations for households/members, accounts, immutable source records, transactions/postings, revisions, command records, idempotency tombstones and outbox/jobs. NUMERIC money fields preserve source precision. Source uniqueness follows D-39 and includes household, provider, stable external account, product/log namespace and provider record ID; connection/session ID remains provenance. A collision retains evidence as `source_ambiguous` without posting. Enforce uniqueness, version checks and reservations transactionally. Implement independent retention jobs: terminal detail for 90 days after outcome; unresolved commands through reconciliation plus 90 days; a tombstone with `commandId` lives throughout unresolved state and for 400 days after terminal/reconciled outcome; financial source/audit data is not removed with command detail.
+Add migrations for households/members, accounts, immutable source records, transactions/postings, revisions, command records, idempotency tombstones and outbox/jobs. NUMERIC money fields preserve source precision. Source uniqueness follows D-39 and includes household, provider, stable external account, product/log namespace and provider record ID; connection/session ID remains provenance. A collision retains evidence as `source_ambiguous` without posting. Enforce uniqueness, version checks and reservations transactionally. Implement independent retention jobs: terminal detail for 90 days after outcome; unresolved commands through reconciliation plus 90 days; a tombstone with `commandId` lives throughout unresolved state and for 400 days after terminal/reconciled outcome; financial source/audit data is not removed with command detail. Implement `ProviderDeploymentAdmission` in `backend/internal/connections/admission/`: the aggregate and repository interface belong to the application boundary, while the storage adapter persists provider/host evidence and the exact binding. The application service atomically combines both passes, invalidates admission on binding change/revocation/failed check and checks admission in the same transaction that creates a sync job. The collector rechecks the issued binding before provider IO. Cover restart, concurrent combine/sync, revocation and binding-change races.
 
 ### Change boundaries
 
 - `backend/migrations/`
 - `backend/internal/storage/`
 - `backend/internal/jobs/`
+- `backend/internal/connections/admission/`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -146,10 +156,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-070:** Individual daily allowances sum to no more than the household ceiling in one currency; the payer’s account does not change expense shares.
 - **REQ-072:** Competing edits, clarification answers and reversals check revision and current permissions while retaining both authors.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-012
 
@@ -207,18 +218,25 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Checking household availability and reserving are atomic: at most one command succeeds; rejection does not reduce another reserve and both see current availability.
 - **Level:** `integration`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
 make test-integration AREA=storage
 ```
 
-Migrations apply to an empty DB; crash/retry and concurrency create neither partial postings nor duplicate effects.
+Migrations apply to an empty DB; crash/retry and concurrency create neither partial postings nor duplicate effects. Admission survives restart; an incomplete/stale binding creates no job, and concurrent revocation/change permits neither provider IO nor posting.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

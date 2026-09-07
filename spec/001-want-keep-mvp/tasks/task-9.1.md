@@ -13,14 +13,14 @@
 
 ### Изменение и контракты
 
-Пройти весь каталог AC, собрать автоматические unit/integration/contract/E2E результаты, AI eval и ручные доказательства всех продуктов шести платформ. Проверить browser push на реальном устройстве, часовой sync, восстановление и эксплуатационную смету. Каждому AC указать отдельный статус и источник доказательства; mocked fixture не считать live coverage. Исправления принадлежат владельцам соответствующих модулей.
+Пройти весь каталог AC: unit/integration/contract/E2E, AI eval и manual evidence шести платформ; проверить browser push, hourly sync, restore и стоимость. Для каждого AC записать статус/evidence; mock не является live proof. Исправления принадлежат владельцам модулей.
 
 ### Границы изменений
 
 - `spec/001-want-keep-mvp/evidence/acceptance.md`
 - `spec/001-want-keep-mvp/verification.md`
 
-Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
+Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
 ### Связанные требования
 
@@ -80,10 +80,11 @@
 - **REQ-085:** Семь основных пользовательских задач выполняются без помощи разработчика с объяснимым финансовым результатом.
 - **REQ-086:** Детализация счёта зависит от продукта и показывает доступность денег перед служебными сведениями.
 - **REQ-087:** Контекстные pixel-анимации подтверждают значимые события и предупреждают о лимитах, сохраняя доступность и достоверность результата.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации и окружения.
 
 ### Критерии приёмки
 
-Связь с критерием задаёт покрытие; исследование или частичная задача не доказывает весь критерий продукта. Точный результат этой задачи указан ниже в проверке.
+Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже.
 
 #### AC-042
 
@@ -407,6 +408,13 @@
 - **Тогда:** Исправление покупки разрешено, изменение принадлежности личного счёта B отклоняется сервером. Действия текущего владельца и изменение семейного счёта разрешены с revision/audit. Внешний владелец и история операций не изменены, фильтр участника не даёт дополнительных прав.
 - **Уровень:** `integration+e2e`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Сервер возвращает `provider_not_admitted`, collector не запускается и проводок нет. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding; любое расхождение снова закрывает sync.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
@@ -415,13 +423,13 @@ make check && make test-integration AREA=all && make e2e SCENARIO=all && make ev
 
 Каждый AC имеет свежий pass либо конкретный blocker; все функции/платформы нужны для полного MVP, время и стоимость измерены.
 
-Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.
+До реализации suites использовать `make docs-check`; live/manual/runtime evidence фиксировать отдельно.
 
 ### Передача следующему агенту
 
-Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP.
+Зафиксировать контракты, проверки, ограничения, вопросы и разблокированные зависимости; обновить RU/EN и трассировку. Закрывать только по доказательству результата.
 
-**Commit boundary:** логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя.
+**Commit boundary:** commit/push/deploy требуют действующей авторизации пользователя.
 
 ## EN
 
@@ -435,14 +443,14 @@ Collect evidence for all requirements on the complete candidate.
 
 ### Change and contracts
 
-Run the entire AC catalog and collect unit/integration/contract/E2E results, AI evaluations and manual evidence for all products of all six platforms. Verify push on a real device, hourly sync, recovery and operating costs. Give every AC its own status/evidence; mocked fixtures are not live coverage. Fixes belong to the respective modules.
+Run the full AC catalog: unit/integration/contract/E2E, AI evaluation and manual evidence for six platforms; verify browser push, hourly sync, recovery and cost. Record status/evidence per AC; a mock is not live proof. Fixes belong to owning modules.
 
 ### Change boundaries
 
 - `spec/001-want-keep-mvp/evidence/acceptance.md`
 - `spec/001-want-keep-mvp/verification.md`
 
-These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
+Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
 ### Linked requirements
 
@@ -502,10 +510,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-085:** Seven core user tasks are completed without developer help with explainable financial outcomes.
 - **REQ-086:** Account details depend on the product and show availability before technical details.
 - **REQ-087:** Contextual pixel animations acknowledge milestones and warn about limits while preserving accessibility and truthful outcomes.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
 
 ### Acceptance criteria
 
-A criterion link establishes coverage; research or a partial task does not prove the entire product criterion. This task's exact outcome is specified in verification below.
+A link establishes coverage but does not prove the whole criterion; verification below records the exact result.
 
 #### AC-042
 
@@ -829,6 +838,13 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Purchase correction succeeds; B’s personal-account ownership change is rejected server-side. Current-owner actions and household-account changes succeed with revision/audit. External ownership and transaction history remain unchanged; member filter grants no extra authority.
 - **Level:** `integration+e2e`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
@@ -837,10 +853,10 @@ make check && make test-integration AREA=all && make e2e SCENARIO=all && make ev
 
 Every AC has a fresh pass or precise blocker; all features/platforms are required for the full MVP and time/cost are measured.
 
-The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof.
+Before suites exist, use `make docs-check`; record live/manual/runtime evidence separately.
 
 ### Handoff to the next agent
 
-Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready.
+Record contracts, checks, limitations, questions and unblocked dependencies; update RU/EN and traceability. Close only with outcome evidence.
 
-**Commit boundary:** this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization.
+**Commit boundary:** commit/push/deploy require current user authorization.

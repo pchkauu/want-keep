@@ -37,13 +37,13 @@ The `catalog.json` graph remains the source for exact dependencies. A range in t
 | Provider task | Preferred transport | Before mapping implementation | Before deployment enablement |
 | --- | --- | --- | --- |
 | task-4.1 Alfa | Official structured read, otherwise authorized Playwright | Synthetic D-37/D-39 contract; no UI-derived postings | Permission, fixtures, stable IDs, pagination/revisions/fees/cashback, reauthentication, two accounts, target-host route |
-| task-4.2 Raiffeisen | RBO API/CAMT | CAMT 1:N, scoped ID/fallback, CLBD/unknown semantics | OAuth rotation, corrections/reversals, full history, second account, live conformance |
+| task-4.2 Raiffeisen | RBO API/CAMT | CAMT 1:N, canonical cross-report fingerprint + optional-ID aliases, CLBD/unknown semantics | OAuth rotation, corrections/reversals, full history, second account, live conformance |
 | task-4.3 Ozon | Verified session read | Sanitized HAR projection, route namespaces, parent fee relation | Session permission/lifecycle, stable account ID, history end, second account, reauthentication |
 | task-4.4 Bybit | Official RSA read-only API | Route IDs, candidate links, hourly collision policy | Precision/history, two accounts, key rotation/revocation, write-route denial |
 | task-4.5 Aifory | Structured session read; Playwright only when necessary | D-33 namespace/unknown rules | Permission, structured fixtures, card lifecycle/fees/FX, pagination, reauthentication, two accounts |
 | task-4.6 EMCD | Structured session read; Playwright only when necessary | D-34 namespace/unknown rules | Wallet/Grow/card/P2P fixtures, balance/lifecycle/fees, pagination, reauthentication, two accounts |
 
-A failed provider gate keeps that source disabled. Only the admission service combines task-4.x provider evidence and task-8.x host evidence for the exact D-43 binding; any stale binding closes sync again. It does not block manual accounting, domain features or other admitted sources. No fallback includes write actions.
+A failed provider gate keeps that source disabled. `backend/internal/connections/admission/` and the task-1.3 storage adapter own the aggregate, atomic combine/invalidate and admission-check + enqueue. Only the admission service combines task-4.x provider evidence and task-8.x host evidence for the exact D-43 binding; any stale binding closes sync again and the collector checks it before IO. It does not block manual accounting, domain features or other admitted sources. No fallback includes write actions.
 
 ## Contract entry/exit gates
 
@@ -53,7 +53,7 @@ Entry: task-1.1 in target; contracts version 8. Exit: Money/Asset/Rate/coverage,
 
 ### task-1.3
 
-Entry: versioned task-1.2 API/value objects. Exit: atomic source/posting/revision/outbox; D-39 unique key and collision evidence; D-41 independent cleanup jobs; crash/retry/concurrency tests on isolated PostgreSQL.
+Entry: versioned task-1.2 API/value objects. Exit: atomic source/posting/revision/outbox; D-39 unique key and collision evidence; D-41 independent cleanup jobs; persisted D-43 aggregate/repository, atomic provider+host combine/invalidate and admission-check + job enqueue; restart/revocation/binding-race tests on isolated PostgreSQL.
 
 ### task-6.1 and task-6.4
 

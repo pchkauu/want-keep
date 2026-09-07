@@ -45,13 +45,23 @@ class ReadinessContractTest(unittest.TestCase):
         self.assertIn(state, contract)
       for retention in ("90", "400", "/commands/recent"):
         self.assertIn(retention, contract)
-      for contract_marker in ("commandId", "deploymentGate.status", "adapterBuildDigest", "rLow", "max(1", "ROUND_HALF_EVEN"):
+      for contract_marker in (
+        "commandId",
+        "deploymentGate.status",
+        "adapterBuildDigest",
+        "backend/internal/connections/admission/",
+        "camtCrossReportFingerprint",
+        "rLow",
+        "max(1",
+        "ROUND_HALF_EVEN",
+      ):
         self.assertIn(contract_marker, contract)
 
   def test_provider_admission_acceptance_covers_owning_tasks(self):
     expected_tasks = {
       "task-0.10",
       "task-1.2",
+      "task-1.3",
       "task-3.3",
       "task-4.1",
       "task-4.2",
@@ -60,6 +70,7 @@ class ReadinessContractTest(unittest.TestCase):
       "task-4.5",
       "task-4.6",
       "task-8.1",
+      "task-9.1",
       "task-9.2",
     }
     actual_tasks = {
