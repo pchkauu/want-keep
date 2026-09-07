@@ -23,7 +23,7 @@
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT и BTC; наличные и банковские деньги различаются счетами.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
 - **REQ-004:** Начало учёта задаётся датой; начальные остатки отделены от доходов и расходов.
 - **REQ-005:** Счета показывают собственные, доступные, заблокированные и заёмные средства в пределах данных источника.
 - **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
@@ -37,9 +37,9 @@
 
 #### AC-002
 
-- **Дано:** Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, BTC 0.001.
+- **Дано:** Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, BTC 0.001 и ETH 0.00123456.
 - **Когда:** Владелец открывает счета.
-- **Тогда:** Показаны пять отдельных счетов с исходными валютами и точными остатками; RUB суммируется только в соответствующем срезе.
+- **Тогда:** Показаны шесть отдельных счетов с исходными активами и точными остатками, включая ETH без округления до фиатных сотых; RUB суммируется только в соответствующем срезе.
 - **Уровень:** `integration`.
 
 #### AC-004
@@ -129,7 +129,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT and BTC; cash and bank money are separate accounts.
+- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
 - **REQ-004:** Accounting starts on a selected date; opening balances are separate from income and expenses.
 - **REQ-005:** Accounts distinguish owned, available, locked and borrowed amounts where the source provides them.
 - **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
@@ -143,9 +143,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-002
 
-- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20 and BTC 0.001.
+- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, BTC 0.001 and ETH 0.00123456.
 - **When:** The owner opens accounts.
-- **Then:** Five distinct accounts show original currencies and exact balances; RUB is combined only in the relevant aggregate.
+- **Then:** Six distinct accounts show original assets and exact balances, including ETH without rounding to fiat cents; RUB is combined only in the relevant aggregate.
 - **Level:** `integration`.
 
 #### AC-004

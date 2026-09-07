@@ -169,7 +169,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 ### Связанные требования
 
-- **REQ-003:** Общую валюту отображения можно переключать между четырьмя поддерживаемыми активами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
 - **REQ-014:** Категория, подкатегория, продавец и позиция чека являются отдельными аналитическими признаками.
 - **REQ-019:** AI автоматизирует внутренний учёт через проверяемые команды; неопределённость остаётся явной.
 - **REQ-049:** Каждый участник входит со своими passkey и одноразовыми кодами восстановления; сброс чужого входа партнёром недоступен.
@@ -256,7 +256,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 #### AC-003
 
 - **Дано:** Для всех необходимых пар есть актуальная оценка.
-- **Когда:** Владелец переключает RUB на USD, USDT и BTC.
+- **Когда:** Владелец переключает RUB на USD, USDT, BTC и ETH.
 - **Тогда:** Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.
 - **Уровень:** `end-to-end`.
 
@@ -486,7 +486,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-003:** The reporting currency can switch among the four supported assets.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
 - **REQ-014:** Category, subcategory, merchant and receipt item are separate analytical dimensions.
 - **REQ-019:** AI automates internal accounting through validated commands; uncertainty remains explicit.
 - **REQ-049:** Each member signs in with their own passkeys and one-time recovery codes; partner-assisted reset is unavailable.
@@ -573,7 +573,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 #### AC-003
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT and BTC.
+- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 

@@ -221,8 +221,8 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT и BTC; наличные и банковские деньги различаются счетами.
-- **REQ-003:** Общую валюту отображения можно переключать между четырьмя поддерживаемыми активами.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
 - **REQ-004:** Начало учёта задаётся датой; начальные остатки отделены от доходов и расходов.
 - **REQ-005:** Счета показывают собственные, доступные, заблокированные и заёмные средства в пределах данных источника.
 - **REQ-006:** Перевод между счетами семьи, включая счета разных участников, меняет остатки без дохода или расхода по основной сумме.
@@ -251,15 +251,15 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### AC-002
 
-- **Дано:** Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, BTC 0.001.
+- **Дано:** Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, BTC 0.001 и ETH 0.00123456.
 - **Когда:** Владелец открывает счета.
-- **Тогда:** Показаны пять отдельных счетов с исходными валютами и точными остатками; RUB суммируется только в соответствующем срезе.
+- **Тогда:** Показаны шесть отдельных счетов с исходными активами и точными остатками, включая ETH без округления до фиатных сотых; RUB суммируется только в соответствующем срезе.
 - **Уровень:** `integration`.
 
 #### AC-003
 
 - **Дано:** Для всех необходимых пар есть актуальная оценка.
-- **Когда:** Владелец переключает RUB на USD, USDT и BTC.
+- **Когда:** Владелец переключает RUB на USD, USDT, BTC и ETH.
 - **Тогда:** Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.
 - **Уровень:** `end-to-end`.
 
@@ -639,8 +639,8 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT and BTC; cash and bank money are separate accounts.
-- **REQ-003:** The reporting currency can switch among the four supported assets.
+- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
 - **REQ-004:** Accounting starts on a selected date; opening balances are separate from income and expenses.
 - **REQ-005:** Accounts distinguish owned, available, locked and borrowed amounts where the source provides them.
 - **REQ-006:** Transfers between household accounts, including different members’ accounts, change balances without principal income or expense.
@@ -669,15 +669,15 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-002
 
-- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20 and BTC 0.001.
+- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, BTC 0.001 and ETH 0.00123456.
 - **When:** The owner opens accounts.
-- **Then:** Five distinct accounts show original currencies and exact balances; RUB is combined only in the relevant aggregate.
+- **Then:** Six distinct accounts show original assets and exact balances, including ETH without rounding to fiat cents; RUB is combined only in the relevant aggregate.
 - **Level:** `integration`.
 
 #### AC-003
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT and BTC.
+- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 

@@ -18,7 +18,7 @@ Prepared proposal, 87 REQ, 105 AC, architecture, contracts/formulas, glossary, M
 | BLK-02 | Raif Russia retail read access/full coverage | task-0.2 | The equivalent for Raif |
 | BLK-03 | Operational Ozon debit-card/main-account contract under D-32 | task-0.10, task-0.3 evidence | [Research completed with blockers](evidence/ozon.en.md): read structures obtained; needs history completion, acceptable session operation, second account and unavailable semantics. Other Ozon products not required |
 | BLK-04 | Full Bybit Funding/Spot/Earn/P2P/futures, net/gross and permissions | task-0.4 | Each log/product verified separately |
-| BLK-05 | Aifory wallet/payment/card/exchange contracts | task-0.5 | Complete product matrix and readback |
+| BLK-05 | Aifory: RUB, USDT, ETH and existing USD card under D-33 | task-0.10, task-0.5 evidence | [Research](evidence/aifory.en.md): AIFORY-B02–B04 — automation permission, structured read contract, identity/history/reauth, card lifecycle/fees/FX. Other products not required |
 | BLK-06 | EMCD wallet/Coinhold/P2P/card/mining contracts | task-0.6 | Separate accrual/transfers/fees and full product coverage |
 | BLK-07 | Free current/historical FX valuation and provider quotes | task-0.7 | All pairs/periods/fees/source policies or a decision on unavailability |
 | BLK-08 | OpenAI models, measured quality/cost and request limits | task-0.8 | Financial-invariant evaluation with tokens/errors and selected versions/limits |
@@ -87,3 +87,11 @@ Research output is complete under the README rule; OZON-B01 is closed, the struc
 REQ-044/AC-044, task-0.3/task-4.3, integrations and traceability reflect D-32; IDs are unchanged. The Ozon link to AC-070 is removed: credit terms remain for other providers but are outside Ozon's current contract. Other research in the shared checkout is outside this task's publication.
 
 Checks: spec_tool check — pass (87 REQ, 105 AC, 67 tasks, 35 screens, 67 GitHub mappings); 13 documentation-tool tests — pass; JSON, RU/EN IDs/meaning, cursor and commission relationships, projection privacy and git diff --check — pass. Local self review performed; the previous Avida pass applies to the previous package. HTTP replay, allowlist/importer, complete ACs and application runtime were not tested: the collector and application are not implemented. Commit/push and GitHub readback are recorded separately as delivery results in Issue #3.
+
+## Aifory: task-0.5 research completion, 2026-09-07
+
+[RU evidence](evidence/aifory.md) / [EN evidence](evidence/aifory.en.md): 19 observations/sources, D-33, selected RUB/USDT/ETH/USD card, synthetic scenarios and AIFORY-B01–B05. B01 closed, B02–B04 remain in BLK-05 under task-0.10, B05 deferred without blocking. Aifory credit/savings and other unused products are not required. ETH is included in REQ-002/REQ-003, valuation and rate-source research; REQ-046/AC-046 and tasks are updated without changing IDs.
+
+UI reading does not prove structured API, automatic import, completeness, identity after reauth/second account or card lifecycle. Operator consent for automation is not confirmed. Research is complete under the README rule; task-4.5 and Ready remain blocked. Full AC-046/AC-041/AC-048/AC-079/AC-087 are not claimed as passed. Local spec, RU/EN/JSON and diff checks are separate from runtime.
+
+Current changes received a local self review. Aifory links to AC-070/AC-071 credit, savings, trading and mining products were removed; AC-039 retains missing-rate checks. The previously recorded Avida pass concerns the earlier package.

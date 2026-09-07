@@ -3,7 +3,7 @@
 
 ## RU
 
-Подтвердить историческую и текущую оценку четырёх активов и покрытие обменных котировок.
+Подтвердить историческую и текущую оценку RUB, USD, USDT, BTC и ETH и покрытие обменных котировок.
 
 **Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Проверить бесплатность, условия использования, USD/RUB, BTC и USDT-кроссы, историческую глубину, точность timestamp и rate limits. Отдельно описать справочную оценку и котировки покупки/продажи сервисов, включая комиссии и доступность из DE/NL/BG. Не считать USDT равным USD.
+Проверить бесплатность, условия использования, USD/RUB, BTC, ETH и USDT-кроссы, историческую глубину, точность timestamp и rate limits. Отдельно описать справочную оценку и котировки покупки/продажи сервисов, включая комиссии и доступность из DE/NL/BG. Не считать USDT равным USD.
 
 ### Границы изменений
 
@@ -24,8 +24,8 @@
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT и BTC; наличные и банковские деньги различаются счетами.
-- **REQ-003:** Общую валюту отображения можно переключать между четырьмя поддерживаемыми активами.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
 - **REQ-037:** Исторические расходы используют зафиксированную оценку на дату операции, текущий капитал — актуальную оценку.
 - **REQ-038:** Курсы обмена учитывают направление, сервис, время, сумму применимости и известные комиссии.
 - **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
@@ -81,7 +81,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 ## EN
 
-Verify historical/current valuation of four assets and exchange-quote coverage.
+Verify historical/current RUB, USD, USDT, BTC and ETH valuation and exchange-quote coverage.
 
 **Status:** Research — not started; live access and paid runs require securely supplied owner access.
 
@@ -91,7 +91,7 @@ Verify historical/current valuation of four assets and exchange-quote coverage.
 
 ### Change and contracts
 
-Verify free access, usage terms, USD/RUB, BTC and USDT crosses, history depth, timestamp precision and rate limits. Distinguish reference valuation from provider buy/sell quotes, including fees and DE/NL/BG reachability. Do not equate USDT with USD.
+Verify free access, usage terms, USD/RUB, BTC, ETH and USDT crosses, history depth, timestamp precision and rate limits. Distinguish reference valuation from provider buy/sell quotes, including fees and DE/NL/BG reachability. Do not equate USDT with USD.
 
 ### Change boundaries
 
@@ -102,8 +102,8 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT and BTC; cash and bank money are separate accounts.
-- **REQ-003:** The reporting currency can switch among the four supported assets.
+- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
 - **REQ-037:** Historical expenses use a fixed transaction-date valuation; current wealth uses a current valuation.
 - **REQ-038:** Exchange quotes include direction, provider, timestamp, applicable amount and known fees.
 - **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.

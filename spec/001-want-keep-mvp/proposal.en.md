@@ -17,7 +17,7 @@ This stage delivers bilingual specifications, criteria, architecture, integratio
 | ID | Decision |
 | --- | --- |
 | D-01 | One household, two members with separate sign-in, desktop web on macOS laptops in Chrome and Arc. All 15 capabilities and six integrations are required for the complete MVP. Hundreds of transactions/month; up to 45 minutes/day usage target. |
-| D-02 | RUB, USD, USDT, BTC; cash and bank money are different accounts. Reporting currency switches. Owned money, availability, debt and credit limits are distinct. |
+| D-02 | RUB, USD, USDT, BTC, ETH (D-33); cash and bank money are different accounts. Reporting currency switches. Owned money, availability, debt and credit limits are distinct. |
 | D-03 | Hourly and on-demand automatic sync. History starts on a selected date; opening balances and coverage boundaries are explicit. |
 | D-04 | Owned transfers/exchanges are linked without repeated income/expense; fees remain separate. Duplicates are handled in accounting. Originals and correction history remain; discrepancies are investigated. |
 | D-05 | Full expense in the payment month, including annual subscriptions. Refunds recalculate the original purchase month; cash movement retains the refund date. |
@@ -28,7 +28,7 @@ This stage delivers bilingual specifications, criteria, architecture, integratio
 | D-10 | Goals have amount, currency, deadline and virtual-reservation or dedicated-account mode. No double reservation. Daily allowances are overall/per-category and available/forecast with separate funding by currency. |
 | D-11 | Credit cards with debt, payments and grace; savings with actual/forecast and comparable dated-cash-flow returns; realized/unrealized trading P&L, fees, funding and mining. No trading terminal. |
 | D-12 | Transaction-date expense valuation, current wealth valuation and separate FX effects. Reference rates and available provider buy/sell quotes with fees. USDT is not automatically USD. |
-| D-13 | Alfa-Bank, Raif Russia: cards, current/savings accounts, deposits; Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding/Spot/Earn/P2P/futures; Aifory: RUB/crypto, exchange/payments/card; EMCD: wallet/Coinhold/P2P/card/mining. Read-only; browser automation allowed. |
+| D-13 | Alfa-Bank, Raif Russia: cards, current/savings accounts, deposits; Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding/Spot/Earn/P2P/futures; Aifory: RUB accounts, USDT, ETH and existing card with their movements (D-33); EMCD: wallet/Coinhold/P2P/card/mining. Read-only; browser automation allowed. |
 | D-14 | Separate passkeys and personal one-time recovery codes for each member; partner-assisted reset is unavailable. Protected secrets, attachments and sessions; AI has no payment authority. |
 | D-15 | For the whole household: server up to $40/month in DE/NL/BG, OpenAI up to $50/month; separately sourced data must be free. Hourly MacBook backups while reachable; visible backup age, conditional RPO and recovery target within four hours. |
 | D-16 | UI, AI interaction and documentation in RU/EN. Dashboard covers plan/actuals, income/expenses, goals and daily allowances. In-app and web-push notifications. |
@@ -79,3 +79,11 @@ Documentation and backlog can be delivered before live access. Full-MVP Ready re
 | ID | Decision |
 | --- | --- |
 | D-32 | The current MVP supports the available Ozon debit card and linked main account. Credit cards, savings and deposits belong to a future contract extension; their absence does not block Ozon/the MVP. This explicitly changes the earlier matrix, rather than claiming those products do not exist at the bank. Debit-data reading quality/automation, household identity and shared accounting rules remain. Other providers are unchanged. |
+
+## Aifory coverage refinement, 2026-09-07
+
+| ID | Decision |
+| --- | --- |
+| D-33 | Current Aifory scope: RUB accounts, USDT, ETH and the existing crypto card with its actual USD balance. Other products/currency wallets, other cards, standalone P2P/referral products and service catalogs are deferred and do not block the MVP. Retain all included-wallet movements even when the related service is deferred. ETH joins accounting and selectable valuation currencies. Selected-product reliability/automation remain mandatory; expansion needs new verified contracts. Other providers and shared functions are not reduced. |
+
+REQ-002/REQ-003/REQ-046, their ACs and downstream tasks were updated with IDs preserved. This is target-contract version 4; no application exists yet, so no runtime/data migration is required. [Research outcome](evidence/aifory.en.md).

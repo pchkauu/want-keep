@@ -2,7 +2,7 @@
 
 [Русский](contracts.md)
 
-Target project contract version 3; family and desktop amendment 2026-09-07. No actual API or database schema exists yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
+Target project contract version 4; family and desktop amendment 2026-09-07. No actual API or database schema exists yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
 
 ## Domain entities
 
@@ -130,3 +130,11 @@ UIState derives from typed errors/coverage/result. `version_conflict` includes a
 Motion subscribes to confirmed domain events and never owns a posting. Event stores ID, householdId, subject/revision, kind, occurredAt, origin (`interactive|live_sync|historical_backfill`), eligibility and correction consequences. Accounts/goals/budget determine business event/eligibility through application/outbox; notifications owns delivery/personal presentation ack. Initial historical import has eligibility false; top-up/goal achievement never derive from balance changes on read. Server atomic claim/ack by event+user prevents competing-tab replays; lost presentation confirmation prefers static result over repeat celebration. Effect ack differs from notification read. Reduced motion/off produces static outcome; unavailable animation support never affects accounting.
 
 Synthetic overview response example: “Available today RUB 400; USD 100 expected in 5 days; RUB 3,000 reserved for a goal.” These fields are never summed without explicit valuation; clicking RUB 400 expands K/N and its inputs. Example figures are neither prices nor personal data.
+
+## Aifory and ETH: D-33
+
+RUB, USD, USDT, BTC and ETH are available in Money and valuation. Network is a separate source/operation attribute; verify provider scale at the boundary. Do not round ETH to fiat cents or equate USDT with USD. Unknown rate/available/locked does not become zero or spendable money.
+
+Aifory reads only RUB accounts, USDT, ETH and the existing USD card with their movements/fees. A RUB-group total does not create another balance; matching office names do not merge accounts. A platform RUB wallet preserves product kind and is not a bank deposit. Card funding links distinct native legs under an established contract, with fees separate. Authorization/clearing need IDs/linkage; UI sign, mask, shared URL and similar merchant are not identity.
+
+Other products are deferred without blocking. Retain their movements through included wallets with provenance and clarification of unknown semantics. task-0.10 resolves structured provider mapping, automation permission, history/reauth and card lifecycle under AIFORY-B02–B04 before task-4.5; no OCR-accounting bypass. [Evidence](evidence/aifory.en.md).

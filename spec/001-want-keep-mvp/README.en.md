@@ -46,3 +46,5 @@ Agreed 2026-09-07: separate member sign-ins, full shared visibility, personal/ho
 [Design and animations](design.en.md), [35 screens, forms and states](screens.en.md), [navigation and flows](navigation.en.md). macOS laptop Chrome/Arc only; actual browser acceptance is separate from Chromium CI.
 
 D-32 refinement: the current Ozon contract covers a debit card and linked main account; other products at this provider are deferred and do not block the MVP. [Research findings](evidence/ozon.en.md).
+
+D-33 refinement: Aifory — RUB accounts, USDT, ETH and the existing USD card; other products deferred without blocking. ETH added to accounting and valuation. [Research](evidence/aifory.en.md); unresolved contract questions remain in BLK-05.

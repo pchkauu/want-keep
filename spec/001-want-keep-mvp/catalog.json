@@ -28,34 +28,34 @@
     },
     {
       "id": "REQ-002",
-      "decision": "D-02",
+      "decision": "D-33",
       "title": {
-        "ru": "Учёт поддерживает RUB, USD, USDT и BTC; наличные и банковские деньги различаются счетами.",
-        "en": "Accounting supports RUB, USD, USDT and BTC; cash and bank money are separate accounts."
+        "ru": "Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.",
+        "en": "Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts."
       },
       "acceptance": {
         "id": "AC-002",
         "given": {
-          "ru": "Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, BTC 0.001.",
-          "en": "Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20 and BTC 0.001."
+          "ru": "Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, BTC 0.001 и ETH 0.00123456.",
+          "en": "Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, BTC 0.001 and ETH 0.00123456."
         },
         "when": {
           "ru": "Владелец открывает счета.",
           "en": "The owner opens accounts."
         },
         "then": {
-          "ru": "Показаны пять отдельных счетов с исходными валютами и точными остатками; RUB суммируется только в соответствующем срезе.",
-          "en": "Five distinct accounts show original currencies and exact balances; RUB is combined only in the relevant aggregate."
+          "ru": "Показаны шесть отдельных счетов с исходными активами и точными остатками, включая ETH без округления до фиатных сотых; RUB суммируется только в соответствующем срезе.",
+          "en": "Six distinct accounts show original assets and exact balances, including ETH without rounding to fiat cents; RUB is combined only in the relevant aggregate."
         },
         "level": "integration"
       }
     },
     {
       "id": "REQ-003",
-      "decision": "D-02",
+      "decision": "D-33",
       "title": {
-        "ru": "Общую валюту отображения можно переключать между четырьмя поддерживаемыми активами.",
-        "en": "The reporting currency can switch among the four supported assets."
+        "ru": "Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.",
+        "en": "The reporting currency can switch among RUB, USD, USDT, BTC and ETH."
       },
       "acceptance": {
         "id": "AC-003",
@@ -64,8 +64,8 @@
           "en": "A current valuation exists for every required pair."
         },
         "when": {
-          "ru": "Владелец переключает RUB на USD, USDT и BTC.",
-          "en": "The owner switches RUB to USD, USDT and BTC."
+          "ru": "Владелец переключает RUB на USD, USDT, BTC и ETH.",
+          "en": "The owner switches RUB to USD, USDT, BTC and ETH."
         },
         "then": {
           "ru": "Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.",
@@ -1084,24 +1084,24 @@
     },
     {
       "id": "REQ-046",
-      "decision": "D-13",
+      "decision": "D-33",
       "title": {
-        "ru": "Интеграция Aifory Pro автоматически читает RUB/криптокошелёк, обмены, платежи и криптокарту в пределах подтверждённого контракта.",
-        "en": "The Aifory Pro integration automatically reads RUB/crypto wallet, exchanges, payments and crypto card under a verified contract."
+        "ru": "Aifory Pro автоматически читает RUB-счета, USDT, ETH и используемую криптокарту, включая движения и комиссии этих продуктов. Остальные продукты отложены и не блокируют MVP.",
+        "en": "Aifory Pro automatically reads RUB accounts, USDT, ETH and the existing crypto card, including these products’ movements and fees. Other products are deferred and do not block the MVP."
       },
       "acceptance": {
         "id": "AC-046",
         "given": {
-          "ru": "Подключён разрешённый личный аккаунт Aifory Pro с тестируемыми продуктами.",
-          "en": "An authorized personal Aifory Pro account with the tested products is connected."
+          "ru": "Подключён разрешённый личный аккаунт Aifory с RUB-счетами, USDT/TRC-20, ETH/Ethereum и используемой картой USD (D-33); другие продукты не подключены.",
+          "en": "An authorized personal Aifory account provides RUB accounts, USDT/TRC-20, ETH/Ethereum and the existing USD card (D-33); other products are not connected."
         },
         "when": {
-          "ru": "Запрошены счета, остатки, операции и необходимые условия продуктов.",
-          "en": "Accounts, balances, transactions and required product terms are requested."
+          "ru": "Повторно прочитаны остатки и история, обмен RUB/USDT, ETH-вывод с комиссией, пополнение карты USDT/USD и похожие pending/confirmed оплаты с отдельной fee.",
+          "en": "Balances/history are read again, including RUB/USDT exchange, ETH withdrawal with a fee, USDT/USD card funding and similar pending/confirmed payments with a separate fee."
         },
         "then": {
-          "ru": "Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.",
-          "en": "Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage."
+          "ru": "Каждый включённый продукт имеет структурированное доказательство чтения; RUB-группа не дублирует дочерние счета, ETH точен. Движения и комиссии учтены один раз по подтверждённым ID/связям/статусам; знак UI и паритет USDT/USD не предполагаются. Неизвестная связь требует уточнения. Пробелы включённых продуктов блокируют адаптер; остальные продукты не требуются, но их движения по выбранным кошелькам не пропускаются.",
+          "en": "Each included product has structured read evidence; RUB groups do not duplicate child accounts and ETH remains exact. Movements/fees count once using verified IDs/links/statuses; neither UI signs nor USDT/USD parity are assumed. Unknown linkage requires clarification. Gaps in included products block the adapter; other products are not required, but their movements through selected wallets are retained."
         },
         "level": "contract+manual"
       }
@@ -2723,15 +2723,15 @@
         "en": "Verify Aifory Pro read contract"
       },
       "goal": {
-        "ru": "Получить проверяемую матрицу доступа к обязательным продуктам Aifory Pro.",
-        "en": "Produce a verifiable access matrix for mandatory Aifory Pro products."
+        "ru": "Зафиксировать проверяемый read-контракт и ограничения RUB, USDT, ETH и используемой криптокарты Aifory по D-33.",
+        "en": "Record a verifiable read contract and limitations for Aifory RUB, USDT, ETH and the existing crypto card under D-33."
       },
       "depends_on": [],
       "acceptance": [
         "AC-046",
         "AC-041",
         "AC-048",
-        "AC-070",
+        "AC-039",
         "AC-079",
         "AC-087"
       ],
@@ -2740,17 +2740,21 @@
         "spec/001-want-keep-mvp/evidence/aifory.en.md"
       ],
       "behavior": {
-        "ru": "Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.",
-        "en": "Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity."
+        "ru": "Исследовать только RUB-счета, USDT, ETH и существующую криптокарту USD (D-33), включая их движения/комиссии. Другие продукты и их условия — будущее расширение, не блокер; движение по включённому кошельку сохраняется даже при отложенном связанном сервисе. Проверить официальный личный API либо разрешённое чтение кабинета, согласие оператора на автоматизацию, бесплатность, auth и allowlist. Зафиксировать поля, IDs/revisions, gross/net, card authorization/clearing и funding USD/USDT, время/полноту истории, reauth и два аккаунта семьи. UI/OCR/общий маршрут/маска не заменяют структурированный контракт и identity. Результат — датированный RU/EN evidence с синтетическими примерами и явными ограничениями. AIFORY-B02–B04 закрывает task-0.10 до task-4.5; отсутствие других продуктов не переносить в блокеры.",
+        "en": "Research only RUB accounts, USDT, ETH and the existing USD crypto card (D-33), including their movements/fees. Other products/terms are a future extension, not a blocker; retain movements through included wallets even when the related service is deferred. Verify an official personal API or permitted portal reading, operator consent for automation, free access, auth and allowlist. Record fields, IDs/revisions, gross/net, card authorization/clearing, USD/USDT funding, time/history completeness, reauth and two household accounts. UI/OCR/common route/mask do not replace a structured contract or identity. Deliver dated RU/EN evidence with synthetic examples and explicit limits. task-0.10 closes AIFORY-B02–B04 before task-4.5; absent other products must not become blockers."
       },
       "verification": {
         "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
         "expected": {
-          "ru": "Документ на двух языках содержит источник и дату, проверенные и непроверенные поля, примеры запросов/ответов без секретов и итог по каждому продукту. Реальный read-only прогон выполняется только после безопасного предоставления доступа владельцем; его отсутствие явно записано.",
-          "en": "The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit."
+          "ru": "RU/EN evidence содержит 19 наблюдений/источников, продуктовую матрицу D-33, проверенные и неизвестные поля, синтетический сценарий и AIFORY-B01–B05. Реальные HTTP request/response не получены и не выдумываются; отсутствие API и полного runtime не подменяется UI-прогоном. Отложенные продукты не блокируют, открытые вопросы выбранных продуктов переданы task-0.10.",
+          "en": "RU/EN evidence contains 19 observations/sources, the D-33 product matrix, established/unknown fields, a synthetic scenario and AIFORY-B01–B05. Real HTTP requests/responses were not obtained and must not be invented; UI reading does not substitute for API/full runtime. Deferred products do not block; open questions for selected products are handed to task-0.10."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/5"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/5",
+      "status": {
+        "ru": "Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.md), [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.en.md). UI-чтение выполнено; AIFORY-B02–B04 / BLK-05 остаются открыты под контролем task-0.10. Другие продукты отложены без блокировки. task-4.5 и MVP — Not Ready.",
+        "en": "Research completed 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.md), [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.en.md). UI reading performed; AIFORY-B02–B04 / BLK-05 remain open under task-0.10. Other products are deferred without blocking. task-4.5 and MVP are Not Ready."
+      }
     },
     {
       "id": "task-0.6",
@@ -2797,8 +2801,8 @@
         "en": "Verify free FX and quote sources"
       },
       "goal": {
-        "ru": "Подтвердить историческую и текущую оценку четырёх активов и покрытие обменных котировок.",
-        "en": "Verify historical/current valuation of four assets and exchange-quote coverage."
+        "ru": "Подтвердить историческую и текущую оценку RUB, USD, USDT, BTC и ETH и покрытие обменных котировок.",
+        "en": "Verify historical/current RUB, USD, USDT, BTC and ETH valuation and exchange-quote coverage."
       },
       "depends_on": [],
       "acceptance": [
@@ -2812,8 +2816,8 @@
         "spec/001-want-keep-mvp/evidence/fx.en.md"
       ],
       "behavior": {
-        "ru": "Проверить бесплатность, условия использования, USD/RUB, BTC и USDT-кроссы, историческую глубину, точность timestamp и rate limits. Отдельно описать справочную оценку и котировки покупки/продажи сервисов, включая комиссии и доступность из DE/NL/BG. Не считать USDT равным USD.",
-        "en": "Verify free access, usage terms, USD/RUB, BTC and USDT crosses, history depth, timestamp precision and rate limits. Distinguish reference valuation from provider buy/sell quotes, including fees and DE/NL/BG reachability. Do not equate USDT with USD."
+        "ru": "Проверить бесплатность, условия использования, USD/RUB, BTC, ETH и USDT-кроссы, историческую глубину, точность timestamp и rate limits. Отдельно описать справочную оценку и котировки покупки/продажи сервисов, включая комиссии и доступность из DE/NL/BG. Не считать USDT равным USD.",
+        "en": "Verify free access, usage terms, USD/RUB, BTC, ETH and USDT crosses, history depth, timestamp precision and rate limits. Distinguish reference valuation from provider buy/sell quotes, including fees and DE/NL/BG reachability. Do not equate USDT with USD."
       },
       "verification": {
         "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
@@ -2957,8 +2961,8 @@
         "spec/001-want-keep-mvp/plan.md"
       ],
       "behavior": {
-        "ru": "Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. Закрыть сроки хранения command status/idempotency для retry/recovery, не смешивая их с бессрочным финансовым audit.",
-        "en": "Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. Resolve command-status/idempotency retention for retry/recovery, distinct from durable financial audit."
+        "ru": "Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. Закрыть сроки хранения command status/idempotency для retry/recovery, не смешивая их с бессрочным финансовым audit. Для Aifory действует D-33: закрыть AIFORY-B02–B04 только для RUB, USDT, ETH и используемой карты; AIFORY-B05/остальные продукты не блокируют. Согласовать структурированный read-контракт, право автоматизации, identity/history и card lifecycle; учесть ETH в оценке.",
+        "en": "Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. Resolve command-status/idempotency retention for retry/recovery, distinct from durable financial audit. Apply Aifory D-33: close AIFORY-B02–B04 only for RUB, USDT, ETH and the existing card; AIFORY-B05/other products do not block. Establish the structured read contract, automation permission, identity/history and card lifecycle; include ETH valuation."
       },
       "verification": {
         "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
@@ -3910,8 +3914,8 @@
         "en": "Implement Aifory Pro connector"
       },
       "goal": {
-        "ru": "Автоматически получать согласованные данные всех обязательных продуктов Aifory Pro.",
-        "en": "Automatically retrieve consistent data for all mandatory Aifory Pro products."
+        "ru": "Автоматически получать согласованные данные RUB-счетов, USDT, ETH и используемой карты Aifory по D-33.",
+        "en": "Automatically retrieve consistent Aifory RUB-account, USDT, ETH and existing-card data under D-33."
       },
       "depends_on": [
         "task-0.5",
@@ -3925,8 +3929,7 @@
         "AC-041",
         "AC-048",
         "AC-063",
-        "AC-070",
-        "AC-071",
+        "AC-039",
         "AC-079",
         "AC-087",
         "AC-090"
@@ -3936,14 +3939,14 @@
         "collector/src/providers/aifory/"
       ],
       "behavior": {
-        "ru": "Разделить RUB/crypto, обмен, платёж и криптокарту; сохранять реальный источник списания, комиссию и данные конвертации карточной покупки. Реализовать только доказанный в evidence/aifory способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.",
-        "en": "Separate RUB/crypto, exchange, payment and crypto card; retain the actual debit source, fee and card-purchase conversion data. Implement only the access method established in evidence/aifory, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect."
+        "ru": "Реализовать только разрешённый и структурированно подтверждённый в evidence/aifory read-контракт после закрытия AIFORY-B02–B04 в task-0.10. D-33 исключает остальные продукты из блокеров. RUB-группы отделены от счетов; ID не строится из имени офиса, адреса или /home/wallet. ETH хранит точные native amounts/network/fee. USD-карта отделена от USDT: нужны funding legs, gross/net, курс/база комиссии и lifecycle authorization/clearing/refund. Похожие pending/confirmed строки не объединять без доказанной связи и не списывать дважды. Сохранять все движения выбранных кошельков, включая операции отложенных сервисов. Проверить повтор, revisions, неполную историю/resume, session expiry, hourly refresh, выбранную дату, два внешних аккаунта и reauth; stale job после disconnect не применяется. Не использовать OCR/человеческие подписи как финансовый контракт. Нет открытия продуктов или платежей.",
+        "en": "Implement only the permitted structured read contract established in evidence/aifory after task-0.10 closes AIFORY-B02–B04. D-33 excludes other products from blockers. Separate RUB groups/accounts; do not derive identity from office names, addresses or /home/wallet. ETH retains exact native amounts/network/fees. Separate USD card from USDT: establish funding legs, gross/net, rate/fee basis and authorization/clearing/refund lifecycle. Do not merge similar pending/confirmed rows without proven linkage or debit them twice. Retain all selected-wallet movements, including deferred-service operations. Verify replay, revisions, incomplete history/resume, session expiry, hourly refresh, selected start date, two external accounts and reauth; reject stale jobs after disconnect. Do not use OCR/human labels as financial contracts. No product opening or payments."
       },
       "verification": {
         "command": "make test-contract PROVIDER=aifory && make test-integration AREA=aifory",
         "expected": {
-          "ru": "Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.",
-          "en": "All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result."
+          "ru": "RUB, USDT, ETH и используемая карта имеют синтетические contract scenarios и отдельный live readback; пройдены AIFORY-E03/E08–E14 edge cases после подтверждения структурированного контракта. Остальные продукты не требуются. Перед реализацией закрыты AIFORY-B02–B04 и Ready.",
+          "en": "RUB, USDT, ETH and the existing card have synthetic contract scenarios and separate live readback; AIFORY-E03/E08–E14 edge cases pass after structured-contract verification. Other products are not required. AIFORY-B02–B04 and Ready are resolved before implementation."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/33"
@@ -4260,8 +4263,8 @@
       "verification": {
         "command": "make test-go PKG=./internal/valuation/... && make test-contract PROVIDER=rates",
         "expected": {
-          "ru": "Все четыре валюты, cross-rates, partial refund и отсутствие исторической цены проверены без изменения native ledger.",
-          "en": "All four currencies, cross-rates, partial refund and missing historical price pass without changing the native ledger."
+          "ru": "RUB, USD, USDT, BTC и ETH, cross-rates, partial refund и отсутствие исторической цены проверены без изменения native ledger.",
+          "en": "RUB, USD, USDT, BTC and ETH, cross-rates, partial refund and missing historical price pass without changing the native ledger."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/40"

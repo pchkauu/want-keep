@@ -3,9 +3,9 @@
 
 ## RU
 
-Получить проверяемую матрицу доступа к обязательным продуктам Aifory Pro.
+Зафиксировать проверяемый read-контракт и ограничения RUB, USDT, ETH и используемой криптокарты Aifory по D-33.
 
-**Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
+**Состояние:** Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.md), [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.en.md). UI-чтение выполнено; AIFORY-B02–B04 / BLK-05 остаются открыты под контролем task-0.10. Другие продукты отложены без блокировки. task-4.5 и MVP — Not Ready.
 
 **Зависимости:** нет.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.
+Исследовать только RUB-счета, USDT, ETH и существующую криптокарту USD (D-33), включая их движения/комиссии. Другие продукты и их условия — будущее расширение, не блокер; движение по включённому кошельку сохраняется даже при отложенном связанном сервисе. Проверить официальный личный API либо разрешённое чтение кабинета, согласие оператора на автоматизацию, бесплатность, auth и allowlist. Зафиксировать поля, IDs/revisions, gross/net, card authorization/clearing и funding USD/USDT, время/полноту истории, reauth и два аккаунта семьи. UI/OCR/общий маршрут/маска не заменяют структурированный контракт и identity. Результат — датированный RU/EN evidence с синтетическими примерами и явными ограничениями. AIFORY-B02–B04 закрывает task-0.10 до task-4.5; отсутствие других продуктов не переносить в блокеры.
 
 ### Границы изменений
 
@@ -24,12 +24,9 @@
 
 ### Связанные требования
 
-- **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
-- **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
-- **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
 - **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-046:** Интеграция Aifory Pro автоматически читает RUB/криптокошелёк, обмены, платежи и криптокарту в пределах подтверждённого контракта.
+- **REQ-046:** Aifory Pro автоматически читает RUB-счета, USDT, ETH и используемую криптокарту, включая движения и комиссии этих продуктов. Остальные продукты отложены и не блокируют MVP.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
@@ -40,9 +37,9 @@
 
 #### AC-046
 
-- **Дано:** Подключён разрешённый личный аккаунт Aifory Pro с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый личный аккаунт Aifory с RUB-счетами, USDT/TRC-20, ETH/Ethereum и используемой картой USD (D-33); другие продукты не подключены.
+- **Когда:** Повторно прочитаны остатки и история, обмен RUB/USDT, ETH-вывод с комиссией, пополнение карты USDT/USD и похожие pending/confirmed оплаты с отдельной fee.
+- **Тогда:** Каждый включённый продукт имеет структурированное доказательство чтения; RUB-группа не дублирует дочерние счета, ETH точен. Движения и комиссии учтены один раз по подтверждённым ID/связям/статусам; знак UI и паритет USDT/USD не предполагаются. Неизвестная связь требует уточнения. Пробелы включённых продуктов блокируют адаптер; остальные продукты не требуются, но их движения по выбранным кошелькам не пропускаются.
 - **Уровень:** `contract+manual`.
 
 #### AC-041
@@ -59,12 +56,12 @@
 - **Тогда:** Платёж и неизвестный маршрут блокируются; MFA/CAPTCHA передаётся владельцу, источник приостанавливается; остальные источники продолжают работать.
 - **Уровень:** `integration`.
 
-#### AC-070
+#### AC-039
 
-- **Дано:** Банк передаёт баланс, но не условия грейса; ставка Earn имеет неизвестную базу начисления.
-- **Когда:** Открываются прогнозы.
-- **Тогда:** Баланс отображается; льгота и точный прогноз имеют причину недоступности; AI не извлекает гарантированную бизнес-логику из рекламной формулировки.
-- **Уровень:** `contract+end-to-end`.
+- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Когда:** Строится общая оценка.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Уровень:** `integration`.
 
 #### AC-079
 
@@ -86,7 +83,7 @@
 python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 ```
 
-Документ на двух языках содержит источник и дату, проверенные и непроверенные поля, примеры запросов/ответов без секретов и итог по каждому продукту. Реальный read-only прогон выполняется только после безопасного предоставления доступа владельцем; его отсутствие явно записано.
+RU/EN evidence содержит 19 наблюдений/источников, продуктовую матрицу D-33, проверенные и неизвестные поля, синтетический сценарий и AIFORY-B01–B05. Реальные HTTP request/response не получены и не выдумываются; отсутствие API и полного runtime не подменяется UI-прогоном. Отложенные продукты не блокируют, открытые вопросы выбранных продуктов переданы task-0.10.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
@@ -98,9 +95,9 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 ## EN
 
-Produce a verifiable access matrix for mandatory Aifory Pro products.
+Record a verifiable read contract and limitations for Aifory RUB, USDT, ETH and the existing crypto card under D-33.
 
-**Status:** Research — not started; live access and paid runs require securely supplied owner access.
+**Status:** Research completed 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.md), [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.en.md). UI reading performed; AIFORY-B02–B04 / BLK-05 remain open under task-0.10. Other products are deferred without blocking. task-4.5 and MVP are Not Ready.
 
 **Dependencies:** none.
 
@@ -108,7 +105,7 @@ Produce a verifiable access matrix for mandatory Aifory Pro products.
 
 ### Change and contracts
 
-Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity.
+Research only RUB accounts, USDT, ETH and the existing USD crypto card (D-33), including their movements/fees. Other products/terms are a future extension, not a blocker; retain movements through included wallets even when the related service is deferred. Verify an official personal API or permitted portal reading, operator consent for automation, free access, auth and allowlist. Record fields, IDs/revisions, gross/net, card authorization/clearing, USD/USDT funding, time/history completeness, reauth and two household accounts. UI/OCR/common route/mask do not replace a structured contract or identity. Deliver dated RU/EN evidence with synthetic examples and explicit limits. task-0.10 closes AIFORY-B02–B04 before task-4.5; absent other products must not become blockers.
 
 ### Change boundaries
 
@@ -119,12 +116,9 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
-- **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
-- **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
 - **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-046:** The Aifory Pro integration automatically reads RUB/crypto wallet, exchanges, payments and crypto card under a verified contract.
+- **REQ-046:** Aifory Pro automatically reads RUB accounts, USDT, ETH and the existing crypto card, including these products’ movements and fees. Other products are deferred and do not block the MVP.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
@@ -135,9 +129,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-046
 
-- **Given:** An authorized personal Aifory Pro account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized personal Aifory account provides RUB accounts, USDT/TRC-20, ETH/Ethereum and the existing USD card (D-33); other products are not connected.
+- **When:** Balances/history are read again, including RUB/USDT exchange, ETH withdrawal with a fee, USDT/USD card funding and similar pending/confirmed payments with a separate fee.
+- **Then:** Each included product has structured read evidence; RUB groups do not duplicate child accounts and ETH remains exact. Movements/fees count once using verified IDs/links/statuses; neither UI signs nor USDT/USD parity are assumed. Unknown linkage requires clarification. Gaps in included products block the adapter; other products are not required, but their movements through selected wallets are retained.
 - **Level:** `contract+manual`.
 
 #### AC-041
@@ -154,12 +148,12 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Payments and unknown routes are blocked; MFA/CAPTCHA is handed to the owner and that source pauses; other sources continue.
 - **Level:** `integration`.
 
-#### AC-070
+#### AC-039
 
-- **Given:** A bank exposes balance but no grace terms; an Earn rate has an unknown accrual basis.
-- **When:** Forecasts are opened.
-- **Then:** Balance is shown; grace eligibility and exact forecasts explain unavailability; AI does not turn marketing wording into guaranteed business rules.
-- **Level:** `contract+end-to-end`.
+- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **When:** A total valuation is built.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Level:** `integration`.
 
 #### AC-079
 
@@ -181,7 +175,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 ```
 
-The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit.
+RU/EN evidence contains 19 observations/sources, the D-33 product matrix, established/unknown fields, a synthetic scenario and AIFORY-B01–B05. Real HTTP requests/responses were not obtained and must not be invented; UI reading does not substitute for API/full runtime. Deferred products do not block; open questions for selected products are handed to task-0.10.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 

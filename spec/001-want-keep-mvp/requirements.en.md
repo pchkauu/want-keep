@@ -12,15 +12,15 @@ Source: `D-01`. Acceptance: [AC-001](acceptance_criteria.en.md#ac-001).
 
 ## REQ-002
 
-Accounting supports RUB, USD, USDT and BTC; cash and bank money are separate accounts.
+Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
 
-Source: `D-02`. Acceptance: [AC-002](acceptance_criteria.en.md#ac-002).
+Source: `D-33`. Acceptance: [AC-002](acceptance_criteria.en.md#ac-002).
 
 ## REQ-003
 
-The reporting currency can switch among the four supported assets.
+The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
 
-Source: `D-02`. Acceptance: [AC-003](acceptance_criteria.en.md#ac-003).
+Source: `D-33`. Acceptance: [AC-003](acceptance_criteria.en.md#ac-003).
 
 ## REQ-004
 
@@ -276,9 +276,9 @@ Source: `D-13`. Acceptance: [AC-045](acceptance_criteria.en.md#ac-045).
 
 ## REQ-046
 
-The Aifory Pro integration automatically reads RUB/crypto wallet, exchanges, payments and crypto card under a verified contract.
+Aifory Pro automatically reads RUB accounts, USDT, ETH and the existing crypto card, including these products’ movements and fees. Other products are deferred and do not block the MVP.
 
-Source: `D-13`. Acceptance: [AC-046](acceptance_criteria.en.md#ac-046).
+Source: `D-33`. Acceptance: [AC-046](acceptance_criteria.en.md#ac-046).
 
 ## REQ-047
 

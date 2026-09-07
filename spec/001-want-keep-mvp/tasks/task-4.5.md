@@ -3,7 +3,7 @@
 
 ## RU
 
-Автоматически получать согласованные данные всех обязательных продуктов Aifory Pro.
+Автоматически получать согласованные данные RUB-счетов, USDT, ETH и используемой карты Aifory по D-33.
 
 **Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Разделить RUB/crypto, обмен, платёж и криптокарту; сохранять реальный источник списания, комиссию и данные конвертации карточной покупки. Реализовать только доказанный в evidence/aifory способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.
+Реализовать только разрешённый и структурированно подтверждённый в evidence/aifory read-контракт после закрытия AIFORY-B02–B04 в task-0.10. D-33 исключает остальные продукты из блокеров. RUB-группы отделены от счетов; ID не строится из имени офиса, адреса или /home/wallet. ETH хранит точные native amounts/network/fee. USD-карта отделена от USDT: нужны funding legs, gross/net, курс/база комиссии и lifecycle authorization/clearing/refund. Похожие pending/confirmed строки не объединять без доказанной связи и не списывать дважды. Сохранять все движения выбранных кошельков, включая операции отложенных сервисов. Проверить повтор, revisions, неполную историю/resume, session expiry, hourly refresh, выбранную дату, два внешних аккаунта и reauth; stale job после disconnect не применяется. Не использовать OCR/человеческие подписи как финансовый контракт. Нет открытия продуктов или платежей.
 
 ### Границы изменений
 
@@ -27,17 +27,10 @@
 - **REQ-006:** Перевод между счетами семьи, включая счета разных участников, меняет остатки без дохода или расхода по основной сумме.
 - **REQ-007:** Обмен и P2P-конвертация собственных денег сохраняют обе валютные суммы, фактический курс и комиссии.
 - **REQ-008:** Повторные импорты, чек и запись чата объединяют доказательства одной операции без повторного учёта.
-- **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
-- **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
-- **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
-- **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
-- **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
 - **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
 - **REQ-040:** Каждый источник обновляется раз в час и по запросу с видимым временем успешного обновления.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-045:** Интеграция Bybit автоматически читает Funding, Spot, Earn, P2P и фьючерсы в пределах подтверждённого контракта.
-- **REQ-046:** Интеграция Aifory Pro автоматически читает RUB/криптокошелёк, обмены, платежи и криптокарту в пределах подтверждённого контракта.
-- **REQ-047:** Интеграция EMCD автоматически читает кошелёк, Coinhold, P2P, криптокарту и майнинг в пределах подтверждённого контракта.
+- **REQ-046:** Aifory Pro автоматически читает RUB-счета, USDT, ETH и используемую криптокарту, включая движения и комиссии этих продуктов. Остальные продукты отложены и не блокируют MVP.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-061:** Повторные задания, перезапуски и параллельные изменения не создают двойных финансовых эффектов.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
@@ -50,9 +43,9 @@
 
 #### AC-046
 
-- **Дано:** Подключён разрешённый личный аккаунт Aifory Pro с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый личный аккаунт Aifory с RUB-счетами, USDT/TRC-20, ETH/Ethereum и используемой картой USD (D-33); другие продукты не подключены.
+- **Когда:** Повторно прочитаны остатки и история, обмен RUB/USDT, ETH-вывод с комиссией, пополнение карты USDT/USD и похожие pending/confirmed оплаты с отдельной fee.
+- **Тогда:** Каждый включённый продукт имеет структурированное доказательство чтения; RUB-группа не дублирует дочерние счета, ETH точен. Движения и комиссии учтены один раз по подтверждённым ID/связям/статусам; знак UI и паритет USDT/USD не предполагаются. Неизвестная связь требует уточнения. Пробелы включённых продуктов блокируют адаптер; остальные продукты не требуются, но их движения по выбранным кошелькам не пропускаются.
 - **Уровень:** `contract+manual`.
 
 #### AC-040
@@ -83,19 +76,12 @@
 - **Тогда:** Состояние ожидания связи сменяется проверенным обменом; доход/расход основной суммы не удваивается, устаревшая комиссия не восстанавливается.
 - **Уровень:** `integration`.
 
-#### AC-070
+#### AC-039
 
-- **Дано:** Банк передаёт баланс, но не условия грейса; ставка Earn имеет неизвестную базу начисления.
-- **Когда:** Открываются прогнозы.
-- **Тогда:** Баланс отображается; льгота и точный прогноз имеют причину недоступности; AI не извлекает гарантированную бизнес-логику из рекламной формулировки.
-- **Уровень:** `contract+end-to-end`.
-
-#### AC-071
-
-- **Дано:** Источник различает gross P&L, net P&L, fee, funding и reward/transfer.
-- **Когда:** Одна экономическая операция встречается в нескольких журналах.
-- **Тогда:** Происхождение показателей сохранено; комиссия и доход не удваиваются; выбор net/gross подтверждён контрактом.
-- **Уровень:** `contract+integration`.
+- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Когда:** Строится общая оценка.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Уровень:** `integration`.
 
 #### AC-079
 
@@ -124,7 +110,7 @@
 make test-contract PROVIDER=aifory && make test-integration AREA=aifory
 ```
 
-Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.
+RUB, USDT, ETH и используемая карта имеют синтетические contract scenarios и отдельный live readback; пройдены AIFORY-E03/E08–E14 edge cases после подтверждения структурированного контракта. Остальные продукты не требуются. Перед реализацией закрыты AIFORY-B02–B04 и Ready.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
@@ -136,7 +122,7 @@ make test-contract PROVIDER=aifory && make test-integration AREA=aifory
 
 ## EN
 
-Automatically retrieve consistent data for all mandatory Aifory Pro products.
+Automatically retrieve consistent Aifory RUB-account, USDT, ETH and existing-card data under D-33.
 
 **Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
 
@@ -146,7 +132,7 @@ Automatically retrieve consistent data for all mandatory Aifory Pro products.
 
 ### Change and contracts
 
-Separate RUB/crypto, exchange, payment and crypto card; retain the actual debit source, fee and card-purchase conversion data. Implement only the access method established in evidence/aifory, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect.
+Implement only the permitted structured read contract established in evidence/aifory after task-0.10 closes AIFORY-B02–B04. D-33 excludes other products from blockers. Separate RUB groups/accounts; do not derive identity from office names, addresses or /home/wallet. ETH retains exact native amounts/network/fees. Separate USD card from USDT: establish funding legs, gross/net, rate/fee basis and authorization/clearing/refund lifecycle. Do not merge similar pending/confirmed rows without proven linkage or debit them twice. Retain all selected-wallet movements, including deferred-service operations. Verify replay, revisions, incomplete history/resume, session expiry, hourly refresh, selected start date, two external accounts and reauth; reject stale jobs after disconnect. Do not use OCR/human labels as financial contracts. No product opening or payments.
 
 ### Change boundaries
 
@@ -160,17 +146,10 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-006:** Transfers between household accounts, including different members’ accounts, change balances without principal income or expense.
 - **REQ-007:** Exchange and P2P conversion of owned money preserve both currency amounts, the actual rate and fees.
 - **REQ-008:** Repeated imports, receipts and chat entries combine evidence of one transaction without double counting.
-- **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
-- **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
-- **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
-- **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
-- **REQ-036:** Mining rewards are separate from transfers between owned wallets.
 - **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
 - **REQ-040:** Each source refreshes hourly and on demand with a visible last-success timestamp.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-045:** The Bybit integration automatically reads Funding, Spot, Earn, P2P and futures under a verified contract.
-- **REQ-046:** The Aifory Pro integration automatically reads RUB/crypto wallet, exchanges, payments and crypto card under a verified contract.
-- **REQ-047:** The EMCD integration automatically reads wallet, Coinhold, P2P, crypto card and mining under a verified contract.
+- **REQ-046:** Aifory Pro automatically reads RUB accounts, USDT, ETH and the existing crypto card, including these products’ movements and fees. Other products are deferred and do not block the MVP.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-061:** Repeated jobs, restarts and concurrent changes cannot create duplicate financial effects.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
@@ -183,9 +162,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-046
 
-- **Given:** An authorized personal Aifory Pro account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized personal Aifory account provides RUB accounts, USDT/TRC-20, ETH/Ethereum and the existing USD card (D-33); other products are not connected.
+- **When:** Balances/history are read again, including RUB/USDT exchange, ETH withdrawal with a fee, USDT/USD card funding and similar pending/confirmed payments with a separate fee.
+- **Then:** Each included product has structured read evidence; RUB groups do not duplicate child accounts and ETH remains exact. Movements/fees count once using verified IDs/links/statuses; neither UI signs nor USDT/USD parity are assumed. Unknown linkage requires clarification. Gaps in included products block the adapter; other products are not required, but their movements through selected wallets are retained.
 - **Level:** `contract+manual`.
 
 #### AC-040
@@ -216,19 +195,12 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Pending matching becomes a verified exchange; principal is not double-counted and the stale fee is not restored.
 - **Level:** `integration`.
 
-#### AC-070
+#### AC-039
 
-- **Given:** A bank exposes balance but no grace terms; an Earn rate has an unknown accrual basis.
-- **When:** Forecasts are opened.
-- **Then:** Balance is shown; grace eligibility and exact forecasts explain unavailability; AI does not turn marketing wording into guaranteed business rules.
-- **Level:** `contract+end-to-end`.
-
-#### AC-071
-
-- **Given:** A source distinguishes gross P&L, net P&L, fee, funding and reward/transfer.
-- **When:** One economic event appears in several logs.
-- **Then:** Metric provenance is preserved; fees and income are not doubled; net/gross semantics are contract-verified.
-- **Level:** `contract+integration`.
+- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **When:** A total valuation is built.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Level:** `integration`.
 
 #### AC-079
 
@@ -257,7 +229,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 make test-contract PROVIDER=aifory && make test-integration AREA=aifory
 ```
 
-All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result.
+RUB, USDT, ETH and the existing card have synthetic contract scenarios and separate live readback; AIFORY-E03/E08–E14 edge cases pass after structured-contract verification. Other products are not required. AIFORY-B02–B04 and Ready are resolved before implementation.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 

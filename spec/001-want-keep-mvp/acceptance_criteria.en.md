@@ -107,23 +107,23 @@ REQ: `REQ-001`.
 
 ## AC-002
 
-Accounting supports RUB, USD, USDT and BTC; cash and bank money are separate accounts.
+Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
 
 REQ: `REQ-002`.
 
-- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20 and BTC 0.001.
+- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, BTC 0.001 and ETH 0.00123456.
 - **When:** The owner opens accounts.
-- **Then:** Five distinct accounts show original currencies and exact balances; RUB is combined only in the relevant aggregate.
+- **Then:** Six distinct accounts show original assets and exact balances, including ETH without rounding to fiat cents; RUB is combined only in the relevant aggregate.
 - **Level:** `integration`.
 
 ## AC-003
 
-The reporting currency can switch among the four supported assets.
+The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
 
 REQ: `REQ-003`.
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT and BTC.
+- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 
@@ -591,13 +591,13 @@ REQ: `REQ-045`.
 
 ## AC-046
 
-The Aifory Pro integration automatically reads RUB/crypto wallet, exchanges, payments and crypto card under a verified contract.
+Aifory Pro automatically reads RUB accounts, USDT, ETH and the existing crypto card, including these products’ movements and fees. Other products are deferred and do not block the MVP.
 
 REQ: `REQ-046`.
 
-- **Given:** An authorized personal Aifory Pro account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized personal Aifory account provides RUB accounts, USDT/TRC-20, ETH/Ethereum and the existing USD card (D-33); other products are not connected.
+- **When:** Balances/history are read again, including RUB/USDT exchange, ETH withdrawal with a fee, USDT/USD card funding and similar pending/confirmed payments with a separate fee.
+- **Then:** Each included product has structured read evidence; RUB groups do not duplicate child accounts and ETH remains exact. Movements/fees count once using verified IDs/links/statuses; neither UI signs nor USDT/USD parity are assumed. Unknown linkage requires clarification. Gaps in included products block the adapter; other products are not required, but their movements through selected wallets are retained.
 - **Level:** `contract+manual`.
 
 ## AC-047

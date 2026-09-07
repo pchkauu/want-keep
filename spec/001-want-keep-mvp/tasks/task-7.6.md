@@ -151,8 +151,8 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT и BTC; наличные и банковские деньги различаются счетами.
-- **REQ-003:** Общую валюту отображения можно переключать между четырьмя поддерживаемыми активами.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
 - **REQ-010:** Возврат уменьшает расходы исходного месяца покупки, сохраняя дату реального поступления денег.
 - **REQ-014:** Категория, подкатегория, продавец и позиция чека являются отдельными аналитическими признаками.
 - **REQ-020:** AI-инсайты по доходам и расходам ссылаются на проверяемые данные и отделяют прогноз от факта.
@@ -178,7 +178,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 #### AC-003
 
 - **Дано:** Для всех необходимых пар есть актуальная оценка.
-- **Когда:** Владелец переключает RUB на USD, USDT и BTC.
+- **Когда:** Владелец переключает RUB на USD, USDT, BTC и ETH.
 - **Тогда:** Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.
 - **Уровень:** `end-to-end`.
 
@@ -474,8 +474,8 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT and BTC; cash and bank money are separate accounts.
-- **REQ-003:** The reporting currency can switch among the four supported assets.
+- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
 - **REQ-010:** A refund reduces expenses in the purchase month while preserving the actual cash receipt date.
 - **REQ-014:** Category, subcategory, merchant and receipt item are separate analytical dimensions.
 - **REQ-020:** AI income/expense insights reference verifiable data and separate forecasts from facts.
@@ -501,7 +501,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 #### AC-003
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT and BTC.
+- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 

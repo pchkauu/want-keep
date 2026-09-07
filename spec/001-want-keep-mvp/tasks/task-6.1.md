@@ -24,8 +24,8 @@
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT и BTC; наличные и банковские деньги различаются счетами.
-- **REQ-003:** Общую валюту отображения можно переключать между четырьмя поддерживаемыми активами.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
 - **REQ-007:** Обмен и P2P-конвертация собственных денег сохраняют обе валютные суммы, фактический курс и комиссии.
 - **REQ-010:** Возврат уменьшает расходы исходного месяца покупки, сохраняя дату реального поступления денег.
 - **REQ-016:** Позиции чека распределяют одну оплаченную сумму по категориям без дублирования итога.
@@ -41,7 +41,7 @@
 #### AC-003
 
 - **Дано:** Для всех необходимых пар есть актуальная оценка.
-- **Когда:** Владелец переключает RUB на USD, USDT и BTC.
+- **Когда:** Владелец переключает RUB на USD, USDT, BTC и ETH.
 - **Тогда:** Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.
 - **Уровень:** `end-to-end`.
 
@@ -107,7 +107,7 @@
 make test-go PKG=./internal/valuation/... && make test-contract PROVIDER=rates
 ```
 
-Все четыре валюты, cross-rates, partial refund и отсутствие исторической цены проверены без изменения native ledger.
+RUB, USD, USDT, BTC и ETH, cross-rates, partial refund и отсутствие исторической цены проверены без изменения native ledger.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
@@ -140,8 +140,8 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT and BTC; cash and bank money are separate accounts.
-- **REQ-003:** The reporting currency can switch among the four supported assets.
+- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
 - **REQ-007:** Exchange and P2P conversion of owned money preserve both currency amounts, the actual rate and fees.
 - **REQ-010:** A refund reduces expenses in the purchase month while preserving the actual cash receipt date.
 - **REQ-016:** Receipt items allocate one paid amount across categories without duplicating the total.
@@ -157,7 +157,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 #### AC-003
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT and BTC.
+- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 
@@ -223,7 +223,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 make test-go PKG=./internal/valuation/... && make test-contract PROVIDER=rates
 ```
 
-All four currencies, cross-rates, partial refund and missing historical price pass without changing the native ledger.
+RUB, USD, USDT, BTC and ETH, cross-rates, partial refund and missing historical price pass without changing the native ledger.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 
