@@ -1,5 +1,7 @@
 package domain
 
+import "slices"
+
 func (r Revision) rolePostings(role Role) []Posting {
 	out := []Posting{}
 	for _, p := range r.Postings {
@@ -57,6 +59,9 @@ func (r Revision) FieldEqual(other Revision, field Field) bool {
 		return r.Merchant == other.Merchant
 	case NoteField:
 		return r.Note == other.Note
+	case MatchingField:
+		a, b := r.Participation, other.Participation
+		return a.GroupID == b.GroupID && a.Kind == b.Kind && a.State == b.State && slices.Equal(a.Parts, b.Parts)
 	case AccountingField:
 		return r.Accounting() == other.Accounting()
 	}
@@ -79,6 +84,8 @@ func (r *Revision) CopyField(from Revision, field Field) error {
 		r.Merchant = from.Merchant
 	case NoteField:
 		r.Note = from.Note
+	case MatchingField:
+		r.Participation = from.Clone().Participation
 	case AccountingField:
 		r.AccountingState = from.Accounting()
 	default:

@@ -124,7 +124,7 @@
     tags:
     - transactions
     summary: Record a new internal transfer or exchange
-    description: Both native legs and all known fees are explicit. existingTransactions must be empty in task-2.2; linking returns feature_unavailable without an effect.
+    description: Both native legs and known fees are explicit. Nonempty existingTransactions links exactly the existing components with current revisions; amounts and date must match the selected primary and movement. It never creates a missing side or silently changes a fee.
     parameters:
     - "$ref": "../components.yaml#/parameters/IdempotencyKey"
     - "$ref": "../components.yaml#/parameters/CSRF"

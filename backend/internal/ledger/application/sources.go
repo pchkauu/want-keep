@@ -3,8 +3,8 @@ package application
 import (
 	"context"
 	"errors"
-	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 )
@@ -22,10 +22,10 @@ type SourceRepository interface {
 }
 type Sources struct {
 	repository SourceRepository
-	writer     *Writer
+	writer     JournalWriter
 }
 
-func NewSources(r SourceRepository, w *Writer) *Sources { return &Sources{r, w} }
+func NewSources(r SourceRepository, w JournalWriter) *Sources { return &Sources{r, w} }
 
 // Apply belongs inside CommitPage's transaction, after the deployment and lease fences.
 func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger.SourceInput) (ledger.SourceOutcome, error) {
@@ -40,6 +40,7 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		raw.Revision = 1
 		raw.ActorID = p.UserID()
 		raw.HumanOverride = false
+		raw.Participation = ledger.Participation{}
 		raw.Protections = map[ledger.Field]ledger.Protection{}
 		raw.FieldVersions = map[ledger.Field]uint64{}
 		raw.AccountingState = ledger.IncludedInAccounting
@@ -128,7 +129,7 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 			return result, e
 		}
 		for i, posting := range raw.Postings {
-			a, e := s.writer.accounts.Account(ctx, p, posting.AccountID)
+			a, e := s.writer.Account(ctx, p, posting.AccountID)
 			if e != nil {
 				return result, e
 			}
@@ -177,7 +178,9 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		if found {
 			prior = &previous
 		}
-		if r.CheckSuccessor(prior) != nil {
+		validation := r.Clone()
+		validation.Participation = ledger.Participation{}
+		if validation.CheckSuccessor(prior) != nil {
 			if !found {
 				return result, s.repository.RecordUnresolvedTransaction(ctx, input)
 			}
@@ -186,7 +189,10 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		if found && previous.SameFacts(r) {
 			return result, s.repository.SaveSourceFact(ctx, current, raw, conflict)
 		}
-		if err = s.writer.Append(ctx, p, r, expected); err != nil {
+		if err = s.writer.AppendSource(ctx, p, r, expected, ledger.Evidence{Kind: "source", ID: current.ID, Revision: current.Revision}); err != nil {
+			if errors.Is(err, ledger.ErrMatchingConflict) {
+				return result, s.repository.SaveSourceFact(ctx, current, raw, "matching_conflict")
+			}
 			return result, err
 		}
 		if err = s.repository.SaveSourceFact(ctx, current, raw, conflict); err != nil {

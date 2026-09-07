@@ -13,11 +13,11 @@ func (r Revision) Holds() ([]Hold, error) {
 		return nil, err
 	}
 	out := []Hold{}
-	if r.State != Pending || r.Accounting() == ExcludedFromAccounting {
+	if r.Accounting() == ExcludedFromAccounting {
 		return out, nil
 	}
-	for _, p := range r.Postings {
-		if !p.MovesMoney() || p.Money.Sign() >= 0 {
+	for i, p := range r.Postings {
+		if !r.Contributes(i) || r.ContributionState(i) != Pending || !p.MovesMoney() || p.Money.Sign() >= 0 {
 			continue
 		}
 		zero, _ := money.NewMoney("0", p.Money.Asset())
@@ -58,6 +58,9 @@ func (r Revision) ExchangeAmounts() (*ExecutedExchange, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+	if out.Sent.Validate() != nil || out.Received.Validate() != nil {
+		return nil, nil
 	}
 	return out, nil
 }

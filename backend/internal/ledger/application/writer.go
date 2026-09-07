@@ -4,6 +4,7 @@ import (
 	"context"
 
 	accounts "github.com/pchkauu/want-keep/backend/internal/accounts/application"
+	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
@@ -13,6 +14,8 @@ import (
 )
 
 type Journal interface {
+	SaveDecision(context.Context, ledger.Decision) error
+	RevisionEvidence(context.Context, household.Principal, string, uint64) ([]ledger.Evidence, error)
 	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
 	Repository
 	CurrentLedgerRevision(context.Context, household.Principal, string) (ledger.Revision, bool, error)
@@ -22,6 +25,74 @@ type Journal interface {
 type Writer struct {
 	journal  Journal
 	accounts accounts.Repository
+}
+
+type JournalWriter interface {
+	AppendSource(context.Context, household.Principal, ledger.Revision, uint64, ledger.Evidence) error
+	Append(context.Context, household.Principal, ledger.Revision, uint64) error
+	AppendDecision(context.Context, household.Principal, ledger.Decision, []ledger.Revision) error
+	Account(context.Context, household.Principal, string) (account.Account, error)
+}
+
+func (w *Writer) Account(ctx context.Context, p household.Principal, id string) (account.Account, error) {
+	return w.accounts.Account(ctx, p, id)
+}
+
+func (w *Writer) AppendDecision(ctx context.Context, p household.Principal, d ledger.Decision, next []ledger.Revision) error {
+	if len(next) != len(d.Entries) {
+		return ledger.ErrInvalidRevision
+	}
+	revisions := map[string]ledger.Revision{}
+	for _, r := range next {
+		if _, exists := revisions[r.OperationID]; exists {
+			return ledger.ErrInvalidRevision
+		}
+		revisions[r.OperationID] = r
+	}
+	for _, e := range d.Entries {
+		r, found := revisions[e.OperationID]
+		if !found || r.DecisionID != d.ID || r.Revision != e.After || r.ActorID != d.ActorID {
+			return ledger.ErrInvalidRevision
+		}
+	}
+	seen := map[ledger.Evidence]bool{}
+	for _, e := range d.Evidence {
+		if seen[e] {
+			return ledger.ErrInvalidRevision
+		}
+		seen[e] = true
+	}
+	for _, e := range d.Entries {
+		refs, err := w.journal.RevisionEvidence(ctx, p, e.OperationID, e.Before)
+		if err != nil {
+			return err
+		}
+		for _, ref := range refs {
+			if !seen[ref] {
+				d.Evidence = append(d.Evidence, ref)
+				seen[ref] = true
+			}
+		}
+	}
+	if err := d.Validate(); err != nil {
+		return err
+	}
+	if err := w.journal.SaveDecision(ctx, d); err != nil {
+		return err
+	}
+	for _, r := range next {
+		if err := w.Append(ctx, p, r, r.Revision-1); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Writer) AppendSource(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64, evidence ledger.Evidence) error {
+	if evidence.Kind != "source" || evidence.Validate() != nil {
+		return ledger.ErrInvalidRevision
+	}
+	return w.Append(ctx, p, r, expected)
 }
 
 func NewWriter(j Journal, a accounts.Repository) *Writer { return &Writer{j, a} }

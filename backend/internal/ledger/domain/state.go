@@ -3,6 +3,7 @@ package domain
 import "errors"
 
 var ErrInvalidTransition = errors.New("invalid transaction transition")
+var ErrMatchingConflict = errors.New("matching group conflict")
 var ErrNotFound = errors.New("transaction not found")
 var ErrFeatureUnavailable = errors.New("transaction feature unavailable")
 

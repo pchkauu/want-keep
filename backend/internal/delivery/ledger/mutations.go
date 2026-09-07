@@ -103,7 +103,9 @@ func (s *Server) transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if input.Existing {
-		s.problem(w, ledger.ErrFeatureUnavailable)
+		s.execute(w, r, a, "transactions.links", in, func(ctx context.Context) (command.Result, error) {
+			return s.matching.LinkTransfer(ctx, a.Principal, input, s.existingMembers(in.ExistingTransactions))
+		})
 		return
 	}
 	s.execute(w, r, a, "transactions.transfer", in, func(ctx context.Context) (command.Result, error) { return s.service.Transfer(ctx, a.Principal, input) })

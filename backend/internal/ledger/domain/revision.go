@@ -12,6 +12,7 @@ import (
 var ErrInvalidRevision = errors.New("invalid ledger revision")
 
 type Posting struct {
+	FeeID     string
 	AccountID string
 	Money     money.Money
 	Role      Role
@@ -19,6 +20,8 @@ type Posting struct {
 	Treatment Treatment
 }
 type Revision struct {
+	Correspondence                                 *Correspondence
+	Participation                                  Participation
 	AccountingState                                AccountingState
 	DecisionID                                     string
 	RecordedAt                                     calendar.Instant
@@ -48,6 +51,12 @@ type Revision struct {
 }
 
 func (r Revision) Validate() error {
+	if r.Correspondence != nil && r.Correspondence.Validate() != nil {
+		return ErrInvalidRevision
+	}
+	if err := r.Participation.Validate(r); err != nil {
+		return err
+	}
 	if r.Accounting() != IncludedInAccounting && r.Accounting() != ExcludedFromAccounting {
 		return ErrInvalidRevision
 	}
@@ -106,6 +115,9 @@ func (r Revision) Validate() error {
 		return ErrInvalidRevision
 	}
 	for _, p := range r.Postings {
+		if len(p.FeeID) > 2000 || p.FeeID != "" && (p.Role != Fee || r.Correspondence == nil) {
+			return ErrInvalidRevision
+		}
 		if p.AccountID == "" {
 			return ErrInvalidRevision
 		}
@@ -148,11 +160,11 @@ func (r Revision) Deltas(previous *Revision) (map[string]money.Money, error) {
 		value    *Revision
 		subtract bool
 	}{{previous, true}, {&r, false}} {
-		if entry.value == nil || entry.value.State != "posted" || entry.value.Accounting() == ExcludedFromAccounting {
+		if entry.value == nil || entry.value.Accounting() == ExcludedFromAccounting {
 			continue
 		}
-		for _, p := range entry.value.Postings {
-			if !p.MovesMoney() {
+		for i, p := range entry.value.Postings {
+			if !entry.value.Contributes(i) || entry.value.ContributionState(i) != Posted || !p.MovesMoney() {
 				continue
 			}
 			amount, ok := result[p.AccountID]

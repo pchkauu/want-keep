@@ -1,0 +1,87 @@
+---
+"/matching":
+  get:
+    operationId: matching_list
+    tags: [matching]
+    parameters:
+    - $ref: '../components.yaml#/parameters/Cursor'
+    - $ref: '../components.yaml#/parameters/Limit'
+    - name: state
+      in: query
+      schema: { $ref: '../schemas/matching.yaml#/MatchingState' }
+    responses:
+      '200':
+        description: Current authorized result.
+        content:
+          application/json:
+            schema: { $ref: '../schemas/matching.yaml#/MatchingPage' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '403': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+      '409': { $ref: '../components.yaml#/responses/Problem' }
+      '422': { $ref: '../components.yaml#/responses/Problem' }
+      '429': { $ref: '../components.yaml#/responses/Problem' }
+      '500': { $ref: '../components.yaml#/responses/Problem' }
+      '503': { $ref: '../components.yaml#/responses/Problem' }
+"/matching/{matchingId}":
+  get:
+    operationId: matching_read
+    tags: [matching]
+    parameters:
+    - name: matchingId
+      in: path
+      required: true
+      schema: { $ref: '../schemas/money.yaml#/ID' }
+    responses:
+      '200':
+        description: Current authorized result.
+        content:
+          application/json:
+            schema: { $ref: '../schemas/matching.yaml#/MatchingCase' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '403': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+      '409': { $ref: '../components.yaml#/responses/Problem' }
+      '422': { $ref: '../components.yaml#/responses/Problem' }
+      '429': { $ref: '../components.yaml#/responses/Problem' }
+      '500': { $ref: '../components.yaml#/responses/Problem' }
+      '503': { $ref: '../components.yaml#/responses/Problem' }
+"/matching/{matchingId}/resolve":
+  post:
+    operationId: matching_resolve
+    tags: [matching]
+    parameters:
+    - name: matchingId
+      in: path
+      required: true
+      schema: { $ref: '../schemas/money.yaml#/ID' }
+    - $ref: '../components.yaml#/parameters/IdempotencyKey'
+    - $ref: '../components.yaml#/parameters/CSRF'
+    x-command-type: matching.resolve
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../schemas/matching.yaml#/MatchingResolution' }
+    responses:
+      '202':
+        description: Current authorized result.
+        content:
+          application/json:
+            schema: { $ref: '../schemas/commands.yaml#/CommandStatus' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '403': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+      '409': { $ref: '../components.yaml#/responses/Problem' }
+      '422': { $ref: '../components.yaml#/responses/Problem' }
+      '429': { $ref: '../components.yaml#/responses/Problem' }
+      '500': { $ref: '../components.yaml#/responses/Problem' }
+      '503': { $ref: '../components.yaml#/responses/Problem' }
+      '410':
+        description: Expired command detail with authorized compact outcome.
+        content:
+          application/json:
+            schema: { $ref: '../schemas/commands.yaml#/ExpiredCommand' }

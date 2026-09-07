@@ -28,6 +28,7 @@ import (
 	application "github.com/pchkauu/want-keep/backend/internal/identity/application"
 	"github.com/pchkauu/want-keep/backend/internal/identity/webauthn"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/application"
+	matching "github.com/pchkauu/want-keep/backend/internal/matching/application"
 	"github.com/pchkauu/want-keep/backend/internal/privacy/cryptobox"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 )
@@ -110,7 +111,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	ledgerHandler, err := ledgerdelivery.New(ledger.NewService(database, ledger.NewWriter(database, database), now, uuid.NewString), ledger.NewQueries(database), executor, queries, service, database, config, now)
+	matchingService := matching.NewService(database, ledger.NewWriter(database, database), now, uuid.NewString)
+	ledgerHandler, err := ledgerdelivery.New(ledger.NewService(database, matchingService, now, uuid.NewString), matchingService, ledger.NewQueries(database), executor, queries, service, database, config, now)
 	if err != nil {
 		return err
 	}
@@ -118,6 +120,8 @@ func run() error {
 	mux.Handle("/api/v1/transactions", ledgerHandler)
 	mux.Handle("/api/v1/transactions/", ledgerHandler)
 	mux.Handle("/api/v1/transfers", ledgerHandler)
+	mux.Handle("/api/v1/matching", ledgerHandler)
+	mux.Handle("/api/v1/matching/", ledgerHandler)
 	mux.Handle("/api/v1/accounts", accountHandler)
 	mux.Handle("/api/v1/accounts/", accountHandler)
 	mux.Handle("/api/v1/commands/", accountHandler)

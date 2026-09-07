@@ -13,6 +13,13 @@ func (s *Store) AccountFunding(ctx context.Context, p household.Principal, id st
 	if err != nil {
 		return reporting.Amount{}, err
 	}
+	unresolved, err := s.AccountUnresolvedMatching(ctx, p, id)
+	if err != nil {
+		return reporting.Amount{}, err
+	}
+	if unresolved {
+		return account.UnknownAmounts("matching_unresolved").Available, nil
+	}
 	if a.Product == "cash" {
 		b, err := s.Balance(ctx, p, id, "available")
 		return b.Amount, err

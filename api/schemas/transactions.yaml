@@ -145,6 +145,7 @@ Transaction:
   type: object
   additionalProperties: false
   properties:
+    participation: { $ref: './matching.yaml#/EffectParticipation' }
     accountingState: { type: string, enum: [included, excluded] }
     decisionId: { $ref: './money.yaml#/ID' }
     protectedFields:
@@ -354,7 +355,7 @@ TransferCreate:
       items:
         "$ref": "./transactions.yaml#/FeeInput"
     existingTransactions:
-      maxItems: 1000
+      maxItems: 100
       type: array
       items:
         "$ref": "./transactions.yaml#/ExistingTransaction"
@@ -376,6 +377,11 @@ TransactionCorrection:
   type: object
   additionalProperties: false
   properties:
+    relatedChanges:
+      type: array
+      minItems: 1
+      maxItems: 99
+      items: { $ref: './matching.yaml#/RelatedCorrection' }
     expectedRevision: { $ref: './money.yaml#/Revision' }
     reason: { type: string, minLength: 1, maxLength: 2000 }
     principal:
@@ -411,29 +417,15 @@ TransactionLink:
   type: object
   additionalProperties: false
   properties:
-    expectedRevision:
-      "$ref": "./money.yaml#/Revision"
-    relatedTransactionId:
-      "$ref": "./money.yaml#/ID"
-    relatedExpectedRevision:
-      "$ref": "./money.yaml#/Revision"
-    kind:
-      type: string
-      enum:
-      - transfer
-      - exchange
-      - receipt_match
-      - refund
-    reason:
-      type: string
-      minLength: 1
-      maxLength: 2000
-  required:
-  - expectedRevision
-  - relatedTransactionId
-  - relatedExpectedRevision
-  - kind
-  - reason
+    expectedRevisions:
+      type: array
+      minItems: 2
+      maxItems: 100
+      items: { $ref: './transactions.yaml#/DecisionRevision' }
+    kind: { type: string, enum: [transfer, exchange, receipt_match, refund] }
+    reason: { type: string, minLength: 1, maxLength: 2000 }
+  required: [expectedRevisions, kind, reason]
+  description: The route target is the initial primary. A linked group keeps its primary. All participants and current revisions are required. Refund linking is feature_unavailable. Native amounts are validated without correction.
 UndoInput:
   type: object
   additionalProperties: false
@@ -450,6 +442,11 @@ ExcludeInput:
   type: object
   additionalProperties: false
   properties:
+    relatedRevisions:
+      type: array
+      minItems: 1
+      maxItems: 99
+      items: { $ref: './transactions.yaml#/DecisionRevision' }
     expectedRevision: { $ref: './money.yaml#/Revision' }
     reason: { type: string, minLength: 1, maxLength: 2000 }
   required: [expectedRevision, reason]
@@ -462,7 +459,7 @@ DecisionRevision:
   required: [transactionId, expectedRevision]
 LedgerField:
   type: string
-  enum: [principal, fees, occurred_at, payer, merchant, note, accounting, legacy_all]
+  enum: [principal, fees, occurred_at, payer, merchant, note, accounting, legacy_all, matching]
 FieldProtection:
   type: object
   additionalProperties: false
@@ -478,7 +475,7 @@ TransactionHistoryEntry:
     transaction: { $ref: './transactions.yaml#/Transaction' }
     before: { $ref: './transactions.yaml#/Transaction' }
     decisionId: { $ref: './money.yaml#/ID' }
-    decisionKind: { type: string, enum: [correction, exclusion, undo, automated] }
+    decisionKind: { type: string, enum: [correction, exclusion, undo, automated, matching] }
     undoOf: { $ref: './money.yaml#/ID' }
     evidence:
       type: array
@@ -522,7 +519,7 @@ SourceTransactionFact:
   properties:
     sourceId: { $ref: './money.yaml#/ID' }
     sourceRevision: { $ref: './money.yaml#/Revision' }
-    conflictAtImport: { type: string, enum: [none, protected_fields, invalid_merge, legacy_protection] }
+    conflictAtImport: { type: string, enum: [none, protected_fields, invalid_merge, legacy_protection, matching_conflict] }
     type: { type: string, enum: [income, expense, transfer, exchange, refund, opening, adjustment, yield, trade_result] }
     state: { type: string, enum: [draft, pending, posted, reversed, cancelled] }
     occurredAt: { $ref: './money.yaml#/Instant' }

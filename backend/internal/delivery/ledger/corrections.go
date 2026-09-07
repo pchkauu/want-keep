@@ -53,7 +53,17 @@ func (s *Server) correct(w http.ResponseWriter, r *http.Request) {
 		Input         generated.TransactionCorrection
 	}{id, in}
 	s.execute(w, r, a, "transactions.corrections", payload, func(ctx context.Context) (command.Result, error) {
-		return s.service.Correct(ctx, a.Principal, application.Change{OperationID: id, Expected: uint64(in.ExpectedRevision), Correction: c}, in.Reason)
+		changes := []application.Change{{OperationID: id, Expected: uint64(in.ExpectedRevision), Correction: c}}
+		if in.RelatedChanges != nil {
+			for _, related := range *in.RelatedChanges {
+				value, err := s.correctionInput(generated.TransactionCorrection{Principal: related.Principal, Fees: related.Fees})
+				if err != nil {
+					return command.Result{}, err
+				}
+				changes = append(changes, application.Change{OperationID: related.TransactionId, Expected: uint64(related.ExpectedRevision), Correction: value})
+			}
+		}
+		return s.service.ApplyChanges(ctx, a.Principal, changes, in.Reason)
 	})
 }
 func (s *Server) exclude(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +87,13 @@ func (s *Server) exclude(w http.ResponseWriter, r *http.Request) {
 		Input         generated.ExcludeInput
 	}{id, in}
 	s.execute(w, r, a, "transactions.exclude", payload, func(ctx context.Context) (command.Result, error) {
-		return s.service.Correct(ctx, a.Principal, application.Change{OperationID: id, Expected: uint64(in.ExpectedRevision), Exclude: true}, in.Reason)
+		changes := []application.Change{{OperationID: id, Expected: uint64(in.ExpectedRevision), Exclude: true}}
+		if in.RelatedRevisions != nil {
+			for _, v := range *in.RelatedRevisions {
+				changes = append(changes, application.Change{OperationID: v.TransactionId, Expected: uint64(v.ExpectedRevision), Exclude: true})
+			}
+		}
+		return s.service.ApplyChanges(ctx, a.Principal, changes, in.Reason)
 	})
 }
 func (s *Server) undo(w http.ResponseWriter, r *http.Request) {

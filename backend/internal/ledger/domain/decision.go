@@ -24,10 +24,11 @@ const (
 	NoteField       Field = "note"
 	AccountingField Field = "accounting"
 	LegacyField     Field = "legacy_all"
+	MatchingField   Field = "matching"
 )
 
 func (f Field) Valid() bool {
-	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, LegacyField}, f)
+	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, LegacyField, MatchingField}, f)
 }
 
 type AccountingState string
@@ -82,7 +83,7 @@ func (d Decision) Validate() error {
 	if d.ID == "" || d.ActorID == "" || d.At.String() == "" || utf8.RuneCountInString(d.Reason) < 1 || utf8.RuneCountInString(d.Reason) > 2000 || len(d.Entries) < 1 || len(d.Entries) > 100 {
 		return ErrInvalidRevision
 	}
-	if !slices.Contains([]string{"correction", "exclusion", "undo", "automated"}, d.Kind) || (d.Kind == "undo") != (d.UndoOf != "") {
+	if !slices.Contains([]string{"correction", "exclusion", "undo", "automated", "matching"}, d.Kind) || (d.Kind == "undo") != (d.UndoOf != "") {
 		return ErrInvalidRevision
 	}
 	seen := map[string]bool{}
@@ -108,7 +109,12 @@ func (d Decision) Validate() error {
 }
 
 func (r Revision) Clone() Revision {
+	if r.Correspondence != nil {
+		c := *r.Correspondence
+		r.Correspondence = &c
+	}
 	r.Postings = slices.Clone(r.Postings)
+	r.Participation.Parts = slices.Clone(r.Participation.Parts)
 	r.Protections = maps.Clone(r.Protections)
 	if r.Protections == nil {
 		r.Protections = map[Field]Protection{}
@@ -161,7 +167,7 @@ func (r Revision) UndoFields(entry DecisionEntry, before Revision, source *Revis
 		}
 		basis := before
 		_, legacy := before.Protections[LegacyField]
-		if _, protected := before.Protections[f]; !protected && !legacy && source != nil && f != AccountingField {
+		if _, protected := before.Protections[f]; !protected && !legacy && source != nil && f != AccountingField && f != MatchingField {
 			basis = *source
 		}
 		if err := next.CopyField(basis, f); err != nil {
@@ -205,10 +211,11 @@ func (r Revision) MergeSource(source Revision) (Revision, bool, error) {
 	next.Protections = maps.Clone(r.Protections)
 	next.FieldVersions = maps.Clone(r.FieldVersions)
 	next.AccountingState = r.Accounting()
+	next.Participation = r.Clone().Participation
 	next.HumanOverride = len(next.Protections) > 0
 	conflict := false
 	for f := range r.Protections {
-		if f != AccountingField && !r.FieldEqual(source, f) {
+		if f != AccountingField && f != MatchingField && !r.FieldEqual(source, f) {
 			conflict = true
 		}
 		if err := next.CopyField(r, f); err != nil {
@@ -231,7 +238,7 @@ func (r Revision) ConflictsWithSource(source *Revision) bool {
 		return !r.SameFacts(*source)
 	}
 	for f := range r.Protections {
-		if f != AccountingField && !r.FieldEqual(*source, f) {
+		if f != AccountingField && f != MatchingField && !r.FieldEqual(*source, f) {
 			return true
 		}
 	}

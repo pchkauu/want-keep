@@ -1,0 +1,137 @@
+package application
+
+import (
+	"context"
+	"slices"
+	"sort"
+
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
+	matching "github.com/pchkauu/want-keep/backend/internal/matching/domain"
+)
+
+func (s *Service) undoMatching(ctx context.Context, p household.Principal, d ledger.Decision, next []ledger.Revision) error {
+	groups := map[string]matching.Group{}
+	restored := map[string][]ledger.Revision{}
+	for _, r := range next {
+		g, found, err := s.repository.MatchingForOperation(ctx, p, r.OperationID)
+		if err != nil {
+			return err
+		}
+		if found {
+			groups[g.ID] = g
+		}
+		if id := r.Participation.GroupID; id != "" {
+			if _, found := groups[id]; !found {
+				g, err = s.repository.MatchingGroup(ctx, p, id)
+				if err != nil {
+					return err
+				}
+				groups[id] = g
+			}
+			restored[id] = append(restored[id], r)
+		}
+	}
+	ids := []string{}
+	for id := range groups {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		g := groups[id]
+		if g.State != matching.Separate && g.State != matching.Unlinked {
+			for _, m := range g.Members {
+				if !slices.ContainsFunc(next, func(v ledger.Revision) bool { return v.OperationID == m.OperationID }) {
+					return matching.ErrConflict
+				}
+			}
+		}
+		g, err := g.Next(p.UserID(), s.now(), d.Reason)
+		if err != nil {
+			return err
+		}
+		g.State = matching.Unlinked
+		g.DecisionID = d.ID
+		if err = s.repository.SaveMatchingGroup(ctx, g, g.Revision-1); err != nil {
+			return err
+		}
+		if err = s.repository.ReleaseMatchingCarriers(ctx, id); err != nil {
+			return err
+		}
+		groups[id] = g
+	}
+	next = slices.Clone(next)
+	for _, id := range ids {
+		facts := restored[id]
+		if len(facts) == 0 {
+			continue
+		}
+		g := groups[id]
+		var err error
+		if facts[0].Participation.State == "waiting" {
+			g.State = matching.Clarification
+			g.PrimaryID = facts[0].OperationID
+			g.Members = nil
+			candidates := g.Candidates
+			g.Candidates = nil
+			for _, r := range facts {
+				if r.Participation.State != "waiting" {
+					return matching.ErrConflict
+				}
+				g.Members = append(g.Members, matching.Member{OperationID: r.OperationID, Revision: r.Revision})
+			}
+			for _, r := range next {
+				if r.Participation.GroupID != id {
+					g.Candidates = append(g.Candidates, matching.Candidate{Member: matching.Member{OperationID: r.OperationID, Revision: r.Revision}, Reason: "restored_matching_candidate"})
+				}
+			}
+			for _, c := range candidates {
+				if slices.ContainsFunc(facts, func(r ledger.Revision) bool { return r.OperationID == c.OperationID }) || slices.ContainsFunc(g.Candidates, func(v matching.Candidate) bool { return v.OperationID == c.OperationID }) {
+					continue
+				}
+				current, found, err := s.repository.CurrentLedgerRevision(ctx, p, c.OperationID)
+				if err != nil {
+					return err
+				}
+				if !found {
+					return matching.ErrConflict
+				}
+				c.Revision = current.Revision
+				g.Candidates = append(g.Candidates, c)
+			}
+		} else {
+			if !slices.ContainsFunc(facts, func(v ledger.Revision) bool { return v.OperationID == g.PrimaryID }) {
+				return matching.ErrConflict
+			}
+			var assigned []ledger.Revision
+			g, assigned, err = g.Assign(facts, true)
+			if err != nil {
+				return err
+			}
+			for _, r := range assigned {
+				for i := range next {
+					if r.OperationID == next[i].OperationID {
+						next[i] = r
+					}
+				}
+			}
+		}
+		g, err = g.Next(p.UserID(), s.now(), d.Reason)
+		if err != nil {
+			return err
+		}
+		g.DecisionID = d.ID
+		if err = s.repository.SaveMatchingGroup(ctx, g, g.Revision-1); err != nil {
+			return err
+		}
+	}
+	if err := s.writer.AppendDecision(ctx, p, d, next); err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err := s.repository.RestoreMatchingCarriers(ctx, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}

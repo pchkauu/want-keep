@@ -54,6 +54,7 @@ type QueryRepository interface {
 	TransactionReferences(context.Context, household.Principal, Filter, Cursor, int) ([]ledger.Revision, *Cursor, error)
 	TransactionSources(context.Context, household.Principal, string, uint64) ([]SourceReference, error)
 	TransactionSourceFacts(context.Context, household.Principal, string, uint64) ([]SourceFact, error)
+	TransactionMatchingConflict(context.Context, household.Principal, string, uint64) (bool, error)
 }
 type Queries struct{ repository QueryRepository }
 
@@ -103,6 +104,14 @@ func (q *Queries) view(ctx context.Context, p household.Principal, r ledger.Revi
 		return View{}, err
 	}
 	reasons := []string{}
+	matchingConflict, err := q.repository.TransactionMatchingConflict(ctx, p, r.OperationID, r.Revision)
+	if err != nil {
+		return View{}, err
+	}
+	r.SourceConflict = r.SourceConflict || matchingConflict
+	if r.Participation.State == "waiting" {
+		reasons = append(reasons, "matching_unresolved")
+	}
 	if r.SourceConflict {
 		reasons = append(reasons, "source_conflict")
 	}
