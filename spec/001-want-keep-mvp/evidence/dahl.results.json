@@ -1,0 +1,454 @@
+{
+  "kind": "synthetic_dahl_text_screen",
+  "endpoint": "https://inference.dahl.global/v1/chat/completions",
+  "models": {
+    "MiniMaxAI/MiniMax-M2.7": {
+      "started_at": "2026-09-07T02:39:23.203578+00:00",
+      "token_cap": 250000,
+      "reasoning_effort": "provider_default_not_verified_as_high",
+      "fingerprints": {
+        "baseline": "dfbdacbfe9f6cb0ff6e8792ddcd127b0607fe1dceeb36f79c3d0d0ad148f0d37",
+        "explicit_schema": "f838bef2600280ffac57c3da2efe704f3c3d00fbc2560d96a4e4a946749d52f8",
+        "high_effort": "a0227e2af20d567a2c120ebbe1d26267864d34d59cb34d9ebe458c716c96d0d2"
+      },
+      "phases": {
+        "baseline": {
+          "attempts": 1,
+          "graded_text_cases": 0,
+          "text_passed": 0,
+          "function_cases": 0,
+          "function_passed": 0,
+          "unique_archetypes": 0,
+          "complete_text_evaluation": false,
+          "text_screen_pass": false,
+          "failed_cases": [],
+          "http_statuses": {
+            "200": 1
+          },
+          "observed_models": [
+            "MiniMaxAI/MiniMax-M2.7"
+          ],
+          "requested_effort": [],
+          "acknowledged_effort": [],
+          "observed_usage_tokens": 3244,
+          "prompt_tokens": 1467,
+          "completion_tokens": 1777,
+          "ungraded_received_answers": 1,
+          "unsettled_reserved_tokens": 0,
+          "call_latency_seconds": null
+        },
+        "explicit_schema": {
+          "attempts": 2,
+          "graded_text_cases": 20,
+          "text_passed": 15,
+          "function_cases": 0,
+          "function_passed": 0,
+          "unique_archetypes": 20,
+          "complete_text_evaluation": false,
+          "text_screen_pass": false,
+          "failed_cases": [
+            {
+              "id": "OAI-007",
+              "archetype": "ambiguous_match",
+              "passed": false,
+              "failures": [
+                "action",
+                "evidence"
+              ],
+              "clarification": false
+            },
+            {
+              "id": "OAI-008",
+              "archetype": "missing_account",
+              "passed": false,
+              "failures": [
+                "kind",
+                "amount",
+                "asset",
+                "month"
+              ],
+              "clarification": true
+            },
+            {
+              "id": "OAI-009",
+              "archetype": "refund",
+              "passed": false,
+              "failures": [
+                "action"
+              ],
+              "clarification": false
+            },
+            {
+              "id": "OAI-010",
+              "archetype": "unmatched_refund",
+              "passed": false,
+              "failures": [
+                "action",
+                "amount",
+                "asset",
+                "evidence"
+              ],
+              "clarification": false
+            },
+            {
+              "id": "OAI-020",
+              "archetype": "grounded_insight",
+              "passed": false,
+              "failures": [
+                "target"
+              ],
+              "clarification": false
+            }
+          ],
+          "http_statuses": {
+            "200": 2
+          },
+          "observed_models": [
+            "MiniMaxAI/MiniMax-M2.7"
+          ],
+          "requested_effort": [],
+          "acknowledged_effort": [],
+          "observed_usage_tokens": 7492,
+          "prompt_tokens": 3914,
+          "completion_tokens": 3578,
+          "ungraded_received_answers": 0,
+          "unsettled_reserved_tokens": 0,
+          "call_latency_seconds": {
+            "p50": 117.275,
+            "p95": 117.377
+          }
+        },
+        "high_effort": {
+          "attempts": 2,
+          "graded_text_cases": 20,
+          "text_passed": 10,
+          "function_cases": 0,
+          "function_passed": 0,
+          "unique_archetypes": 20,
+          "complete_text_evaluation": false,
+          "text_screen_pass": false,
+          "failed_cases": [
+            {
+              "id": "OAI-003",
+              "archetype": "transfer",
+              "passed": false,
+              "failures": [
+                "action"
+              ],
+              "clarification": false
+            },
+            {
+              "id": "OAI-004",
+              "archetype": "exchange",
+              "passed": false,
+              "failures": [
+                "action"
+              ],
+              "clarification": false
+            },
+            {
+              "id": "OAI-005",
+              "archetype": "card_repayment",
+              "passed": false,
+              "failures": [
+                "action"
+              ],
+              "clarification": false
+            },
+            {
+              "id": "OAI-006",
+              "archetype": "duplicate",
+              "passed": false,
+              "failures": [
+                "action",
+                "kind",
+                "amount",
+                "asset",
+                "target",
+                "month"
+              ],
+              "clarification": false
+            },
+            {
+              "id": "OAI-007",
+              "archetype": "ambiguous_match",
+              "passed": false,
+              "failures": [
+                "kind",
+                "amount",
+                "asset",
+                "month"
+              ],
+              "clarification": true
+            },
+            {
+              "id": "OAI-008",
+              "archetype": "missing_account",
+              "passed": false,
+              "failures": [
+                "kind",
+                "amount",
+                "asset",
+                "month"
+              ],
+              "clarification": true
+            },
+            {
+              "id": "OAI-009",
+              "archetype": "refund",
+              "passed": false,
+              "failures": [
+                "action"
+              ],
+              "clarification": false
+            },
+            {
+              "id": "OAI-010",
+              "archetype": "unmatched_refund",
+              "passed": false,
+              "failures": [
+                "kind",
+                "amount",
+                "asset"
+              ],
+              "clarification": true
+            },
+            {
+              "id": "OAI-019",
+              "archetype": "pending",
+              "passed": false,
+              "failures": [
+                "kind",
+                "amount",
+                "asset"
+              ],
+              "clarification": true
+            },
+            {
+              "id": "OAI-020",
+              "archetype": "grounded_insight",
+              "passed": false,
+              "failures": [
+                "target"
+              ],
+              "clarification": false
+            }
+          ],
+          "http_statuses": {
+            "200": 2
+          },
+          "observed_models": [
+            "MiniMaxAI/MiniMax-M2.7"
+          ],
+          "requested_effort": [
+            "high"
+          ],
+          "acknowledged_effort": [],
+          "observed_usage_tokens": 8421,
+          "prompt_tokens": 3914,
+          "completion_tokens": 4507,
+          "ungraded_received_answers": 0,
+          "unsettled_reserved_tokens": 0,
+          "call_latency_seconds": {
+            "p50": 152.31099999999998,
+            "p95": 154.07
+          }
+        }
+      },
+      "journal_sha256": "8f5236dbe04b972b9da6c640ccfe6fc9f8ce562e619427fdcb8b1d6a31a5e30c",
+      "total_charged_or_reserved_tokens": 19157
+    },
+    "deepseek-ai/DeepSeek-V4-Flash-0731": {
+      "started_at": "2026-09-07T02:39:23.886809+00:00",
+      "token_cap": 250000,
+      "reasoning_effort": "provider_default_not_verified_as_high",
+      "fingerprints": {
+        "baseline": "26e7d8ef6aede7b0c84950f9f1973e9c912d01e625bd8166c07530feb8934180",
+        "explicit_schema": "d5a6caa082247a46a87dc6da0cb1c5c4179ddc81b84f597622ef67e982e36be0",
+        "streaming_schema": "7c2a9422dde6a6c0aa56c486bc3562a3c544e78b4d81f1e311339ab6fc4b46e6",
+        "high_effort": "2d7af5d1cc5fe6bc2163cf50f152526de4ada4ee7ea4113b8251e599aba05e96"
+      },
+      "phases": {
+        "baseline": {
+          "attempts": 1,
+          "graded_text_cases": 0,
+          "text_passed": 0,
+          "function_cases": 0,
+          "function_passed": 0,
+          "unique_archetypes": 0,
+          "complete_text_evaluation": false,
+          "text_screen_pass": false,
+          "failed_cases": [],
+          "http_statuses": {
+            "429": 1
+          },
+          "observed_models": [],
+          "requested_effort": [],
+          "acknowledged_effort": [],
+          "observed_usage_tokens": 0,
+          "prompt_tokens": 0,
+          "completion_tokens": 0,
+          "ungraded_received_answers": 0,
+          "unsettled_reserved_tokens": 20259,
+          "call_latency_seconds": null
+        },
+        "explicit_schema": {
+          "attempts": 1,
+          "graded_text_cases": 0,
+          "text_passed": 0,
+          "function_cases": 0,
+          "function_passed": 0,
+          "unique_archetypes": 0,
+          "complete_text_evaluation": false,
+          "text_screen_pass": false,
+          "failed_cases": [],
+          "http_statuses": {
+            "524": 1
+          },
+          "observed_models": [],
+          "requested_effort": [],
+          "acknowledged_effort": [],
+          "observed_usage_tokens": 0,
+          "prompt_tokens": 0,
+          "completion_tokens": 0,
+          "ungraded_received_answers": 0,
+          "unsettled_reserved_tokens": 21928,
+          "call_latency_seconds": null
+        },
+        "streaming_schema": {
+          "attempts": 3,
+          "graded_text_cases": 20,
+          "text_passed": 15,
+          "function_cases": 0,
+          "function_passed": 0,
+          "unique_archetypes": 20,
+          "complete_text_evaluation": false,
+          "text_screen_pass": false,
+          "failed_cases": [
+            {
+              "id": "OAI-007",
+              "archetype": "ambiguous_match",
+              "passed": false,
+              "failures": [
+                "kind"
+              ],
+              "clarification": true
+            },
+            {
+              "id": "OAI-008",
+              "archetype": "missing_account",
+              "passed": false,
+              "failures": [
+                "kind",
+                "amount",
+                "asset",
+                "month"
+              ],
+              "clarification": true
+            },
+            {
+              "id": "OAI-009",
+              "archetype": "refund",
+              "passed": false,
+              "failures": [
+                "action"
+              ],
+              "clarification": false
+            },
+            {
+              "id": "OAI-010",
+              "archetype": "unmatched_refund",
+              "passed": false,
+              "failures": [
+                "kind"
+              ],
+              "clarification": true
+            },
+            {
+              "id": "OAI-020",
+              "archetype": "grounded_insight",
+              "passed": false,
+              "failures": [
+                "target"
+              ],
+              "clarification": false
+            }
+          ],
+          "http_statuses": {
+            "200": 2,
+            "429": 1
+          },
+          "observed_models": [
+            "deepseek-ai/DeepSeek-V4-Flash-0731"
+          ],
+          "requested_effort": [],
+          "acknowledged_effort": [],
+          "observed_usage_tokens": 5589,
+          "prompt_tokens": 3921,
+          "completion_tokens": 1668,
+          "ungraded_received_answers": 0,
+          "unsettled_reserved_tokens": 19985,
+          "call_latency_seconds": {
+            "p50": 27.665,
+            "p95": 28.186
+          }
+        },
+        "high_effort": {
+          "attempts": 2,
+          "graded_text_cases": 10,
+          "text_passed": 9,
+          "function_cases": 0,
+          "function_passed": 0,
+          "unique_archetypes": 10,
+          "complete_text_evaluation": false,
+          "text_screen_pass": false,
+          "failed_cases": [
+            {
+              "id": "OAI-008",
+              "archetype": "missing_account",
+              "passed": false,
+              "failures": [
+                "kind",
+                "amount",
+                "asset",
+                "month"
+              ],
+              "clarification": true
+            }
+          ],
+          "http_statuses": {
+            "200": 2
+          },
+          "observed_models": [
+            "deepseek-ai/DeepSeek-V4-Flash-0731"
+          ],
+          "requested_effort": [
+            "high"
+          ],
+          "acknowledged_effort": [],
+          "observed_usage_tokens": 2662,
+          "prompt_tokens": 1941,
+          "completion_tokens": 721,
+          "ungraded_received_answers": 0,
+          "unsettled_reserved_tokens": 22208,
+          "call_latency_seconds": {
+            "p50": 27.693,
+            "p95": 27.693
+          }
+        }
+      },
+      "journal_sha256": "b54091f7ababc92161790db365a781678d6865a069ef8dfd9188b03caa218aed",
+      "total_charged_or_reserved_tokens": 92631
+    }
+  },
+  "images_and_pdf": "Not supported by the documented model contract; not sent.",
+  "direct_mvp_replacement_qualified": false,
+  "limitations": [
+    "Twenty text archetypes are an initial screen, not a completed 200-case qualification.",
+    "Accepted response_format does not establish server-enforced JSON schema; MiniMax emitted a reasoning prefix.",
+    "Only a complete observed think envelope is removed; financial proposals still use the same exact grader.",
+    "Provider-default reasoning is not verified as equivalent to OpenAI high.",
+    "Billing is a preallocated token pool. Usage and outstanding reservations are reported in tokens, not invented USD charges.",
+    "No real household data, images, PDF, financial command execution or production provider change."
+  ]
+}

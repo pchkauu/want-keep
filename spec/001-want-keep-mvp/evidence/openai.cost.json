@@ -1,0 +1,236 @@
+{
+  "kind": "arithmetic_planning_estimate_not_measurement",
+  "date": "2026-09-07",
+  "currency": "USD",
+  "monthly_cap": "50",
+  "stress": "All input at cache-write price plus 25% additional calls; no cached-input or Batch discounts.",
+  "exclusions": [
+    "Taxes/fees/project usage outside this app must be reconciled before production",
+    "Backfill and larger usage wait when the family budget lacks a reservation",
+    "All production volumes and per-call tokens are assumptions; live synthetic batches do not measure monthly household consumption."
+  ],
+  "profiles": {
+    "mixed_candidate": {
+      "baseline_usd": "23.716",
+      "cache_write_and_retry_stress_usd": "32.58250",
+      "breakdown": [
+        {
+          "purpose": "reviews",
+          "calls": 600,
+          "input_tokens_per_call": 2500,
+          "output_tokens_per_call": 600,
+          "model": "gpt-5.6-luna",
+          "cost_usd": "0.732"
+        },
+        {
+          "purpose": "receipt_pages",
+          "calls": 150,
+          "input_tokens_per_call": 6000,
+          "output_tokens_per_call": 1500,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "4.5"
+        },
+        {
+          "purpose": "chat",
+          "calls": 400,
+          "input_tokens_per_call": 6000,
+          "output_tokens_per_call": 1500,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "12"
+        },
+        {
+          "purpose": "insights",
+          "calls": 60,
+          "input_tokens_per_call": 10000,
+          "output_tokens_per_call": 2000,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "2.64"
+        },
+        {
+          "purpose": "rechecks",
+          "calls": 200,
+          "input_tokens_per_call": 2500,
+          "output_tokens_per_call": 600,
+          "model": "gpt-5.6-luna",
+          "cost_usd": "0.244"
+        },
+        {
+          "purpose": "escalations",
+          "calls": 50,
+          "input_tokens_per_call": 12000,
+          "output_tokens_per_call": 4000,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "3.6"
+        }
+      ]
+    },
+    "terra_only": {
+      "baseline_usd": "32.50",
+      "cache_write_and_retry_stress_usd": "44.6875",
+      "breakdown": [
+        {
+          "purpose": "reviews",
+          "calls": 600,
+          "input_tokens_per_call": 2500,
+          "output_tokens_per_call": 600,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "7.32"
+        },
+        {
+          "purpose": "receipt_pages",
+          "calls": 150,
+          "input_tokens_per_call": 6000,
+          "output_tokens_per_call": 1500,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "4.5"
+        },
+        {
+          "purpose": "chat",
+          "calls": 400,
+          "input_tokens_per_call": 6000,
+          "output_tokens_per_call": 1500,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "12"
+        },
+        {
+          "purpose": "insights",
+          "calls": 60,
+          "input_tokens_per_call": 10000,
+          "output_tokens_per_call": 2000,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "2.64"
+        },
+        {
+          "purpose": "rechecks",
+          "calls": 200,
+          "input_tokens_per_call": 2500,
+          "output_tokens_per_call": 600,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "2.44"
+        },
+        {
+          "purpose": "escalations",
+          "calls": 50,
+          "input_tokens_per_call": 12000,
+          "output_tokens_per_call": 4000,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "3.6"
+        }
+      ]
+    },
+    "terra_high": {
+      "baseline_usd": "42.25",
+      "cache_write_and_retry_stress_usd": "56.8750",
+      "breakdown": [
+        {
+          "purpose": "reviews",
+          "calls": 600,
+          "input_tokens_per_call": 2500,
+          "output_tokens_per_call": 900,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "9.48"
+        },
+        {
+          "purpose": "receipt_pages",
+          "calls": 150,
+          "input_tokens_per_call": 6000,
+          "output_tokens_per_call": 2250,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "5.85"
+        },
+        {
+          "purpose": "chat",
+          "calls": 400,
+          "input_tokens_per_call": 6000,
+          "output_tokens_per_call": 2250,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "15.6"
+        },
+        {
+          "purpose": "insights",
+          "calls": 60,
+          "input_tokens_per_call": 10000,
+          "output_tokens_per_call": 3000,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "3.36"
+        },
+        {
+          "purpose": "rechecks",
+          "calls": 200,
+          "input_tokens_per_call": 2500,
+          "output_tokens_per_call": 900,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "3.16"
+        },
+        {
+          "purpose": "escalations",
+          "calls": 50,
+          "input_tokens_per_call": 12000,
+          "output_tokens_per_call": 6000,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "4.8"
+        }
+      ],
+      "output_assumption": "50% more total output tokens than the earlier planning profile, including reasoning once; deliberately a planning buffer, not a production measurement.",
+      "stress_budget_behavior": "Exceeds the USD 50 cap: reserve before every call and leave unaffordable work queued; no automatic model/effort downgrade or cap increase."
+    },
+    "terra_xhigh": {
+      "baseline_usd": "47.125",
+      "cache_write_and_retry_stress_usd": "62.96875",
+      "breakdown": [
+        {
+          "purpose": "reviews",
+          "calls": 600,
+          "input_tokens_per_call": 2500,
+          "output_tokens_per_call": 1050,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "10.56"
+        },
+        {
+          "purpose": "receipt_pages",
+          "calls": 150,
+          "input_tokens_per_call": 6000,
+          "output_tokens_per_call": 2625,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "6.525"
+        },
+        {
+          "purpose": "chat",
+          "calls": 400,
+          "input_tokens_per_call": 6000,
+          "output_tokens_per_call": 2625,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "17.4"
+        },
+        {
+          "purpose": "insights",
+          "calls": 60,
+          "input_tokens_per_call": 10000,
+          "output_tokens_per_call": 3500,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "3.72"
+        },
+        {
+          "purpose": "rechecks",
+          "calls": 200,
+          "input_tokens_per_call": 2500,
+          "output_tokens_per_call": 1050,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "3.52"
+        },
+        {
+          "purpose": "escalations",
+          "calls": 50,
+          "input_tokens_per_call": 12000,
+          "output_tokens_per_call": 7000,
+          "model": "gpt-5.6-terra",
+          "cost_usd": "5.4"
+        }
+      ],
+      "output_assumption": "75% more total output than the initial planning profile, including reasoning once. Explicit planning buffer, not measured production usage or a guaranteed xhigh multiplier.",
+      "stress_budget_behavior": "Exceeds USD 50: unaffordable work remains queued; no automatic model/effort downgrade or cap increase."
+    }
+  },
+  "selected_profile": "terra_xhigh",
+  "reasoning_effort": "xhigh"
+}

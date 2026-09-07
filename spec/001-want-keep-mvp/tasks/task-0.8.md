@@ -5,7 +5,7 @@
 
 Выбрать конфигурацию моделей по финансовым сценариям и лимиту $50.
 
-**Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
+**Состояние:** Завершено: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, 0 критических ошибок, PNG/PDF 6/6, function 3/3. BLK-08 закрыт; MVP Not Ready.
 
 **Зависимости:** нет.
 
@@ -13,12 +13,28 @@
 
 ### Изменение и контракты
 
-Сверить текущие модели, модальности, JSON/function-calling контракты, retention и цены по официальным источникам. Подготовить синтетический eval для переводов, чеков, неоднозначности и injection; измерить токены, ошибки, уточнения и стоимость на сотнях операций. Платные прогоны — только с предоставленным владельцем ключом и отдельным лимитом прогона; без него документировать метод и незакрытый quality gate. Начальные кандидаты Luna/Terra не означают доказанного качества.
+Владелец выбрал gpt-5.6-terra, reasoning.effort=xhigh для всех AI-задач. OAI-E01–E15, evidence/openai.md/en.md и results/prompts/eval/cost JSON фиксируют цены, retention, Standard foreground Responses, strict proposal, store=false, explicit cache без breakpoints, detail=high и предварительный input count. Финальный отдельный 206+3 eval: 206/206, visual 6/6, function 3/3, 0 критических ошибок; цена $0.445556. 301 OpenAI requests всего: $3.2926944 в общем лимите $7 с сохранением ранних неудач и оплаченного incomplete Luna. Калибровка на известных синтетических случаях, не holdout и не app acceptance. Dahl MiniMax/DeepSeek: отдельные ограниченные screen, high принят без подтверждения применения; unknown расходы остаются резервами, тариф пула не подтверждён. Альтернативы и автоматический downgrade в runtime не включать. Xhigh месячная смета $47.125, стресс $62.96875; при $50 задания ждут, обычный учёт работает. Допущения объёма/налоги/прочий расход сверить перед запуском. Изменение модели/effort/prompt/schema/pricing требует повторного допуска. Разблокированы контракты task-5.1/5.2/5.3/5.5 и BLK-08 в task-0.10; остальные зависимости и общий Not Ready сохраняются. Серверные validators/права/runtime очередей/locale и полный AC — последующие задачи.
 
 ### Границы изменений
 
 - `spec/001-want-keep-mvp/evidence/openai.md`
 - `spec/001-want-keep-mvp/evidence/openai.en.md`
+- `spec/001-want-keep-mvp/evidence/openai.eval.json`
+- `spec/001-want-keep-mvp/evidence/openai.cost.json`
+- `spec/001-want-keep-mvp/assets/openai-eval/`
+- `spec/001-want-keep-mvp/tools/openai_eval.py`
+- `spec/001-want-keep-mvp/tools/openai_cases.py`
+- `spec/001-want-keep-mvp/tools/test_openai_eval.py`
+- `spec/001-want-keep-mvp/evidence/openai.results.json`
+- `spec/001-want-keep-mvp/evidence/openai.prompts.json`
+- `spec/001-want-keep-mvp/tools/openai_report.py`
+- `spec/001-want-keep-mvp/evidence/dahl.md`
+- `spec/001-want-keep-mvp/evidence/dahl.en.md`
+- `spec/001-want-keep-mvp/evidence/dahl.contract.json`
+- `spec/001-want-keep-mvp/evidence/dahl.results.json`
+- `spec/001-want-keep-mvp/tools/dahl_eval.py`
+- `spec/001-want-keep-mvp/tools/dahl_report.py`
+- `spec/001-want-keep-mvp/tools/test_dahl_eval.py`
 
 Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
 
@@ -97,12 +113,12 @@
 ### Проверка результата
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-Зафиксированы конфигурация/снимок цен, измеренный или явно непроверенный бюджет, результаты eval и критерии допуска к автоматическим командам.
+Официальный срез OAI-E01–E13, фактический отчёт eval, выбранный маршрут и ограничения, смета/неизмеренные части и критерии допуска; закрытие BLK-08 отдельно от полной приёмки приложения.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.
 
 ### Передача следующему агенту
 
@@ -114,7 +130,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 Choose model configuration using financial cases and the $50 cap.
 
-**Status:** Research — not started; live access and paid runs require securely supplied owner access.
+**Status:** Complete: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, zero critical errors, PNG/PDF 6/6, function 3/3. BLK-08 closed; MVP Not Ready.
 
 **Dependencies:** none.
 
@@ -122,12 +138,28 @@ Choose model configuration using financial cases and the $50 cap.
 
 ### Change and contracts
 
-Check current models, modalities, JSON/function-calling contracts, retention and prices against official sources. Prepare a synthetic evaluation for transfers, receipts, ambiguity and injection; measure tokens, errors, clarifications and cost at hundreds-of-transactions scale. Paid runs require an owner-supplied key and an explicit run cap; otherwise document the method and outstanding quality gate. Initial Luna/Terra candidates do not establish quality.
+The owner selected gpt-5.6-terra, reasoning.effort=xhigh for all AI tasks. OAI-E01–E15, evidence/openai.md/en.md and results/prompts/eval/cost JSON record pricing, retention, Standard foreground Responses, strict proposals, store=false, explicit cache without breakpoints, detail=high and input pre-counting. Final separate 206+3 evaluation: 206/206, visual 6/6, function 3/3, zero critical errors; cost USD 0.445556. All 301 OpenAI requests cost USD 3.2926944 within the shared USD 7 cap, retaining earlier failures and paid Luna incomplete output. Calibration on known synthetic cases, not holdout or app acceptance. Dahl MiniMax/DeepSeek: separate limited screens, requested high accepted without applied-setting confirmation; unknown costs remain reserved and pool pricing unverified. No runtime alternative or automatic downgrade. Xhigh monthly estimate USD 47.125, stress USD 62.96875; unaffordable work waits at USD 50 while ordinary accounting continues. Reconcile workload assumptions/taxes/other usage before launch. Model/effort/prompt/schema/pricing changes require requalification. Unblocks task-5.1/5.2/5.3/5.5 contracts and BLK-08 in task-0.10; other dependencies and overall Not Ready remain. Server validation/permissions/runtime queues/locale and full acceptance are subsequent tasks.
 
 ### Change boundaries
 
 - `spec/001-want-keep-mvp/evidence/openai.md`
 - `spec/001-want-keep-mvp/evidence/openai.en.md`
+- `spec/001-want-keep-mvp/evidence/openai.eval.json`
+- `spec/001-want-keep-mvp/evidence/openai.cost.json`
+- `spec/001-want-keep-mvp/assets/openai-eval/`
+- `spec/001-want-keep-mvp/tools/openai_eval.py`
+- `spec/001-want-keep-mvp/tools/openai_cases.py`
+- `spec/001-want-keep-mvp/tools/test_openai_eval.py`
+- `spec/001-want-keep-mvp/evidence/openai.results.json`
+- `spec/001-want-keep-mvp/evidence/openai.prompts.json`
+- `spec/001-want-keep-mvp/tools/openai_report.py`
+- `spec/001-want-keep-mvp/evidence/dahl.md`
+- `spec/001-want-keep-mvp/evidence/dahl.en.md`
+- `spec/001-want-keep-mvp/evidence/dahl.contract.json`
+- `spec/001-want-keep-mvp/evidence/dahl.results.json`
+- `spec/001-want-keep-mvp/tools/dahl_eval.py`
+- `spec/001-want-keep-mvp/tools/dahl_report.py`
+- `spec/001-want-keep-mvp/tools/test_dahl_eval.py`
 
 These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
 
@@ -206,12 +238,12 @@ A criterion link establishes coverage; research or a partial task does not prove
 ### Verification
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-Record configuration/pricing snapshot, measured or explicitly unverified cost, evaluation results and gates for automatic commands.
+Official OAI-E01–E13 snapshot, actual evaluation report, selected route/limits, estimate/unmeasured portions and qualification gates; BLK-08 closure is distinct from full application acceptance.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately.
 
 ### Handoff to the next agent
 

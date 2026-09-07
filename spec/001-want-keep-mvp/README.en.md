@@ -56,3 +56,5 @@ D-36: Bybit — Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; official API 
 task-0.7 rate research: CBR selected as primary USD/RUB, CoinGecko Demo for separate BTC/ETH/USDT/USDC in USD current and ≤365-day history, and Frankfurter `providers=CBR` as fallback/cross-check. TradingView rejected as a server-side source. [Evidence and open FX-B02–FX-B04](evidence/fx.en.md); task-0.10 closes BLK-07 and Ready.
 
 D-35 refinement: Raiffeisen covers only the individual entrepreneur current account through RBO API; personal cards, credit, savings and deposits are excluded without blocking. [Research](evidence/raiffeisen.en.md): historical data read; remaining questions are in BLK-02.
+
+[OpenAI research and reproducible evaluation](evidence/openai.en.md): model, cost, retention and evidence boundaries.

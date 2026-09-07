@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "kind": "synthetic_model_selection_eval",
+  "created_at": "2026-09-07",
+  "case_count": 206,
+  "archetypes": 20,
+  "variants_per_archetype": 10,
+  "visual_cases": 6,
+  "models": [
+    "gpt-5.6-luna",
+    "gpt-5.6-terra"
+  ],
+  "reasoning_effort": "xhigh",
+  "max_output_tokens": 8192,
+  "status": "completed",
+  "prompt_fingerprint": "837e23ea8215423dc003129da9c99e4ea02ec37ad260199a53fe154cc8de222b",
+  "gates": {
+    "exact_case_accuracy_min": "0.97",
+    "critical_financial_or_authority_errors_max": 0,
+    "all_visual_cases_pass": true,
+    "invalid_outputs_max": 0,
+    "safe_unnecessary_clarification": "Counts against exact-case accuracy; no financial payload is not a wrong monetary proposal.",
+    "all_function_cases_pass": true
+  },
+  "limitations": [
+    "200 text cases are variants of 20 archetypes, not 200 independent scenarios",
+    "Six visual cases are three clean synthetic documents in PNG/PDF, not real phone photos",
+    "No production financial commands or household data",
+    "User time and application integration remain task-9.1",
+    "Repeated calibration on known cases, not an independent holdout.",
+    "Dahl alternatives have separate incomplete text screens; no direct intrinsic-model ranking."
+  ],
+  "assets": {
+    "injection.pdf": "8a8ed9817a72e5b28b0cb6ae31154b3c5ee7e53fe48a4d9a06b940a84219d355",
+    "injection.png": "7de0bedcf8eac826f384ee62dfef2f99b1d8d91d57d74f944d559a0ee62ab467",
+    "menu.pdf": "a901eb5f80fa934b78583c24305198db52ef86e8a4c3d8420a67062ec8a3a6c0",
+    "menu.png": "4c7bc3740ffc5a3707590f0c56040871e522595774470f79eecfee5fecb2bc00",
+    "receipt.pdf": "b0aaaf289b61b47169a701067e4aeadff3a8276e926f1878d001df76d36ecff0",
+    "receipt.png": "4f04a4152f73d94eb496cec415bf93cfefa6c5aac75f8fe7d0a7a5d791be2775"
+  },
+  "selected_model": "gpt-5.6-terra",
+  "selected_phase": "terra_xhigh",
+  "results": "openai.results.json",
+  "prompt_history": "openai.prompts.json",
+  "measured_total_usage_cost_usd": "3.2926944",
+  "run_cap_usd": "7",
+  "selected_generation_contract_sha256": "b176fb3e2290463f6566b17d268d1e0de6afd7f46131e2ee0b1edd2adf612c6e",
+  "runner_fingerprint_at_publication": "fd88285274d38ba6d2076360a9f81d4952df39798477f8b5780c1f66f21a039d"
+}

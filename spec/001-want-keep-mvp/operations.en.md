@@ -12,20 +12,16 @@ The current research VPS costs RUB 800/month per the owner. Read-only audit foun
 
 ## OpenAI
 
-Official Standard short-context pricing snapshot, 2026-09-06, USD per 1M tokens:
+Model choice and limits are owned by [task-0.8 research](evidence/openai.en.md); the [estimate](evidence/openai.cost.json) is distinct from actual usage and bank charges. Pricing date: 2026-09-07. Select gpt-5.6-terra xhigh for all AI tasks; final evaluation is 206/206 without unnecessary clarifications, 6/6 PNG/PDF and 3/3 function calling. BLK-08 is closed; application runtime work remains.
 
-| Candidate | Input | Output |
-| --- | --- | --- |
-| GPT-5.6 Luna | 0.20 | 1.20 |
-| GPT-5.6 Terra | 2.00 | 12.00 |
+Use foreground Responses, `store=false`, local chat history, `prompt_cache_options.mode=explicit` without breakpoints and `detail=high` for pages. Models only propose validated application commands; credentials, SQL, browser, shell, payments and hosted tools are unavailable. Evidence discloses OpenAI retention and unverified ZDR/EU residency; a European VPS does not establish European OpenAI processing.
 
-These are evaluation candidates, not approved configuration. Vision, reasoning/output, retries, cache writes, long context, tier and paid tools require separate accounting. Recheck pricing before selection/execution; account model availability is unverified. [Official pricing](https://developers.openai.com/api/docs/pricing), [models](https://developers.openai.com/api/docs/models).
+The family budget is USD 50 per UTC month: actual + reserved + unknown. Atomically reserve the maximum input/output and possible cache writes before every call; reasoning is already part of output. Reconcile confirmed usage against reservations; unknown outcomes and missing write counts never silently release funds. Month/model/key changes do not erase liabilities. At most two concurrent calls, SDK retries disabled; no automatic budget increases. Provider hard limits supplement this control but can lag.
 
-Scale-only example: 1,000 Luna calls with 2,000 uncached input and 500 output tokens each cost $1.00 under the table. This is text-token arithmetic, not a full-application cost promise. task-0.8 measures real calls/tokens/pages/retries, then fixes routing, size limits and cost reservations.
+API failure, unavailable models, exhausted funds or unverified prices leave AI waiting while ordinary accounting continues. Every transaction version remains queued. Evidence owns page/context/retry limits and quality measurement; production gateway, receipt-pipeline and family-permission checks remain task-5.1–task-5.5. Before launch, reconcile project funds and applicable taxes/fees with task-0.9's total estimate.
 
-The application budget includes actual + reserved in-flight + unknown-outcome costs. Before a call, transactionally reserve a conservative ceiling with bounded output/context/tools; models cannot choose unlimited compute. Unknown charges do not free reservations. AI-cost periods are calendar UTC months; incomplete/uncertain charges survive month rollover and reconcile with actual billing months. Insufficient budget queues work while ordinary accounting continues. The user has not authorized automatic increases above $50.
 
-Full transactions/receipts excluding secrets are permitted. API data is not used for training by default without opt-in; standard abuse monitoring may retain content for up to 30 days subject to documented exceptions. Responses application state has separate rules: request `store=false`, keep chat history locally and do not interpret this as Zero Data Retention. ZDR requires separate eligibility/approval and is not claimed for the pilot. Avoid unnecessary long-lived provider file stores; delete temporary provider file objects after use under their contract. [Data controls](https://developers.openai.com/api/docs/guides/your-data).
+Planned xhigh profile: USD 47.125/month, stress USD 62.96875 under the shared USD 50 cap; unaffordable jobs wait without downgrade. These are planning assumptions, not measured monthly billing.
 
 ## MacBook backups
 

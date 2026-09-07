@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Обработать фото и PDF через ограниченный pipeline с проверкой формата/размера/страниц до AI. Извлекать позиции, суммы, валюту, дату, продавца и скидки с provenance. Проверять итог арифметически, привязывать выбранный счёт, выявлять duplicate attachment и match candidates. Нерелевантное пропускать с причиной; неполное уточнять; не исполнять активный контент или URL документа.
+Обработать фото и PDF через ограниченный pipeline с проверкой формата/размера/страниц до AI. Извлекать позиции, суммы, валюту, дату, продавца и скидки с provenance. Проверять итог арифметически, привязывать выбранный счёт, выявлять duplicate attachment и match candidates. Нерелевантное пропускать с причиной; неполное уточнять; не исполнять активный контент или URL документа. Сохранить лимиты 10 MiB/10 страниц, обрабатывать страницы с detail=high и ограниченным input/output; проверить максимум, мелкие/нечитаемые суммы, mixed receipts и injection отдельно от чистых синтетических assets/openai-eval. Inline PDF/изображения не создают долгоживущие Files objects; никакого перехода по ссылкам в документе. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели.
 
 ### Границы изменений
 
@@ -119,7 +119,7 @@ make test-integration AREA=receipts && make eval-ai SUITE=receipts
 
 Валидные, частичные, повторные и вредоносные документы проходят требуемые состояния; итог распределения равен оплате.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.
 
 ### Передача следующему агенту
 
@@ -139,7 +139,7 @@ Extract verifiable receipt data and link it to one payment.
 
 ### Change and contracts
 
-Process photos and PDFs through a bounded pipeline validating format/size/pages before AI. Extract items, amounts, currency, date, merchant and discounts with provenance. Validate totals arithmetically, bind the selected account and detect duplicate attachments/match candidates. Skip irrelevant content with a reason, clarify incomplete data and never execute document content or URLs.
+Process photos and PDFs through a bounded pipeline validating format/size/pages before AI. Extract items, amounts, currency, date, merchant and discounts with provenance. Validate totals arithmetically, bind the selected account and detect duplicate attachments/match candidates. Skip irrelevant content with a reason, clarify incomplete data and never execute document content or URLs. Preserve the 10 MiB/10-page limits; process pages with detail=high and bounded input/output. Test boundaries, small/unreadable amounts, mixed receipts and injection beyond the clean assets/openai-eval fixtures. Inline PDF/images create no persistent Files objects; never follow document links. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation.
 
 ### Change boundaries
 
@@ -245,7 +245,7 @@ make test-integration AREA=receipts && make eval-ai SUITE=receipts
 
 Valid, partial, repeated and malicious documents follow required states; allocation total equals payment.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately.
 
 ### Handoff to the next agent
 

@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Запускать проверку каждой содержательной версии операции. AI возвращает структурированные предложения через allowlist команд; application проверяет сумму/счёт/валюту, expectedVersion, ownership, evidence и разрешения. Применять допустимые классификации/связи идемпотентно, сомнительные оставлять в очереди; личные бюджет/цели требуют решения владельца, общие — любого уполномоченного участника. Никакого SQL, произвольного HTTP или доступа к секретам у модели.
+Запускать проверку каждой содержательной версии операции. AI возвращает структурированные предложения через allowlist команд; application проверяет сумму/счёт/валюту, expectedVersion, ownership, evidence и разрешения. Применять допустимые классификации/связи идемпотентно, сомнительные оставлять в очереди; личные бюджет/цели требуют решения владельца, общие — любого уполномоченного участника. Никакого SQL, произвольного HTTP или доступа к секретам у модели. Модельный score task-0.8 не заменяет серверный валидатор: добавить regression-сценарии из openai_cases.py для неверной суммы, неизвестной комиссии, повторного расхода, чужой личной цели и устаревшей revision. Смена alias/prompt/schema требует повторного допуска. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели.
 
 ### Границы изменений
 
@@ -143,7 +143,7 @@ make test-integration AREA=ai-commands && make eval-ai SUITE=transactions
 
 Каждая версия отслеживается; invalid/refusal/stale/injection отклоняются; автоматические эффекты сохраняют инварианты и аудит.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.
 
 ### Передача следующему агенту
 
@@ -163,7 +163,7 @@ Automate classification and substantiated links while protecting financial invar
 
 ### Change and contracts
 
-Review every material transaction version. AI returns structured proposals through an allowlist of commands; the application validates amount/account/currency, expectedVersion, ownership, evidence and permissions. Apply allowed classifications/links idempotently, queue uncertainty and require the personal owner’s decision for personal budgets/goals and any authorized member’s decision for shared ones. Models have no SQL, arbitrary HTTP or secret access.
+Review every material transaction version. AI returns structured proposals through an allowlist of commands; the application validates amount/account/currency, expectedVersion, ownership, evidence and permissions. Apply allowed classifications/links idempotently, queue uncertainty and require the personal owner’s decision for personal budgets/goals and any authorized member’s decision for shared ones. Models have no SQL, arbitrary HTTP or secret access. task-0.8 model scores do not replace server validation: add regressions derived from openai_cases.py for wrong amounts, unknown fees, duplicate expenses, foreign personal goals and stale revisions. Alias/prompt/schema changes require requalification. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation.
 
 ### Change boundaries
 
@@ -293,7 +293,7 @@ make test-integration AREA=ai-commands && make eval-ai SUITE=transactions
 
 Every version is tracked; invalid/refusal/stale/injection outputs are rejected; automatic effects preserve invariants and audit.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately.
 
 ### Handoff to the next agent
 

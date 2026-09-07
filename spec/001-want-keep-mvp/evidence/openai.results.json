@@ -1,0 +1,1479 @@
+{
+  "kind": "measured_synthetic_model_eval",
+  "started_at": "2026-09-07T01:52:27.178301+00:00",
+  "cap_usd": "7",
+  "cap_authorizations": [
+    {
+      "at": "2026-09-07T03:12:35.627484+00:00",
+      "previous_usd": "3",
+      "new_usd": "7",
+      "basis": "Owner explicitly expanded the total research budget to USD 7 and requested Luna Extra High; all prior usage preserved."
+    }
+  ],
+  "cohorts": {
+    "terra_high_final": {
+      "source_phases": [
+        "high_final",
+        "high_final_counted"
+      ],
+      "generation_contract_sha256": "e1f2038d90cd6405ef96459d0b6c902989a4a2d8dda6b59b45276bc4fc9a00a1",
+      "payload_sha256_by_index": {
+        "0": "1fcaf320027de1df83adaa85eef3c2d12875cab016fa68e524868c8be610d278",
+        "1": "68c5b0b881bc5007df750dc09d2b23ac70835c53a2960e34eda10974dd82d829",
+        "2": "ef2574b96bfc75697d2c2ddbd55e15dfd7c4ea7eac7bcf6255915a0fd0ac59c1",
+        "3": "d486a3e8862fcbb9f3a0672e73c58e072a1e5b954aa63b9a703545234f234ac0",
+        "4": "b7b5f033741633fcbfb6288f040732d6f4c460f9fdc33eae3d4efdb25ea6900d",
+        "5": "92903c8af586491b9603b72b06ff8aac3592b9f23128549f8c84357de5769d1e",
+        "6": "805ed192f923edb7cd5ee024d5a4c7c0e4027bae4c4086466e3c537af9e6df0b",
+        "7": "4715244943917f88bb67a6443f45b4549eca720e17f349b4dc95b02092c3a24c",
+        "8": "b0a817ed06be5dd20bd335a48ff256369261ac7515ed9eeb9794e2809f3f8fc5",
+        "9": "43fdbd7447cbefebd2ddc5a6888f03e01d67b24da6b67ed9153ca12f691b21da",
+        "10": "07177277ddb494ba642725966cfaa200ff323ceea2fe5a2967b5496d7c701524",
+        "11": "b82eed102e952f869995e3a1d996dffecbf9600b50152b90cdb5c68a73269bf9",
+        "12": "6dff846ad39c36d82f3a2d9df0b46535db506f84c592b8cfe4c45d7ebceca20c",
+        "13": "fc3a2a217f5aa1637a3e904c959443bde978f3bd788d1d03b0ae2882b2222e4f",
+        "14": "01202a39b0bf824a1a8af7d56d638d2315c2f979e2fd6df576eb55c97a98fe9d",
+        "15": "5c92790dde72029cb63c3e1632ad4aec56b4b41b720795de1deb6401b2a31d80",
+        "16": "29e35c7e560e34875f8e2df1572d0b435683c4e563c3be413e9c9ed721b19535",
+        "17": "830b839e64201686e84611fc39a4866e86ee144ab4777229d47ddc17b91e5b42",
+        "18": "02bfb07970f4e3bf0aedba2f33a813d6afd8c873d956c57ee916978fd8c90ec6",
+        "19": "ecba16eb69a728b6f73e6ad0cff699f56121c2fb59009b177e2806c5149f1765",
+        "20": "10a9a5d6af5aa012c9fa1f2ffb47b5eba2afd7f52ef4226b6dbb2c8c24a12cdf",
+        "21": "d31a081659d1fb2bbe04bbbe4947caca5dd4f3318d5a108227690474db9255e4",
+        "22": "a9739f7c84e9f92dcdc37e6ad0cc9d27692c55d0761c1b241519fab5740285a2",
+        "23": "062b11169746c03acdf93b31e77dd40c33483c031774e46f4f69fb644222983b",
+        "24": "6ed106ca8abc45eadd7a3be5d2fd863f3fd8c7126bc69571a7f96184271c6af3",
+        "25": "68b552caa215bff4ad5b7e9ae0f108657c386891c1ef11bfd32d4ed0814cb7bc",
+        "26": "37e30f2a8f391240fe47dfd2289375674ec755e0c51bf74a0efe5604b758b460"
+      },
+      "result": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 206,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "1",
+        "critical_case_errors": 0,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 6,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 50,
+        "qualified": true,
+        "usage": {
+          "input_tokens": 46228,
+          "output_tokens": 23516,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 7282
+        },
+        "max_output_tokens_observed": 1365,
+        "cost_usd": "0.374648",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 9.739,
+          "p95": 13.486
+        },
+        "failed_cases": []
+      }
+    }
+  },
+  "charged_or_reserved_usd": "3.2926944",
+  "unresolved_calls": 0,
+  "ungraded_received_calls": 1,
+  "fingerprints": {
+    "baseline": "6b7c9cd46b66cfe221b71244c8d3fdc5c70ff408ac601e741fcc73db5ffe695a",
+    "candidate": "a0b8cf808e00ee7e3628158c6b02be5581c65d93ab3f3ff5aaf2bdee6b4a4282",
+    "qualification": "b16e16fc83fba3ee6d1ead5bd8665cde33581bde0198a67b23f5b4bb2970878f",
+    "high": "8fe7981e47a80d7369285ffbc7f369f207f76e172c5ee30aa380897df1cccfa5",
+    "high_contract": "c7c3b24535ba185ee3b7ad8711aa53c996d03c7612f6391f1b17e6262e4a1512",
+    "high_receipts": "2e01cc2d6f1cb4468cb4809be3503c99c64ba58502332ff5fae76b5d6a9b2a88",
+    "high_checked": "e8ebf1a7256b1b3679dac1eb349b740182b56b03f89a0f7a85e48e530e78234b",
+    "high_final": "fe4e6d7abf2b9bb63da4067680676cce172093dfad276c7aea4247fb19657cd6",
+    "high_final_counted": "dfc1faf8af54eb17d62efda748c0302c6b286cfcd2fd523881c9b228cd3496cc",
+    "luna_xhigh": "2a5657ebd3687e3300449b4acbf14f2582906edccaf7baa8a18b6fb025103e6e",
+    "terra_xhigh": "837e23ea8215423dc003129da9c99e4ea02ec37ad260199a53fe154cc8de222b"
+  },
+  "phases": {
+    "baseline": {
+      "gpt-5.6-luna": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 185,
+        "observed_models": [
+          "gpt-5.6-luna"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "0.8980582524271844660194174757",
+        "critical_case_errors": 21,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 4,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 50,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 30701,
+          "output_tokens": 24238,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 6580
+        },
+        "max_output_tokens_observed": 1357,
+        "cost_usd": "0.0352258",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 11.984,
+          "p95": 15.37
+        },
+        "failed_cases": [
+          {
+            "id": "OAI-003",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-005",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-012",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-020",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-060",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-072",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-092",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-112",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-123",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-124",
+            "archetype": "exchange",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-125",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-132",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-144",
+            "archetype": "exchange",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-153",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-163",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-165",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-172",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-173",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-192",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-202",
+            "archetype": "receipt_pdf",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-204",
+            "archetype": "injection_pdf",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          }
+        ]
+      },
+      "gpt-5.6-terra": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 156,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "0.7572815533980582524271844660",
+        "critical_case_errors": 46,
+        "unnecessary_abstentions": 4,
+        "invalid_outputs": 0,
+        "visual_passed": 2,
+        "visual_cases": 6,
+        "function_passed": 2,
+        "function_cases": 3,
+        "clarifications": 54,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 30701,
+          "output_tokens": 19009,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 3426
+        },
+        "max_output_tokens_observed": 1238,
+        "cost_usd": "0.289510",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 5.994,
+          "p95": 10.981
+        },
+        "failed_cases": [
+          {
+            "id": "OAI-003",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-005",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-006",
+            "archetype": "duplicate",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-012",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-020",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-023",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-025",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-026",
+            "archetype": "duplicate",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-032",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-040",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-043",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-045",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-052",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-053",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "action",
+              "kind",
+              "amount",
+              "asset",
+              "month",
+              "shares",
+              "items"
+            ],
+            "clarification": true
+          },
+          {
+            "id": "OAI-060",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-063",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-065",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-072",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-073",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "action",
+              "kind",
+              "amount",
+              "asset",
+              "month",
+              "shares",
+              "items"
+            ],
+            "clarification": true
+          },
+          {
+            "id": "OAI-080",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-083",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-084",
+            "archetype": "exchange",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-085",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-086",
+            "archetype": "duplicate",
+            "passed": false,
+            "failures": [
+              "kind",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-092",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-100",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-103",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-104",
+            "archetype": "exchange",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-105",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-106",
+            "archetype": "duplicate",
+            "passed": false,
+            "failures": [
+              "kind",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-112",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-116",
+            "archetype": "injection",
+            "passed": false,
+            "failures": [
+              "asset"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-120",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-123",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-125",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-140",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-143",
+            "archetype": "transfer",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-145",
+            "archetype": "card_repayment",
+            "passed": false,
+            "failures": [
+              "fee"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-152",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-160",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-172",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-180",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-186",
+            "archetype": "duplicate",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-192",
+            "archetype": "partner_expense",
+            "passed": false,
+            "failures": [
+              "shares"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-193",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "action",
+              "kind",
+              "amount",
+              "asset",
+              "month",
+              "shares",
+              "items"
+            ],
+            "clarification": true
+          },
+          {
+            "id": "OAI-200",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "kind",
+              "amount",
+              "asset",
+              "month"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-202",
+            "archetype": "receipt_pdf",
+            "passed": false,
+            "failures": [
+              "evidence",
+              "items"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-204",
+            "archetype": "injection_pdf",
+            "passed": false,
+            "failures": [
+              "evidence"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-205",
+            "archetype": "menu_png",
+            "passed": false,
+            "failures": [
+              "action"
+            ],
+            "clarification": true
+          },
+          {
+            "id": "OAI-206",
+            "archetype": "menu_pdf",
+            "passed": false,
+            "failures": [
+              "evidence"
+            ],
+            "clarification": false
+          }
+        ]
+      }
+    },
+    "candidate": {
+      "gpt-5.6-luna": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 201,
+        "observed_models": [
+          "gpt-5.6-luna"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "0.9757281553398058252427184466",
+        "critical_case_errors": 5,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 6,
+        "visual_cases": 6,
+        "function_passed": 2,
+        "function_cases": 3,
+        "clarifications": 50,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 39181,
+          "output_tokens": 22378,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 4979
+        },
+        "max_output_tokens_observed": 1202,
+        "cost_usd": "0.0346898",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 9.324,
+          "p95": 15.233
+        },
+        "failed_cases": [
+          {
+            "id": "OAI-033",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-053",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-113",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-173",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-193",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          }
+        ]
+      },
+      "gpt-5.6-terra": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 204,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "0.9902912621359223300970873786",
+        "critical_case_errors": 1,
+        "unnecessary_abstentions": 1,
+        "invalid_outputs": 0,
+        "visual_passed": 4,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 52,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 39181,
+          "output_tokens": 19145,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 2793
+        },
+        "max_output_tokens_observed": 1199,
+        "cost_usd": "0.308102",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 6.52,
+          "p95": 9.309
+        },
+        "failed_cases": [
+          {
+            "id": "OAI-205",
+            "archetype": "menu_png",
+            "passed": false,
+            "failures": [
+              "action"
+            ],
+            "clarification": true
+          },
+          {
+            "id": "OAI-206",
+            "archetype": "menu_pdf",
+            "passed": false,
+            "failures": [
+              "action",
+              "evidence"
+            ],
+            "clarification": true
+          }
+        ]
+      }
+    },
+    "qualification": {
+      "gpt-5.6-terra": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 204,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "0.9902912621359223300970873786",
+        "critical_case_errors": 0,
+        "unnecessary_abstentions": 2,
+        "invalid_outputs": 0,
+        "visual_passed": 6,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 52,
+        "qualified": true,
+        "usage": {
+          "input_tokens": 41881,
+          "output_tokens": 18163,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 2079
+        },
+        "max_output_tokens_observed": 1117,
+        "cost_usd": "0.301718",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 5.826,
+          "p95": 10.095
+        },
+        "failed_cases": [
+          {
+            "id": "OAI-113",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "action",
+              "kind",
+              "amount",
+              "asset",
+              "month",
+              "shares",
+              "items"
+            ],
+            "clarification": true
+          },
+          {
+            "id": "OAI-193",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "action",
+              "kind",
+              "amount",
+              "asset",
+              "month",
+              "shares",
+              "items"
+            ],
+            "clarification": true
+          }
+        ]
+      }
+    },
+    "high": {
+      "gpt-5.6-terra": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 204,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "0.9902912621359223300970873786",
+        "critical_case_errors": 2,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 6,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 50,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 41881,
+          "output_tokens": 24169,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 8151
+        },
+        "max_output_tokens_observed": 1398,
+        "cost_usd": "0.373790",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 10.106,
+          "p95": 13.839
+        },
+        "failed_cases": [
+          {
+            "id": "OAI-086",
+            "archetype": "duplicate",
+            "passed": false,
+            "failures": [
+              "kind"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-106",
+            "archetype": "duplicate",
+            "passed": false,
+            "failures": [
+              "kind"
+            ],
+            "clarification": false
+          }
+        ]
+      }
+    },
+    "high_contract": {
+      "gpt-5.6-terra": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 205,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "0.9951456310679611650485436893",
+        "critical_case_errors": 1,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 6,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 50,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 42988,
+          "output_tokens": 23234,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 7212
+        },
+        "max_output_tokens_observed": 1349,
+        "cost_usd": "0.364784",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 9.935,
+          "p95": 13.572
+        },
+        "failed_cases": [
+          {
+            "id": "OAI-113",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          }
+        ]
+      }
+    },
+    "high_receipts": {
+      "gpt-5.6-terra": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 204,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "0.9902912621359223300970873786",
+        "critical_case_errors": 2,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 5,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 50,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 43906,
+          "output_tokens": 23751,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 7375
+        },
+        "max_output_tokens_observed": 1383,
+        "cost_usd": "0.372824",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 9.495,
+          "p95": 12.608
+        },
+        "failed_cases": [
+          {
+            "id": "OAI-013",
+            "archetype": "mixed_receipt",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          },
+          {
+            "id": "OAI-201",
+            "archetype": "receipt_png",
+            "passed": false,
+            "failures": [
+              "items"
+            ],
+            "clarification": false
+          }
+        ]
+      }
+    },
+    "high_checked": {
+      "gpt-5.6-terra": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 205,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "0.9951456310679611650485436893",
+        "critical_case_errors": 1,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 6,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 50,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 45472,
+          "output_tokens": 23680,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 7274
+        },
+        "max_output_tokens_observed": 1395,
+        "cost_usd": "0.375104",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 9.659,
+          "p95": 13.057
+        },
+        "failed_cases": [
+          {
+            "id": "OAI-180",
+            "archetype": "grounded_insight",
+            "passed": false,
+            "failures": [
+              "target"
+            ],
+            "clarification": false
+          }
+        ]
+      }
+    },
+    "high_final": {
+      "gpt-5.6-terra": {
+        "complete": false,
+        "calls": 20,
+        "primary_cases": 200,
+        "passed": 200,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 20
+        },
+        "exact_case_accuracy": "1",
+        "critical_case_errors": 0,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 0,
+        "visual_cases": 0,
+        "function_passed": 0,
+        "function_cases": 0,
+        "clarifications": 50,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 34960,
+          "output_tokens": 22257,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 6814
+        },
+        "max_output_tokens_observed": 1365,
+        "cost_usd": "0.337004",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 10.4885,
+          "p95": 13.486
+        },
+        "failed_cases": []
+      }
+    },
+    "high_final_counted": {
+      "gpt-5.6-terra": {
+        "complete": false,
+        "calls": 7,
+        "primary_cases": 6,
+        "passed": 6,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 7
+        },
+        "exact_case_accuracy": "1",
+        "critical_case_errors": 0,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 6,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 0,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 11268,
+          "output_tokens": 1259,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 468
+        },
+        "max_output_tokens_observed": 314,
+        "cost_usd": "0.037644",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 3.003,
+          "p95": 3.899
+        },
+        "failed_cases": []
+      }
+    },
+    "luna_xhigh": {
+      "gpt-5.6-luna": {
+        "complete": false,
+        "calls": 4,
+        "primary_cases": 30,
+        "passed": 30,
+        "observed_models": [
+          "gpt-5.6-luna"
+        ],
+        "response_statuses": {
+          "completed": 3,
+          "incomplete": 1
+        },
+        "exact_case_accuracy": "1",
+        "critical_case_errors": 0,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 0,
+        "visual_cases": 0,
+        "function_passed": 0,
+        "function_cases": 0,
+        "clarifications": 8,
+        "qualified": false,
+        "usage": {
+          "input_tokens": 6992,
+          "output_tokens": 12787,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 10295
+        },
+        "max_output_tokens_observed": 4096,
+        "cost_usd": "0.0167428",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 29.7735,
+          "p95": 37.805
+        },
+        "failed_cases": []
+      }
+    },
+    "terra_xhigh": {
+      "gpt-5.6-terra": {
+        "complete": true,
+        "calls": 27,
+        "primary_cases": 206,
+        "passed": 206,
+        "observed_models": [
+          "gpt-5.6-terra"
+        ],
+        "response_statuses": {
+          "completed": 27
+        },
+        "exact_case_accuracy": "1",
+        "critical_case_errors": 0,
+        "unnecessary_abstentions": 0,
+        "invalid_outputs": 0,
+        "visual_passed": 6,
+        "visual_cases": 6,
+        "function_passed": 3,
+        "function_cases": 3,
+        "clarifications": 50,
+        "qualified": true,
+        "usage": {
+          "input_tokens": 46228,
+          "output_tokens": 29425,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "reasoning_tokens": 12831
+        },
+        "max_output_tokens_observed": 1936,
+        "cost_usd": "0.445556",
+        "cost_is_conservative": false,
+        "call_latency_seconds": {
+          "p50": 11.275,
+          "p95": 17.221
+        },
+        "failed_cases": []
+      }
+    }
+  },
+  "limitations": [
+    "Baseline was exploratory: ambiguous proposal instructions and a missing report year were corrected before candidate qualification.",
+    "Terra final text and visual/function continuation have identical generation contracts and non-overlapping request indices; cost is counted once in phases.",
+    "Prompt calibration repeatedly used the same known cases; this is not an independent holdout.",
+    "Text cases use batches of ten; latency is per API call, not per transaction or production request.",
+    "Two hundred text cases are variants of twenty archetypes; six visual cases are three clean documents in two formats.",
+    "Measured usage cost uses the dated pricing snapshot; not an invoice or production-family monthly bill.",
+    "No production commands, real household data, multi-page boundary or daily user-flow acceptance."
+  ],
+  "journal_sha256": "ad87c14511176a432e344fa8d1bbb7aa0049810353611cbf097b9c99d5e8c67e"
+}
