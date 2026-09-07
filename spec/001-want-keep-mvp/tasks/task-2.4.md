@@ -5,7 +5,7 @@
 
 Связывать доказательства одной операции без слияния разных покупок.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализован backend/API сопоставления, ожидания без второго эффекта, связывания существующих движений и составной отмены. Проверки и границы фиксируются в evidence/task-2.4-matching.md.
 
 **Зависимости:** `task-2.3`.
 
@@ -13,11 +13,96 @@
 
 ### Изменение и контракты
 
-Разделить точную идемпотентность источника и экономическое сопоставление между источниками/чатом. Использовать подтверждённые ID/счета/суммы/валюты и фактические комиссии; совпадение суммы/времени только формирует кандидатов. Подтверждённые однозначные связи применяются автоматически, конкурирующие кандидаты идут в уточнения; частичные переводы остаются явными.
+D-39 остаётся идентичностью источника. Проверенная структурированная связь с namespace, сетью/движением и точными суммами допускает автоматическое сопоставление; сумма, дата и hash файла дают только кандидата. Поиск ID охватывает сохранённую историю; вероятные совпадения — ±7 календарных дней, полнота явная. Возможный дубль сохраняется со статусом банка, но без дополнительного эффекта до решения. Связь содержит одну исходящую и одну входящую сторону, отдельные комиссии и одного носителя каждого эффекта. Собственные стороны без пары не становятся доходом/расходом. Выбор основной записи для показа не назначает носителя эффекта или приоритет правок. Link/resolve, полевые исправления и undo проверяют все revisions; история, проекции, review/outbox и команда атомарны. CommitPage сохраняет checkpoint с matching_unresolved и отвергает устаревшие jobs.
 
 ### Границы изменений
 
 - `backend/internal/matching/`
+- `backend/internal/ledger/`
+- `backend/internal/accounts/application/`
+- `backend/internal/storage/`
+- `backend/internal/delivery/ledger/`
+- `backend/migrations/010_transaction_matching.sql`
+- `api/`
+- `backend/test/integration/matching/`
+
+### Экранный контракт
+
+### SCR-010 — Карточка операции
+
+`/transactions/:id`
+
+**Вопрос:** Правильно ли учтена эта покупка?
+
+**Главный ответ:** Сумма, назначение, плательщик и доли одной операции.
+
+**Структура сверху вниз:** Результат учёта → счёт/дата/статус → личные/общие доли → чек → исправить/возврат.
+
+**Следующее действие:** Исправить FORM-06/07, вернуть FORM-08, явный долг FORM-09; чек → SCR-011.
+
+**Объяснение и детализация:** История до/после с автором, временем, decisionId и основаниями; отдельные банковское и учётное состояния. Защищённые поля сравниваются с нормализованным источником; review показывает безопасное обоснование и ссылки на evidence. Для выбранного решения видны возможность undo и причина отказа. Группа показывает участников, evidence, носителей эффекта, отдельное ожидание matching_unresolved и конфликт. Список кандидатов сообщает полноту; основная запись не означает приоритет правок. Link/resolve и составные исправления используют версии всех участников; undo сохраняет независимые правки и состояния банка.
+
+**Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
+
+Forms: FORM-06, FORM-07, FORM-08, FORM-09, FORM-05.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-14.
+
+#### FORM-05 — Учесть перевод или обмен
+
+**Поля:** Откуда/куда, даты, обе суммы/валюты, комиссии и счёт комиссии, существующие движения.
+
+**Проверки и права:** Оба участника; разные счета семьи; одна исходящая и одна входящая сторона. Principal не входит в доходы/расходы; отдельные комиссии, включая третий актив. Пустой existingTransactions создаёт новое движение. Непустой список содержит ID/revisions всех участников (до 100); суммы, комиссии и дата основной записи проверяются без создания недостающих сторон. Связь переводов/обменов/оплаты подтверждается по версиям, неоднозначность остаётся в matching; отдельная покупка снимает ожидание один раз.
+
+**Результат:** Связано движение денег в журнале; никакой реальной отправки или покупки актива.
+
+#### FORM-06 — Исправление, сопоставление и отмена
+
+**Поля:** Операция, expectedRevision, основание; полный principal и отдельные fees, дата покупки, payer, merchant/note. Пропуск сохраняет поле, пустой текст очищает. Undo: decisionId и expectedRevisions всех участников; исключение — отдельное действие. Сравнение до/после и с источником.
+
+**Проверки и права:** Оба участника исправляют факты. Сервер сохраняет счета/активы principal, проверяет группы сумм, права, версии и происхождение; actor не задаётся формой. Undo сохраняет поздние независимые поля и отвергает пересечение/ABA. Сопоставление, категории и доли активируются профильными задачами.
+
+**Результат:** Новое решение и финансовые revisions с историей, либо no_change/conflict без эффекта и потери ввода. Исключение не меняет банковский статус; undo пересчитывает текущий эффект.
+
+#### FORM-07 — Чек и распределение позиций
+
+**Поля:** Фото/PDF, обязательный счёт списания включая наличные; позиции, скидки, категории, personal/shared и доли % или суммы.
+
+**Проверки и права:** Оба member; лимиты файлов по контракту, позиции/скидки/доли точно равны оплате. Неоднозначность уточняется; AI не исполняет инструкции файла.
+
+**Результат:** Создано/связано с существующим/ожидает уточнения/документ не подходит с причиной. Одно подтверждённое списание.
+
+#### FORM-08 — Возврат покупки
+
+**Поля:** Исходная покупка, возвращаемые позиции/доли/сумма, счёт поступления и фактическая дата.
+
+**Проверки и права:** Оба member; совокупный возврат не больше покупки; исходные исторические FX и распределение по возвращённой части сохраняются.
+
+**Результат:** Исходный месяц покупки пересчитан; деньги поступили текущей датой; FX отдельно.
+
+#### FORM-09 — Явный долг и возмещение
+
+**Поля:** Кто кому, сумма/валюта, основание/расход; при погашении существующий семейный перевод и сумма связи.
+
+**Проверки и права:** Только явное действие member; не выводить долг из долей. Нельзя повторно погасить одним переводом сверх его суммы; долг не капитал семьи.
+
+**Результат:** Непогашенный остаток обновлён без нового семейного расхода.
+
+- **UISTATE-01 — Загрузка:** Скелетон структуры и подпись загрузки; суммы не подменяются нулями.
+- **UISTATE-02 — Обновление:** Сохранить предыдущие данные и контекст, показать время последнего успеха; блокировать только конфликтующие действия.
+- **UISTATE-03 — Пусто:** Объяснить полезный результат и предложить первое действие: счёт, чек, план или цель.
+- **UISTATE-05 — Частичные данные:** Назвать отсутствующий источник/период и последствия для суммы; доступные блоки работают; неизвестное обозначить отдельно.
+- **UISTATE-06 — Устаревшие данные:** Показать дату последнего успеха и влияние на решение; дать обновить или перейти к подключению.
+- **UISTATE-07 — Ошибка:** Понятная причина и следующий шаг у проблемного блока; ввод и исправные данные сохранить, диагностику раскрывать отдельно.
+- **UISTATE-08 — Offline:** Показать отсутствие связи; не обещать сохранение. Чувствительные черновики только в памяти текущей вкладки, без новой offline-очереди.
+- **UISTATE-09 — Сохранение:** Немедленно показать прогресс текущего действия и не допускать дублирующую отправку команды.
+- **UISTATE-10 — Исход неизвестен:** Сохранить ID команды/ввод, запросить её результат; не создавать новую финансовую команду вслепую. После перезагрузки сверять серверный список недавних команд.
+- **UISTATE-11 — Конфликт версии:** Показать авторов и различия, сохранить мой ввод; загрузить актуальную версию и дать повторно применить выбранные изменения после проверки.
+- **UISTATE-12 — Недостаточно прав:** Финансовые данные доступны семье; запрещённое изменение объясняет владельца. Сервер отклоняет команду независимо от видимости кнопки.
+- **UISTATE-13 — Сессия истекла:** Закрыть защищённое содержимое; вход для того же участника, безопасный возврат по внутреннему маршруту. Чужой вход не получает прежний черновик.
+- **UISTATE-14 — Ожидание AI:** Отличать очередь, обработку, уточнение и паузу из-за лимита/API; обычный учёт доступен, результат не выдумывать.
+- **UISTATE-16 — Подтверждено:** После подтверждённого сервером результата показать что изменилось, ссылку на объект и доступное исправление; не полагаться на исчезающий toast.
+
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -107,12 +192,12 @@
 ### Проверка результата
 
 ```sh
-make test-integration AREA=matching
+make test-go PKG=./internal/matching/... && make test-integration AREA=matching && make test-matching-race
 ```
 
-Ранний чек, поздняя/обратная сторона, P2P-обмен, две одинаковые покупки и изменение комиссии не дают двойного учёта.
+Шесть активов; ручная оплата, нормализованный чек и банк; разные/вероятные покупки; обе последовательности сторон, комиссии, lifecycle, источники, составные правки/undo, конкуренция, права, replay/rollback/restart и миграция проверяются без двойного эффекта.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Task-2.3 включена в базу; команды существуют. Обязательны make check, matching/audit/ledger/accounts/storage/identity/household integration/race, privacy и git diff --check. Реальные чеки/чат/OpenAI, банковский IO, возвраты, долг, экраны и эксплуатация не подтверждаются.
 
 ### Передача следующему агенту
 
@@ -124,7 +209,7 @@ make test-integration AREA=matching
 
 Link evidence of one transaction without merging different purchases.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Matching, waiting without a second effect, existing movement linking and compound undo backend/API are implemented. Verification and boundaries are recorded in evidence/task-2.4-matching.en.md.
 
 **Dependencies:** `task-2.3`.
 
@@ -132,11 +217,96 @@ Link evidence of one transaction without merging different purchases.
 
 ### Change and contracts
 
-Separate exact source idempotency from economic matching across sources/chat. Use verified IDs/accounts/amounts/currencies and actual fees; equal amount/time only yields candidates. Substantiated unambiguous links apply automatically; competing candidates require clarification; partial transfers remain explicit.
+D-39 remains source identity. Verified structured correspondence with namespace, network/movement and exact amounts permits automatic matching; amount, date and file hash only yield candidates. Identifier search spans retained history; probable matching uses ±7 calendar days with explicit completeness. A possible duplicate retains bank status without an additional effect until resolution. A link has one outgoing and one incoming principal, separate fees and one carrier per effect. A known internal side without its counterpart is not income/expense. Display primary does not select effect ownership or override priority. Link/resolve, field corrections and undo check all revisions; history, projections, review/outbox and command outcome are atomic. CommitPage retains a checkpoint with matching_unresolved and rejects stale jobs.
 
 ### Change boundaries
 
 - `backend/internal/matching/`
+- `backend/internal/ledger/`
+- `backend/internal/accounts/application/`
+- `backend/internal/storage/`
+- `backend/internal/delivery/ledger/`
+- `backend/migrations/010_transaction_matching.sql`
+- `api/`
+- `backend/test/integration/matching/`
+
+### Screen contract
+
+### SCR-010 — Transaction details
+
+`/transactions/:id`
+
+**Question:** Is this purchase accounted for correctly?
+
+**Primary answer:** Amount, purpose, payer and shares of one transaction.
+
+**Top-down structure:** Accounting outcome → account/date/status → personal/shared shares → receipt → correction/refund.
+
+**Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
+
+**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason. A group exposes participants, evidence, effect carriers, matching_unresolved waiting and conflicts. Candidate completeness is explicit; primary does not imply override priority. Link/resolve and compound corrections use all participant revisions; undo preserves independent edits and bank states.
+
+**Permissions:** Both members read/correct facts for any household account; actor from session.
+
+Forms: FORM-06, FORM-07, FORM-08, FORM-09, FORM-05.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-14.
+
+#### FORM-05 — Record transfer or exchange
+
+**Fields:** From/to accounts, dates, both amounts/currencies, fees/fee account, existing movements.
+
+**Validation and permissions:** Either member; distinct household accounts; one outgoing and one incoming side. Principal is excluded from income/expenses; separate fees may use a third asset. Empty existingTransactions creates new movement. A nonempty list supplies all participant IDs/revisions (up to 100); amounts, fees and primary date are checked without creating missing sides. Transfer/exchange/payment links require version checks; ambiguity remains in matching; separate-purchase confirmation releases waiting once.
+
+**Outcome:** Ledger movements linked; no actual transfer or asset purchase.
+
+#### FORM-06 — Correction, matching and undo
+
+**Fields:** Transaction, expectedRevision and reason; complete principal and separate fees, purchase time, payer, merchant/note. Omission retains a field; empty text clears it. Undo: decisionId and all participant expectedRevisions; exclusion is a separate action. Compare before/after and source values.
+
+**Validation and permissions:** Both members correct facts. The server preserves principal accounts/assets and validates monetary groups, rights, versions and provenance; the form cannot assign actor. Undo preserves later independent fields and rejects overlaps/ABA. Matching, categories and shares are activated by their owning tasks.
+
+**Outcome:** New decision and financial revisions with history, or no_change/conflict without effect or lost input. Exclusion does not change bank state; undo recomputes the current effect.
+
+#### FORM-07 — Receipt and item allocation
+
+**Fields:** Photo/PDF, required debit account including cash; items, discounts, categories, personal/shared and percentage or amount shares.
+
+**Validation and permissions:** Either member; file limits from contract, items/discounts/shares exactly equal payment. Ambiguity requires clarification; AI never executes file instructions.
+
+**Outcome:** Created/linked to existing/awaiting clarification/document unsuitable with reason. One confirmed debit.
+
+#### FORM-08 — Purchase refund
+
+**Fields:** Original purchase, returned items/shares/amount, receiving account and actual date.
+
+**Validation and permissions:** Either member; cumulative refund cannot exceed purchase; original historical FX and refunded-part allocation are retained.
+
+**Outcome:** Original purchase month recalculated; cash arrives on actual date; FX separate.
+
+#### FORM-09 — Explicit debt and reimbursement
+
+**Fields:** Debtor/creditor, amount/currency, reason/expense; for settlement an existing household transfer and linked amount.
+
+**Validation and permissions:** Explicit member action only; never infer debt from shares. One transfer cannot settle beyond its amount; debt is not household wealth.
+
+**Outcome:** Outstanding balance updated without another household expense.
+
+- **UISTATE-01 — Loading:** Structural skeleton and loading label; amounts are never replaced by zero.
+- **UISTATE-02 — Refreshing:** Keep previous data/context and last-success time; block only conflicting actions.
+- **UISTATE-03 — Empty:** Explain the useful outcome and offer a first account, receipt, plan or goal action.
+- **UISTATE-05 — Partial data:** Name the missing source/period and its effect on the amount; available sections work and unknowns stay explicit.
+- **UISTATE-06 — Stale data:** Show last-success date and impact on the decision; offer refresh or connection details.
+- **UISTATE-07 — Error:** Plain cause and next step beside the affected section; preserve input/healthy data and expand diagnostics separately.
+- **UISTATE-08 — Offline:** Show missing connectivity and do not promise saved data. Sensitive drafts remain only in current-tab memory, without a new offline queue.
+- **UISTATE-09 — Saving:** Immediately show current-action progress and prevent duplicate command submission.
+- **UISTATE-10 — Unknown outcome:** Keep command ID/input and query its result; never blindly create another financial command. After reload reconcile the server list of recent commands.
+- **UISTATE-11 — Version conflict:** Show authors/differences and keep my input; load current version and allow chosen changes to be reapplied after validation.
+- **UISTATE-12 — Insufficient permission:** Household can read financial data; forbidden edits explain ownership. Server rejects the command regardless of button visibility.
+- **UISTATE-13 — Session expired:** Hide protected contents; require the same member to sign in and return through a safe internal route. Another identity never receives the prior draft.
+- **UISTATE-14 — AI waiting:** Distinguish queued, processing, clarification and budget/API pause; ordinary accounting remains available and results are not invented.
+- **UISTATE-16 — Confirmed:** After server-confirmed outcome show what changed, an object link and available correction; do not rely on a disappearing toast.
+
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -226,12 +396,12 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make test-integration AREA=matching
+make test-go PKG=./internal/matching/... && make test-integration AREA=matching && make test-matching-race
 ```
 
-Early receipts, late/reversed legs, P2P conversion, equal purchases and fee changes do not double count.
+Six assets; manual payment, normalized receipt and bank; distinct/probable purchases; both side arrival orders, fees, lifecycle, sources, compound corrections/undo, concurrency, rights, replay/rollback/restart and migration are checked without duplicate effects.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Task-2.3 is included in the base; commands exist. Require make check, matching/audit/ledger/accounts/storage/identity/household integration/race, privacy and git diff --check. Real receipts/chat/OpenAI, bank IO, refunds, debt, screens and operations are not verified.
 
 ### Handoff to the next agent
 

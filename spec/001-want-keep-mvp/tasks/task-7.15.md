@@ -141,7 +141,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Поля:** Откуда/куда, даты, обе суммы/валюты, комиссии и счёт комиссии, существующие движения.
 
-**Проверки и права:** Оба участника; разные счета одной семьи; principal исключён из доходов/расходов, комиссии отдельно, включая третий актив. Task-2.2 создаёт только новое движение, непустой existingTransactions получает 422 feature_unavailable без частичного эффекта. Сопоставление существующих записей реализует task-2.4.
+**Проверки и права:** Оба участника; разные счета семьи; одна исходящая и одна входящая сторона. Principal не входит в доходы/расходы; отдельные комиссии, включая третий актив. Пустой existingTransactions создаёт новое движение. Непустой список содержит ID/revisions всех участников (до 100); суммы, комиссии и дата основной записи проверяются без создания недостающих сторон. Связь переводов/обменов/оплаты подтверждается по версиям, неоднозначность остаётся в matching; отдельная покупка снимает ожидание один раз.
 
 **Результат:** Связано движение денег в журнале; никакой реальной отправки или покупки актива.
 
@@ -393,7 +393,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Fields:** From/to accounts, dates, both amounts/currencies, fees/fee account, existing movements.
 
-**Validation and permissions:** Either member; distinct accounts in one household; principal excluded from income/expenses, fees separate, including a third asset. Task-2.2 creates new movements only; nonempty existingTransactions receives 422 feature_unavailable without a partial effect. Task-2.4 implements existing-record matching.
+**Validation and permissions:** Either member; distinct household accounts; one outgoing and one incoming side. Principal is excluded from income/expenses; separate fees may use a third asset. Empty existingTransactions creates new movement. A nonempty list supplies all participant IDs/revisions (up to 100); amounts, fees and primary date are checked without creating missing sides. Transfer/exchange/payment links require version checks; ambiguity remains in matching; separate-purchase confirmation releases waiting once.
 
 **Outcome:** Ledger movements linked; no actual transfer or asset purchase.
 
