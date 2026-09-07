@@ -1,7 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { App } from "@/app/App";
+import { RouterProvider } from "react-router/dom";
+import { createApplication } from "@/app/router";
+import { ApplicationServices } from "@/app/services";
+import { RouteContext } from "@/navigation/route-context";
 import "@/styles/global.css";
 
 const root = document.getElementById("root");
@@ -11,6 +14,10 @@ if (!root) {
 }
 
 const reactRoot = createRoot(root);
+const invitationToken = RouteContext.takeInvitation(
+  window.location,
+  window.history,
+);
 
 if (import.meta.env.DEV && window.location.pathname === "/__design/tokens") {
   void import("@/design-system/preview/TokenPreview").then(
@@ -38,7 +45,9 @@ if (import.meta.env.DEV && window.location.pathname === "/__design/tokens") {
 } else {
   reactRoot.render(
     <StrictMode>
-      <App />
+      <RouterProvider
+        router={createApplication(new ApplicationServices(invitationToken))}
+      />
     </StrictMode>,
   );
 }

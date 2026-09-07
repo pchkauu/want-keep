@@ -128,11 +128,16 @@ test-contract:
 	$(NPM) --prefix collector run test -- "contracts/$(PROVIDER)"
 
 e2e:
+ifeq ($(SCENARIO),access)
+	sh scripts/test-access.sh
+else
 	@if [ -z "$(SCENARIO)" ]; then echo "SCENARIO=<name|all> is required." >&2; exit 2; fi
 	@if [ "$(SCENARIO)" = "all" ]; then suite_path="$(E2E_WEB_DIR)/e2e"; else suite_path="$(E2E_WEB_DIR)/e2e/$(SCENARIO).spec.ts"; fi; \
 		if [ ! -e "$$suite_path" ]; then echo "E2E scenario '$(SCENARIO)' is not implemented." >&2; exit 2; fi; \
 		if [ "$(SCENARIO)" = "all" ] && ! find "$$suite_path" -type f -name '*.spec.ts' -print -quit | grep -q .; then echo "E2E suite has no scenarios." >&2; exit 2; fi
 	cd "$(E2E_WEB_DIR)" && $(NPM) exec playwright test -- $(if $(filter all,$(SCENARIO)),,"e2e/$(SCENARIO).spec.ts")
+
+endif
 
 eval-ai:
 	@if [ -z "$(SUITE)" ]; then echo "SUITE=<name|all> is required." >&2; exit 2; fi
