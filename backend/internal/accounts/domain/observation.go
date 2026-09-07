@@ -64,12 +64,11 @@ func (o Observation) Spendable() reporting.Amount {
 	return o.Amounts.Available
 }
 
-// Funding never adds journal movements to a source snapshot. Newer movements require reconciliation first.
+// Funding requires proof that the snapshot covers journal effects. Until reconciliation
+// supplies that proof, even a backdated or pending movement may be absent from the source.
 func (o Observation) Funding(effects []Effect) reporting.Amount {
-	for _, e := range effects {
-		if e.At.Time().After(o.AsOf.Time()) {
-			return UnknownAmounts("history_not_reconciled").Available
-		}
+	if len(effects) != 0 {
+		return UnknownAmounts("history_not_reconciled").Available
 	}
 	return o.Spendable()
 }

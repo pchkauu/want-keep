@@ -163,3 +163,18 @@ func (s *Store) RecordSourceAmbiguity(ctx context.Context, input ledger.SourceIn
 	}
 	return s.EmitEvent(ctx, "job", j.ID, 1, "source.ambiguous")
 }
+
+func (s *Store) RecordUnresolvedTransaction(ctx context.Context, input ledger.SourceInput) error {
+	scope, err := s.familyScope(ctx)
+	if err != nil {
+		return err
+	}
+	if scope.syncJobID != input.JobID || scope.syncConnectionID != input.ConnectionID {
+		return ErrTransactionRequired
+	}
+	j, err := s.Job(ctx, scope.principal, input.JobID)
+	if err != nil {
+		return err
+	}
+	return s.Quarantine(ctx, j, input.EvidenceRef, "transaction_unresolved")
+}

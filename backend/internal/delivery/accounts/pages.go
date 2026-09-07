@@ -70,7 +70,7 @@ func (s *Server) list(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, err)
 		return
 	}
-	err = s.reads.WithinAccountRead(r.Context(), p.access.Principal, func(ctx context.Context) error {
+	err = s.reads.WithinFinancialRead(r.Context(), p.access.Principal, func(ctx context.Context) error {
 		views, next, e := s.service.List(ctx, p.access.Principal, p.after, p.limit)
 		if e != nil {
 			return e

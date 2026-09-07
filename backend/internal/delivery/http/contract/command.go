@@ -35,3 +35,20 @@ func (b *Boundary) ExpiredCommandToDTO(correlationID string, authorizedOutcome *
 	}
 	return out, b.validateDTO("ExpiredCommand", out)
 }
+
+func (b *Boundary) CommandToDTO(c command.Command, correlationID string) (generated.CommandStatus, error) {
+	x := c.Snapshot()
+	var out generated.CommandStatus
+	var err error
+	switch x.Status {
+	case command.Pending:
+		err = out.FromCommandPending(generated.CommandPending{Id: x.ID, Type: x.Kind, Status: "pending", RegisteredAt: x.RegisteredAt.String()})
+	case command.Succeeded:
+		err = out.FromCommandSucceeded(generated.CommandSucceeded{Id: x.ID, Type: x.Kind, Status: "succeeded", RegisteredAt: x.RegisteredAt.String(), CompletedAt: x.CompletedAt.String(), Result: generated.CommandResult{Type: x.Result.ResourceType, Id: x.Result.ResourceID, Revision: int64(x.Result.Revision)}})
+	case command.Failed:
+		err = out.FromCommandFailed(generated.CommandFailed{Id: x.ID, Type: x.Kind, Status: "failed", RegisteredAt: x.RegisteredAt.String(), CompletedAt: x.CompletedAt.String(), Error: generated.APIError{Version: "1", Code: generated.ErrorCode(x.ErrorCode), Message: "The change was not applied. Check the request, permissions or revision.", CorrelationId: correlationID, Violations: []generated.FieldViolation{}, Retryable: false}})
+	default:
+		return out, command.ErrInvalidCommand
+	}
+	return out, err
+}

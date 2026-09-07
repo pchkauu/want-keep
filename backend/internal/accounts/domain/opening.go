@@ -125,9 +125,10 @@ type Effect struct {
 	Revision    uint64
 	At          calendar.Instant
 	Amount      money.Money
+	Changes     *Amounts
 }
 
-// Projection only includes the current posted revisions. Source observations never enter this calculation.
+// Projection uses current monetary effects, including pending holds, without source observations.
 func (o Opening) Project(asset money.Asset, effects []Effect) (Amounts, error) {
 	if err := o.Validate(asset); err != nil {
 		return Amounts{}, err
@@ -139,29 +140,52 @@ func (o Opening) Project(asset money.Asset, effects []Effect) (Amounts, error) {
 	if err != nil {
 		return Amounts{}, err
 	}
-	delta, _ := money.NewMoney("0", asset)
+	result := o.Amounts
 	for _, e := range effects {
 		if e.At.String() == "" {
 			return Amounts{}, ErrInvalidAccount
 		}
-		if !e.At.Time().Before(start.Time()) {
-			delta, err = delta.Add(e.Amount)
+		if e.At.Time().Before(start.Time()) {
+			continue
+		}
+		changes := e.Changes
+		if changes == nil {
+			if err := e.Amount.Validate(); err != nil {
+				return Amounts{}, err
+			}
+			value, _ := reporting.KnownAmount(e.Amount)
+			zero, _ := money.NewMoney("0", asset)
+			z, _ := reporting.KnownAmount(zero)
+			changes = &Amounts{value, value, z, z}
+		}
+		if err := changes.Validate(asset); err != nil {
+			return Amounts{}, err
+		}
+		for i, field := range []*reporting.Amount{&result.Owned, &result.Available, &result.Locked, &result.Debt} {
+			delta := changes.Fields()[i]
+			change, known := delta.Value()
+			if !known {
+				*field = delta
+				continue
+			}
+			current, known := field.Value()
+			if !known {
+				continue
+			}
+			next, err := current.Add(change)
+			if err != nil {
+				return Amounts{}, err
+			}
+			*field, err = reporting.KnownAmount(next)
 			if err != nil {
 				return Amounts{}, err
 			}
 		}
 	}
-	result := o.Amounts
-	for _, field := range []*reporting.Amount{&result.Owned, &result.Available} {
-		if m, known := field.Value(); known {
-			m, err = m.Add(delta)
-			if err != nil {
-				return Amounts{}, err
-			}
-			*field, err = reporting.KnownAmount(m)
-			if err != nil {
-				return Amounts{}, err
-			}
+	// A source contradiction is preserved as uncertainty, never a negative credit debt or hold.
+	for _, field := range []*reporting.Amount{&result.Locked, &result.Debt} {
+		if value, known := field.Value(); known && value.Sign() < 0 {
+			*field, _ = reporting.MissingAmount(reporting.Unknown, "balance_effect_conflict")
 		}
 	}
 	return result, nil

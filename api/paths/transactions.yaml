@@ -4,7 +4,8 @@
     operationId: transactions_list
     tags:
     - transactions
-    summary: transactions list
+    summary: List current ledger revisions
+    description: Keyset order occurredAt descending, then ID descending. Cursor is session/household/filter-bound; each page is a consistent read, not a complete household financial report.
     parameters:
     - "$ref": "../components.yaml#/parameters/Cursor"
     - "$ref": "../components.yaml#/parameters/Limit"
@@ -28,6 +29,16 @@
       required: false
       schema:
         "$ref": "../schemas/money.yaml#/ID"
+    - name: type
+      in: query
+      schema:
+        type: string
+        enum: [income, expense, transfer, exchange, refund, opening, adjustment, yield, trade_result]
+    - name: state
+      in: query
+      schema:
+        type: string
+        enum: [draft, pending, posted, cancelled, reversed]
     - name: search
       in: query
       required: false
@@ -63,7 +74,8 @@
     operationId: transactions_create
     tags:
     - transactions
-    summary: transactions create
+    summary: Record a confirmed manual income or expense
+    description: Household fact is posted even when allocation is unresolved. Category and resolved allocation requests return feature_unavailable until their owning tasks ship; fields are never ignored. Cash date follows the purchase in household timezone. Inputs cannot set actor, household, state or AI status.
     parameters:
     - "$ref": "../components.yaml#/parameters/IdempotencyKey"
     - "$ref": "../components.yaml#/parameters/CSRF"
@@ -111,7 +123,8 @@
     operationId: transactions_transfer
     tags:
     - transactions
-    summary: transactions transfer
+    summary: Record a new internal transfer or exchange
+    description: Both native legs and all known fees are explicit. existingTransactions must be empty in task-2.2; linking returns feature_unavailable without an effect.
     parameters:
     - "$ref": "../components.yaml#/parameters/IdempotencyKey"
     - "$ref": "../components.yaml#/parameters/CSRF"

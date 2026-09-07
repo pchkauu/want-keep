@@ -46,6 +46,7 @@ type SourceInput struct {
 	FetchedAt                                     calendar.Instant
 	// Correction is an explicit normalized provider decision, never inferred from hash alone.
 	Classification   string
+	UnresolvedReason string
 	ExpectedRevision uint64
 	Operation        *Revision
 }
@@ -62,8 +63,8 @@ func (i SourceInput) Validate() error {
 	default:
 		return ErrInvalidSource
 	}
-	if i.Operation != nil {
-		return i.Operation.Validate()
+	if len(i.UnresolvedReason) > 2000 {
+		return ErrInvalidSource
 	}
 	return nil
 }

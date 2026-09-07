@@ -12,20 +12,7 @@ import (
 )
 
 func (s *Server) commandDTO(c command.Command) (generated.CommandStatus, error) {
-	x := c.Snapshot()
-	var out generated.CommandStatus
-	var err error
-	switch x.Status {
-	case command.Pending:
-		err = out.FromCommandPending(generated.CommandPending{Id: x.ID, Type: x.Kind, Status: "pending", RegisteredAt: x.RegisteredAt.String()})
-	case command.Succeeded:
-		err = out.FromCommandSucceeded(generated.CommandSucceeded{Id: x.ID, Type: x.Kind, Status: "succeeded", RegisteredAt: x.RegisteredAt.String(), CompletedAt: x.CompletedAt.String(), Result: generated.CommandResult{Type: x.Result.ResourceType, Id: x.Result.ResourceID, Revision: int64(x.Result.Revision)}})
-	case command.Failed:
-		err = out.FromCommandFailed(generated.CommandFailed{Id: x.ID, Type: x.Kind, Status: "failed", RegisteredAt: x.RegisteredAt.String(), CompletedAt: x.CompletedAt.String(), Error: generated.APIError{Version: "1", Code: generated.ErrorCode(x.ErrorCode), Message: "The change was not applied. Check the request, permissions or revision.", CorrelationId: uuid.NewString(), Violations: []generated.FieldViolation{}, Retryable: false}})
-	default:
-		return out, command.ErrInvalidCommand
-	}
-	return out, err
+	return s.boundary.CommandToDTO(c, uuid.NewString())
 }
 func (s *Server) commandResponse(w http.ResponseWriter, p household.Principal, c command.Command, status int) {
 	err := c.RequireDetail(p, s.now())
@@ -63,7 +50,7 @@ func (s *Server) command(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var c command.Command
-	err = s.reads.WithinAccountRead(r.Context(), a.Principal, func(ctx context.Context) error {
+	err = s.reads.WithinFinancialRead(r.Context(), a.Principal, func(ctx context.Context) error {
 		var e error
 		c, e = s.queries.Read(ctx, a.Principal, id, s.now())
 		if errors.Is(e, command.ErrCommandExpired) {
@@ -89,7 +76,7 @@ func (s *Server) recent(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, err)
 		return
 	}
-	err = s.reads.WithinAccountRead(r.Context(), p.access.Principal, func(ctx context.Context) error {
+	err = s.reads.WithinFinancialRead(r.Context(), p.access.Principal, func(ctx context.Context) error {
 		entries, next, e := s.queries.Recent(ctx, p.access.Principal, s.now(), p.after, p.limit)
 		if e != nil {
 			return e

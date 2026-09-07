@@ -24,8 +24,10 @@ import (
 	accountdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/accounts"
 	attachmentdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/attachments"
 	delivery "github.com/pchkauu/want-keep/backend/internal/delivery/identity"
+	ledgerdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/ledger"
 	application "github.com/pchkauu/want-keep/backend/internal/identity/application"
 	"github.com/pchkauu/want-keep/backend/internal/identity/webauthn"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	"github.com/pchkauu/want-keep/backend/internal/privacy/cryptobox"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 )
@@ -108,7 +110,14 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	ledgerHandler, err := ledgerdelivery.New(ledger.NewService(database, ledger.NewWriter(database, database), now, uuid.NewString), ledger.NewQueries(database), executor, queries, service, database, config, now)
+	if err != nil {
+		return err
+	}
 	mux := http.NewServeMux()
+	mux.Handle("/api/v1/transactions", ledgerHandler)
+	mux.Handle("/api/v1/transactions/", ledgerHandler)
+	mux.Handle("/api/v1/transfers", ledgerHandler)
 	mux.Handle("/api/v1/accounts", accountHandler)
 	mux.Handle("/api/v1/accounts/", accountHandler)
 	mux.Handle("/api/v1/commands/", accountHandler)

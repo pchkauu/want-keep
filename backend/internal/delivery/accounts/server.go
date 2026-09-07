@@ -26,7 +26,7 @@ type Sessions interface {
 	WithinSession(context.Context, access.Token, func(context.Context, identity.Access) error) error
 }
 type ReadTransactions interface {
-	WithinAccountRead(context.Context, household.Principal, func(context.Context) error) error
+	WithinFinancialRead(context.Context, household.Principal, func(context.Context) error) error
 }
 type Server struct {
 	service  *accounts.Service
@@ -130,7 +130,7 @@ func (s *Server) read(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var out generated.Account
-	err = s.reads.WithinAccountRead(r.Context(), a.Principal, func(ctx context.Context) error {
+	err = s.reads.WithinFinancialRead(r.Context(), a.Principal, func(ctx context.Context) error {
 		v, e := s.service.Read(ctx, a.Principal, id)
 		if e != nil {
 			return e

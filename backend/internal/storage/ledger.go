@@ -60,11 +60,11 @@ func (s *Store) AppendRevision(ctx context.Context, r ledger.Revision, expected 
 		return err
 	}
 	for i, p := range r.Postings {
-		if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.postings(household_id,operation_id,revision,position,account_id,amount,asset,role) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,$8)`, family, r.OperationID, r.Revision, i, p.AccountID, p.Money.Amount(), p.Money.Asset(), p.Role); err != nil {
+		if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.postings(household_id,operation_id,revision,position,account_id,amount,asset,role,funding,treatment) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,$8,$9,$10)`, family, r.OperationID, r.Revision, i, p.AccountID, p.Money.Amount(), p.Money.Asset(), p.Role, p.Funding, p.Treatment); err != nil {
 			return err
 		}
 	}
-	return nil
+	return s.saveTransactionDetails(ctx, r)
 }
 func (s *Store) CurrentLedgerRevision(ctx context.Context, p household.Principal, id string) (ledger.Revision, bool, error) {
 	q, err := s.reader(ctx, p)
@@ -112,7 +112,7 @@ func (s *Store) LedgerRevision(ctx context.Context, p household.Principal, id st
 			return r, err
 		}
 	}
-	rows, err := q.Query(ctx, `SELECT account_id,amount::text,asset,role FROM want_keep.postings WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY position`, p.HouseholdID(), id, revision)
+	rows, err := q.Query(ctx, `SELECT p.account_id,p.amount::text,p.asset,p.role,CASE WHEN p.funding='' AND a.product='credit_card' THEN 'unknown' ELSE p.funding END,p.treatment FROM want_keep.postings p JOIN want_keep.accounts a ON (a.household_id,a.id)=(p.household_id,p.account_id) WHERE p.household_id=$1 AND p.operation_id=$2 AND p.revision=$3 ORDER BY p.position`, p.HouseholdID(), id, revision)
 	if err != nil {
 		return r, err
 	}
@@ -120,7 +120,7 @@ func (s *Store) LedgerRevision(ctx context.Context, p household.Principal, id st
 	for rows.Next() {
 		var entry ledger.Posting
 		var amount, asset string
-		if err = rows.Scan(&entry.AccountID, &amount, &asset, &entry.Role); err != nil {
+		if err = rows.Scan(&entry.AccountID, &amount, &asset, &entry.Role, &entry.Funding, &entry.Treatment); err != nil {
 			return r, err
 		}
 		entry.Money, err = money.NewMoney(amount, money.Asset(asset))
@@ -130,6 +130,10 @@ func (s *Store) LedgerRevision(ctx context.Context, p household.Principal, id st
 		r.Postings = append(r.Postings, entry)
 	}
 	if err = rows.Err(); err != nil {
+		return r, err
+	}
+	rows.Close()
+	if err = s.loadTransactionDetails(ctx, q, p, &r); err != nil {
 		return r, err
 	}
 	return r, r.Validate()
