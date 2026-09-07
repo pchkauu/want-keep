@@ -31,6 +31,8 @@ A successful `CommitPage` acknowledges the currently marked external source acti
 
 Backfill selects the unique active job in the current generation. With no active job and ambiguous terminal history, it never guesses chronology from deadlines: it retains `legacy_checkpoint_ambiguous`, and the next import conservatively replays history from the beginning through existing deduplication. Old job rows and cursors remain available for investigation.
 
+For retained `transaction.changed` events created before review requests appeared in 009, migration 010 adds missing requests for existing household/operation/revision identities. Existing requests, outbox, postings and revisions remain unchanged. `TestUpgradeDeliversLegacyTransactionEvents` creates two operation revisions on schema 008, applies 009/010 and repeats migration, then delivers both events through the application role exactly once; persisted financial history is compared before and after the upgrade.
+
 ```sh
 cd backend
 go run ./cmd/migrate

@@ -14,6 +14,13 @@ ALTER TABLE want_keep.jobs ADD COLUMN external_started boolean NOT NULL DEFAULT 
 ALTER TABLE want_keep.jobs ADD COLUMN resource_id uuid;
 ALTER TABLE want_keep.jobs ADD COLUMN resource_revision want_keep.revision;
 ALTER TABLE want_keep.jobs ADD CHECK((kind='ai' AND resource_id IS NOT NULL AND resource_revision IS NOT NULL) OR (kind!='ai' AND resource_id IS NULL AND resource_revision IS NULL));
+-- Older writers emitted transaction events before review requests existed.
+INSERT INTO want_keep.ledger_review_requests(household_id,operation_id,revision)
+ SELECT r.household_id,r.operation_id,r.revision
+ FROM want_keep.outbox o
+ JOIN want_keep.operation_revisions r ON (r.household_id,r.operation_id,r.revision)=(o.household_id,o.resource_id,o.revision)
+ WHERE o.resource_type='transaction' AND o.event_type='transaction.changed'
+ ON CONFLICT(household_id,operation_id,revision) DO NOTHING;
 ALTER TABLE want_keep.jobs ADD FOREIGN KEY(household_id,resource_id,resource_revision) REFERENCES want_keep.ledger_review_requests(household_id,operation_id,revision);
 CREATE UNIQUE INDEX one_review_job ON want_keep.jobs(household_id,resource_id,resource_revision) WHERE kind='ai';
 UPDATE want_keep.jobs SET state='canceled' WHERE cancel_requested AND state IN ('ready','running');

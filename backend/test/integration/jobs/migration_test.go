@@ -14,13 +14,14 @@ import (
 	"github.com/google/uuid"
 	app "github.com/pchkauu/want-keep/backend/internal/jobs/application"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
+	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 	"github.com/pchkauu/want-keep/backend/migrations"
 )
 
 func TestUpgradePreservesUnresolvedJobsAndHistory(t *testing.T) {
 	admin, dsn := newDatabase(t)
-	old := legacyMigrations(t)
+	old := legacyMigrations(t, "010_")
 	var err error
 	if err = storage.Migrate(testContext, admin, old); err != nil {
 		t.Fatal(err)
@@ -64,7 +65,75 @@ func TestUpgradePreservesUnresolvedJobsAndHistory(t *testing.T) {
 	defer store.Close()
 }
 
-func legacyMigrations(t *testing.T) fs.FS {
+func TestUpgradeDeliversLegacyTransactionEvents(t *testing.T) {
+	f := newFixtureWithMigrations(t, legacyMigrations(t, "009_"))
+	account, operation := f.account(money.RUB, "980"), uuid.NewString()
+	if _, err := f.admin.Exec(testContext, `INSERT INTO want_keep.operations(household_id,id,revision) VALUES($1,$2,2)`, f.family.ID, operation); err != nil {
+		t.Fatal(err)
+	}
+	// The schema-008 writer emitted transaction.changed before review requests existed.
+	for revision := 1; revision <= 2; revision++ {
+		for _, query := range []struct {
+			sql  string
+			args []any
+		}{
+			{`INSERT INTO want_keep.operation_revisions(household_id,operation_id,revision,previous_revision,actor_id,reason,economic_type,state,occurred_at,occurred_ns,cash_date,expense_month,payer_state,payer_member_id,human_override) VALUES($1,$2,$3::bigint,NULLIF($3::bigint-1,0),$4,'Synthetic legacy expense','expense','posted','2026-09-07T10:00:00Z',0,'2026-09-07','2026-09-01','known',$5,false)`, []any{f.family.ID, operation, revision, f.p.UserID(), f.members[0].ID}},
+			{`INSERT INTO want_keep.postings(household_id,operation_id,revision,position,account_id,amount,asset,role,funding) VALUES($1,$2,$3::bigint,0,$4,-10*$3::bigint,'RUB','principal','own')`, []any{f.family.ID, operation, revision, account}},
+			{`INSERT INTO want_keep.transaction_details(household_id,operation_id,revision,timezone,origin,fee_knowledge,pnl_basis,merchant,note,allocation_reason) VALUES($1,$2,$3,'Europe/Moscow','manual','','','','','')`, []any{f.family.ID, operation, revision}},
+		} {
+			if _, err := f.admin.Exec(testContext, query.sql, query.args...); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
+			return f.store.EmitEvent(ctx, "transaction", operation, uint64(revision), "transaction.changed")
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var before string
+	const history = `SELECT jsonb_build_object('revisions',(SELECT jsonb_agg(r ORDER BY revision) FROM want_keep.operation_revisions r),'postings',(SELECT jsonb_agg(p ORDER BY revision,position) FROM want_keep.postings p),'outbox',(SELECT jsonb_agg(o ORDER BY revision) FROM want_keep.outbox o))::text`
+	if err := f.admin.QueryRow(testContext, history).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	if err := storage.Migrate(testContext, f.admin, legacyMigrations(t, "010_")); err != nil {
+		t.Fatal(err)
+	}
+	if f.count("ledger_review_requests") != 0 {
+		t.Fatal("fixture did not preserve legacy request gap")
+	}
+	// Mixed upgrades may already contain a request for one of the retained revisions.
+	if _, err := f.admin.Exec(testContext, `INSERT INTO want_keep.ledger_review_requests(household_id,operation_id,revision) VALUES($1,$2,2)`, f.family.ID, operation); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := storage.Migrate(testContext, f.admin, migrations.Files); err != nil {
+			t.Fatal(err)
+		}
+	}
+	worker := f.worker(app.OutboxHandler{Repository: f.store})
+	for range 3 {
+		if err := worker.Step(testContext); err != nil {
+			t.Fatal("legacy event delivery failed", err)
+		}
+	}
+	var reviewJobs int
+	if err := f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.jobs WHERE household_id=$1 AND kind='ai' AND resource_id=$2 AND resource_revision IN (1,2)`, f.family.ID, operation).Scan(&reviewJobs); err != nil {
+		t.Fatal(err)
+	}
+	if reviewJobs != 2 || f.count("ledger_review_requests") != 2 || f.count("job_receipts") != 2 || f.count("jobs") != 4 {
+		t.Fatal("legacy reviews lost or duplicated")
+	}
+	var after string
+	if err := f.admin.QueryRow(testContext, history).Scan(&after); err != nil {
+		t.Fatal(err)
+	}
+	if after != before || f.available(account) != "980" {
+		t.Fatal("upgrade or delivery changed financial history")
+	}
+}
+
+func legacyMigrations(t *testing.T, before string) fs.FS {
 	t.Helper()
 	names, err := fs.Glob(migrations.Files, "*.sql")
 	if err != nil {
@@ -72,7 +141,7 @@ func legacyMigrations(t *testing.T) fs.FS {
 	}
 	old := fstest.MapFS{}
 	for _, name := range names {
-		if name >= "010_" {
+		if name >= before {
 			continue
 		}
 		data, e := fs.ReadFile(migrations.Files, name)
@@ -92,7 +161,7 @@ func TestUpgradeSelectsSafeSourceProgress(t *testing.T) {
 		{"unresolved", "unresolved", "", "legacy_checkpoint_ambiguous"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			f := newFixtureWithMigrations(t, legacyMigrations(t))
+			f := newFixtureWithMigrations(t, legacyMigrations(t, "010_"))
 			connection := uuid.NewString()
 			b := binding()
 			encoded, err := json.Marshal(map[string]string{"provider": b.Provider, "environment": b.Environment, "adapter_build_digest": b.AdapterBuildDigest, "collector_image_digest": b.CollectorImageDigest, "contract_version": b.ContractVersion, "allowlist_revision": b.AllowlistRevision, "non_secret_config_revision": b.NonSecretConfigRevision, "operator_permission_revision": b.OperatorPermissionRevision})
