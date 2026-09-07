@@ -95,7 +95,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Поля:** Откуда/куда, даты, обе суммы/валюты, комиссии и счёт комиссии, существующие движения.
 
-**Проверки и права:** Оба member; внутренние счета различны, стороны в одной семье; principal исключён из доходов/расходов, fee отдельно; сверка существующих записей до создания.
+**Проверки и права:** Оба участника; разные счета одной семьи; principal исключён из доходов/расходов, комиссии отдельно, включая третий актив. Task-2.2 создаёт только новое движение, непустой existingTransactions получает 422 feature_unavailable без частичного эффекта. Сопоставление существующих записей реализует task-2.4.
 
 **Результат:** Связано движение денег в журнале; никакой реальной отправки или покупки актива.
 
@@ -330,7 +330,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Fields:** From/to accounts, dates, both amounts/currencies, fees/fee account, existing movements.
 
-**Validation and permissions:** Either member; distinct internal accounts in one household; principal excluded from income/expense, fees separate; reconcile existing records before creation.
+**Validation and permissions:** Either member; distinct accounts in one household; principal excluded from income/expenses, fees separate, including a third asset. Task-2.2 creates new movements only; nonempty existingTransactions receives 422 feature_unavailable without a partial effect. Task-2.4 implements existing-record matching.
 
 **Outcome:** Ledger movements linked; no actual transfer or asset purchase.
 

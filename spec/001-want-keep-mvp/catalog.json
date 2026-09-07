@@ -3515,20 +3515,35 @@
         "AC-086"
       ],
       "targets": [
-        "backend/internal/ledger/"
+        "backend/internal/ledger/",
+        "backend/internal/accounts/",
+        "backend/internal/commands/application/authenticated.go",
+        "backend/internal/storage/",
+        "backend/internal/delivery/ledger/",
+        "backend/migrations/008_transaction_ledger.sql",
+        "api/",
+        "backend/test/integration/ledger/"
       ],
       "behavior": {
-        "ru": "Ввести доменные операции дохода/расхода, перевода, обмена, начисления, комиссии, долга и корректировки со связанными проводками. Pending не равен posted; переходы и экономические эффекты атомарны. Переводы, открытия и погашения не создают повторный доход/расход; native amounts и provenance сохраняются.",
-        "en": "Introduce domain income/expense, transfer, exchange, accrual, fee, debt and adjustment transactions with linked postings. Pending differs from posted; transitions and economic effects are atomic. Transfers, openings and repayments create no duplicate income/expense; retain native amounts and provenance."
+        "ru": "Типизированные draft/pending/posted/cancelled/reversed и revisions сохраняют точные native-суммы, время покупки/банковского проведения, автора, плательщика и provenance. Денежные эффекты разделяют own/available/locked/debt и экономические компоненты. Покупка 31 августа с проведением 2 сентября входит в август после posted; неизвестное назначение не скрывает подтверждённый семейный факт. Команды отдельно регистрируются pending, затем сессия/семья перепроверяются; журнал, проекции, audit/outbox и исход атомарны. Новый перевод/обмен хранит обе стороны и комиссии, включая третий актив; existingTransactions и распределения получают явный feature_unavailable. Импорт использует CommitPage и D-39, сохраняет overrides и quarantine. Неподтверждённое покрытие снимка не финансирует резервы.",
+        "en": "Typed draft/pending/posted/cancelled/reversed revisions retain exact native amounts, purchase/bank posting times, actor, payer and provenance. Effects separate own/available/locked/debt from economic components. An August 31 purchase posted September 2 belongs to August after posting; unresolved allocation does not hide a confirmed household fact. Commands register pending independently, then revalidate session/household; ledger, projections, audit/outbox and outcome are atomic. New transfers/exchanges retain both legs and fees, including a third asset; existingTransactions and allocations receive explicit feature_unavailable. Import uses CommitPage and D-39, retaining overrides and quarantine. Unproven snapshot coverage cannot fund reserves."
       },
       "verification": {
-        "command": "make test-go PKG=./internal/ledger/... && make test-integration AREA=ledger",
+        "command": "make test-go PKG=./internal/ledger/... && make test-integration AREA=ledger && make test-ledger-race",
         "expected": {
-          "ru": "Проводки и статусы согласованы; отмены/pending, комиссия перевода и кредитное погашение проходят инварианты.",
-          "en": "Postings and states reconcile; cancellation/pending, transfer fees and credit repayments pass invariants."
+          "ru": "Точные HTTP/SQL round trips, состояния/удержания, кредитное погашение, PnL, комиссии, даты, replay/rollback/restart, импорт, права, миграция и пагинация проходят без повторного эффекта.",
+          "en": "Exact HTTP/SQL round trips, states/holds, credit repayment, PnL, fees, dates, replay/rollback/restart, import, permissions, migration and pagination pass without duplicate effects."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/18"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/18",
+      "status": {
+        "ru": "Реализованы журнал, статусы и backend/API новых доходов, расходов, переводов и обменов; полные исправления, сопоставление, распределения и возвраты — в следующих задачах.",
+        "en": "Ledger, states and backend/API for new income, expenses, transfers and exchanges implemented; full corrections, matching, allocations and refunds remain downstream."
+      },
+      "verification_note": {
+        "ru": "Доказательства и границы: evidence/task-2.2-ledger.md. Зависимости включены в базу; команды существуют. Обязательны make check, ledger/accounts/storage/identity/household integration/race и privacy suite. Это не доказательство live adapters, UI, AI или production.",
+        "en": "Evidence and boundaries: evidence/task-2.2-ledger.en.md. Dependencies are included in the base; commands exist. Require make check, ledger/accounts/storage/identity/household integration/race and privacy suite. This does not prove live adapters, UI, AI or production."
+      }
     },
     {
       "id": "task-2.3",
@@ -6114,8 +6129,8 @@
         "en": "Type, account, date/time, amount/currency, category/subcategory, merchant, purpose/shares, note/receipt."
       },
       "rules": {
-        "ru": "Оба member могут занести на любой семейный счёт; автор из сессии. Сумма >0, согласованные валюта/счёт/доли; неизвестные обязательные поля оставляют draft.",
-        "en": "Either member may record on any household account; actor from session. Amount >0, consistent currency/account/shares; missing required facts remain draft."
+        "ru": "Оба участника заносят факт на любой счёт семьи; actor из сессии, payer отдельно. Сумма >0, актив совпадает со счётом. Подтверждённые счёт/сумма/дата дают posted и семейный факт даже при unresolved назначении; неизвестные денежные факты требуют уточнения. Task-2.2 принимает только unresolved allocation и отклоняет category/shares как feature_unavailable; категории и доли подключат task-2.6/2.8.",
+        "en": "Either member records on any household account; actor comes from session, payer is independent. Amount >0, asset matches account. Confirmed account/amount/date produce posted household facts even with unresolved allocation; unknown monetary facts require clarification. Task-2.2 accepts only unresolved allocation and rejects category/shares as feature_unavailable; task-2.6/2.8 enable categories and shares."
       },
       "result": {
         "ru": "Одна операция, видимые назначения и AI-статус, связь чека; подтверждённый результат и ссылка.",
@@ -6133,8 +6148,8 @@
         "en": "From/to accounts, dates, both amounts/currencies, fees/fee account, existing movements."
       },
       "rules": {
-        "ru": "Оба member; внутренние счета различны, стороны в одной семье; principal исключён из доходов/расходов, fee отдельно; сверка существующих записей до создания.",
-        "en": "Either member; distinct internal accounts in one household; principal excluded from income/expense, fees separate; reconcile existing records before creation."
+        "ru": "Оба участника; разные счета одной семьи; principal исключён из доходов/расходов, комиссии отдельно, включая третий актив. Task-2.2 создаёт только новое движение, непустой existingTransactions получает 422 feature_unavailable без частичного эффекта. Сопоставление существующих записей реализует task-2.4.",
+        "en": "Either member; distinct accounts in one household; principal excluded from income/expenses, fees separate, including a third asset. Task-2.2 creates new movements only; nonempty existingTransactions receives 422 feature_unavailable without a partial effect. Task-2.4 implements existing-record matching."
       },
       "result": {
         "ru": "Связано движение денег в журнале; никакой реальной отправки или покупки актива.",
