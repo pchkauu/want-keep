@@ -195,6 +195,8 @@ export class CashController {
   }
   private async finish(creation: Creation, epoch: number) {
     if (epoch !== this.epoch) return;
+    if (creation.state !== "pending" && this.request?.id === creation.id)
+      this.request = undefined;
     this.update({
       creation,
       confirmed: undefined,

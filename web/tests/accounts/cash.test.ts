@@ -161,6 +161,51 @@ describe("cash account precision and command recovery", () => {
     expect(api.create).toHaveBeenNthCalledWith(2, "saved-key", draft, "alex");
     expect(controller.snapshot().confirmed).toEqual(account);
   });
+  it.each(["succeeded", "failed"] as const)(
+    "releases a %s request before restoring another pending command",
+    async (state) => {
+      const { api, controller } = fixture();
+      vi.mocked(api.recent).mockResolvedValue({
+        items: [
+          { id: "pending-a", state: "pending" },
+          { id: "pending-b", state: "pending" },
+        ],
+        cursor: undefined,
+      });
+      vi.spyOn(api, "create")
+        .mockResolvedValueOnce({
+          id: "pending-a",
+          state,
+          ...(state === "succeeded" ? { accountId: "account" } : {}),
+        })
+        .mockResolvedValue({
+          id: "pending-b",
+          state: "succeeded",
+          accountId: "account-b",
+        });
+      vi.spyOn(api, "command").mockResolvedValue({
+        id: "pending-b",
+        state: "pending",
+      });
+      await controller.loadRecent();
+      controller.restore("pending-a");
+      controller.draft(draft);
+      await controller.submit();
+      await controller.check("pending-b");
+      controller.restore("pending-b");
+      expect(controller.snapshot().recoveryId).toBe("pending-b");
+      expect(controller.snapshot().creation).toBeUndefined();
+      controller.draft({ ...draft, name: "Second cash account" });
+      await controller.submit();
+      expect(api.create).toHaveBeenNthCalledWith(
+        2,
+        "pending-b",
+        { ...draft, name: "Second cash account" },
+        "alex",
+      );
+      expect(controller.snapshot().recent).toEqual([]);
+    },
+  );
   it("clears drafts and ignores in-flight results when the actor changes", async () => {
     const { api, controller } = fixture();
     let resolve!: (value: {
