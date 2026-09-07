@@ -19,6 +19,10 @@ At 1280×720 and 1440×900 the menu stays on the left; smaller windows/200% zoom
 
 ## Context and details
 
+Task-7.1 implements `/login`, `/setup`, `/invite`, `/recovery`, `/onboarding` and minimal `/settings/security` for personal recovery-code regeneration after a fresh passkey. Invitation issue/reissue/revocation lives in onboarding; acceptance lives at `/invite` after server preview. The token fragment is removed before rendering. Household creation and invitation acceptance open onboarding; normal sign-in opens overview. Task-2.1 persists cash accounts; bank connection and partner invitation are optional for continuing.
+
+Locale priority is saved browser choice, confirmed profile, supported browser locale, then RU. Only locale enters localStorage. Switching preserves the form and ceremony; server preference updates remain task-7.14. Unfinished financial sections honestly display unavailability. Details and acceptance boundaries: [task-7.1](evidence/task-7.1-access.en.md).
+
 Report/list URLs retain nonsecret period/month, view/member, currency, account/category, query and sort. Never put receipts, secrets, messages or financial drafts in URLs. Cursor/list position restores from navigation state on return; if data changed, show refreshed rows with preserved filters. Member selection changes presentation only, never principal or authority.
 
 SCR-008/010/011/019 may open in a side panel over a list while retaining a direct route. Direct navigation/reload renders a full view with clear return. Closing panel/Back restores list, filters and focus to the origin row. Opening successive details never stacks panels; substantial editing uses a page. Short finished actions use dialogs: correction confirmation, disconnect or device revocation. No nested dialogs.
