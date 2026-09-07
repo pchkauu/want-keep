@@ -79,6 +79,8 @@ func TestSchemaRejectsInvalidShapesAndCommandStates(t *testing.T) {
 		{"CommandStatus", `{"id":"10000000-0000-4000-8000-000000000001","type":"transactions.create","status":"unknown","registeredAt":"2026-09-07T00:00:00Z"}`},
 		{"CommandStatus", `{"id":"10000000-0000-4000-8000-000000000001","type":"transactions.create","status":"succeeded","registeredAt":"2026-09-07T00:00:00Z"}`},
 		{"Revision", `9007199254740992`},
+		{"RuleInput", `{"name":"No action","conditions":[{"field":"merchant","operator":"equals","value":"Example"}],"applyTo":"future"}`},
+		{"MessageCreate", `{"text":123,"attachmentIds":[]}`},
 		{"Ownership", `{"householdId":"10000000-0000-4000-8000-000000000001","scope":"household","personalOwnerId":"10000000-0000-4000-8000-000000000002"}`},
 		{"TransactionCorrection", `{"expectedRevision":1,"reason":"none"}`},
 		{"MessageCreate", `{"text":"","attachmentIds":[]}`},

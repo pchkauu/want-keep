@@ -149,11 +149,12 @@ RuleInput:
   - name
   - conditions
   - applyTo
-  anyOf:
-  - required:
-    - categoryId
-  - required:
-    - allocation
+  allOf:
+  - anyOf:
+    - required:
+      - categoryId
+    - required:
+      - allocation
 Rule:
   type: object
   additionalProperties: false

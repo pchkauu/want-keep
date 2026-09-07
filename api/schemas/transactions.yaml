@@ -331,19 +331,20 @@ TransactionCorrection:
   - reason
   description: At least one changed field required; application validates economic
     invariants and preserves previous revision.
-  anyOf:
-  - required:
-    - amount
-  - required:
-    - occurredAt
-  - required:
-    - categoryId
-  - required:
-    - merchant
-  - required:
-    - allocation
-  - required:
-    - payer
+  allOf:
+  - anyOf:
+    - required:
+      - amount
+    - required:
+      - occurredAt
+    - required:
+      - categoryId
+    - required:
+      - merchant
+    - required:
+      - allocation
+    - required:
+      - payer
 TransactionLink:
   type: object
   additionalProperties: false

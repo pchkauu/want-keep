@@ -138,21 +138,21 @@ MessageCreate:
   - attachmentIds
   description: At least text or an attachment is required. Attachments require accountId;
     unknown receipt facts create clarification.
-  anyOf:
-  - properties:
-      text:
-        minLength: 1
-  - properties:
-      attachmentIds:
-        minItems: 1
-    required:
-    - accountId
   allOf:
   - anyOf:
     - properties:
         attachmentIds:
           maxItems: 0
     - required:
+      - accountId
+  - anyOf:
+    - properties:
+        text:
+          minLength: 1
+    - properties:
+        attachmentIds:
+          minItems: 1
+      required:
       - accountId
 Thread:
   type: object

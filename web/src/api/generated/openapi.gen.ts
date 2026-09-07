@@ -2082,23 +2082,24 @@ export interface components {
       threadId: components["schemas"]["ID"];
     };
     /** @description At least text or an attachment is required. Attachments require accountId; unknown receipt facts create clarification. */
-    MessageCreate:
-      | ({
-          accountId?: components["schemas"]["ID"];
-          attachmentIds: components["schemas"]["ID"][];
-          text: string;
-        } & (
-          | {
-              attachmentIds?: unknown;
-            }
-          | unknown
-        ))
-      | {
-          text?: unknown;
-        }
+    MessageCreate: {
+      accountId?: components["schemas"]["ID"];
+      attachmentIds: components["schemas"]["ID"][];
+      text: string;
+    } & ((
       | {
           attachmentIds?: unknown;
-        };
+        }
+      | unknown
+    ) &
+      (
+        | {
+            text?: unknown;
+          }
+        | {
+            attachmentIds?: unknown;
+          }
+      ));
     MessagePage: {
       items: components["schemas"]["Message"][];
       nextCursor?: string;
@@ -2389,17 +2390,14 @@ export interface components {
       operator: "equals" | "contains";
       value: string;
     };
-    RuleInput:
-      | {
-          allocation?: components["schemas"]["ExpenseAllocation"];
-          /** @enum {string} */
-          applyTo: "future";
-          categoryId?: components["schemas"]["ID"];
-          conditions: components["schemas"]["RuleCondition"][];
-          name: string;
-        }
-      | unknown
-      | unknown;
+    RuleInput: {
+      allocation?: components["schemas"]["ExpenseAllocation"];
+      /** @enum {string} */
+      applyTo: "future";
+      categoryId?: components["schemas"]["ID"];
+      conditions: components["schemas"]["RuleCondition"][];
+      name: string;
+    } & (unknown | unknown);
     RulePage: {
       items: components["schemas"]["Rule"][];
       nextCursor?: string;
@@ -2514,23 +2512,16 @@ export interface components {
         | "trade_result";
     };
     /** @description At least one changed field required; application validates economic invariants and preserves previous revision. */
-    TransactionCorrection:
-      | {
-          allocation?: components["schemas"]["ExpenseAllocation"];
-          amount?: components["schemas"]["PositiveMoney"];
-          categoryId?: components["schemas"]["ID"];
-          expectedRevision: components["schemas"]["Revision"];
-          merchant?: string;
-          occurredAt?: components["schemas"]["Instant"];
-          payer?: components["schemas"]["Payer"];
-          reason: string;
-        }
-      | unknown
-      | unknown
-      | unknown
-      | unknown
-      | unknown
-      | unknown;
+    TransactionCorrection: {
+      allocation?: components["schemas"]["ExpenseAllocation"];
+      amount?: components["schemas"]["PositiveMoney"];
+      categoryId?: components["schemas"]["ID"];
+      expectedRevision: components["schemas"]["Revision"];
+      merchant?: string;
+      occurredAt?: components["schemas"]["Instant"];
+      payer?: components["schemas"]["Payer"];
+      reason: string;
+    } & (unknown | unknown | unknown | unknown | unknown | unknown);
     TransactionCreate: {
       accountId: components["schemas"]["ID"];
       allocation: components["schemas"]["ExpenseAllocation"];

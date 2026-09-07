@@ -33,3 +33,8 @@ as the family; secret authentication ceremonies and upload bytes are excluded fr
 
 See [RU implementation evidence](../spec/001-want-keep-mvp/evidence/task-1.2-domain-api.md)
 and [EN implementation evidence](../spec/001-want-keep-mvp/evidence/task-1.2-domain-api.en.md).
+
+Validation-only alternatives belong under `allOf` alongside a concrete object. With the pinned
+TypeScript generator, top-level `anyOf` required-only branches widen the result to `unknown`.
+`web/tests/api/request-types.ts` is checked by `make typecheck` and asserts rejection of malformed
+financial/chat/rule inputs; runtime schema tests retain the stricter cross-field checks.
