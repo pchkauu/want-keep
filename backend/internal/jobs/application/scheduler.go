@@ -26,7 +26,7 @@ type Scheduler struct {
 	Repository ScheduleRepository
 	Admission  SyncAdmission
 	Bindings   []connections.Binding
-	Report     func(string)
+	Report     func(Diagnostic)
 }
 
 func (s Scheduler) Tick(ctx context.Context) error {
@@ -39,6 +39,7 @@ func (s Scheduler) Tick(ctx context.Context) error {
 			return err
 		}
 		for _, source := range sources {
+			started := time.Now()
 			member, err := s.Repository.Membership(ctx, source.HouseholdID, source.OwnerID)
 			if err == nil {
 				p, e := member.Principal()
@@ -48,7 +49,7 @@ func (s Scheduler) Tick(ctx context.Context) error {
 				}
 			}
 			if err != nil && s.Report != nil {
-				s.Report("source_schedule_blocked")
+				s.Report((Diagnostic{Kind: jobs.Sync, ConnectionID: source.ConnectionID, Stage: "schedule"}).Failure(err, time.Since(started)))
 			}
 		}
 	}
@@ -58,8 +59,9 @@ func (s Scheduler) Run(ctx context.Context) error {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for {
+		started := time.Now()
 		if err := s.Tick(ctx); err != nil && ctx.Err() == nil && s.Report != nil {
-			s.Report("scheduler_unavailable")
+			s.Report((Diagnostic{Kind: jobs.Sync, Stage: "schedule_query"}).Failure(err, time.Since(started)))
 		}
 		select {
 		case <-ctx.Done():

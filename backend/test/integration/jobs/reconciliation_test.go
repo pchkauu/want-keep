@@ -4,6 +4,7 @@ package storage_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pchkauu/want-keep/backend/internal/connections/admission"
+	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	app "github.com/pchkauu/want-keep/backend/internal/jobs/application"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
@@ -35,6 +37,14 @@ func TestConfirmedSyncPageReconciliation(t *testing.T) {
 			}
 			if err := f.store.SetJobOutcome(testContext, f.p, issued, jobs.Unresolved, jobs.ExternalUnknown, 0); err != nil {
 				t.Fatal(err)
+			}
+			replacement := ""
+			if !complete {
+				replacement = uuid.NewString()
+				_, err := f.admin.Exec(testContext, `INSERT INTO want_keep.jobs(household_id,id,actor_id,kind,connection_id,connection_generation,binding,admission_revision,state,max_attempts,available_at,deadline,secret_purpose) SELECT household_id,$2,actor_id,kind,connection_id,connection_generation,binding,admission_revision,'ready',5,clock_timestamp(),deadline,secret_purpose FROM want_keep.jobs WHERE id=$1`, issued.ID, replacement)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 			r := app.Reconciliation{Job: issued, EvidenceRef: input.EvidenceRef, Outcome: "confirmed", Page: &admission.Page{EvidenceRef: input.EvidenceRef, NextCursor: "page2", Coverage: "complete", Complete: complete}}
 			source := journal.NewSources(f.store, f.writer)
@@ -75,6 +85,10 @@ func TestConfirmedSyncPageReconciliation(t *testing.T) {
 					t.Fatal("terminal receipt missing")
 				}
 			} else {
+				sibling, err := f.store.Job(testContext, f.p, replacement)
+				if err != nil || sibling.State != jobs.Canceled || !sibling.CancelRequested {
+					t.Fatal("obsolete continuation retained", err)
+				}
 				next := f.issued(gate, connection, b)
 				if next.ID != issued.ID || next.LeaseToken == issued.LeaseToken || next.Cursor != "page2" {
 					t.Fatal("confirmed page was repeated")
@@ -133,6 +147,83 @@ func TestUnresolvedSurvivesSourceInvalidation(t *testing.T) {
 			current, err = f.store.Job(testContext, f.p, issued.ID)
 			if err != nil || current.State != jobs.Canceled {
 				t.Fatal("proven absence did not clear canceled uncertainty", err)
+			}
+		})
+	}
+}
+
+func TestCommittedPageAcknowledgesItsExternalAction(t *testing.T) {
+	f := newFixture(t)
+	connection := f.connection()
+	b := binding()
+	gate := f.admit(b)
+	issued := f.issued(gate, connection, b)
+	if err := f.store.BeginExternal(testContext, f.p, issued); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := gate.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:page1", NextCursor: "page2", Coverage: "complete"}, func(context.Context) error { return nil }); err != nil || !ok {
+		t.Fatal(err)
+	}
+	current, err := f.store.Job(testContext, f.p, issued.ID)
+	if err != nil || current.ExternalStarted || current.Cursor != "page2" {
+		t.Fatal("confirmed action still uncertain", err)
+	}
+	if _, err = f.admin.Exec(testContext, `UPDATE want_keep.jobs SET lease_until=clock_timestamp()-INTERVAL '1 second' WHERE id=$1`, issued.ID); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := f.restart().ClaimJobs(testContext, "sync", 1, time.Minute)
+	if err != nil || len(rows) != 1 || rows[0].Cursor != "page2" {
+		t.Fatal("confirmed page crash needs unnecessary reconciliation", err)
+	}
+	next := rows[0]
+	if err = f.store.BeginExternal(testContext, f.p, next); err != nil {
+		t.Fatal("next marked action blocked", err)
+	}
+	if err = f.store.RetryJob(testContext, f.p, next, 0, false); err != nil {
+		t.Fatal(err)
+	}
+	current, err = f.store.Job(testContext, f.p, next.ID)
+	if err != nil || current.State != jobs.Unresolved {
+		t.Fatal("new action uncertainty lost", err)
+	}
+}
+
+func TestJobDiagnosticsRetainContextWithoutPrivateContent(t *testing.T) {
+	for _, stage := range []string{"prepare", "commit"} {
+		t.Run(stage, func(t *testing.T) {
+			f := newFixture(t)
+			f.event()
+			private := errors.New("synthetic private receipt and provider response")
+			var diagnostic app.Diagnostic
+			worker := f.worker(handlerFunc(func(context.Context, app.Execution) (app.Result, error) {
+				if stage == "prepare" {
+					return app.Result{}, private
+				}
+				return app.Result{State: jobs.Succeeded, Apply: func(context.Context, household.Principal) error { return private }}, nil
+			}))
+			worker.Report = func(d app.Diagnostic) { diagnostic = d }
+			if err := worker.Step(testContext); !errors.Is(err, private) {
+				t.Fatal(err)
+			}
+			if diagnostic.Kind != jobs.Outbox || diagnostic.JobID == "" || diagnostic.Stage != stage || diagnostic.Code != "execution_failed" || diagnostic.Duration <= 0 {
+				t.Fatal("failure context lost", diagnostic)
+			}
+			data, err := json.Marshal(diagnostic)
+			if err != nil || strings.Contains(string(data), private.Error()) {
+				t.Fatal("private diagnostic content", err)
+			}
+			connection := f.connection()
+			b := binding()
+			gate := f.admit(b)
+			if _, err = f.admin.Exec(testContext, `UPDATE want_keep.memberships SET active=false WHERE household_id=$1 AND user_id=$2`, f.family.ID, f.p.UserID()); err != nil {
+				t.Fatal(err)
+			}
+			scheduler := app.Scheduler{Repository: f.store, Admission: gate, Bindings: []connections.Binding{b}, Report: func(d app.Diagnostic) { diagnostic = d }}
+			if err = scheduler.Tick(testContext); err != nil {
+				t.Fatal(err)
+			}
+			if diagnostic.ConnectionID != connection || diagnostic.Stage != "schedule" || diagnostic.Duration <= 0 {
+				t.Fatal("source diagnostic context lost", diagnostic)
 			}
 		})
 	}

@@ -19,9 +19,11 @@
 - `CompleteReview` привязывает ответ к operation/revision AI-задания и вызывает существующий ledger service. Старый ответ не меняет новую revision; самостоятельной AI-интерпретации денег worker не выполняет.
 - Admission lock предшествует household lock. Source page, posting/outbox и checkpoint сохраняются вместе; новая попытка и новое задание после terminal failure используют незавершённый прогресс. Coverage gaps сохраняются. `last_success_at` меняется только при завершении; partial coverage остаётся явно частичным.
 - Отключение или смена admission отменяет старую попытку; неизвестный внешний эффект остаётся unresolved. Историческая uncertainty не разрешает новое автоматическое выполнение. MFA остаётся действием владельца аккаунта.
-- Причины ошибок — закрытые коды; logs содержат queue/code. Secret, DSN, курсор, payload и финансовые сообщения не печатаются.
+- Причины ошибок — закрытые коды; logs содержат queue, persisted job/source/transaction ID, stage, duration и закрытый код причины. Secret, DSN, курсор, payload и финансовые сообщения не печатаются.
 
 Для confirmed sync reconciliation обязательна `Page` с тем же evidence reference. После проверки актуального admission и поколения доверенная транзакция даёт доступ существующим source/account application-контрактам и атомарно сохраняет страницу, omissions, checkpoint и reconciliation. Последняя страница добавляет receipt и время успеха; промежуточная продолжает с новым курсором. Обычный running-attempt fence не ослабляется. Неизвестный исход сохраняется при invalidation/disconnect даже у legacy-заданий без external marker.
+
+Успешный `CommitPage` подтверждает текущую маркированную внешнюю операцию и очищает её marker атомарно с checkpoint; следующая страница ставит новый marker. При legacy-сочетании unresolved и активной замены подтверждённое отсутствие эффекта завершает старую попытку, сохраняя замену. Подтверждённая промежуточная страница сохраняет новый checkpoint и отзывает старую замену; её собственный неизвестный эффект, если есть, сохраняет отдельный unresolved-барьер.
 
 ## Запуск и миграция
 

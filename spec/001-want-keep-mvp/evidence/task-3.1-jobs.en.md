@@ -19,9 +19,11 @@ Implemented PostgreSQL scheduling, sync/outbox/ai queues, workers, leases/heartb
 - `CompleteReview` binds the result to the AI job's operation/revision and calls the existing ledger service. Stale responses cannot change newer revisions; workers do not independently interpret money.
 - Admission locks precede household locks. A source page, postings/outbox and checkpoint commit together; retries and replacement jobs after terminal failure retain unfinished progress. Coverage gaps remain. `last_success_at` changes only on completion; partial coverage stays explicitly partial.
 - Disconnect or admission change cancels the old attempt; unknown external effects stay unresolved. Historical uncertainty does not permit new automatic execution. MFA remains the external-account owner's action.
-- Failure reasons are closed codes; logs contain queue/code, never secrets, DSNs, cursors, payloads or financial messages.
+- Failure reasons are closed codes; logs contain queue, persisted job/source/transaction IDs, stage, duration and a closed reason code, never secrets, DSNs, cursors, payloads or financial messages.
 
 Confirmed sync reconciliation requires a `Page` with the same evidence reference. After validating current admission and generation, the trusted transaction enables existing source/account application contracts and atomically saves the page, omissions, checkpoint and reconciliation. The last page adds a receipt and success timestamp; an intermediate page continues from the new cursor. Normal running-attempt fencing remains intact. Invalidation/disconnect preserve unknown outcomes even for legacy jobs without an external marker.
+
+A successful `CommitPage` acknowledges the currently marked external source action and clears its marker atomically with the checkpoint; the next page marks a new action. For legacy unresolved-plus-active work, confirmed absence retires the old attempt while retaining the replacement. A confirmed intermediate page retains its new checkpoint and revokes the older replacement; any unknown external effect of that replacement keeps a separate unresolved barrier.
 
 ## Startup and migration
 

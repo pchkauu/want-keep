@@ -3889,7 +3889,7 @@
         "ru": "Реализована инфраструктура долговечных заданий; реальные handlers интеграций/OpenAI и эксплуатационная приёмка остаются профильным задачам.",
         "en": "Durable job infrastructure is implemented; real integration/OpenAI handlers and operational acceptance remain with their owning tasks."
       },
-      "note": {
+      "verification_note": {
         "ru": "Зависимости task-1.3 и task-2.3 включены в базу. Команды существуют. Контракты и evidence: evidence/task-3.1-jobs.md; publication/review/CI фиксируются в Issue #26.",
         "en": "Dependencies task-1.3 and task-2.3 are included in the base. Commands exist. Contracts and evidence: evidence/task-3.1-jobs.en.md; publication/review/CI are recorded in Issue #26."
       }

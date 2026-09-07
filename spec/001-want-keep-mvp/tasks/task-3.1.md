@@ -113,7 +113,7 @@ make test-integration AREA=jobs && make test-jobs-race
 
 Crash/restart, два worker, таймаут и отмена соединения проходят без пропусков и дублей.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Зависимости task-1.3 и task-2.3 включены в базу. Команды существуют. Контракты и evidence: evidence/task-3.1-jobs.md; publication/review/CI фиксируются в Issue #26.
 
 ### Передача следующему агенту
 
@@ -233,7 +233,7 @@ make test-integration AREA=jobs && make test-jobs-race
 
 Crash/restart, two workers, timeout and disconnect pass without gaps or duplicates.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Dependencies task-1.3 and task-2.3 are included in the base. Commands exist. Contracts and evidence: evidence/task-3.1-jobs.en.md; publication/review/CI are recorded in Issue #26.
 
 ### Handoff to the next agent
 

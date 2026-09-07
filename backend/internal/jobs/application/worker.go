@@ -30,7 +30,7 @@ type Worker struct {
 	Repository ExecutionRepository
 	Handler    Handler
 	Config     WorkerConfig
-	Report     func(jobs.Kind, string)
+	Report     func(Diagnostic)
 }
 
 func (w Worker) Run(ctx context.Context) error {
@@ -49,9 +49,7 @@ func (w Worker) Run(ctx context.Context) error {
 				if ctx.Err() != nil {
 					return
 				}
-				if err := w.Step(ctx); err != nil && ctx.Err() == nil && w.Report != nil {
-					w.Report(c.Kind, "job_execution_failed")
-				}
+				_ = w.Step(ctx)
 				select {
 				case <-ctx.Done():
 					return
@@ -63,7 +61,15 @@ func (w Worker) Run(ctx context.Context) error {
 	group.Wait()
 	return ctx.Err()
 }
-func (w Worker) Step(ctx context.Context) error {
+func (w Worker) Step(ctx context.Context) (err error) {
+	started := time.Now()
+	diagnostic := Diagnostic{Kind: w.Config.Kind, Stage: "queue"}
+	defer func() {
+		if err != nil && ctx.Err() == nil && w.Report != nil {
+			w.Report(diagnostic.Failure(err, time.Since(started)))
+		}
+	}()
+
 	if w.Handler == nil {
 		if err := w.Repository.RecoverJobs(ctx, w.Config.Kind); err != nil {
 			return err
@@ -78,11 +84,14 @@ func (w Worker) Step(ctx context.Context) error {
 		return err
 	}
 	j := claimed[0]
+	diagnostic.JobID, diagnostic.ConnectionID, diagnostic.TransactionID = j.ID, j.ConnectionID, j.ResourceID
+	diagnostic.Stage = "principal"
 	p, err := w.Repository.JobPrincipal(ctx, j)
 	if err != nil {
 		return err
 	}
 	if j.Kind == jobs.Sync {
+		diagnostic.Stage = "admission"
 		if w.Admission == nil {
 			return w.Repository.SetJobOutcome(ctx, p, j, jobs.Waiting, jobs.ProviderNotAdmitted, 0)
 		}
@@ -115,6 +124,7 @@ func (w Worker) Step(ctx context.Context) error {
 			}
 		}
 	}()
+	diagnostic.Stage = "prepare"
 	result, runErr := w.Handler.Prepare(run, execution)
 	close(stopHeartbeat)
 	heartbeatErr := <-heartbeatDone
@@ -123,12 +133,14 @@ func (w Worker) Step(ctx context.Context) error {
 		return ctx.Err()
 	}
 	if heartbeatErr != nil {
+		diagnostic.Stage = "heartbeat"
 		return heartbeatErr
 	}
 	if runErr != nil {
 		result = Result{State: jobs.Ready, Reason: jobs.TemporaryFailure}
 	}
 	if result.State == jobs.Succeeded {
+		diagnostic.Stage = "commit"
 		err = (Executor{Repository: w.Repository}).Complete(ctx, execution, result.Apply)
 		// A lost commit acknowledgement leaves reconciliation to receipt readback or lease recovery.
 		return err
@@ -143,6 +155,10 @@ func (w Worker) Step(ctx context.Context) error {
 	if result.State == jobs.Ready {
 		delay = jobs.DefaultRetryPolicy().Delay(j.Attempt, rand.Float64())
 	}
+	diagnostic.Stage = "outcome"
 	err = w.Repository.SetJobOutcome(ctx, p, j, result.State, result.Reason, delay)
+	if err == nil && runErr != nil {
+		diagnostic.Stage = "prepare"
+	}
 	return errors.Join(runErr, err)
 }

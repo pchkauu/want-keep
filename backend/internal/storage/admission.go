@@ -250,7 +250,7 @@ func (s *Store) SaveCheckpoint(ctx context.Context, j jobs.Job, cursor, coverage
 	if gaps == nil {
 		gaps = []string{}
 	}
-	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET cursor=$5,coverage=$6,gaps=$7 WHERE household_id=$1 AND id=$2 AND lease_token=$3 AND attempt=$4 AND state='running' AND NOT cancel_requested AND lease_until>clock_timestamp() AND COALESCE(run_deadline,deadline)>clock_timestamp()`, j.HouseholdID, j.ID, j.LeaseToken, j.Attempt, cursor, coverage, gaps)
+	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET cursor=$5,coverage=$6,gaps=$7,external_started=false WHERE household_id=$1 AND id=$2 AND lease_token=$3 AND attempt=$4 AND state='running' AND NOT cancel_requested AND lease_until>clock_timestamp() AND COALESCE(run_deadline,deadline)>clock_timestamp()`, j.HouseholdID, j.ID, j.LeaseToken, j.Attempt, cursor, coverage, gaps)
 	if err != nil {
 		return err
 	}

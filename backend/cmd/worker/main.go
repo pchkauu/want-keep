@@ -57,8 +57,10 @@ func run() error {
 		return err
 	}
 	defer db.Close()
-	report := func(kind domain.Kind, code string) { fmt.Fprintf(os.Stderr, "queue=%s code=%s\n", kind, code) }
-	scheduler := jobs.Scheduler{Repository: db, Admission: admission.NewService(db, db), Bindings: bindings, Report: func(code string) { fmt.Fprintln(os.Stderr, code) }}
+	report := func(d jobs.Diagnostic) {
+		fmt.Fprintf(os.Stderr, "queue=%s job=%s source=%s transaction=%s stage=%s code=%s duration_ms=%d\n", d.Kind, d.JobID, d.ConnectionID, d.TransactionID, d.Stage, d.Code, d.Duration.Milliseconds())
+	}
+	scheduler := jobs.Scheduler{Repository: db, Admission: admission.NewService(db, db), Bindings: bindings, Report: report}
 	var group sync.WaitGroup
 	group.Add(1)
 	go func() { defer group.Done(); _ = scheduler.Run(ctx) }()
@@ -72,7 +74,7 @@ func run() error {
 		go func() {
 			defer group.Done()
 			if err := worker.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-				report(worker.Config.Kind, "worker_stopped")
+				report(jobs.Diagnostic{Kind: worker.Config.Kind, Stage: "startup", Code: "worker_stopped"})
 				stop()
 			}
 		}()

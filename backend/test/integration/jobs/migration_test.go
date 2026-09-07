@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	app "github.com/pchkauu/want-keep/backend/internal/jobs/application"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 	"github.com/pchkauu/want-keep/backend/migrations"
@@ -86,6 +87,7 @@ func legacyMigrations(t *testing.T) fs.FS {
 func TestUpgradeSelectsSafeSourceProgress(t *testing.T) {
 	for _, test := range []struct{ name, state, cursor, gap string }{
 		{"active", "ready", "page2", "history_limited"},
+		{"coexist", "ready", "page2", "history_limited"},
 		{"ambiguous", "failed", "", "legacy_checkpoint_ambiguous"},
 		{"unresolved", "unresolved", "", "legacy_checkpoint_ambiguous"},
 	} {
@@ -109,6 +111,14 @@ func TestUpgradeSelectsSafeSourceProgress(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			legacyUnknown := ""
+			if test.name == "coexist" {
+				legacyUnknown = uuid.NewString()
+				_, err = f.admin.Exec(testContext, `INSERT INTO want_keep.jobs(household_id,id,actor_id,kind,connection_id,connection_generation,binding,admission_revision,state,attempt,lease_token,max_attempts,available_at,deadline,secret_purpose) SELECT household_id,$2,actor_id,kind,connection_id,connection_generation,binding,admission_revision,'unresolved',1,$3,5,clock_timestamp(),deadline,secret_purpose FROM want_keep.jobs WHERE id=$1`, current, legacyUnknown, uuid.NewString())
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
 			if err = storage.Migrate(testContext, f.admin, migrations.Files); err != nil {
 				t.Fatal(err)
 			}
@@ -123,6 +133,33 @@ func TestUpgradeSelectsSafeSourceProgress(t *testing.T) {
 				j, err := f.store.Job(testContext, f.p, current)
 				if err != nil || j.State != jobs.Unresolved || j.ExternalStarted {
 					t.Fatal("legacy unresolved lost", err)
+				}
+				return
+			}
+			if test.name == "coexist" {
+				unknown, err := f.store.Job(testContext, f.p, legacyUnknown)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err = f.store.PauseReady(testContext, jobs.Sync, jobs.HandlerUnavailable); err != nil {
+					t.Fatal(err)
+				}
+				r := app.Reconciliation{Job: unknown, Outcome: "absent", EvidenceRef: "synthetic:legacy-absence"}
+				for range 2 {
+					if err = f.store.ReconcileJob(testContext, f.p, r, nil); err != nil {
+						t.Fatal(err)
+					}
+				}
+				unknown, err = f.store.Job(testContext, f.p, legacyUnknown)
+				if err != nil || unknown.State != jobs.Canceled {
+					t.Fatal("legacy uncertainty not settled", err)
+				}
+				if err = f.store.ResumeWaiting(testContext, jobs.Sync, jobs.HandlerUnavailable); err != nil {
+					t.Fatal(err)
+				}
+				rows, err := f.store.ClaimJobs(testContext, "sync", 10, time.Minute)
+				if err != nil || len(rows) != 1 || rows[0].ID != current || rows[0].Cursor != "page2" {
+					t.Fatal("legacy replacement lost or duplicated", err)
 				}
 				return
 			}
