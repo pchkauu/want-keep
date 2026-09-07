@@ -32,6 +32,42 @@ func (s *Store) RevisionEvidence(ctx context.Context, p household.Principal, id 
 	return out, rows.Err()
 }
 
+func (s *Store) DecisionSourceFact(ctx context.Context, p household.Principal, operationID, decisionID string) (*ledger.Revision, error) {
+	q, err := s.reader(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := q.Query(ctx, `SELECT DISTINCT ON(f.source_id) f.fact
+ FROM want_keep.ledger_decision_evidence e
+ JOIN want_keep.ledger_source_facts f ON f.household_id=e.household_id AND f.source_id=e.evidence_id AND f.source_revision=e.evidence_revision
+ WHERE e.household_id=$1 AND f.operation_id=$2 AND e.decision_id=$3 AND e.kind='source'
+ ORDER BY f.source_id,f.source_revision DESC`, p.HouseholdID(), operationID, decisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result *ledger.Revision
+	for rows.Next() {
+		if result != nil {
+			return nil, ledger.ErrSourceAmbiguous
+		}
+		var data []byte
+		if err = rows.Scan(&data); err != nil {
+			return nil, err
+		}
+		var stored storedSourceFact
+		if err = json.Unmarshal(data, &stored); err != nil {
+			return nil, ErrStorage
+		}
+		fact, err := stored.domain()
+		if err != nil {
+			return nil, err
+		}
+		result = &fact
+	}
+	return result, rows.Err()
+}
+
 func (s *Store) TransactionSourceFacts(ctx context.Context, p household.Principal, id string, revision uint64) ([]application.SourceFact, error) {
 	q, err := s.reader(ctx, p)
 	if err != nil {

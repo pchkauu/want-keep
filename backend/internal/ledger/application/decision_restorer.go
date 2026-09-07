@@ -20,14 +20,21 @@ func (u decisionRestorer) restore(ctx context.Context, p household.Principal, cu
 	independent := []ledger.Field{}
 	for _, field := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField} {
 		version := current.FieldVersions[field]
-		if version <= entry.After || slices.Contains(entry.Fields, field) {
+		if _, protected := current.Protections[field]; protected || version == 0 || slices.Contains(entry.Fields, field) {
 			continue
 		}
 		changed, err := u.repository.LedgerRevision(ctx, p, current.OperationID, version)
 		if err != nil {
 			return next, err
 		}
-		if changed.DecisionID != "" {
+		if changed.DecisionID == "" {
+			continue
+		}
+		basis, err := u.repository.DecisionSourceFact(ctx, p, current.OperationID, changed.DecisionID)
+		if err != nil {
+			return next, err
+		}
+		if basis == nil || basis.FieldEqual(*source, field) {
 			independent = append(independent, field)
 		}
 	}

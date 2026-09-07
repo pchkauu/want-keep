@@ -14,6 +14,8 @@ It checks atomic compound decisions and undo, rollback before commit, restart/re
 
 Regression coverage includes retained pending/posted conflict resolution on undo, independent later review suggestions, identical omitted-default fees, 101 source versions and a 51-operation decision with 102 evidence references. Contract tests cover live/expired failure outcomes and closed reimbursement/link schemas.
 
+When undo reapplies source data, independent effective review decisions are compared against their immutable decision evidence, regardless of whether they preceded or followed the selected decision. An unchanged source field preserves the decision; a confirmed new value updates an unprotected field. Source links later appended to a financial revision are not used as that baseline.
+
 ## Acceptance boundaries
 
 | Criteria | Task-2.3 evidence | Subsequent verification |

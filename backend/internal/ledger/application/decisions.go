@@ -18,6 +18,7 @@ type DecisionRepository interface {
 	Decision(context.Context, household.Principal, string) (ledger.Decision, error)
 	DecisionUndone(context.Context, household.Principal, string) (bool, error)
 	LatestSourceFact(context.Context, household.Principal, string) (*ledger.Revision, error)
+	DecisionSourceFact(context.Context, household.Principal, string, string) (*ledger.Revision, error)
 	RevisionEvidence(context.Context, household.Principal, string, uint64) ([]ledger.Evidence, error)
 }
 
