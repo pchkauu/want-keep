@@ -25,7 +25,7 @@ Ready applies to the specification. The application is not implemented, mandator
 
 ## Provider gates
 
-D-38 permits development against normalized contracts and safe states. Under D-43, a provider is enabled only by server-owned admission for the exact build/contract/allowlist/configuration/permission/environment binding: task-4.x proves provider evidence and task-8.x proves target-host/deployment evidence. A mismatch returns `provider_not_admitted` before collector IO.
+D-38 permits development against normalized contracts and safe states. Under D-43, a provider is enabled only by server-owned admission for the exact build/contract/allowlist/configuration/permission/environment binding: task-4.x proves provider evidence and task-8.x proves target-host/deployment evidence. A mismatch before a read returns `provider_not_admitted`; jobs/results carry `admissionRevision`, and commit-time revalidation leaves an in-flight stale result in quarantine without a financial effect.
 
 A gap uses typed `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable` or `command_expired` states. An unknown value never becomes zero, and an ambiguous source record creates no posting.
 

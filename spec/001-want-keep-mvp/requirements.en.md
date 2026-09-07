@@ -528,6 +528,6 @@ Source: `D-31`. Acceptance: [AC-104](acceptance_criteria.en.md#ac-104).
 
 ## REQ-088
 
-Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
+Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
 
 Source: `D-43`. Acceptance: [AC-106](acceptance_criteria.en.md#ac-106).

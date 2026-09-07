@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Добавить миграции для семьи/участников, счетов, неизменяемых source records, операций/проводок, revisions, command records, idempotency tombstones и outbox/jobs. Денежные поля NUMERIC сохраняют точность источника. Source uniqueness следует D-39 и включает household, provider, стабильный внешний счёт, product/log namespace и provider record ID; connection/session ID остаётся provenance. Коллизия сохраняет evidence как `source_ambiguous` без проводки. Транзакционно обеспечить uniqueness, version-check и резервы. Реализовать независимые retention jobs: terminal detail 90 дней после исхода; unresolved до сверки плюс 90 дней; tombstone с `commandId` живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome; финансовый source/audit не удаляется вместе с command detail. Реализовать `ProviderDeploymentAdmission` в `backend/internal/connections/admission/`: aggregate и repository interface принадлежат application boundary, storage adapter сохраняет provider/host evidence и exact binding. Application service атомарно объединяет оба pass, инвалидирует admission при смене binding/revocation/failed check и в одной транзакции проверяет admission с созданием sync job. Collector повторно проверяет выданный binding перед provider IO. Покрыть restart, concurrent combine/sync, revocation и binding-change races. Регистрация предшествует исполнению; эффект и terminal result атомарны. Уникальность household+actor+key; type/hash неизменны, replay до повторного version check. Pending после неизвестного исхода требует сверки; not_found не разрешает новый ключ. Статусы доступны только инициатору; права на результат проверяются отдельно.
+Добавить миграции для семьи/участников, счетов, неизменяемых source records, операций/проводок, revisions, command records, idempotency tombstones и outbox/jobs. Денежные поля NUMERIC сохраняют точность источника. Source uniqueness следует D-39 и включает household, provider, стабильный внешний счёт, product/log namespace и provider record ID; connection/session ID остаётся provenance. Коллизия сохраняет evidence как `source_ambiguous` без проводки. Транзакционно обеспечить uniqueness, version-check и резервы. Реализовать независимые retention jobs: terminal detail 90 дней после исхода; unresolved до сверки плюс 90 дней; tombstone с `commandId` живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome; финансовый source/audit не удаляется вместе с command detail. Реализовать `ProviderDeploymentAdmission` в `backend/internal/connections/admission/`: aggregate и repository interface принадлежат application boundary, storage adapter сохраняет provider/host evidence и exact binding. Application service атомарно объединяет оба pass, повышает `admissionRevision` при каждой смене state/evidence/binding и в одной транзакции проверяет admission с созданием sync job. Job и result несут неизменяемые binding/revision. Collector повторно проверяет их перед provider IO; storage повторно сверяет current admitted revision в транзакции записи source revision/posting/outbox. Stale result сохраняется только в quarantine, без финансового эффекта. Revoke/change инвалидирует не начатые jobs, запрашивает best-effort cancel уже начатых и всегда блокирует их commit. Покрыть restart, concurrent combine/sync, revoke до/после начала IO и binding-change races. Регистрация предшествует исполнению; эффект и terminal result атомарны. Уникальность household+actor+key; type/hash неизменны, replay до повторного version check. Pending после неизвестного исхода требует сверки; not_found не разрешает новый ключ. Статусы доступны только инициатору; права на результат проверяются отдельно.
 
 ### Границы изменений
 
@@ -36,7 +36,7 @@
 - **REQ-070:** Сумма индивидуальных дневных лимитов не превышает семейный предел одной валюты; счёт плательщика не меняет долю расходов.
 - **REQ-072:** Конкурирующие изменения, ответы на уточнения и отмены проверяют версию и текущие права, сохраняя обоих авторов.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
-- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации и окружения.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации, разрешения оператора и окружения.
 
 ### Критерии приёмки
 
@@ -102,7 +102,7 @@
 
 - **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
 - **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
-- **Тогда:** Сервер возвращает `provider_not_admitted`, collector не запускается и проводок нет. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding; любое расхождение снова закрывает sync.
+- **Тогда:** Если binding уже неполон или устарел, сервер возвращает `provider_not_admitted` без job, collector IO и проводки. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding. Job/result несёт неизменяемые binding и `admissionRevision`; смена binding во время read отменяет работу best effort, а обязательная commit-time revalidation сохраняет stale result в quarantine без source record или проводки.
 - **Уровень:** `integration+security`.
 
 ### Проверка результата
@@ -111,7 +111,7 @@
 make test-integration AREA=storage
 ```
 
-Миграции применяются к пустой БД; crash/retry и конкуренция не дают частичных проводок или двойных эффектов. Admission переживает restart; неполный/устаревший binding не создаёт job, а concurrent revoke/change не допускает provider IO или проводку.
+Миграции применяются к пустой БД; crash/retry и конкуренция не дают частичных проводок или двойных эффектов. Admission переживает restart; неполный/устаревший binding не создаёт job, а revoke/change до IO не допускает provider IO, а после начала IO commit-time fence не допускает source record или проводку.
 
 Make предоставляет точку входа test-integration, но suite storage создаётся этой задачей. Обязательны проверки PostgreSQL: миграции на пустой БД, точное хранение сумм, crash/retry, конкурирующие записи, проверка версий и атомарность финансового эффекта с terminal command status. Live banking и browser E2E относятся к последующим задачам.
 
@@ -133,7 +133,7 @@ Make accounting, revision and job persistence atomic.
 
 ### Change and contracts
 
-Add migrations for households/members, accounts, immutable source records, transactions/postings, revisions, command records, idempotency tombstones and outbox/jobs. NUMERIC money fields preserve source precision. Source uniqueness follows D-39 and includes household, provider, stable external account, product/log namespace and provider record ID; connection/session ID remains provenance. A collision retains evidence as `source_ambiguous` without posting. Enforce uniqueness, version checks and reservations transactionally. Implement independent retention jobs: terminal detail for 90 days after outcome; unresolved commands through reconciliation plus 90 days; a tombstone with `commandId` lives throughout unresolved state and for 400 days after terminal/reconciled outcome; financial source/audit data is not removed with command detail. Implement `ProviderDeploymentAdmission` in `backend/internal/connections/admission/`: the aggregate and repository interface belong to the application boundary, while the storage adapter persists provider/host evidence and the exact binding. The application service atomically combines both passes, invalidates admission on binding change/revocation/failed check and checks admission in the same transaction that creates a sync job. The collector rechecks the issued binding before provider IO. Cover restart, concurrent combine/sync, revocation and binding-change races. Registration precedes execution; effect and terminal result are atomic. Uniqueness is household+actor+key; type/hash are immutable and replay precedes a fresh version check. Pending after an unknown outcome requires reconciliation; not_found does not permit a new key. Status is visible only to its originator; result permissions are checked separately.
+Add migrations for households/members, accounts, immutable source records, transactions/postings, revisions, command records, idempotency tombstones and outbox/jobs. NUMERIC money fields preserve source precision. Source uniqueness follows D-39 and includes household, provider, stable external account, product/log namespace and provider record ID; connection/session ID remains provenance. A collision retains evidence as `source_ambiguous` without posting. Enforce uniqueness, version checks and reservations transactionally. Implement independent retention jobs: terminal detail for 90 days after outcome; unresolved commands through reconciliation plus 90 days; a tombstone with `commandId` lives throughout unresolved state and for 400 days after terminal/reconciled outcome; financial source/audit data is not removed with command detail. Implement `ProviderDeploymentAdmission` in `backend/internal/connections/admission/`: the aggregate and repository interface belong to the application boundary, while the storage adapter persists provider/host evidence and the exact binding. The application service atomically combines both passes, increments `admissionRevision` on every state/evidence/binding change and checks admission in the same transaction that creates a sync job. Jobs and results carry immutable binding/revision. The collector rechecks them before provider IO; storage rechecks the current admitted revision in the transaction that persists source revision/posting/outbox. A stale result is retained only in quarantine with no financial effect. Revocation/change invalidates unstarted jobs, requests best-effort cancellation of started work and always blocks its commit. Cover restart, concurrent combine/sync, revocation before/after IO starts and binding-change races. Registration precedes execution; effect and terminal result are atomic. Uniqueness is household+actor+key; type/hash are immutable and replay precedes a fresh version check. Pending after an unknown outcome requires reconciliation; not_found does not permit a new key. Status is visible only to its originator; result permissions are checked separately.
 
 ### Change boundaries
 
@@ -156,7 +156,7 @@ Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.
 - **REQ-070:** Individual daily allowances sum to no more than the household ceiling in one currency; the payer’s account does not change expense shares.
 - **REQ-072:** Competing edits, clarification answers and reversals check revision and current permissions while retaining both authors.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
-- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
 
 ### Acceptance criteria
 
@@ -222,7 +222,7 @@ A link establishes coverage but does not prove the whole criterion; verification
 
 - **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
 - **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
-- **Then:** The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again.
+- **Then:** If the binding is already incomplete or stale, the server returns `provider_not_admitted` with no job, collector IO or posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding. Each job/result carries immutable binding and `admissionRevision`; a binding change during a read cancels work best effort, while mandatory commit-time revalidation retains a stale result in quarantine without a source record or posting.
 - **Level:** `integration+security`.
 
 ### Verification
@@ -231,7 +231,7 @@ A link establishes coverage but does not prove the whole criterion; verification
 make test-integration AREA=storage
 ```
 
-Migrations apply to an empty DB; crash/retry and concurrency create neither partial postings nor duplicate effects. Admission survives restart; an incomplete/stale binding creates no job, and concurrent revocation/change permits neither provider IO nor posting.
+Migrations apply to an empty DB; crash/retry and concurrency create neither partial postings nor duplicate effects. Admission survives restart; an incomplete/stale binding creates no job, and revocation/change before IO prevents provider IO, while after IO starts the commit-time fence prevents a source record or posting.
 
 Make provides the test-integration entry point, but this task must implement the storage suite. PostgreSQL checks are mandatory: empty-database migrations, exact amounts, crash/retry, concurrent writes, revision checks and atomic financial effect plus terminal command status. Live banking and browser E2E belong to subsequent tasks.
 
