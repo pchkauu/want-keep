@@ -569,13 +569,13 @@ REQ: `REQ-043`.
 
 ## AC-044
 
-The Ozon Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+The Ozon Bank integration automatically reads the debit card and linked main account: balances, transactions and available details under a verified contract. Other Ozon products are deferred until a contract extension.
 
 REQ: `REQ-044`.
 
-- **Given:** An authorized personal Ozon Bank account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized personal Ozon Bank account with a debit card and linked main account is connected.
+- **When:** Debit-product balances, transactions and available details are requested; the same card and account appear in several views.
+- **Then:** Data matches the source, read evidence is retained and the card does not duplicate its account balance. Unavailable mandatory debit-product fields are explicit. Missing Ozon credit cards, savings or deposits do not block the MVP: these products are outside the current contract and are not presented as implemented.
 - **Level:** `contract+manual`.
 
 ## AC-045

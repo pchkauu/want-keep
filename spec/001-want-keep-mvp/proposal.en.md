@@ -28,7 +28,7 @@ This stage delivers bilingual specifications, criteria, architecture, integratio
 | D-10 | Goals have amount, currency, deadline and virtual-reservation or dedicated-account mode. No double reservation. Daily allowances are overall/per-category and available/forecast with separate funding by currency. |
 | D-11 | Credit cards with debt, payments and grace; savings with actual/forecast and comparable dated-cash-flow returns; realized/unrealized trading P&L, fees, funding and mining. No trading terminal. |
 | D-12 | Transaction-date expense valuation, current wealth valuation and separate FX effects. Reference rates and available provider buy/sell quotes with fees. USDT is not automatically USD. |
-| D-13 | Alfa-Bank, Raif Russia, Ozon Bank: cards, current/savings accounts, deposits; Bybit: Funding/Spot/Earn/P2P/futures; Aifory: RUB/crypto, exchange/payments/card; EMCD: wallet/Coinhold/P2P/card/mining. Read-only; browser automation allowed. |
+| D-13 | Alfa-Bank, Raif Russia: cards, current/savings accounts, deposits; Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding/Spot/Earn/P2P/futures; Aifory: RUB/crypto, exchange/payments/card; EMCD: wallet/Coinhold/P2P/card/mining. Read-only; browser automation allowed. |
 | D-14 | Separate passkeys and personal one-time recovery codes for each member; partner-assisted reset is unavailable. Protected secrets, attachments and sessions; AI has no payment authority. |
 | D-15 | For the whole household: server up to $40/month in DE/NL/BG, OpenAI up to $50/month; separately sourced data must be free. Hourly MacBook backups while reachable; visible backup age, conditional RPO and recovery target within four hours. |
 | D-16 | UI, AI interaction and documentation in RU/EN. Dashboard covers plan/actuals, income/expenses, goals and daily allowances. In-app and web-push notifications. |
@@ -73,3 +73,9 @@ Documentation and backlog can be delivered before live access. Full-MVP Ready re
 | --- | --- |
 | D-30 | macOS laptop Chrome/Arc only, 1280×720/1440×900 and zoom; dark #1A1A1A / #5F4EF5, Pixelify Sans + Manrope, shadcn on Base UI. Reference sign-in, 35 question/answer/action screens, clear states and accessibility. Mobile scope excluded, push retained. |
 | D-31 | Contextual pixel animations: rocket for adding an accounting account, top-up sparkles, confetti/soft disco for achievement, calm overspend signal. Confirmed events only, presentation dedup, off and reduced motion; no payment execution or bank-product opening. |
+
+## Ozon coverage refinement, 2026-09-07
+
+| ID | Decision |
+| --- | --- |
+| D-32 | The current MVP supports the available Ozon debit card and linked main account. Credit cards, savings and deposits belong to a future contract extension; their absence does not block Ozon/the MVP. This explicitly changes the earlier matrix, rather than claiming those products do not exist at the bank. Debit-data reading quality/automation, household identity and shared accounting rules remain. Other providers are unchanged. |

@@ -264,9 +264,9 @@ Source: `D-13`. Acceptance: [AC-043](acceptance_criteria.en.md#ac-043).
 
 ## REQ-044
 
-The Ozon Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+The Ozon Bank integration automatically reads the debit card and linked main account: balances, transactions and available details under a verified contract. Other Ozon products are deferred until a contract extension.
 
-Source: `D-13`. Acceptance: [AC-044](acceptance_criteria.en.md#ac-044).
+Source: `D-32`. Acceptance: [AC-044](acceptance_criteria.en.md#ac-044).
 
 ## REQ-045
 

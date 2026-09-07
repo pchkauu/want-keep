@@ -1,0 +1,4502 @@
+{
+  "kind": "projected-captured-contract-with-synthetic-values",
+  "version": 1,
+  "notice": {
+    "ru": "Имена и типы полей взяты из HAR. Личные значения, даты, суммы, ID и непрозрачные ссылки синтетические. Поля вне описанной проекции исключены. Это не полные ответы и не авторизационные данные.",
+    "en": "Field names and types come from HAR. Personal values, dates, amounts, IDs and opaque references are synthetic. Fields outside the documented projection are omitted. These are neither full responses nor authentication data."
+  },
+  "captures": [
+    {
+      "id": "OZON-E17",
+      "sha256": "b71975b022579b998e6efc017903b84196a54776c97d589314c9f63e8b0d0dae"
+    },
+    {
+      "id": "OZON-E18",
+      "sha256": "7ed99d23e5133db94e1209045e448cfd20e3d5c2a0cf933b09e3c1efe5dd9ee1"
+    }
+  ],
+  "samples": [
+    {
+      "id": "OZON-S01",
+      "capture_id": "OZON-E17",
+      "entry_index": 11,
+      "method": "POST",
+      "path": "/apps/pfm/api/operations/modalAccounts",
+      "request": {},
+      "response_status": 200,
+      "response": {
+        "data": {
+          "me": {
+            "client": {
+              "accounts": [
+                {
+                  "accountNumber": "synthetic-account-001",
+                  "accountToken": "synthetic-opaque-account-reference-001",
+                  "balance": 13289,
+                  "status": "OPENED",
+                  "productTypeV2": "EDS_FULL_UPGRADE",
+                  "productTypeV3": "EDS_FULL_UPGRADE"
+                }
+              ],
+              "mainAccount": {
+                "accountToken": "synthetic-opaque-account-reference-001",
+                "productTypeV2": "EDS_FULL_UPGRADE"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "OZON-S02",
+      "capture_id": "OZON-E17",
+      "entry_index": 114,
+      "method": "POST",
+      "path": "/api/v4/cards/all",
+      "request": {},
+      "response_status": 200,
+      "response": {
+        "data": {
+          "me": {
+            "client": {
+              "cards": [
+                {
+                  "accountNumberV2": "synthetic-account-001",
+                  "cardId": "synthetic-card-001",
+                  "status": "ACTIVE",
+                  "cardMode": "DEBIT",
+                  "product": "MIR_VIRTUAL"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "OZON-S03",
+      "capture_id": "OZON-E17",
+      "entry_index": 41,
+      "method": "POST",
+      "path": "/api/v4/userBalance",
+      "request": {},
+      "response_status": 200,
+      "response": {
+        "data": {
+          "ozonUser": {
+            "balance": {
+              "cents": 13289
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "OZON-S04",
+      "capture_id": "OZON-E17",
+      "entry_index": 23,
+      "method": "POST",
+      "path": "/apps/pfm/api/operations/operationById",
+      "request": {
+        "id": "synthetic-operation-001",
+        "timeZone": "Europe/Moscow"
+      },
+      "response_status": 200,
+      "response": {
+        "data": {
+          "me": {
+            "client": {
+              "groupOperationsV3": {
+                "items": [
+                  {
+                    "groupID": "synthetic-group-001",
+                    "lastOperationId": "synthetic-operation-001",
+                    "parentOperationId": null,
+                    "accountNumber": "synthetic-account-001",
+                    "accountToken": "synthetic-opaque-account-reference-002",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "direction": "INCOMING",
+                    "time": "2025-01-19T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19865,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19865,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "OZON-S05",
+      "capture_id": "OZON-E17",
+      "entry_index": 55,
+      "method": "POST",
+      "path": "/apps/pfm/api/operations/operationById",
+      "request": {
+        "id": "synthetic-operation-002",
+        "timeZone": "Europe/Moscow"
+      },
+      "response_status": 200,
+      "response": {
+        "data": {
+          "me": {
+            "client": {
+              "groupOperationsV3": {
+                "items": [
+                  {
+                    "groupID": "synthetic-group-002",
+                    "lastOperationId": "synthetic-operation-002",
+                    "parentOperationId": null,
+                    "accountNumber": "synthetic-account-001",
+                    "accountToken": "synthetic-opaque-account-reference-003",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "direction": "OUTGOING",
+                    "time": "2025-01-19T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19454,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19454,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "OZON-S06",
+      "capture_id": "OZON-E17",
+      "entry_index": 149,
+      "method": "POST",
+      "path": "/apps/pfm/api/operations/operationById",
+      "request": {
+        "id": "synthetic-operation-003",
+        "timeZone": "Europe/Moscow"
+      },
+      "response_status": 200,
+      "response": {
+        "data": {
+          "me": {
+            "client": {
+              "groupOperationsV3": {
+                "items": [
+                  {
+                    "groupID": "synthetic-group-003",
+                    "lastOperationId": "synthetic-operation-003",
+                    "parentOperationId": null,
+                    "accountNumber": "synthetic-account-001",
+                    "accountToken": "synthetic-opaque-account-reference-004",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "direction": "INCOMING",
+                    "time": "2025-01-19T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10138,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10138,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonRefundOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "OZON-S07",
+      "capture_id": "OZON-E17",
+      "entry_index": 69,
+      "method": "POST",
+      "path": "/apps/pfm/api/operations/groupOperationsV3",
+      "request": {
+        "filter": {
+          "effect": "EFFECT_UNKNOWN",
+          "coopAccountIDs": [],
+          "accountTokens": [],
+          "pfmTags": [],
+          "timeZone": "Europe/Moscow",
+          "dateRange": {
+            "from": "2025-01-08",
+            "to": "2025-01-18"
+          }
+        },
+        "cursorPagination": {
+          "cursor": null,
+          "perPage": 30
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "data": {
+          "me": {
+            "client": {
+              "groupOperationsV3": {
+                "items": [
+                  {
+                    "groupID": "synthetic-group-004",
+                    "lastOperationId": "synthetic-operation-004",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-18T12:03:00.000Z",
+                    "lastOperationTime": "2025-01-18T12:03:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-005",
+                    "lastOperationId": "synthetic-operation-005",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-18T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-18T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-006",
+                    "lastOperationId": "synthetic-operation-006",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-18T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-18T12:04:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-007",
+                    "lastOperationId": "synthetic-operation-007",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-18T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-18T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-008",
+                    "lastOperationId": "synthetic-operation-008",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-17T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-17T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10275,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10275,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-009",
+                    "lastOperationId": "synthetic-operation-009",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-16T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-16T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16440,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16440,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-010",
+                    "lastOperationId": "synthetic-operation-010",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-16T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-16T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15344,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15344,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-011",
+                    "lastOperationId": "synthetic-operation-011",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-15T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-15T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16577,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16577,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-012",
+                    "lastOperationId": "synthetic-operation-012",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-15T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-15T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-013",
+                    "lastOperationId": "synthetic-operation-013",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-14T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-14T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17399,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17399,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-014",
+                    "lastOperationId": "synthetic-operation-014",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-14T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-14T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-015",
+                    "lastOperationId": "synthetic-operation-015",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-13T12:03:00.000Z",
+                    "lastOperationTime": "2025-01-13T12:04:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12467,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12467,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-016",
+                    "lastOperationId": "synthetic-operation-016",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-13T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-13T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16851,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16851,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-017",
+                    "lastOperationId": "synthetic-operation-017",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-13T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-13T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-018",
+                    "lastOperationId": "synthetic-operation-018",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "DECLINED_AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CANCELED",
+                    "time": "2025-01-11T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12056,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12056,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "DeclinedAuthorizationOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-019",
+                    "lastOperationId": "synthetic-operation-019",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "DECLINED_AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CANCELED",
+                    "time": "2025-01-11T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12056,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12056,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "DeclinedAuthorizationOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-020",
+                    "lastOperationId": "synthetic-operation-020",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:31:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10960,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10960,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-021",
+                    "lastOperationId": "synthetic-operation-021",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:30:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15070,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15070,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-022",
+                    "lastOperationId": "synthetic-operation-022",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:29:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 11234,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 11234,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-023",
+                    "lastOperationId": "synthetic-operation-023",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:28:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19180,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19180,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-024",
+                    "lastOperationId": "synthetic-operation-024",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "INTERNAL_TRANSFER_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:27:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:27:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19043,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19043,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "InternalTransferIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-025",
+                    "lastOperationId": "synthetic-operation-025",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "INTERNAL_TRANSFER_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:26:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:26:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13974,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13974,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "InternalTransferIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-026",
+                    "lastOperationId": "synthetic-operation-026",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "SBP_C2B_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:24:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:25:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15755,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15755,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpC2BOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-027",
+                    "lastOperationId": "synthetic-operation-027",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:23:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10412,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10412,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-028",
+                    "lastOperationId": "synthetic-operation-028",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:22:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15892,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15892,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-029",
+                    "lastOperationId": "synthetic-operation-029",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "DAILY_BANKING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:20:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:21:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12193,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12193,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "DailyBankingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-030",
+                    "lastOperationId": "synthetic-operation-030",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "DAILY_BANKING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:18:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:19:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 14522,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 14522,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "DailyBankingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-031",
+                    "lastOperationId": "synthetic-operation-031",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:17:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10686,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10686,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-032",
+                    "lastOperationId": "synthetic-operation-032",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:16:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17262,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17262,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-033",
+                    "lastOperationId": "synthetic-operation-033",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-005",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:15:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 20139,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 20139,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  }
+                ],
+                "cursors": {
+                  "next": "synthetic-cursor-001",
+                  "prev": null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "OZON-S08",
+      "capture_id": "OZON-E18",
+      "entry_index": 5,
+      "method": "POST",
+      "path": "/apps/pfm/api/operations/groupOperationsV3",
+      "request": {
+        "filter": {
+          "effect": "EFFECT_UNKNOWN",
+          "coopAccountIDs": [],
+          "accountTokens": [],
+          "pfmTags": [],
+          "timeZone": "Europe/Moscow"
+        },
+        "cursorPagination": {
+          "cursor": null,
+          "perPage": 30
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "data": {
+          "me": {
+            "client": {
+              "groupOperationsV3": {
+                "items": [
+                  {
+                    "groupID": "synthetic-group-003",
+                    "lastOperationId": "synthetic-operation-003",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-19T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-19T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10138,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10138,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonRefundOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-002",
+                    "lastOperationId": "synthetic-operation-002",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-19T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-19T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19454,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19454,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-001",
+                    "lastOperationId": "synthetic-operation-001",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-19T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-19T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19865,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19865,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-004",
+                    "lastOperationId": "synthetic-operation-004",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-18T12:03:00.000Z",
+                    "lastOperationTime": "2025-01-18T12:03:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-005",
+                    "lastOperationId": "synthetic-operation-005",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-18T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-18T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-006",
+                    "lastOperationId": "synthetic-operation-006",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-18T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-18T12:04:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-007",
+                    "lastOperationId": "synthetic-operation-007",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-18T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-18T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15481,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-008",
+                    "lastOperationId": "synthetic-operation-008",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-17T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-17T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10275,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10275,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-009",
+                    "lastOperationId": "synthetic-operation-009",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-16T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-16T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16440,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16440,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-010",
+                    "lastOperationId": "synthetic-operation-010",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-16T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-16T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15344,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15344,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-011",
+                    "lastOperationId": "synthetic-operation-011",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-15T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-15T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16577,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16577,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-012",
+                    "lastOperationId": "synthetic-operation-012",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-15T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-15T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-013",
+                    "lastOperationId": "synthetic-operation-013",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-14T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-14T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17399,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17399,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-014",
+                    "lastOperationId": "synthetic-operation-014",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-14T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-14T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-015",
+                    "lastOperationId": "synthetic-operation-015",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-13T12:03:00.000Z",
+                    "lastOperationTime": "2025-01-13T12:04:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12467,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12467,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-016",
+                    "lastOperationId": "synthetic-operation-016",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-13T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-13T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16851,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16851,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-017",
+                    "lastOperationId": "synthetic-operation-017",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-13T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-13T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17536,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-018",
+                    "lastOperationId": "synthetic-operation-018",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "DECLINED_AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CANCELED",
+                    "time": "2025-01-11T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12056,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12056,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "DeclinedAuthorizationOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-019",
+                    "lastOperationId": "synthetic-operation-019",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "DECLINED_AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CANCELED",
+                    "time": "2025-01-11T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12056,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12056,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "DeclinedAuthorizationOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-020",
+                    "lastOperationId": "synthetic-operation-020",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:31:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10960,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10960,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-021",
+                    "lastOperationId": "synthetic-operation-021",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:30:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15070,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15070,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-022",
+                    "lastOperationId": "synthetic-operation-022",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:29:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 11234,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 11234,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-023",
+                    "lastOperationId": "synthetic-operation-023",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:28:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19180,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19180,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-024",
+                    "lastOperationId": "synthetic-operation-024",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "INTERNAL_TRANSFER_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:27:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:27:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19043,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19043,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "InternalTransferIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-025",
+                    "lastOperationId": "synthetic-operation-025",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "INTERNAL_TRANSFER_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:26:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:26:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13974,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13974,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "InternalTransferIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-026",
+                    "lastOperationId": "synthetic-operation-026",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "SBP_C2B_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:24:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:25:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15755,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15755,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpC2BOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-027",
+                    "lastOperationId": "synthetic-operation-027",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:23:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10412,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10412,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-028",
+                    "lastOperationId": "synthetic-operation-028",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:22:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15892,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15892,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-029",
+                    "lastOperationId": "synthetic-operation-029",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "DAILY_BANKING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:20:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:21:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12193,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12193,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "DailyBankingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-030",
+                    "lastOperationId": "synthetic-operation-030",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-006",
+                    "groupOperationType": "DAILY_BANKING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:18:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:19:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 14522,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 14522,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "DailyBankingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  }
+                ],
+                "cursors": {
+                  "next": "synthetic-cursor-002",
+                  "prev": null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "OZON-S09",
+      "capture_id": "OZON-E18",
+      "entry_index": 16,
+      "method": "POST",
+      "path": "/apps/pfm/api/operations/groupOperationsV3",
+      "request": {
+        "filter": {
+          "effect": "EFFECT_UNKNOWN",
+          "coopAccountIDs": [],
+          "accountTokens": [],
+          "pfmTags": [],
+          "timeZone": "Europe/Moscow"
+        },
+        "cursorPagination": {
+          "cursor": "synthetic-cursor-002",
+          "perPage": 30
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "data": {
+          "me": {
+            "client": {
+              "groupOperationsV3": {
+                "items": [
+                  {
+                    "groupID": "synthetic-group-031",
+                    "lastOperationId": "synthetic-operation-031",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:17:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10686,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10686,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-032",
+                    "lastOperationId": "synthetic-operation-032",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:16:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17262,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17262,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-033",
+                    "lastOperationId": "synthetic-operation-033",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:15:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 20139,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 20139,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-034",
+                    "lastOperationId": "synthetic-operation-034",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:12:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:13:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16303,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16303,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-035",
+                    "lastOperationId": "synthetic-operation-035",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:11:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 11782,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 11782,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-036",
+                    "lastOperationId": "synthetic-operation-036",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:10:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 14385,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 14385,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-037",
+                    "lastOperationId": "synthetic-operation-037",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBP_C2B_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:08:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:09:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 11508,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 11508,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpC2BOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-038",
+                    "lastOperationId": "synthetic-operation-038",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBP_C2B_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:07:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:07:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 11371,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 11371,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpC2BOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-039",
+                    "lastOperationId": "synthetic-operation-039",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBP_C2B_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:05:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:06:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 11645,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 11645,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpC2BOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-040",
+                    "lastOperationId": "synthetic-operation-040",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBER_QR_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:03:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:04:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19591,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19591,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SberQrOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-041",
+                    "lastOperationId": "synthetic-operation-041",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10823,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10823,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-042",
+                    "lastOperationId": "synthetic-operation-042",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-12T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 14111,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 14111,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-043",
+                    "lastOperationId": "synthetic-operation-043",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-10T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:14:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 20550,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 20550,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-044",
+                    "lastOperationId": "synthetic-operation-044",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-09T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10001,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10001,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-045",
+                    "lastOperationId": "synthetic-operation-045",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-09T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-11T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 18221,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 18221,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-046",
+                    "lastOperationId": "synthetic-operation-046",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-09T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-10T12:14:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 18906,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 18906,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-047",
+                    "lastOperationId": "synthetic-operation-047",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-08T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-08T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12741,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12741,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-048",
+                    "lastOperationId": "synthetic-operation-048",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-06T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-06T12:03:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13974,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13974,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-049",
+                    "lastOperationId": "synthetic-operation-049",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-06T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-07T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 18632,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 18632,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-050",
+                    "lastOperationId": "synthetic-operation-050",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBER_QR_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:20:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:21:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13837,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13837,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SberQrOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-051",
+                    "lastOperationId": "synthetic-operation-051",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBER_QR_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:19:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:19:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 18495,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 18495,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SberQrOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-052",
+                    "lastOperationId": "synthetic-operation-052",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:18:00.000Z",
+                    "lastOperationTime": "2025-01-07T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 18769,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 18769,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-053",
+                    "lastOperationId": "synthetic-operation-053",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:17:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:17:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15344,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15344,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-054",
+                    "lastOperationId": "synthetic-operation-054",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:16:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:16:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 20687,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 20687,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-055",
+                    "lastOperationId": "synthetic-operation-055",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:15:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:15:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 14796,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 14796,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonRefundOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-056",
+                    "lastOperationId": "synthetic-operation-056",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:14:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:14:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12878,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12878,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonRefundOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-057",
+                    "lastOperationId": "synthetic-operation-057",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBP_C2B_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:12:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:13:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13152,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13152,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpC2BOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-058",
+                    "lastOperationId": "synthetic-operation-058",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "SBP_C2B_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:10:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:11:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12330,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12330,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpC2BOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-059",
+                    "lastOperationId": "synthetic-operation-059",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:09:00.000Z",
+                    "lastOperationTime": "2025-01-06T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15207,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15207,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-060",
+                    "lastOperationId": "synthetic-operation-060",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-007",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:06:00.000Z",
+                    "lastOperationTime": "2025-01-07T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19728,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19728,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  }
+                ],
+                "cursors": {
+                  "next": "synthetic-cursor-003",
+                  "prev": null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "OZON-S10",
+      "capture_id": "OZON-E18",
+      "entry_index": 18,
+      "method": "POST",
+      "path": "/apps/pfm/api/operations/groupOperationsV3",
+      "request": {
+        "filter": {
+          "effect": "EFFECT_UNKNOWN",
+          "coopAccountIDs": [],
+          "accountTokens": [],
+          "pfmTags": [],
+          "timeZone": "Europe/Moscow"
+        },
+        "cursorPagination": {
+          "cursor": "synthetic-cursor-003",
+          "perPage": 30
+        }
+      },
+      "response_status": 200,
+      "response": {
+        "data": {
+          "me": {
+            "client": {
+              "groupOperationsV3": {
+                "items": [
+                  {
+                    "groupID": "synthetic-group-061",
+                    "lastOperationId": "synthetic-operation-061",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:05:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:05:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 20002,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 20002,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-062",
+                    "lastOperationId": "synthetic-operation-062",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:04:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:08:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 15618,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 15618,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-063",
+                    "lastOperationId": "synthetic-operation-063",
+                    "parentOperationId": "synthetic-operation-064",
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "TRANSFER_BY_CARD_NUMBER_COMMISSION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:03:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 10549,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 10549,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": null,
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-063",
+                    "lastOperationId": "synthetic-operation-064",
+                    "parentOperationId": "synthetic-operation-063",
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "TRANSFER_BY_CARD_NUMBER_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:03:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 18358,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 18358,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "TransferByCardNumberOutgoingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-064",
+                    "lastOperationId": "synthetic-operation-065",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:07:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 18221,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 18221,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-065",
+                    "lastOperationId": "synthetic-operation-066",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-05T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-05T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 20276,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 20276,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-066",
+                    "lastOperationId": "synthetic-operation-067",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBER_QR_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-04T12:11:00.000Z",
+                    "lastOperationTime": "2025-01-04T12:12:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 14933,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 14933,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SberQrOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-067",
+                    "lastOperationId": "synthetic-operation-068",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_C2B_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-04T12:09:00.000Z",
+                    "lastOperationTime": "2025-01-04T12:10:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 12604,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 12604,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpC2BOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-068",
+                    "lastOperationId": "synthetic-operation-069",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_C2B_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-04T12:07:00.000Z",
+                    "lastOperationTime": "2025-01-04T12:08:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17947,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17947,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpC2BOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-069",
+                    "lastOperationId": "synthetic-operation-070",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-04T12:06:00.000Z",
+                    "lastOperationTime": "2025-01-04T12:06:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 11919,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 11919,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-070",
+                    "lastOperationId": "synthetic-operation-071",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-04T12:04:00.000Z",
+                    "lastOperationTime": "2025-01-04T12:05:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 11097,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 11097,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-071",
+                    "lastOperationId": "synthetic-operation-072",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-04T12:03:00.000Z",
+                    "lastOperationTime": "2025-01-04T12:03:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 14248,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 14248,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-072",
+                    "lastOperationId": "synthetic-operation-073",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-04T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-04T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17125,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17125,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-073",
+                    "lastOperationId": "synthetic-operation-074",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-04T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-04T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 20413,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 20413,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-074",
+                    "lastOperationId": "synthetic-operation-075",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-03T12:03:00.000Z",
+                    "lastOperationTime": "2025-01-03T12:04:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 18084,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 18084,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-075",
+                    "lastOperationId": "synthetic-operation-076",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "INTERNAL_TRANSFER_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-03T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-03T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17810,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17810,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "InternalTransferIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-076",
+                    "lastOperationId": "synthetic-operation-077",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-03T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-03T12:05:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13426,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13426,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-077",
+                    "lastOperationId": "synthetic-operation-078",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "INTERNAL_TRANSFER_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-03T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-03T12:00:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13563,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13563,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "InternalTransferIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-078",
+                    "lastOperationId": "synthetic-operation-079",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-02T12:04:00.000Z",
+                    "lastOperationTime": "2025-01-02T12:05:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16714,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16714,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-079",
+                    "lastOperationId": "synthetic-operation-080",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-02T12:03:00.000Z",
+                    "lastOperationTime": "2025-01-02T12:03:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16988,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16988,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-080",
+                    "lastOperationId": "synthetic-operation-081",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-02T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-02T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16029,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16029,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-081",
+                    "lastOperationId": "synthetic-operation-082",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "INTERNAL_TRANSFER_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-02T12:01:00.000Z",
+                    "lastOperationTime": "2025-01-02T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 17673,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 17673,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "InternalTransferOutgoingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-082",
+                    "lastOperationId": "synthetic-operation-083",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "AUTHORIZATION",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-02T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-04T12:13:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 14659,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 14659,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "ClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-083",
+                    "lastOperationId": "synthetic-operation-084",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-01T12:09:00.000Z",
+                    "lastOperationTime": "2025-01-01T12:10:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 19317,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 19317,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-084",
+                    "lastOperationId": "synthetic-operation-085",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "INTERNAL_TRANSFER_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-01T12:08:00.000Z",
+                    "lastOperationTime": "2025-01-01T12:08:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13974,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13974,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "InternalTransferOutgoingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-085",
+                    "lastOperationId": "synthetic-operation-086",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-01T12:06:00.000Z",
+                    "lastOperationTime": "2025-01-01T12:07:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13700,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13700,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-086",
+                    "lastOperationId": "synthetic-operation-087",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-01T12:04:00.000Z",
+                    "lastOperationTime": "2025-01-01T12:05:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 13015,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 13015,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-087",
+                    "lastOperationId": "synthetic-operation-088",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_OUTGOING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-01T12:03:00.000Z",
+                    "lastOperationTime": "2025-01-01T12:03:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 14248,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 14248,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpOutgoingConfirmOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-088",
+                    "lastOperationId": "synthetic-operation-089",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "SBP_INCOMING",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-01T12:02:00.000Z",
+                    "lastOperationTime": "2025-01-01T12:02:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 20002,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 20002,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "POSITIVE"
+                    },
+                    "meta": {
+                      "__typename": "SbpIncomingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  },
+                  {
+                    "groupID": "synthetic-group-089",
+                    "lastOperationId": "synthetic-operation-090",
+                    "parentOperationId": null,
+                    "accountToken": "synthetic-opaque-account-reference-008",
+                    "groupOperationType": "OZON",
+                    "accountProductTypeV3": "EDS_FULL_UPGRADE",
+                    "status": "GROUP_OPERATION_CONFIRMED",
+                    "time": "2025-01-01T12:00:00.000Z",
+                    "lastOperationTime": "2025-01-01T12:01:00.000Z",
+                    "accountAmount": {
+                      "amountAbs": {
+                        "cents": 16166,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "originalAmount": {
+                      "amountAbs": {
+                        "cents": 16166,
+                        "currencyName": "RUR"
+                      },
+                      "sign": "NEGATIVE"
+                    },
+                    "meta": {
+                      "__typename": "OzonClearingOperationMeta"
+                    },
+                    "counterpartyName": "Synthetic example",
+                    "purpose": "Synthetic example",
+                    "categoryGroupName": "Synthetic example",
+                    "merchant": {
+                      "name": "Synthetic merchant"
+                    }
+                  }
+                ],
+                "cursors": {
+                  "next": "synthetic-cursor-004",
+                  "prev": null
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

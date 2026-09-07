@@ -16,7 +16,7 @@ Prepared proposal, 87 REQ, 105 AC, architecture, contracts/formulas, glossary, M
 | --- | --- | --- | --- |
 | BLK-01 | Automatic Alfa retail reading/full coverage | task-0.10, task-0.1 evidence | [Research completed with blockers](evidence/alfa.en.md): UI read, retail API published; needs authorised automatic contract, identity/history/reauth/second account, credit card and exact terms |
 | BLK-02 | Raif Russia retail read access/full coverage | task-0.2 | The equivalent for Raif |
-| BLK-03 | Automatic Ozon Bank reading | task-0.3 | The equivalent for Ozon, without marketplace substitution |
+| BLK-03 | Operational Ozon debit-card/main-account contract under D-32 | task-0.10, task-0.3 evidence | [Research completed with blockers](evidence/ozon.en.md): read structures obtained; needs history completion, acceptable session operation, second account and unavailable semantics. Other Ozon products not required |
 | BLK-04 | Full Bybit Funding/Spot/Earn/P2P/futures, net/gross and permissions | task-0.4 | Each log/product verified separately |
 | BLK-05 | Aifory wallet/payment/card/exchange contracts | task-0.5 | Complete product matrix and readback |
 | BLK-06 | EMCD wallet/Coinhold/P2P/card/mining contracts | task-0.6 | Separate accrual/transfers/fees and full product coverage |
@@ -75,3 +75,15 @@ Avida self review: completed, pass, 0 remaining findings/questions, all 106 chan
 Checks: spec_tool check — pass; 10 documentation-tool regression tests — pass; REQ/AC/task/SCR graph, RU/EN presence, generated consistency, links and whitespace — pass. Independent reviewer roles checked semantic RU/EN parity. No commits, push or application implementation.
 
 Application verdict remains Not Ready: BLK-01–BLK-10 above remain open. External contracts, six-platform live checks, AI eval, server costs/retention and the Ready plan remain future work. Chrome/Arc, user/animation acceptance and backup/restore runtime have not run because the app does not exist. Next executable stage: task-0.1–task-0.9 research and task-0.10 readiness review.
+
+## Ozon: task-0.3 research completion, 2026-09-07
+
+[RU evidence](evidence/ozon.md) / [EN](evidence/ozon.en.md): OZON-E01–E18, current debit-product matrix, five observed JSON read routes and [10 projections with synthetic values](evidence/ozon.samples.json) are retained. Two owner HARs were analyzed locally; originals are excluded from Git. History includes seven linked pages, 210 distinct lastOperationIds, 206 confirmed and four canceled rows. A transfer and commission share groupID but have distinct lastOperationId: groupID-only deduplication loses the commission. accountToken changes and is not a stable ID; the account number links the card and transaction details.
+
+The account number and one purchase were read again after owner sign-in. All seven pages have a continuation: history completion and retention are unproven. Authenticated-session operation, autonomous hourly reads and a second external account were not tested. Separate available/locked and the refund's original purchase are absent from observed responses; these remain unknown, not zero or an invented link.
+
+Research output is complete under the README rule; OZON-B01 is closed, the structural part of OZON-B02 is resolved, and OZON-B03 is removed by D-32. OZON-B02/B04/B05 remain within BLK-03, with closure verified by task-0.10 against this evidence. task-4.3 and the complete MVP remain Not Ready. Completing the GitHub Issue does not remove this gate or claim application ACs passed.
+
+REQ-044/AC-044, task-0.3/task-4.3, integrations and traceability reflect D-32; IDs are unchanged. The Ozon link to AC-070 is removed: credit terms remain for other providers but are outside Ozon's current contract. Other research in the shared checkout is outside this task's publication.
+
+Checks: spec_tool check — pass (87 REQ, 105 AC, 67 tasks, 35 screens, 67 GitHub mappings); 13 documentation-tool tests — pass; JSON, RU/EN IDs/meaning, cursor and commission relationships, projection privacy and git diff --check — pass. Local self review performed; the previous Avida pass applies to the previous package. HTTP replay, allowlist/importer, complete ACs and application runtime were not tested: the collector and application are not implemented. Commit/push and GitHub readback are recorded separately as delivery results in Issue #3.

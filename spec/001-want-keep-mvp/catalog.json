@@ -1036,24 +1036,24 @@
     },
     {
       "id": "REQ-044",
-      "decision": "D-13",
+      "decision": "D-32",
       "title": {
-        "ru": "Интеграция Ozon Банк автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.",
-        "en": "The Ozon Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract."
+        "ru": "Интеграция Ozon Банк автоматически читает дебетовую карту и связанный основной счёт: остатки, операции и доступные сведения в пределах подтверждённого контракта. Другие продукты Ozon отложены до расширения контракта.",
+        "en": "The Ozon Bank integration automatically reads the debit card and linked main account: balances, transactions and available details under a verified contract. Other Ozon products are deferred until a contract extension."
       },
       "acceptance": {
         "id": "AC-044",
         "given": {
-          "ru": "Подключён разрешённый личный аккаунт Ozon Банк с тестируемыми продуктами.",
-          "en": "An authorized personal Ozon Bank account with the tested products is connected."
+          "ru": "Подключён разрешённый личный аккаунт Ozon Банк с дебетовой картой и связанным основным счётом.",
+          "en": "An authorized personal Ozon Bank account with a debit card and linked main account is connected."
         },
         "when": {
-          "ru": "Запрошены счета, остатки, операции и необходимые условия продуктов.",
-          "en": "Accounts, balances, transactions and required product terms are requested."
+          "ru": "Запрошены остатки, операции и доступные сведения дебетового продукта; та же карта и счёт встречаются в нескольких представлениях.",
+          "en": "Debit-product balances, transactions and available details are requested; the same card and account appear in several views."
         },
         "then": {
-          "ru": "Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.",
-          "en": "Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage."
+          "ru": "Данные сопоставимы с источником, свидетельство чтения сохранено, карта не удваивает остаток счёта. Недоступность обязательных полей дебетового продукта отмечена явно. Отсутствие кредитки, накоплений или вкладов Ozon не блокирует MVP: эти продукты вне текущего контракта и не показаны как реализованные.",
+          "en": "Data matches the source, read evidence is retained and the card does not duplicate its account balance. Unavailable mandatory debit-product fields are explicit. Missing Ozon credit cards, savings or deposits do not block the MVP: these products are outside the current contract and are not presented as implemented."
         },
         "level": "contract+manual"
       }
@@ -2645,34 +2645,38 @@
         "en": "Verify Ozon Bank read contract"
       },
       "goal": {
-        "ru": "Получить проверяемую матрицу доступа к обязательным продуктам Ozon Банк.",
-        "en": "Produce a verifiable access matrix for mandatory Ozon Bank products."
+        "ru": "Получить проверяемый контракт чтения дебетовой карты Ozon и связанного основного счёта.",
+        "en": "Produce a verifiable read contract for the Ozon debit card and linked main account."
       },
       "depends_on": [],
       "acceptance": [
         "AC-044",
         "AC-041",
         "AC-048",
-        "AC-070",
         "AC-079",
         "AC-087"
       ],
       "targets": [
         "spec/001-want-keep-mvp/evidence/ozon.md",
-        "spec/001-want-keep-mvp/evidence/ozon.en.md"
+        "spec/001-want-keep-mvp/evidence/ozon.en.md",
+        "spec/001-want-keep-mvp/evidence/ozon.samples.json"
       ],
       "behavior": {
-        "ru": "Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.",
-        "en": "Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity."
+        "ru": "По решению D-32 проверить официальный API или допустимое чтение авторизованного кабинета для дебетовой карты и связанного основного счёта. Зафиксировать остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, доступные сведения и валюты, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Кредитка, накопительные счета и вклады Ozon — будущее расширение, их отсутствие не блокер текущего MVP. Непроверенный автоматический read-контракт дебетового продукта не подменять ручной выпиской. Проверить независимые внешние аккаунты участников и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.",
+        "en": "Under D-32, verify the official API or acceptable authenticated-portal reading for the debit card and linked main account. Record balances, transactions, stable IDs, statuses, fees, pagination, history depth, available details/currencies, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. Ozon credit cards, savings and deposits are a future extension; their absence does not block the current MVP. Do not replace an unverified automatic debit-product read contract with manual statements. Verify independent member accounts and stable identity across reauthorization; connectionId is not real-account identity."
       },
       "verification": {
         "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
         "expected": {
-          "ru": "Документ на двух языках содержит источник и дату, проверенные и непроверенные поля, примеры запросов/ответов без секретов и итог по каждому продукту. Реальный read-only прогон выполняется только после безопасного предоставления доступа владельцем; его отсутствие явно записано.",
-          "en": "The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit."
+          "ru": "Evidence RU/EN и ozon.samples.json содержат реальные маршруты/структуры с синтетическими значениями и происхождением. Получены счета, карты, баланс, детали покупки/пополнения/возврата, страницы и комиссия. accountToken меняется; groupID общий у перевода и комиссии, lastOperationId различаются. Семь страниц связаны курсорами, но все имеют next: завершение истории не подтверждено. Проверки приложения, прямого вызова сборщиком, обновления сессии и двух внешних аккаунтов не объявлены пройденными; task-4.3 не разблокирована. Иные продукты Ozon вне текущего scope по D-32.",
+          "en": "RU/EN evidence and ozon.samples.json contain actual routes/structures with synthetic values and provenance. Accounts, cards, balance, purchase/top-up/refund details, pages and a commission were obtained. accountToken varies; a transfer and its commission share groupID but have distinct lastOperationId. Seven pages form a cursor chain, yet all have next: history completion is unverified. Application, direct collector replay, session renewal and two-external-account checks are not claimed as passed; task-4.3 remains blocked. Other Ozon products are outside current scope under D-32."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/3"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/3",
+      "status": {
+        "ru": "Исследование завершено 2026-09-07 с блокирующими выводами: два HAR, 10 синтетических проекций, пять read-маршрутов, identity и комиссия описаны в [evidence RU](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.md). Семь страниц связаны курсорами, но конец истории не достигнут. Эксплуатация сессии и второй внешний аккаунт не проверены. OZON-B02/B04/B05 остаются в BLK-03 под проверкой task-0.10; task-4.3 заблокирована, Ready не объявлен.",
+        "en": "Research completed on 2026-09-07 with blocking findings: two HARs, 10 synthetic projections, five read routes, identity and a commission are documented in [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.en.md). Seven pages form a cursor chain but do not reach history completion. Session operation and a second external account are unverified. OZON-B02/B04/B05 remain within BLK-03 for task-0.10 verification; task-4.3 is blocked and Ready is not claimed."
+      }
     },
     {
       "id": "task-0.4",
@@ -3815,8 +3819,8 @@
         "en": "Implement Ozon Bank connector"
       },
       "goal": {
-        "ru": "Автоматически получать согласованные данные всех обязательных продуктов Ozon Банк.",
-        "en": "Automatically retrieve consistent data for all mandatory Ozon Bank products."
+        "ru": "Автоматически получать согласованные данные дебетовой карты Ozon и связанного основного счёта без двойного остатка.",
+        "en": "Automatically retrieve consistent Ozon debit-card and linked main-account data without duplicating the balance."
       },
       "depends_on": [
         "task-0.3",
@@ -3830,7 +3834,6 @@
         "AC-041",
         "AC-048",
         "AC-063",
-        "AC-070",
         "AC-071",
         "AC-079",
         "AC-087",
@@ -3841,14 +3844,14 @@
         "collector/src/providers/ozon/"
       ],
       "behavior": {
-        "ru": "Работать именно с банковскими счетами/картами, накоплениями и вкладами; не подменять их заказами маркетплейса. Реализовать только доказанный в evidence/ozon способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.",
-        "en": "Use bank accounts/cards, savings and deposits specifically; do not substitute marketplace orders. Implement only the access method established in evidence/ozon, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect."
+        "ru": "Реализовать текущий контракт Ozon по D-32: дебетовая карта и связанный основной счёт, их остатки и операции. Кредитки, накопления и вклады — будущее расширение; их отсутствие не блокирует этот коннектор. Не подменять банковские операции заказами маркетплейса, UI-сводку «Доходы» семейным доходом или округлённый агрегат точной суммой. Реализовать только доказанный в evidence/ozon способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется. Поля и синтетические проекции: evidence/ozon.md и evidence/ozon.samples.json. Валюта RUR преобразуется в RUB; cents обрабатываются точно. Не использовать меняющийся accountToken или один groupID как ключ дедупликации: перевод и комиссия могут разделять groupID. lastOperationId — кандидат source ID, parentOperationId связывает комиссию; жизненный цикл сверяется отдельно. Учитывать status вместе с типом и meta, не проводить canceled или неизвестное сочетание. Отсутствие available/locked и исходной покупки возврата остаётся явным. Каждый next обрабатывается с сохранением coverage; конец HAR не означает конец истории.",
+        "en": "Implement the current Ozon contract under D-32: debit card and linked main account, their balances and transactions. Credit cards, savings and deposits are a future extension; their absence does not block this connector. Do not substitute marketplace orders for bank transactions, the UI Income summary for household income, or rounded aggregates for exact amounts. Implement only the access method established in evidence/ozon, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required. Member accounts remain isolated; reconnection of one real account links to the existing source. Stale results cannot apply after disconnect. Field shapes and synthetic projections: evidence/ozon.en.md and evidence/ozon.samples.json. Map RUR to RUB and process cents exactly. Never use rotating accountToken or groupID alone for deduplication: a transfer and its commission may share groupID. lastOperationId is a source-ID candidate and parentOperationId links the commission; reconcile lifecycle separately. Combine status with type/meta; never post canceled or unknown combinations. Missing available/locked fields and original refund purchase remain explicit. Process each next with persisted coverage; HAR completion is not history completion."
       },
       "verification": {
         "command": "make test-contract PROVIDER=ozon && make test-integration AREA=ozon",
         "expected": {
-          "ru": "Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.",
-          "en": "All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result."
+          "ru": "Дебетовый контракт имеет пройденные синтетические сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом. Карта не удваивает баланс, переводы/возвраты не становятся ложным доходом. Отсутствие других продуктов Ozon не блокирует приёмку по D-32; неизвестные обязательные поля и непроверенная полнота дебетовых данных не скрываются.",
+          "en": "The debit contract has passing synthetic scenarios and separate read-only live readback with a securely connected account. The card does not duplicate balance; transfers/refunds do not become false income. Missing other Ozon products does not block acceptance under D-32; unknown mandatory fields and unverified debit-data completeness remain explicit."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/31"

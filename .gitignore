@@ -11,6 +11,7 @@ id_rsa
 id_rsa.pub
 
 # Credentials and financial dumps
+*.har
 *.cookie
 cookies.txt
 credentials.json

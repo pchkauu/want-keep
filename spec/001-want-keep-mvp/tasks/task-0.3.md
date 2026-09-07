@@ -3,9 +3,9 @@
 
 ## RU
 
-Получить проверяемую матрицу доступа к обязательным продуктам Ozon Банк.
+Получить проверяемый контракт чтения дебетовой карты Ozon и связанного основного счёта.
 
-**Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
+**Состояние:** Исследование завершено 2026-09-07 с блокирующими выводами: два HAR, 10 синтетических проекций, пять read-маршрутов, identity и комиссия описаны в [evidence RU](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.md). Семь страниц связаны курсорами, но конец истории не достигнут. Эксплуатация сессии и второй внешний аккаунт не проверены. OZON-B02/B04/B05 остаются в BLK-03 под проверкой task-0.10; task-4.3 заблокирована, Ready не объявлен.
 
 **Зависимости:** нет.
 
@@ -13,23 +13,20 @@
 
 ### Изменение и контракты
 
-Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.
+По решению D-32 проверить официальный API или допустимое чтение авторизованного кабинета для дебетовой карты и связанного основного счёта. Зафиксировать остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, доступные сведения и валюты, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Кредитка, накопительные счета и вклады Ozon — будущее расширение, их отсутствие не блокер текущего MVP. Непроверенный автоматический read-контракт дебетового продукта не подменять ручной выпиской. Проверить независимые внешние аккаунты участников и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.
 
 ### Границы изменений
 
 - `spec/001-want-keep-mvp/evidence/ozon.md`
 - `spec/001-want-keep-mvp/evidence/ozon.en.md`
+- `spec/001-want-keep-mvp/evidence/ozon.samples.json`
 
 Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
 
 ### Связанные требования
 
-- **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
-- **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
-- **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-044:** Интеграция Ozon Банк автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
+- **REQ-044:** Интеграция Ozon Банк автоматически читает дебетовую карту и связанный основной счёт: остатки, операции и доступные сведения в пределах подтверждённого контракта. Другие продукты Ozon отложены до расширения контракта.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
@@ -40,9 +37,9 @@
 
 #### AC-044
 
-- **Дано:** Подключён разрешённый личный аккаунт Ozon Банк с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый личный аккаунт Ozon Банк с дебетовой картой и связанным основным счётом.
+- **Когда:** Запрошены остатки, операции и доступные сведения дебетового продукта; та же карта и счёт встречаются в нескольких представлениях.
+- **Тогда:** Данные сопоставимы с источником, свидетельство чтения сохранено, карта не удваивает остаток счёта. Недоступность обязательных полей дебетового продукта отмечена явно. Отсутствие кредитки, накоплений или вкладов Ozon не блокирует MVP: эти продукты вне текущего контракта и не показаны как реализованные.
 - **Уровень:** `contract+manual`.
 
 #### AC-041
@@ -58,13 +55,6 @@
 - **Когда:** Возникают запрос на платёж, неподтверждённый маршрут или MFA/CAPTCHA.
 - **Тогда:** Платёж и неизвестный маршрут блокируются; MFA/CAPTCHA передаётся владельцу, источник приостанавливается; остальные источники продолжают работать.
 - **Уровень:** `integration`.
-
-#### AC-070
-
-- **Дано:** Банк передаёт баланс, но не условия грейса; ставка Earn имеет неизвестную базу начисления.
-- **Когда:** Открываются прогнозы.
-- **Тогда:** Баланс отображается; льгота и точный прогноз имеют причину недоступности; AI не извлекает гарантированную бизнес-логику из рекламной формулировки.
-- **Уровень:** `contract+end-to-end`.
 
 #### AC-079
 
@@ -86,7 +76,7 @@
 python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 ```
 
-Документ на двух языках содержит источник и дату, проверенные и непроверенные поля, примеры запросов/ответов без секретов и итог по каждому продукту. Реальный read-only прогон выполняется только после безопасного предоставления доступа владельцем; его отсутствие явно записано.
+Evidence RU/EN и ozon.samples.json содержат реальные маршруты/структуры с синтетическими значениями и происхождением. Получены счета, карты, баланс, детали покупки/пополнения/возврата, страницы и комиссия. accountToken меняется; groupID общий у перевода и комиссии, lastOperationId различаются. Семь страниц связаны курсорами, но все имеют next: завершение истории не подтверждено. Проверки приложения, прямого вызова сборщиком, обновления сессии и двух внешних аккаунтов не объявлены пройденными; task-4.3 не разблокирована. Иные продукты Ozon вне текущего scope по D-32.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
@@ -98,9 +88,9 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 ## EN
 
-Produce a verifiable access matrix for mandatory Ozon Bank products.
+Produce a verifiable read contract for the Ozon debit card and linked main account.
 
-**Status:** Research — not started; live access and paid runs require securely supplied owner access.
+**Status:** Research completed on 2026-09-07 with blocking findings: two HARs, 10 synthetic projections, five read routes, identity and a commission are documented in [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.en.md). Seven pages form a cursor chain but do not reach history completion. Session operation and a second external account are unverified. OZON-B02/B04/B05 remain within BLK-03 for task-0.10 verification; task-4.3 is blocked and Ready is not claimed.
 
 **Dependencies:** none.
 
@@ -108,23 +98,20 @@ Produce a verifiable access matrix for mandatory Ozon Bank products.
 
 ### Change and contracts
 
-Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity.
+Under D-32, verify the official API or acceptable authenticated-portal reading for the debit card and linked main account. Record balances, transactions, stable IDs, statuses, fees, pagination, history depth, available details/currencies, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. Ozon credit cards, savings and deposits are a future extension; their absence does not block the current MVP. Do not replace an unverified automatic debit-product read contract with manual statements. Verify independent member accounts and stable identity across reauthorization; connectionId is not real-account identity.
 
 ### Change boundaries
 
 - `spec/001-want-keep-mvp/evidence/ozon.md`
 - `spec/001-want-keep-mvp/evidence/ozon.en.md`
+- `spec/001-want-keep-mvp/evidence/ozon.samples.json`
 
 These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
 
 ### Linked requirements
 
-- **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
-- **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
-- **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-044:** The Ozon Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+- **REQ-044:** The Ozon Bank integration automatically reads the debit card and linked main account: balances, transactions and available details under a verified contract. Other Ozon products are deferred until a contract extension.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
@@ -135,9 +122,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-044
 
-- **Given:** An authorized personal Ozon Bank account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized personal Ozon Bank account with a debit card and linked main account is connected.
+- **When:** Debit-product balances, transactions and available details are requested; the same card and account appear in several views.
+- **Then:** Data matches the source, read evidence is retained and the card does not duplicate its account balance. Unavailable mandatory debit-product fields are explicit. Missing Ozon credit cards, savings or deposits do not block the MVP: these products are outside the current contract and are not presented as implemented.
 - **Level:** `contract+manual`.
 
 #### AC-041
@@ -153,13 +140,6 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **When:** A payment request, unapproved route or MFA/CAPTCHA appears.
 - **Then:** Payments and unknown routes are blocked; MFA/CAPTCHA is handed to the owner and that source pauses; other sources continue.
 - **Level:** `integration`.
-
-#### AC-070
-
-- **Given:** A bank exposes balance but no grace terms; an Earn rate has an unknown accrual basis.
-- **When:** Forecasts are opened.
-- **Then:** Balance is shown; grace eligibility and exact forecasts explain unavailability; AI does not turn marketing wording into guaranteed business rules.
-- **Level:** `contract+end-to-end`.
 
 #### AC-079
 
@@ -181,7 +161,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 ```
 
-The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit.
+RU/EN evidence and ozon.samples.json contain actual routes/structures with synthetic values and provenance. Accounts, cards, balance, purchase/top-up/refund details, pages and a commission were obtained. accountToken varies; a transfer and its commission share groupID but have distinct lastOperationId. Seven pages form a cursor chain, yet all have next: history completion is unverified. Application, direct collector replay, session renewal and two-external-account checks are not claimed as passed; task-4.3 remains blocked. Other Ozon products are outside current scope under D-32.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 
