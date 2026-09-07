@@ -47,7 +47,7 @@ body {
 
 .foundation-shell .foundation-shell__eyebrow {
   margin: 0 0 12px;
-  color: var(--primary);
+  color: var(--accent-readable);
   font:
     600 14px/1.4 "Pixelify Sans",
     monospace;
