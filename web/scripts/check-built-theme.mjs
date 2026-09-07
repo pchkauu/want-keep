@@ -80,10 +80,12 @@ const scripts = await Promise.all(
     .map((name) => readFile(new URL(name, assetDirectory), "utf8")),
 );
 if (
-  /token-preview|Design foundation|tokens-preview|\/__design\/tokens|Предельная длина/.test(
+  /token-preview|Design foundation|tokens-preview|\/__design\/(tokens|components)|Предельная длина|UISTATE-17|Finance\. Clearer\. Closer\./.test(
     scripts.join("\n"),
   ) ||
-  compiledCss.includes(".token-preview")
+  compiledCss.includes(".token-preview") ||
+  compiledCss.includes(".component-catalog") ||
+  compiledCss.includes(".catalog-composition")
 ) {
   throw new Error(
     "Development token specimens leaked into the production build",

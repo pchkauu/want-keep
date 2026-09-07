@@ -76,9 +76,10 @@
   --wk-space-6: 1.5rem;
   --wk-space-8: 2rem;
   --wk-space-12: 3rem;
-  --wk-radius-badge: 2px;
-  --radius: 4px;
-  --wk-radius-panel: 8px;
+  --wk-radius-badge: 999px;
+  --radius: 12px;
+  --wk-radius-panel: 24px;
+  --wk-radius-feature: 32px;
   --wk-text-small: 0.875rem;
   --wk-text-body: 1rem;
   --wk-text-heading: 1.75rem;
@@ -98,6 +99,9 @@
   --wk-motion-shared-goal: 1800ms;
   --wk-motion-limit: 200ms;
   --wk-motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --wk-layer-dialog: 10;
+  --wk-layer-popover: 20;
+  --wk-layer-toast: 30;
 }
 
 @media (prefers-reduced-motion: reduce) {

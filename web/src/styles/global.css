@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "../design-system/theme.css";
 @import "../design-system/typography.css";
+@import "../design-system/components/components.css";
 
 :root {
   color: var(--foreground);

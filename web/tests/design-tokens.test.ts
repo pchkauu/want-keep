@@ -23,9 +23,10 @@ describe("design-tokens", () => {
       "--wk-focus-foreground": "#1a1a1a",
       "--input": "#777777",
       "--border": "#3a3a3a",
-      "--wk-radius-badge": "2px",
-      "--radius": "4px",
-      "--wk-radius-panel": "8px",
+      "--wk-radius-badge": "999px",
+      "--radius": "12px",
+      "--wk-radius-panel": "24px",
+      "--wk-radius-feature": "32px",
     }))
       expect(theme.value(token)).toBe(expected);
     expect(css).toContain("--color-primary: var(--primary)");
