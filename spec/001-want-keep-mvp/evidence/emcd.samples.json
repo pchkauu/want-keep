@@ -1,0 +1,156 @@
+{
+  "kind": "synthetic_mapping_cases",
+  "version": 1,
+  "notice": {
+    "ru": "Проектные сценарии с вымышленными значениями; не ответы EMCD и не доказательство API.",
+    "en": "Designed scenarios with fictional values; neither EMCD responses nor API evidence."
+  },
+  "source_request": null,
+  "source_response": null,
+  "cases": [
+    {
+      "id": "EMCD-S01",
+      "evidence": [
+        "EMCD-E03",
+        "EMCD-E11",
+        "EMCD-E23"
+      ],
+      "name": "parent_and_child_balances",
+      "given": {
+        "fixture_valuations_verified": true,
+        "reporting_asset": "USD",
+        "main_summary": "200.00",
+        "wallet_component": "80.00",
+        "grow_component": "120.00",
+        "card_owned": "30.00",
+        "card_reserve": "15.00",
+        "card_available": null
+      },
+      "expected": {
+        "deduplicated_owned": "230.00",
+        "card_available": null,
+        "grow_in_spendable_pool": false
+      }
+    },
+    {
+      "id": "EMCD-S02",
+      "evidence": [
+        "EMCD-E06",
+        "EMCD-E08",
+        "EMCD-E10"
+      ],
+      "name": "reward_capitalization_and_payout",
+      "given": {
+        "asset": "USDT",
+        "verified_reward": "0.08000000",
+        "verified_capitalization_of_same_reward": "0.08000000",
+        "verified_payout_of_same_reward": "0.08000000",
+        "reward_link": "synthetic-reward-001"
+      },
+      "expected": {
+        "income": "0.08000000",
+        "capitalization_additional_income": "0",
+        "payout_additional_income": "0"
+      }
+    },
+    {
+      "id": "EMCD-S03",
+      "evidence": [
+        "EMCD-E12",
+        "EMCD-E13",
+        "EMCD-E24"
+      ],
+      "name": "decline_and_separate_fee",
+      "given": {
+        "asset": "USD",
+        "requested_purchase": "7.00",
+        "purchase_declined": true,
+        "displayed_fee": "0.25",
+        "fee_posting_confirmed": null
+      },
+      "expected": {
+        "principal_expense": "0.00",
+        "fee_expense": null
+      },
+      "confirmed_fee_variant": {
+        "fee_posting_confirmed": true,
+        "principal_expense": "0.00",
+        "fee_expense": "0.25"
+      }
+    },
+    {
+      "id": "EMCD-S04",
+      "evidence": [
+        "EMCD-E14",
+        "EMCD-E23"
+      ],
+      "name": "card_funding_with_verified_legs",
+      "given": {
+        "legs_linked": true,
+        "wallet_asset": "USDT",
+        "wallet_gross_debit": "50.00",
+        "fee": "1.00",
+        "converted_net": "49.00",
+        "card_asset": "USD",
+        "card_credit": "48.60",
+        "source_execution_quote": null
+      },
+      "expected": {
+        "principal_income": "0",
+        "principal_expense": "0",
+        "fee_asset": "USDT",
+        "fee_expense": "1.00",
+        "source_execution_quote": null,
+        "assume_usdt_usd_parity": false
+      }
+    },
+    {
+      "id": "EMCD-S05",
+      "evidence": [
+        "EMCD-E06",
+        "EMCD-E15",
+        "EMCD-E16"
+      ],
+      "name": "p2p_sale_with_verified_cross_log_link",
+      "given": {
+        "owner_side": "sell_crypto",
+        "verified_order_id": "synthetic-order-001",
+        "bank_and_wallet_legs_confirmed": true,
+        "crypto_asset": "USDT",
+        "crypto_quantity": "59.123456",
+        "crypto_fee": "0.120000",
+        "wallet_gross_debit": "59.243456",
+        "fiat_asset": "RUB",
+        "bank_credit": "5000.00",
+        "rounded_ui_quantity": "59.12"
+      },
+      "expected": {
+        "exchange_count": 1,
+        "principal_income": "0",
+        "principal_expense": "0",
+        "fee_asset": "USDT",
+        "fee_expense": "0.120000",
+        "recompute_from_ui": false
+      }
+    },
+    {
+      "id": "EMCD-S06",
+      "evidence": [
+        "EMCD-E04",
+        "EMCD-E09",
+        "EMCD-E15"
+      ],
+      "name": "ui_terminal_is_not_api_completeness",
+      "given": {
+        "one_grow_ui_last_page": true,
+        "all_intermediate_pages_read": false,
+        "api_terminal_seen": false
+      },
+      "expected": {
+        "api_history_complete": null,
+        "other_logs_complete": null,
+        "can_advance_verified_import_cursor": false
+      }
+    }
+  ]
+}

@@ -1108,24 +1108,24 @@
     },
     {
       "id": "REQ-047",
-      "decision": "D-13",
+      "decision": "D-34",
       "title": {
-        "ru": "Интеграция EMCD автоматически читает кошелёк, Coinhold, P2P, криптокарту и майнинг в пределах подтверждённого контракта.",
-        "en": "The EMCD integration automatically reads wallet, Coinhold, P2P, crypto card and mining under a verified contract."
+        "ru": "Интеграция EMCD автоматически читает используемые криптокарты, Coinhold/Grow, кошелёк USDT и исторические P2P-ордера по D-34; майнинг никогда не использовался и вместе с другими неиспользуемыми продуктами отложен без блокировки.",
+        "en": "The EMCD integration automatically reads used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders under D-34; mining has never been used and is deferred with other unused products without blocking readiness."
       },
       "acceptance": {
         "id": "AC-047",
         "given": {
-          "ru": "Подключён разрешённый личный аккаунт EMCD с тестируемыми продуктами.",
-          "en": "An authorized personal EMCD account with the tested products is connected."
+          "ru": "Подключён разрешённый личный аккаунт EMCD с кошельком USDT, действующими Grow, существующими картами, включая заблокированную, и историей P2P. Майнинг не использовался ни сейчас, ни ранее.",
+          "en": "An authorized personal EMCD account has a USDT wallet, existing Grow deposits, existing cards including a blocked card, and P2P history. Mining has never been used."
         },
         "when": {
           "ru": "Запрошены счета, остатки, операции и необходимые условия продуктов.",
           "en": "Accounts, balances, transactions and required product terms are requested."
         },
         "then": {
-          "ru": "Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.",
-          "en": "Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage."
+          "ru": "По каждому включённому продукту подтверждены сопоставимые с источником данные и автоматическое чтение: сводки не дублируют дочерние остатки, начисление/капитализация/выплата не утраивают доход, отказ карты не расход по основной сумме, P2P связан с денежными сторонами без дубля. Неизвестные поля/история отмечены явно; отсутствие контракта выбранных продуктов блокирует адаптер. Майнинг и другие неиспользуемые продукты не требуются.",
+          "en": "Each included product has source-matching data and verified automatic reading: aggregates do not duplicate child balances; accrual/capitalization/payout do not triple income; declined card principal is not an expense; P2P links to monetary legs without duplicates. Unknown fields/history are explicit; missing selected-product contracts block the adapter. Mining and other unused products are not required."
         },
         "level": "contract+manual"
       }
@@ -2305,8 +2305,7 @@
       "requirements": [
         "REQ-035",
         "REQ-036",
-        "REQ-045",
-        "REQ-047"
+        "REQ-045"
       ],
       "title": {
         "ru": "Чистые результаты и уже учтённые комиссии",
@@ -2764,8 +2763,8 @@
         "en": "Verify EMCD read contract"
       },
       "goal": {
-        "ru": "Получить проверяемую матрицу доступа к обязательным продуктам EMCD.",
-        "en": "Produce a verifiable access matrix for mandatory EMCD products."
+        "ru": "Зафиксировать доказательства и ограничения чтения используемых карт, Grow, кошелька USDT и архива P2P EMCD по D-34.",
+        "en": "Record reading evidence and limitations for used EMCD cards, Grow, USDT wallet and P2P archive under D-34."
       },
       "depends_on": [],
       "acceptance": [
@@ -2778,20 +2777,29 @@
       ],
       "targets": [
         "spec/001-want-keep-mvp/evidence/emcd.md",
-        "spec/001-want-keep-mvp/evidence/emcd.en.md"
+        "spec/001-want-keep-mvp/evidence/emcd.en.md",
+        "spec/001-want-keep-mvp/evidence/emcd.samples.json"
       ],
       "behavior": {
-        "ru": "Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.",
-        "en": "Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity."
+        "ru": "Объём D-34: кошелёк USDT, существующие Coinhold/Grow, карты Plus/Light и исторические P2P-ордера. Майнинг не использовался никогда; его история, другие продукты и новые mining API-ключи не нужны. Evidence/emcd.md и .en.md содержат датированные UI-наблюдения, официальные источники, продуктовую матрицу, поля/ограничения и EMCD-B01–B05. Опубликованный Mining Pool API 1.3.0 не доказывает чтение выбранных продуктов. Структурированных request/response этих продуктов нет; emcd.samples.json — проектные сценарии, не provider fixtures. Отделить агрегат и дочерние остатки, accrual/capitalization/payout Grow, declined principal и fee карты, точные стороны P2P и его округлённый UI. Сохранить вопросы identity/revisions/history/reauth/второго аккаунта и чтения без внешних мутаций. BLK-06 закрывает task-0.10; исследование завершает evidence, но не разблокирует task-4.6 без закрытия контракта и Ready.",
+        "en": "D-34 scope: USDT wallet, existing Coinhold/Grow, Plus/Light cards and historical P2P orders. Mining has never been used; its history, other products and new mining API keys are unnecessary. Evidence/emcd.md and .en.md contain dated UI observations, official sources, product matrix, fields/limitations and EMCD-B01–B05. Published Mining Pool API 1.3.0 does not establish selected-product reading. Their structured request/response pairs are unavailable; emcd.samples.json contains designed scenarios, not provider fixtures. Separate aggregates/child balances, Grow accrual/capitalization/payout, declined card principal/fees and exact P2P legs/rounded UI. Retain identity/revisions/history/reauth/second-account and read-only questions. task-0.10 resolves BLK-06; completed research does not unblock task-4.6 before contract closure and Ready."
       },
       "verification": {
-        "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
+        "command": "make docs-check",
         "expected": {
-          "ru": "Документ на двух языках содержит источник и дату, проверенные и непроверенные поля, примеры запросов/ответов без секретов и итог по каждому продукту. Реальный read-only прогон выполняется только после безопасного предоставления доступа владельцем; его отсутствие явно записано.",
-          "en": "The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit."
+          "ru": "RU/EN evidence разделяет подтверждённое UI-чтение, опубликованные условия, выводы и неизвестные API-поля; источники/ID/JSON совпадают между языками. Шесть синтетических сценариев сохраняют Decimal-инварианты и unknown. Публикация не содержит реальных сумм/ID/адресов/реквизитов/переписки/сессий. Непроверенные API/runtime/полная история/reauth явно перечислены; research Closed не означает BLK-06 Closed.",
+          "en": "RU/EN evidence distinguishes observed UI reading, published terms, inferences and unknown API fields; sources/IDs/JSON align. Six synthetic scenarios preserve Decimal invariants and unknown values. Publication excludes real amounts/IDs/addresses/payment credentials/conversations/sessions. Unverified API/runtime/full history/reauth are explicit; research Closed does not mean BLK-06 Closed."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/6"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/6",
+      "status": {
+        "ru": "Исследование завершено 2026-09-07 с блокерами автоматизации: UI четырёх областей проверен, EMCD-E01–E26 и шесть синтетических сценариев записаны. EMCD-B02–B04 / BLK-06 переданы task-0.10; task-4.6 и MVP Not Ready.",
+        "en": "Research completed on 2026-09-07 with automation blockers: four UI areas verified, EMCD-E01–E26 and six synthetic scenarios recorded. EMCD-B02–B04 / BLK-06 handed to task-0.10; task-4.6 and MVP Not Ready."
+      },
+      "verification_note": {
+        "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
+        "en": "The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof."
+      }
     },
     {
       "id": "task-0.7",
@@ -2971,7 +2979,11 @@
           "en": "Complete REQ/AC/task coverage; no hidden API/permission/formula decisions; independent plan review is Ready or Not Ready is explicitly retained."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/10"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/10",
+      "verification_note": {
+        "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
+        "en": "The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof."
+      }
     },
     {
       "id": "task-1.1",
@@ -3972,8 +3984,8 @@
         "en": "Implement EMCD connector"
       },
       "goal": {
-        "ru": "Автоматически получать согласованные данные всех обязательных продуктов EMCD.",
-        "en": "Automatically retrieve consistent data for all mandatory EMCD products."
+        "ru": "Автоматически читать кошелёк USDT, используемые Grow/криптокарты и архив P2P EMCD по D-34.",
+        "en": "Automatically read the EMCD USDT wallet, used Grow/crypto cards and P2P archive under D-34."
       },
       "depends_on": [
         "task-0.6",
@@ -3988,7 +4000,6 @@
         "AC-048",
         "AC-063",
         "AC-070",
-        "AC-071",
         "AC-079",
         "AC-087",
         "AC-090"
@@ -3998,17 +4009,21 @@
         "collector/src/providers/emcd/"
       ],
       "behavior": {
-        "ru": "Покрыть wallet/Coinhold/P2P/card/mining; отделить accrual от внутренних переводов и Coinhold от доступных к тратам денег. Реализовать только доказанный в evidence/emcd способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.",
-        "en": "Cover wallet/Coinhold/P2P/card/mining; separate accruals from internal transfers and Coinhold from spendable money. Implement only the access method established in evidence/emcd, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect."
+        "ru": "Покрыть только D-34 по подтверждённому evidence/emcd контракту; EMCD-B02–B04 / BLK-06 и SDD Ready закрываются до реализации. Майнинг, включая исторический, и другие неиспользуемые продукты не блокируют. Получить реальные структурированные fixtures: проектные emcd.samples.json не заменяют их. Не парсить UI-текст в финансовые проводки и не переносить mining auth/scopes на кошелёк. Разделить main aggregate, wallet, Grow, card owned/available/reserve без двойного счёта. Связать reward/capitalization/payout; текущая маркетинговая ставка не подменяет договор. Карты Plus/Light имеют разные условия; decline не списывает principal, fee требует подтверждения, authorization/clearing/refund/reversal связываются. USDT-пополнение и USD-карта — разные валюты; приблизительная USD-оценка покупки в EUR не settlement. P2P owner-side и точные legs/fee определяются контрактом, не порядком валют списка; ордер/wallet/bank не дублируют обмен. Проверить ID/revisions, повторы/поздние изменения, все страницы/coverage, hourly refresh, reauth и два независимых аккаунта. Повторное подключение связывается с тем же источником; lease/version запрещает применение старого результата после отключения. Только разрешённое чтение без PAN/CVV/переписки/секретов для AI.",
+        "en": "Implement only D-34 using the verified evidence/emcd contract; resolve EMCD-B02–B04 / BLK-06 and SDD Ready first. Mining, including historical mining, and other unused products do not block readiness. Obtain real structured fixtures: designed emcd.samples.json scenarios are not substitutes. Do not parse UI prose into financial postings or apply mining auth/scopes to wallets. Separate main aggregate, wallet, Grow and card owned/available/reserve without duplication. Link reward/capitalization/payout; current marketing rates cannot replace deposit terms. Plus/Light terms differ; decline does not post principal, fees need evidence, and authorization/clearing/refund/reversal must link. USDT funding and USD card are different currencies; approximate USD valuation of an EUR purchase is not settlement. Contract fields determine P2P owner-side and exact legs/fees, not list currency order; order/wallet/bank do not duplicate an exchange. Verify identity/revisions, replay/late changes, full pagination/coverage, hourly refresh, reauth and two independent accounts. Reconnection links the same source; lease/version rejects stale results after disconnect. Authorized reads only; no PAN/CVV/conversations/secrets for AI."
       },
       "verification": {
         "command": "make test-contract PROVIDER=emcd && make test-integration AREA=emcd",
         "expected": {
-          "ru": "Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.",
-          "en": "All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result."
+          "ru": "Все продукты D-34 проходят реальные contract fixtures и отдельный live readback. Проверить EMCD-S01–S06 на структурированных данных; неизвестные поля остаются unknown. Доказать отдельный полный проход и повторы журналов wallet/Grow/card/P2P, lifecycle/fee и семейную identity. Mining и неиспользуемые продукты не требуются. Снятие task-0.6 не заменяет закрытие BLK-06 и Ready.",
+          "en": "All D-34 products pass real contract fixtures and separate live readback. Verify EMCD-S01–S06 on structured data; unknown fields stay unknown. Prove complete traversal and replay separately for wallet/Grow/card/P2P logs, lifecycle/fees and household identity. Mining and unused products are unnecessary. Completing task-0.6 does not replace BLK-06 closure and Ready."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/34"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/34",
+      "verification_note": {
+        "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
+        "en": "The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof."
+      }
     },
     {
       "id": "task-5.1",
@@ -4414,7 +4429,6 @@
       },
       "depends_on": [
         "task-4.4",
-        "task-4.6",
         "task-6.1",
         "task-2.4"
       ],
@@ -4423,7 +4437,6 @@
         "AC-035",
         "AC-036",
         "AC-045",
-        "AC-047",
         "AC-071"
       ],
       "targets": [
@@ -4431,8 +4444,8 @@
         "backend/internal/mining/"
       ],
       "behavior": {
-        "ru": "Через доменные контракты разделить gross/net realized P&L, unrealized P&L, fees, funding и rewards. Учитывать общие IDs нескольких журналов, transfers Funding/Spot/Earn/Coinhold/mining и капитализацию; нереализованный результат не считать наличным доходом. Не добавлять торговый терминал или управление майнингом.",
-        "en": "Use domain contracts to separate gross/net realized P&L, unrealized P&L, fees, funding and rewards. Account for shared IDs across logs, transfers among Funding/Spot/Earn/Coinhold/mining and compounding; unrealized P&L is not cash income. Do not add a trading terminal or mining control."
+        "ru": "Через доменные контракты разделить gross/net realized P&L, unrealized P&L, fees, funding и rewards. Учитывать общие IDs нескольких журналов, transfers Funding/Spot/Earn/mining и капитализацию; нереализованный результат не считать наличным доходом. Не добавлять торговый терминал или управление майнингом. EMCD по D-34 не является источником торговли/майнинга и не блокирует эту задачу; его Grow обрабатывается в накоплениях.",
+        "en": "Use domain contracts to separate gross/net realized P&L, unrealized P&L, fees, funding and rewards. Account for shared IDs across logs, transfers among Funding/Spot/Earn/mining and compounding; unrealized P&L is not cash income. Do not add a trading terminal or mining control. EMCD under D-34 is not a trading/mining source and does not block this task; its Grow is handled by savings."
       },
       "verification": {
         "command": "make test-integration AREA=crypto-results",
@@ -4441,7 +4454,11 @@
           "en": "Contract cases for gross/net, funding, mining→wallet and compounding produce one economic effect."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/44"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/44",
+      "verification_note": {
+        "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
+        "en": "The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof."
+      }
     },
     {
       "id": "task-6.6",
@@ -5539,7 +5556,11 @@
           "en": "Every AC has a fresh pass or precise blocker; all features/platforms are required for the full MVP and time/cost are measured."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/66"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/66",
+      "verification_note": {
+        "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
+        "en": "The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof."
+      }
     },
     {
       "id": "task-9.2",

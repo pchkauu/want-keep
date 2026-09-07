@@ -48,3 +48,5 @@ Agreed 2026-09-07: separate member sign-ins, full shared visibility, personal/ho
 D-32 refinement: the current Ozon contract covers a debit card and linked main account; other products at this provider are deferred and do not block the MVP. [Research findings](evidence/ozon.en.md).
 
 D-33 refinement: Aifory — RUB accounts, USDT, ETH and the existing USD card; other products deferred without blocking. ETH added to accounting and valuation. [Research](evidence/aifory.en.md); unresolved contract questions remain in BLK-05.
+
+D-34 refinement: EMCD covers the USDT wallet, used Grow/crypto cards and P2P history. Mining has never been used; its data and other unused products are deferred without blocking readiness. [Research](evidence/emcd.en.md), automation questions in BLK-06.

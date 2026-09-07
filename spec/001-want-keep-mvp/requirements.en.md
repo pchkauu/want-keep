@@ -282,9 +282,9 @@ Source: `D-33`. Acceptance: [AC-046](acceptance_criteria.en.md#ac-046).
 
 ## REQ-047
 
-The EMCD integration automatically reads wallet, Coinhold, P2P, crypto card and mining under a verified contract.
+The EMCD integration automatically reads used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders under D-34; mining has never been used and is deferred with other unused products without blocking readiness.
 
-Source: `D-13`. Acceptance: [AC-047](acceptance_criteria.en.md#ac-047).
+Source: `D-34`. Acceptance: [AC-047](acceptance_criteria.en.md#ac-047).
 
 ## REQ-048
 

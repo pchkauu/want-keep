@@ -3,9 +3,9 @@
 
 ## RU
 
-Получить проверяемую матрицу доступа к обязательным продуктам EMCD.
+Зафиксировать доказательства и ограничения чтения используемых карт, Grow, кошелька USDT и архива P2P EMCD по D-34.
 
-**Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
+**Состояние:** Исследование завершено 2026-09-07 с блокерами автоматизации: UI четырёх областей проверен, EMCD-E01–E26 и шесть синтетических сценариев записаны. EMCD-B02–B04 / BLK-06 переданы task-0.10; task-4.6 и MVP Not Ready.
 
 **Зависимости:** нет.
 
@@ -13,12 +13,13 @@
 
 ### Изменение и контракты
 
-Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.
+Объём D-34: кошелёк USDT, существующие Coinhold/Grow, карты Plus/Light и исторические P2P-ордера. Майнинг не использовался никогда; его история, другие продукты и новые mining API-ключи не нужны. Evidence/emcd.md и .en.md содержат датированные UI-наблюдения, официальные источники, продуктовую матрицу, поля/ограничения и EMCD-B01–B05. Опубликованный Mining Pool API 1.3.0 не доказывает чтение выбранных продуктов. Структурированных request/response этих продуктов нет; emcd.samples.json — проектные сценарии, не provider fixtures. Отделить агрегат и дочерние остатки, accrual/capitalization/payout Grow, declined principal и fee карты, точные стороны P2P и его округлённый UI. Сохранить вопросы identity/revisions/history/reauth/второго аккаунта и чтения без внешних мутаций. BLK-06 закрывает task-0.10; исследование завершает evidence, но не разблокирует task-4.6 без закрытия контракта и Ready.
 
 ### Границы изменений
 
 - `spec/001-want-keep-mvp/evidence/emcd.md`
 - `spec/001-want-keep-mvp/evidence/emcd.en.md`
+- `spec/001-want-keep-mvp/evidence/emcd.samples.json`
 
 Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
 
@@ -29,7 +30,7 @@
 - **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
 - **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-047:** Интеграция EMCD автоматически читает кошелёк, Coinhold, P2P, криптокарту и майнинг в пределах подтверждённого контракта.
+- **REQ-047:** Интеграция EMCD автоматически читает используемые криптокарты, Coinhold/Grow, кошелёк USDT и исторические P2P-ордера по D-34; майнинг никогда не использовался и вместе с другими неиспользуемыми продуктами отложен без блокировки.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
@@ -40,9 +41,9 @@
 
 #### AC-047
 
-- **Дано:** Подключён разрешённый личный аккаунт EMCD с тестируемыми продуктами.
+- **Дано:** Подключён разрешённый личный аккаунт EMCD с кошельком USDT, действующими Grow, существующими картами, включая заблокированную, и историей P2P. Майнинг не использовался ни сейчас, ни ранее.
 - **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Тогда:** По каждому включённому продукту подтверждены сопоставимые с источником данные и автоматическое чтение: сводки не дублируют дочерние остатки, начисление/капитализация/выплата не утраивают доход, отказ карты не расход по основной сумме, P2P связан с денежными сторонами без дубля. Неизвестные поля/история отмечены явно; отсутствие контракта выбранных продуктов блокирует адаптер. Майнинг и другие неиспользуемые продукты не требуются.
 - **Уровень:** `contract+manual`.
 
 #### AC-041
@@ -83,12 +84,12 @@
 ### Проверка результата
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-Документ на двух языках содержит источник и дату, проверенные и непроверенные поля, примеры запросов/ответов без секретов и итог по каждому продукту. Реальный read-only прогон выполняется только после безопасного предоставления доступа владельцем; его отсутствие явно записано.
+RU/EN evidence разделяет подтверждённое UI-чтение, опубликованные условия, выводы и неизвестные API-поля; источники/ID/JSON совпадают между языками. Шесть синтетических сценариев сохраняют Decimal-инварианты и unknown. Публикация не содержит реальных сумм/ID/адресов/реквизитов/переписки/сессий. Непроверенные API/runtime/полная история/reauth явно перечислены; research Closed не означает BLK-06 Closed.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.
 
 ### Передача следующему агенту
 
@@ -98,9 +99,9 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 ## EN
 
-Produce a verifiable access matrix for mandatory EMCD products.
+Record reading evidence and limitations for used EMCD cards, Grow, USDT wallet and P2P archive under D-34.
 
-**Status:** Research — not started; live access and paid runs require securely supplied owner access.
+**Status:** Research completed on 2026-09-07 with automation blockers: four UI areas verified, EMCD-E01–E26 and six synthetic scenarios recorded. EMCD-B02–B04 / BLK-06 handed to task-0.10; task-4.6 and MVP Not Ready.
 
 **Dependencies:** none.
 
@@ -108,12 +109,13 @@ Produce a verifiable access matrix for mandatory EMCD products.
 
 ### Change and contracts
 
-Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity.
+D-34 scope: USDT wallet, existing Coinhold/Grow, Plus/Light cards and historical P2P orders. Mining has never been used; its history, other products and new mining API keys are unnecessary. Evidence/emcd.md and .en.md contain dated UI observations, official sources, product matrix, fields/limitations and EMCD-B01–B05. Published Mining Pool API 1.3.0 does not establish selected-product reading. Their structured request/response pairs are unavailable; emcd.samples.json contains designed scenarios, not provider fixtures. Separate aggregates/child balances, Grow accrual/capitalization/payout, declined card principal/fees and exact P2P legs/rounded UI. Retain identity/revisions/history/reauth/second-account and read-only questions. task-0.10 resolves BLK-06; completed research does not unblock task-4.6 before contract closure and Ready.
 
 ### Change boundaries
 
 - `spec/001-want-keep-mvp/evidence/emcd.md`
 - `spec/001-want-keep-mvp/evidence/emcd.en.md`
+- `spec/001-want-keep-mvp/evidence/emcd.samples.json`
 
 These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
 
@@ -124,7 +126,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
 - **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-047:** The EMCD integration automatically reads wallet, Coinhold, P2P, crypto card and mining under a verified contract.
+- **REQ-047:** The EMCD integration automatically reads used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders under D-34; mining has never been used and is deferred with other unused products without blocking readiness.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
@@ -135,9 +137,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-047
 
-- **Given:** An authorized personal EMCD account with the tested products is connected.
+- **Given:** An authorized personal EMCD account has a USDT wallet, existing Grow deposits, existing cards including a blocked card, and P2P history. Mining has never been used.
 - **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Then:** Each included product has source-matching data and verified automatic reading: aggregates do not duplicate child balances; accrual/capitalization/payout do not triple income; declined card principal is not an expense; P2P links to monetary legs without duplicates. Unknown fields/history are explicit; missing selected-product contracts block the adapter. Mining and other unused products are not required.
 - **Level:** `contract+manual`.
 
 #### AC-041
@@ -178,12 +180,12 @@ A criterion link establishes coverage; research or a partial task does not prove
 ### Verification
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit.
+RU/EN evidence distinguishes observed UI reading, published terms, inferences and unknown API fields; sources/IDs/JSON align. Six synthetic scenarios preserve Decimal invariants and unknown values. Publication excludes real amounts/IDs/addresses/payment credentials/conversations/sessions. Unverified API/runtime/full history/reauth are explicit; research Closed does not mean BLK-06 Closed.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof.
 
 ### Handoff to the next agent
 

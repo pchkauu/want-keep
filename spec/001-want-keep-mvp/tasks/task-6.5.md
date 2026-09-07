@@ -7,13 +7,13 @@
 
 **Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
 
-**Зависимости:** `task-4.4`, `task-4.6`, `task-6.1`, `task-2.4`.
+**Зависимости:** `task-4.4`, `task-6.1`, `task-2.4`.
 
 **Тип:** `implementation`.
 
 ### Изменение и контракты
 
-Через доменные контракты разделить gross/net realized P&L, unrealized P&L, fees, funding и rewards. Учитывать общие IDs нескольких журналов, transfers Funding/Spot/Earn/Coinhold/mining и капитализацию; нереализованный результат не считать наличным доходом. Не добавлять торговый терминал или управление майнингом.
+Через доменные контракты разделить gross/net realized P&L, unrealized P&L, fees, funding и rewards. Учитывать общие IDs нескольких журналов, transfers Funding/Spot/Earn/mining и капитализацию; нереализованный результат не считать наличным доходом. Не добавлять торговый терминал или управление майнингом. EMCD по D-34 не является источником торговли/майнинга и не блокирует эту задачу; его Grow обрабатывается в накоплениях.
 
 ### Границы изменений
 
@@ -28,7 +28,6 @@
 - **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
 - **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
 - **REQ-045:** Интеграция Bybit автоматически читает Funding, Spot, Earn, P2P и фьючерсы в пределах подтверждённого контракта.
-- **REQ-047:** Интеграция EMCD автоматически читает кошелёк, Coinhold, P2P, криптокарту и майнинг в пределах подтверждённого контракта.
 
 ### Критерии приёмки
 
@@ -62,13 +61,6 @@
 - **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
 - **Уровень:** `contract+manual`.
 
-#### AC-047
-
-- **Дано:** Подключён разрешённый личный аккаунт EMCD с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
-- **Уровень:** `contract+manual`.
-
 #### AC-071
 
 - **Дано:** Источник различает gross P&L, net P&L, fee, funding и reward/transfer.
@@ -84,7 +76,7 @@ make test-integration AREA=crypto-results
 
 Контрактные cases gross/net, funding, mining→wallet и капитализация дают единственный экономический эффект.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.
 
 ### Передача следующему агенту
 
@@ -98,13 +90,13 @@ Produce consistent crypto-product results without double accruals.
 
 **Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
 
-**Dependencies:** `task-4.4`, `task-4.6`, `task-6.1`, `task-2.4`.
+**Dependencies:** `task-4.4`, `task-6.1`, `task-2.4`.
 
 **Kind:** `implementation`.
 
 ### Change and contracts
 
-Use domain contracts to separate gross/net realized P&L, unrealized P&L, fees, funding and rewards. Account for shared IDs across logs, transfers among Funding/Spot/Earn/Coinhold/mining and compounding; unrealized P&L is not cash income. Do not add a trading terminal or mining control.
+Use domain contracts to separate gross/net realized P&L, unrealized P&L, fees, funding and rewards. Account for shared IDs across logs, transfers among Funding/Spot/Earn/mining and compounding; unrealized P&L is not cash income. Do not add a trading terminal or mining control. EMCD under D-34 is not a trading/mining source and does not block this task; its Grow is handled by savings.
 
 ### Change boundaries
 
@@ -119,7 +111,6 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
 - **REQ-036:** Mining rewards are separate from transfers between owned wallets.
 - **REQ-045:** The Bybit integration automatically reads Funding, Spot, Earn, P2P and futures under a verified contract.
-- **REQ-047:** The EMCD integration automatically reads wallet, Coinhold, P2P, crypto card and mining under a verified contract.
 
 ### Acceptance criteria
 
@@ -153,13 +144,6 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
 - **Level:** `contract+manual`.
 
-#### AC-047
-
-- **Given:** An authorized personal EMCD account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
-- **Level:** `contract+manual`.
-
 #### AC-071
 
 - **Given:** A source distinguishes gross P&L, net P&L, fee, funding and reward/transfer.
@@ -175,7 +159,7 @@ make test-integration AREA=crypto-results
 
 Contract cases for gross/net, funding, mining→wallet and compounding produce one economic effect.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof.
 
 ### Handoff to the next agent
 

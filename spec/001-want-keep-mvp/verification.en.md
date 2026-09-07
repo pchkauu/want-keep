@@ -19,7 +19,7 @@ Prepared proposal, 87 REQ, 105 AC, architecture, contracts/formulas, glossary, M
 | BLK-03 | Operational Ozon debit-card/main-account contract under D-32 | task-0.10, task-0.3 evidence | [Research completed with blockers](evidence/ozon.en.md): read structures obtained; needs history completion, acceptable session operation, second account and unavailable semantics. Other Ozon products not required |
 | BLK-04 | Full Bybit Funding/Spot/Earn/P2P/futures, net/gross and permissions | task-0.4 | Each log/product verified separately |
 | BLK-05 | Aifory: RUB, USDT, ETH and existing USD card under D-33 | task-0.10, task-0.5 evidence | [Research](evidence/aifory.en.md): AIFORY-B02–B04 — automation permission, structured read contract, identity/history/reauth, card lifecycle/fees/FX. Other products not required |
-| BLK-06 | EMCD wallet/Coinhold/P2P/card/mining contracts | task-0.6 | Separate accrual/transfers/fees and full product coverage |
+| BLK-06 | EMCD: USDT wallet, used Grow/crypto cards and P2P history under D-34 | task-0.10, evidence task-0.6 | [Research](evidence/emcd.en.md): EMCD-B02–B04 — structured read/access, identity/history/reauth, balances/Grow/card/P2P. Mining has never been used; other products are unnecessary |
 | BLK-07 | Free current/historical FX valuation and provider quotes | task-0.7 | All pairs/periods/fees/source policies or a decision on unavailability |
 | BLK-08 | OpenAI models, measured quality/cost and request limits | task-0.8 | Financial-invariant evaluation with tokens/errors and selected versions/limits |
 | BLK-09 | Concrete VPS/reachability/cost and Mac backup retention | task-0.9 | Dated ≤$40 estimate, reachability, retention/capacity and recovery design |
@@ -95,3 +95,15 @@ Checks: spec_tool check — pass (87 REQ, 105 AC, 67 tasks, 35 screens, 67 GitHu
 UI reading does not prove structured API, automatic import, completeness, identity after reauth/second account or card lifecycle. Operator consent for automation is not confirmed. Research is complete under the README rule; task-4.5 and Ready remain blocked. Full AC-046/AC-041/AC-048/AC-079/AC-087 are not claimed as passed. Local spec, RU/EN/JSON and diff checks are separate from runtime.
 
 Current changes received a local self review. Aifory links to AC-070/AC-071 credit, savings, trading and mining products were removed; AC-039 retains missing-rate checks. The previously recorded Avida pass concerns the earlier package.
+
+## EMCD: task-0.6 research completion, 2026-09-07
+
+[RU evidence](evidence/emcd.md) / [EN](evidence/emcd.en.md): D-34, EMCD-E01–E26, four included UI areas and [six synthetic scenarios](evidence/emcd.samples.json). USDT wallet, existing Grow, Plus/Light and P2P archive inspected. Mining has never been used; its history and other unused products do not block readiness.
+
+Aggregates may include child balances; Grow distinguishes accrued/earned figures and capitalization/payout modes. A negative card row may be a decline with a separate fee. P2P lists round amounts; details establish direction rather than list currency order. Mining Pool API 1.3.0 does not establish reading these products. One Grow last UI page was reached, but full API traversal and other logs remain unverified.
+
+EMCD-B01 is closed; EMCD-B02–B04 remain in BLK-06 under task-0.10. Research is complete under README; task-4.6 and MVP Not Ready. REQ-047/AC-047 and tasks changed with IDs preserved; AC-071 removed from EMCD, AC-070 retained for Grow. Shared credit, trading and mining features remain.
+
+Current self review checks documents, RU/EN IDs/meaning and synthetic Decimal scenarios; the earlier Avida pass does not cover this research. Spec check, generator tests and diff review run on the final candidate before publication; outcomes and GitHub readback are recorded in Issue #6. API replay, application/collector, reauth/second account, hourly/allowlist and full ACs were not run: selected-product structured contracts and financial runtime are absent; the task-1.1 foundation exists.
+
+Final-candidate checks on base `f12f215`: `make docs-check` — pass, 87 REQ / 105 AC / 67 tasks / 35 screens / 67 GitHub mappings; 14 generator tests — pass. Six Decimal scenarios, 26 paired observations/IDs/RU/EN links, JSON, scoped EMCD catalog changes and absence of private IDs — pass. Publication content was checked separately; unfinished changes from another research task were preserved.

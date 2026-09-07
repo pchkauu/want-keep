@@ -3,7 +3,7 @@
 
 ## RU
 
-Автоматически получать согласованные данные всех обязательных продуктов EMCD.
+Автоматически читать кошелёк USDT, используемые Grow/криптокарты и архив P2P EMCD по D-34.
 
 **Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Покрыть wallet/Coinhold/P2P/card/mining; отделить accrual от внутренних переводов и Coinhold от доступных к тратам денег. Реализовать только доказанный в evidence/emcd способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.
+Покрыть только D-34 по подтверждённому evidence/emcd контракту; EMCD-B02–B04 / BLK-06 и SDD Ready закрываются до реализации. Майнинг, включая исторический, и другие неиспользуемые продукты не блокируют. Получить реальные структурированные fixtures: проектные emcd.samples.json не заменяют их. Не парсить UI-текст в финансовые проводки и не переносить mining auth/scopes на кошелёк. Разделить main aggregate, wallet, Grow, card owned/available/reserve без двойного счёта. Связать reward/capitalization/payout; текущая маркетинговая ставка не подменяет договор. Карты Plus/Light имеют разные условия; decline не списывает principal, fee требует подтверждения, authorization/clearing/refund/reversal связываются. USDT-пополнение и USD-карта — разные валюты; приблизительная USD-оценка покупки в EUR не settlement. P2P owner-side и точные legs/fee определяются контрактом, не порядком валют списка; ордер/wallet/bank не дублируют обмен. Проверить ID/revisions, повторы/поздние изменения, все страницы/coverage, hourly refresh, reauth и два независимых аккаунта. Повторное подключение связывается с тем же источником; lease/version запрещает применение старого результата после отключения. Только разрешённое чтение без PAN/CVV/переписки/секретов для AI.
 
 ### Границы изменений
 
@@ -30,13 +30,10 @@
 - **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
 - **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
 - **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
-- **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
-- **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
 - **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
 - **REQ-040:** Каждый источник обновляется раз в час и по запросу с видимым временем успешного обновления.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-045:** Интеграция Bybit автоматически читает Funding, Spot, Earn, P2P и фьючерсы в пределах подтверждённого контракта.
-- **REQ-047:** Интеграция EMCD автоматически читает кошелёк, Coinhold, P2P, криптокарту и майнинг в пределах подтверждённого контракта.
+- **REQ-047:** Интеграция EMCD автоматически читает используемые криптокарты, Coinhold/Grow, кошелёк USDT и исторические P2P-ордера по D-34; майнинг никогда не использовался и вместе с другими неиспользуемыми продуктами отложен без блокировки.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-061:** Повторные задания, перезапуски и параллельные изменения не создают двойных финансовых эффектов.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
@@ -49,9 +46,9 @@
 
 #### AC-047
 
-- **Дано:** Подключён разрешённый личный аккаунт EMCD с тестируемыми продуктами.
+- **Дано:** Подключён разрешённый личный аккаунт EMCD с кошельком USDT, действующими Grow, существующими картами, включая заблокированную, и историей P2P. Майнинг не использовался ни сейчас, ни ранее.
 - **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Тогда:** По каждому включённому продукту подтверждены сопоставимые с источником данные и автоматическое чтение: сводки не дублируют дочерние остатки, начисление/капитализация/выплата не утраивают доход, отказ карты не расход по основной сумме, P2P связан с денежными сторонами без дубля. Неизвестные поля/история отмечены явно; отсутствие контракта выбранных продуктов блокирует адаптер. Майнинг и другие неиспользуемые продукты не требуются.
 - **Уровень:** `contract+manual`.
 
 #### AC-040
@@ -89,13 +86,6 @@
 - **Тогда:** Баланс отображается; льгота и точный прогноз имеют причину недоступности; AI не извлекает гарантированную бизнес-логику из рекламной формулировки.
 - **Уровень:** `contract+end-to-end`.
 
-#### AC-071
-
-- **Дано:** Источник различает gross P&L, net P&L, fee, funding и reward/transfer.
-- **Когда:** Одна экономическая операция встречается в нескольких журналах.
-- **Тогда:** Происхождение показателей сохранено; комиссия и доход не удваиваются; выбор net/gross подтверждён контрактом.
-- **Уровень:** `contract+integration`.
-
 #### AC-079
 
 - **Дано:** A и B имеют разные аккаунты одного провайдера и общий счёт; B заносит покупку A со счёта B.
@@ -123,9 +113,9 @@
 make test-contract PROVIDER=emcd && make test-integration AREA=emcd
 ```
 
-Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.
+Все продукты D-34 проходят реальные contract fixtures и отдельный live readback. Проверить EMCD-S01–S06 на структурированных данных; неизвестные поля остаются unknown. Доказать отдельный полный проход и повторы журналов wallet/Grow/card/P2P, lifecycle/fee и семейную identity. Mining и неиспользуемые продукты не требуются. Снятие task-0.6 не заменяет закрытие BLK-06 и Ready.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.
 
 ### Передача следующему агенту
 
@@ -135,7 +125,7 @@ make test-contract PROVIDER=emcd && make test-integration AREA=emcd
 
 ## EN
 
-Automatically retrieve consistent data for all mandatory EMCD products.
+Automatically read the EMCD USDT wallet, used Grow/crypto cards and P2P archive under D-34.
 
 **Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
 
@@ -145,7 +135,7 @@ Automatically retrieve consistent data for all mandatory EMCD products.
 
 ### Change and contracts
 
-Cover wallet/Coinhold/P2P/card/mining; separate accruals from internal transfers and Coinhold from spendable money. Implement only the access method established in evidence/emcd, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect.
+Implement only D-34 using the verified evidence/emcd contract; resolve EMCD-B02–B04 / BLK-06 and SDD Ready first. Mining, including historical mining, and other unused products do not block readiness. Obtain real structured fixtures: designed emcd.samples.json scenarios are not substitutes. Do not parse UI prose into financial postings or apply mining auth/scopes to wallets. Separate main aggregate, wallet, Grow and card owned/available/reserve without duplication. Link reward/capitalization/payout; current marketing rates cannot replace deposit terms. Plus/Light terms differ; decline does not post principal, fees need evidence, and authorization/clearing/refund/reversal must link. USDT funding and USD card are different currencies; approximate USD valuation of an EUR purchase is not settlement. Contract fields determine P2P owner-side and exact legs/fees, not list currency order; order/wallet/bank do not duplicate an exchange. Verify identity/revisions, replay/late changes, full pagination/coverage, hourly refresh, reauth and two independent accounts. Reconnection links the same source; lease/version rejects stale results after disconnect. Authorized reads only; no PAN/CVV/conversations/secrets for AI.
 
 ### Change boundaries
 
@@ -162,13 +152,10 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
 - **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
 - **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
-- **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
-- **REQ-036:** Mining rewards are separate from transfers between owned wallets.
 - **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
 - **REQ-040:** Each source refreshes hourly and on demand with a visible last-success timestamp.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-045:** The Bybit integration automatically reads Funding, Spot, Earn, P2P and futures under a verified contract.
-- **REQ-047:** The EMCD integration automatically reads wallet, Coinhold, P2P, crypto card and mining under a verified contract.
+- **REQ-047:** The EMCD integration automatically reads used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders under D-34; mining has never been used and is deferred with other unused products without blocking readiness.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-061:** Repeated jobs, restarts and concurrent changes cannot create duplicate financial effects.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
@@ -181,9 +168,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-047
 
-- **Given:** An authorized personal EMCD account with the tested products is connected.
+- **Given:** An authorized personal EMCD account has a USDT wallet, existing Grow deposits, existing cards including a blocked card, and P2P history. Mining has never been used.
 - **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Then:** Each included product has source-matching data and verified automatic reading: aggregates do not duplicate child balances; accrual/capitalization/payout do not triple income; declined card principal is not an expense; P2P links to monetary legs without duplicates. Unknown fields/history are explicit; missing selected-product contracts block the adapter. Mining and other unused products are not required.
 - **Level:** `contract+manual`.
 
 #### AC-040
@@ -221,13 +208,6 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Balance is shown; grace eligibility and exact forecasts explain unavailability; AI does not turn marketing wording into guaranteed business rules.
 - **Level:** `contract+end-to-end`.
 
-#### AC-071
-
-- **Given:** A source distinguishes gross P&L, net P&L, fee, funding and reward/transfer.
-- **When:** One economic event appears in several logs.
-- **Then:** Metric provenance is preserved; fees and income are not doubled; net/gross semantics are contract-verified.
-- **Level:** `contract+integration`.
-
 #### AC-079
 
 - **Given:** A and B have separate accounts at one provider and a joint account; B enters A’s purchase paid from B’s account.
@@ -255,9 +235,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 make test-contract PROVIDER=emcd && make test-integration AREA=emcd
 ```
 
-All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result.
+All D-34 products pass real contract fixtures and separate live readback. Verify EMCD-S01–S06 on structured data; unknown fields stay unknown. Prove complete traversal and replay separately for wallet/Grow/card/P2P logs, lifecycle/fees and household identity. Mining and unused products are unnecessary. Completing task-0.6 does not replace BLK-06 closure and Ready.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof.
 
 ### Handoff to the next agent
 

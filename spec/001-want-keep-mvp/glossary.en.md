@@ -38,3 +38,4 @@
 | RPO / RTO | Actual potential data-loss window / recovery time. Mac backup RPO depends on reachability. |
 | REQ / AC / task | A testable requirement / observable criterion / task with dependencies and outcome evidence. |
 | Ready | A verdict on specification/plan sufficiency. Neither successful runtime proof nor deployment authority. |
+| Coinhold / Grow | Names of the EMCD savings product; brand aliases do not create separate accounts. Deposit terms/identity and accrual/capitalization/payout events are verified under D-34. |

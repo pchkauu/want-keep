@@ -52,7 +52,7 @@ Scenarios are future product criteria, not a report of passing tests. `contract+
 | [REQ-044](requirements.en.md#req-044) | [AC-044](#ac-044) |
 | [REQ-045](requirements.en.md#req-045) | [AC-045](#ac-045), [AC-071](#ac-071) |
 | [REQ-046](requirements.en.md#req-046) | [AC-046](#ac-046) |
-| [REQ-047](requirements.en.md#req-047) | [AC-047](#ac-047), [AC-071](#ac-071) |
+| [REQ-047](requirements.en.md#req-047) | [AC-047](#ac-047) |
 | [REQ-048](requirements.en.md#req-048) | [AC-048](#ac-048) |
 | [REQ-049](requirements.en.md#req-049) | [AC-049](#ac-049), [AC-072](#ac-072) |
 | [REQ-050](requirements.en.md#req-050) | [AC-050](#ac-050), [AC-068](#ac-068), [AC-072](#ac-072) |
@@ -602,13 +602,13 @@ REQ: `REQ-046`.
 
 ## AC-047
 
-The EMCD integration automatically reads wallet, Coinhold, P2P, crypto card and mining under a verified contract.
+The EMCD integration automatically reads used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders under D-34; mining has never been used and is deferred with other unused products without blocking readiness.
 
 REQ: `REQ-047`.
 
-- **Given:** An authorized personal EMCD account with the tested products is connected.
+- **Given:** An authorized personal EMCD account has a USDT wallet, existing Grow deposits, existing cards including a blocked card, and P2P history. Mining has never been used.
 - **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Then:** Each included product has source-matching data and verified automatic reading: aggregates do not duplicate child balances; accrual/capitalization/payout do not triple income; declined card principal is not an expense; P2P links to monetary legs without duplicates. Unknown fields/history are explicit; missing selected-product contracts block the adapter. Mining and other unused products are not required.
 - **Level:** `contract+manual`.
 
 ## AC-048
@@ -1143,7 +1143,7 @@ REQ: `REQ-031`, `REQ-032`, `REQ-033`, `REQ-039`.
 
 Net results and already-included fees
 
-REQ: `REQ-035`, `REQ-036`, `REQ-045`, `REQ-047`.
+REQ: `REQ-035`, `REQ-036`, `REQ-045`.
 
 - **Given:** A source distinguishes gross P&L, net P&L, fee, funding and reward/transfer.
 - **When:** One economic event appears in several logs.

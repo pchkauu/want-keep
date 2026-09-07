@@ -49,7 +49,7 @@ The full backlog is not a Ready implementation plan. First task-0.1–task-0.9 c
 | [task-6.2](tasks/task-6.2.md) | Account for credit cards and grace periods | task-4.1, task-4.2, task-4.3, task-2.2 | [#41](https://github.com/pchkauu/want-keep/issues/41) |
 | [task-6.3](tasks/task-6.3.md) | Calculate accruals and savings forecasts | task-4.1, task-4.2, task-4.3, task-4.4, task-4.6, task-6.1 | [#42](https://github.com/pchkauu/want-keep/issues/42) |
 | [task-6.4](tasks/task-6.4.md) | Compare dated cash-flow returns | task-6.3 | [#43](https://github.com/pchkauu/want-keep/issues/43) |
-| [task-6.5](tasks/task-6.5.md) | Aggregate trading P&L and mining | task-4.4, task-4.6, task-6.1, task-2.4 | [#44](https://github.com/pchkauu/want-keep/issues/44) |
+| [task-6.5](tasks/task-6.5.md) | Aggregate trading P&L and mining | task-4.4, task-6.1, task-2.4 | [#44](https://github.com/pchkauu/want-keep/issues/44) |
 | [task-6.6](tasks/task-6.6.md) | Plan monthly budgets and income | task-2.7, task-2.6, task-6.1, task-6.2, task-2.8 | [#45](https://github.com/pchkauu/want-keep/issues/45) |
 | [task-6.7](tasks/task-6.7.md) | Reserve money for goals | task-6.6, task-2.1 | [#46](https://github.com/pchkauu/want-keep/issues/46) |
 | [task-6.8](tasks/task-6.8.md) | Calculate daily allowances and liquidity forecast | task-6.6, task-6.7, task-6.3, task-2.5 | [#47](https://github.com/pchkauu/want-keep/issues/47) |

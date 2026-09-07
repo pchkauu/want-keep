@@ -2,7 +2,7 @@
 
 [Русский](contracts.md)
 
-Target project contract version 4; family and desktop amendment 2026-09-07. No actual API or database schema exists yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
+Target project contract version 5; family and desktop amendment 2026-09-07. No actual API or database schema exists yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
 
 ## Domain entities
 
@@ -138,3 +138,11 @@ RUB, USD, USDT, BTC and ETH are available in Money and valuation. Network is a s
 Aifory reads only RUB accounts, USDT, ETH and the existing USD card with their movements/fees. A RUB-group total does not create another balance; matching office names do not merge accounts. A platform RUB wallet preserves product kind and is not a bank deposit. Card funding links distinct native legs under an established contract, with fees separate. Authorization/clearing need IDs/linkage; UI sign, mask, shared URL and similar merchant are not identity.
 
 Other products are deferred without blocking. Retain their movements through included wallets with provenance and clarification of unknown semantics. task-0.10 resolves structured provider mapping, automation permission, history/reauth and card lifecycle under AIFORY-B02–B04 before task-4.5; no OCR-accounting bypass. [Evidence](evidence/aifory.en.md).
+
+## EMCD: D-34
+
+The current contract covers the USDT wallet, existing Coinhold/Grow, used Plus/Light cards and historical P2P orders. Mining has never been used; its history and other unused products are unnecessary. Crypto cards do not acquire credit characteristics without an established agreement. Grow identity persists across Coinhold/Grow names; one product does not create two accounts.
+
+The main aggregate and child wallet/Grow balances are not added twice. Link accrued, capitalized and paid rewards; capitalization/movement of already recognized income creates no additional income. Unknown balance composition or card reserves cannot become spendable funds. Purchase decline and a posted fee are separate effects; legacy Light and Plus use their own terms. Card funding links USDT and USD; original EUR purchase amounts remain separate from approximate USD valuation and settlement. Exact owner-side fields link P2P to wallet/bank facts, not currency order, conversations or rounded UI amounts.
+
+[Evidence and gaps](evidence/emcd.en.md), [synthetic scenarios](evidence/emcd.samples.json). Real provider request/response pairs were not obtained; scenarios are not an API schema. task-0.10 closes BLK-06 before task-4.6 implementation. This updates target-contract version 5; financial runtime/database are absent and no migration is needed; the task-1.1 foundation is already implemented.

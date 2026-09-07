@@ -28,7 +28,7 @@ This stage delivers bilingual specifications, criteria, architecture, integratio
 | D-10 | Goals have amount, currency, deadline and virtual-reservation or dedicated-account mode. No double reservation. Daily allowances are overall/per-category and available/forecast with separate funding by currency. |
 | D-11 | Credit cards with debt, payments and grace; savings with actual/forecast and comparable dated-cash-flow returns; realized/unrealized trading P&L, fees, funding and mining. No trading terminal. |
 | D-12 | Transaction-date expense valuation, current wealth valuation and separate FX effects. Reference rates and available provider buy/sell quotes with fees. USDT is not automatically USD. |
-| D-13 | Alfa-Bank, Raif Russia: cards, current/savings accounts, deposits; Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding/Spot/Earn/P2P/futures; Aifory: RUB accounts, USDT, ETH and existing card with their movements (D-33); EMCD: wallet/Coinhold/P2P/card/mining. Read-only; browser automation allowed. |
+| D-13 | Alfa-Bank, Raif Russia: cards, current/savings accounts, deposits; Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding/Spot/Earn/P2P/futures; Aifory: RUB accounts, USDT, ETH and existing card with their movements (D-33); EMCD: used cards, Coinhold/Grow, USDT wallet and P2P history (D-34). Read-only; browser automation allowed. |
 | D-14 | Separate passkeys and personal one-time recovery codes for each member; partner-assisted reset is unavailable. Protected secrets, attachments and sessions; AI has no payment authority. |
 | D-15 | For the whole household: server up to $40/month in DE/NL/BG, OpenAI up to $50/month; separately sourced data must be free. Hourly MacBook backups while reachable; visible backup age, conditional RPO and recovery target within four hours. |
 | D-16 | UI, AI interaction and documentation in RU/EN. Dashboard covers plan/actuals, income/expenses, goals and daily allowances. In-app and web-push notifications. |
@@ -87,3 +87,9 @@ Documentation and backlog can be delivered before live access. Full-MVP Ready re
 | D-33 | Current Aifory scope: RUB accounts, USDT, ETH and the existing crypto card with its actual USD balance. Other products/currency wallets, other cards, standalone P2P/referral products and service catalogs are deferred and do not block the MVP. Retain all included-wallet movements even when the related service is deferred. ETH joins accounting and selectable valuation currencies. Selected-product reliability/automation remain mandatory; expansion needs new verified contracts. Other providers and shared functions are not reduced. |
 
 REQ-002/REQ-003/REQ-046, their ACs and downstream tasks were updated with IDs preserved. This is target-contract version 4; no application exists yet, so no runtime/data migration is required. [Research outcome](evidence/aifory.en.md).
+
+## EMCD refinement, 2026-09-07
+
+| ID | Decision |
+| --- | --- |
+| D-34 | Current EMCD scope: used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders. Mining has never been used; neither its current data nor history is required. Mining and other unused products/wallets are deferred without blocking the MVP; expansion requires a new decision and verified contracts. Retain all included-wallet movements. Automation and quality for selected products, shared features and other providers are not reduced. |
