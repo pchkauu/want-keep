@@ -67,6 +67,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: connections.create
     requestBody:
       required: true
@@ -150,6 +156,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: connections.disconnect
     requestBody:
       required: true
@@ -160,6 +172,7 @@
 "/connections/{connectionId}/sync":
   post:
     operationId: connections_sync
+    description: Requires current authorized connection and exact admitted deployment binding before job or collector IO. Otherwise returns provider_not_admitted (409); quarantine conformance never writes source records or postings.
     tags:
     - connections
     summary: connections sync
@@ -197,6 +210,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: connections.sync
     requestBody:
       required: true
@@ -244,6 +263,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: connections.reauth
     requestBody:
       required: true

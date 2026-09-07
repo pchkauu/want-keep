@@ -30,6 +30,8 @@ Connection:
       - failed
     quality:
       "$ref": "./quality.yaml#/DataQuality"
+    deploymentGate:
+      "$ref": "./connections.yaml#/DeploymentGate"
     generation:
       "$ref": "./money.yaml#/Revision"
     lastError:
@@ -44,6 +46,7 @@ Connection:
   - state
   - quality
   - generation
+  - deploymentGate
 ConnectionCreate:
   type: object
   additionalProperties: false
@@ -118,3 +121,149 @@ ConnectionPage:
   required:
   - items
   - quality
+
+DeploymentBinding:
+  type: object
+  additionalProperties: false
+  properties:
+    provider:
+      $ref: ./money.yaml#/Provider
+    environment:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$
+    adapterBuildDigest:
+      type: string
+      pattern: ^sha256:[0-9a-f]{64}$
+    collectorImageDigest:
+      type: string
+      pattern: ^sha256:[0-9a-f]{64}$
+    contractVersion:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$
+    allowlistRevision:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$
+    nonSecretConfigRevision:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$
+    operatorPermissionRevision:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$
+  required:
+    - provider
+    - environment
+    - adapterBuildDigest
+    - collectorImageDigest
+    - contractVersion
+    - allowlistRevision
+    - nonSecretConfigRevision
+    - operatorPermissionRevision
+PendingDeploymentGate:
+  type: object
+  additionalProperties: false
+  properties:
+    status:
+      type: string
+      enum:
+        - pending
+    binding:
+      $ref: ./connections.yaml#/DeploymentBinding
+    checkedAt:
+      $ref: ./money.yaml#/Instant
+    reasons:
+      type: array
+      items:
+        type: string
+        enum:
+          - provider_pending
+          - host_pending
+          - provider_failed
+          - host_failed
+          - provider_revoked
+          - host_revoked
+      maxItems: 2
+      uniqueItems: true
+      minItems: 1
+  required:
+    - status
+    - reasons
+AdmittedDeploymentGate:
+  type: object
+  additionalProperties: false
+  properties:
+    status:
+      type: string
+      enum:
+        - admitted
+    binding:
+      $ref: ./connections.yaml#/DeploymentBinding
+    checkedAt:
+      $ref: ./money.yaml#/Instant
+    reasons:
+      type: array
+      items:
+        type: string
+        enum:
+          - provider_pending
+          - host_pending
+          - provider_failed
+          - host_failed
+          - provider_revoked
+          - host_revoked
+      maxItems: 0
+      uniqueItems: true
+  required:
+    - status
+    - binding
+    - checkedAt
+    - reasons
+BlockedDeploymentGate:
+  type: object
+  additionalProperties: false
+  properties:
+    status:
+      type: string
+      enum:
+        - blocked
+    binding:
+      $ref: ./connections.yaml#/DeploymentBinding
+    checkedAt:
+      $ref: ./money.yaml#/Instant
+    reasons:
+      type: array
+      items:
+        type: string
+        enum:
+          - provider_pending
+          - host_pending
+          - provider_failed
+          - host_failed
+          - provider_revoked
+          - host_revoked
+      maxItems: 2
+      uniqueItems: true
+      minItems: 1
+  required:
+    - status
+    - binding
+    - checkedAt
+    - reasons
+DeploymentGate:
+  oneOf:
+    - $ref: ./connections.yaml#/PendingDeploymentGate
+    - $ref: ./connections.yaml#/AdmittedDeploymentGate
+    - $ref: ./connections.yaml#/BlockedDeploymentGate
+  description: >-
+    Server-owned D-43 admission, separate from authentication. Only the admission service combines
+    provider and host evidence for the exact binding. A missing or changed binding denies sync
+    before job creation; clients and AI cannot set admission.

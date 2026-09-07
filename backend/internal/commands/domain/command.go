@@ -4,6 +4,7 @@ import (
 	"errors"
 	"regexp"
 
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 )
 
@@ -36,24 +37,26 @@ type Result struct {
 
 // Command contains durable metadata only. Payloads and financial effects are stored by their owners.
 type Command struct {
-	id          string
-	householdID household.HouseholdID
-	actorID     household.UserID
-	kind        string
-	payloadHash string
-	status      Status
-	result      Result
-	errorCode   string
+	id           string
+	householdID  household.HouseholdID
+	actorID      household.UserID
+	kind         string
+	payloadHash  string
+	status       Status
+	result       Result
+	errorCode    string
+	registeredAt calendar.Instant
+	completedAt  calendar.Instant
 }
 
-func NewCommand(id, kind, payloadHash string, principal household.Principal) (Command, error) {
+func NewCommand(id, kind, payloadHash string, principal household.Principal, registeredAt calendar.Instant) (Command, error) {
 	if err := principal.RequireHousehold(principal.HouseholdID()); err != nil {
 		return Command{}, err
 	}
-	if !commandIDPattern.MatchString(id) || !commandTypePattern.MatchString(kind) || !payloadHashPattern.MatchString(payloadHash) {
+	if !commandIDPattern.MatchString(id) || !commandTypePattern.MatchString(kind) || !payloadHashPattern.MatchString(payloadHash) || registeredAt.String() == "" {
 		return Command{}, ErrInvalidCommand
 	}
-	return Command{id: id, kind: kind, payloadHash: payloadHash, householdID: principal.HouseholdID(), actorID: principal.UserID(), status: Pending}, nil
+	return Command{id: id, kind: kind, payloadHash: payloadHash, householdID: principal.HouseholdID(), actorID: principal.UserID(), status: Pending, registeredAt: registeredAt}, nil
 }
 
 func (c Command) ID() string             { return c.id }
@@ -73,8 +76,11 @@ func (c Command) RequireVisible(principal household.Principal) error {
 }
 
 // CheckReplay must precede a fresh expected-revision check for an already registered command.
-func (c Command) CheckReplay(principal household.Principal, kind, payloadHash string) error {
+func (c Command) CheckReplay(principal household.Principal, kind, payloadHash string, now calendar.Instant) error {
 	if err := c.RequireVisible(principal); err != nil {
+		return err
+	}
+	if err := c.requireRetained(now); err != nil {
 		return err
 	}
 	if c.kind != kind || c.payloadHash != payloadHash {
@@ -93,24 +99,24 @@ func (c Command) RequireRevision(expected, current uint64) error {
 	return nil
 }
 
-func (c Command) Succeed(result Result) (Command, error) {
+func (c Command) Succeed(result Result, completedAt calendar.Instant) (Command, error) {
 	if c.status != Pending {
 		return Command{}, ErrFinalCommand
 	}
-	if result.ResourceType == "" || result.ResourceID == "" || result.Revision == 0 || result.Revision > MaxRevision {
+	if result.ResourceType == "" || result.ResourceID == "" || result.Revision == 0 || result.Revision > MaxRevision || !c.acceptsTime(completedAt) {
 		return Command{}, ErrInvalidCommand
 	}
-	c.status, c.result = Succeeded, result
+	c.status, c.result, c.completedAt = Succeeded, result, completedAt
 	return c, nil
 }
 
-func (c Command) Fail(code string) (Command, error) {
+func (c Command) Fail(code string, completedAt calendar.Instant) (Command, error) {
 	if c.status != Pending {
 		return Command{}, ErrFinalCommand
 	}
-	if !errorCodePattern.MatchString(code) {
+	if !errorCodePattern.MatchString(code) || !c.acceptsTime(completedAt) {
 		return Command{}, ErrInvalidCommand
 	}
-	c.status, c.errorCode = Failed, code
+	c.status, c.errorCode, c.completedAt = Failed, code, completedAt
 	return c, nil
 }

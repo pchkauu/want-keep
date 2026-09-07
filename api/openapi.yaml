@@ -531,3 +531,30 @@ components:
       "$ref": "./schemas/reports.yaml#/ReturnMetric"
     ReturnsReport:
       "$ref": "./schemas/reports.yaml#/ReturnsReport"
+
+    DeploymentBinding:
+      "$ref": "./schemas/connections.yaml#/DeploymentBinding"
+    PendingDeploymentGate:
+      "$ref": "./schemas/connections.yaml#/PendingDeploymentGate"
+    AdmittedDeploymentGate:
+      "$ref": "./schemas/connections.yaml#/AdmittedDeploymentGate"
+    BlockedDeploymentGate:
+      "$ref": "./schemas/connections.yaml#/BlockedDeploymentGate"
+    DeploymentGate:
+      "$ref": "./schemas/connections.yaml#/DeploymentGate"
+    SucceededOutcome:
+      "$ref": "./schemas/commands.yaml#/SucceededOutcome"
+    FailedOutcome:
+      "$ref": "./schemas/commands.yaml#/FailedOutcome"
+    CommandOutcome:
+      "$ref": "./schemas/commands.yaml#/CommandOutcome"
+    ExpiredCommand:
+      "$ref": "./schemas/commands.yaml#/ExpiredCommand"
+    ValuationLeg:
+      "$ref": "./schemas/reports.yaml#/ValuationLeg"
+    PlatformQuote:
+      "$ref": "./schemas/reports.yaml#/PlatformQuote"
+    UnavailableRate:
+      "$ref": "./schemas/reports.yaml#/UnavailableRate"
+    RateObservation:
+      "$ref": "./schemas/reports.yaml#/RateObservation"

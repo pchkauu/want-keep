@@ -72,6 +72,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: budgets.create
     requestBody:
       required: true
@@ -156,6 +162,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: budgets.add_line
     requestBody:
       required: true
@@ -208,6 +220,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: budgets.change_line
     requestBody:
       required: true
@@ -259,6 +277,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: budgets.delete_line
     requestBody:
       required: true
@@ -309,6 +333,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: budgets.approve
     requestBody:
       required: true

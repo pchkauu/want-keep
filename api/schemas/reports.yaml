@@ -211,6 +211,11 @@ ValuationObservation:
       enum:
       - instant
       - daily
+    legs:
+      type: array
+      minItems: 1
+      items:
+        "$ref": "./reports.yaml#/ValuationLeg"
     quality:
       "$ref": "./quality.yaml#/DataQuality"
   required:
@@ -258,7 +263,7 @@ ValuationObservationPage:
     items:
       type: array
       items:
-        "$ref": "./reports.yaml#/ValuationObservation"
+        "$ref": "./reports.yaml#/RateObservation"
     nextCursor:
       type: string
       minLength: 1
@@ -292,15 +297,17 @@ KnownReturn:
     state:
       type: string
       enum:
-      - known
+        - known
     ratio:
-      "$ref": "./money.yaml#/Decimal"
+      type: string
+      maxLength: 256
+      pattern: ^-?(0|[1-9][0-9]*)\.[0-9]{12}$
   required:
-  - state
-  - ratio
-  description: 'Dimensionless annualized XIRR ratio as an exact decimal string: 0.12
-    means 12%, -0.05 means -5%. A unique validated root greater than -1 is required;
-    do not substitute provider APR.'
+    - state
+    - ratio
+  description: >-
+    Dimensionless annualized D-42 XIRR ratio, rounded HALF_EVEN to 12 places. The application
+    verifies the root lies between -1+1e-12 and 1000000; provider APR is never substituted.
 UnavailableReturn:
   type: object
   additionalProperties: false
@@ -317,6 +324,8 @@ UnavailableReturn:
       - missing_valuation
       - partial_history
       - no_unique_root
+      - no_bracket
+      - numeric_error_unbounded
       - solver_failure
   required:
   - state
@@ -389,7 +398,7 @@ ReturnMetric:
   - quality
   description: Native and reporting results are separate observations, even when the
     requested reporting asset matches the native asset. The application validates
-    cash-flow asset/signs, dates, method and availability. Solver remains task-0.10/task-6.4.
+    cash-flow asset/signs, dates, method and availability. D-42 fixes Actual/365, same-day aggregation, one sign transition, the decimal error bound, bisection and 12-place half-even output; task-6.4 implements the solver.
 ReturnsReport:
   type: object
   additionalProperties: false
@@ -411,3 +420,141 @@ ReturnsReport:
   - amounts
   - returns
   - quality
+
+ValuationLeg:
+  type: object
+  additionalProperties: false
+  properties:
+    providerAssetId:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    source:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    transport:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    requestedDate:
+      $ref: ./money.yaml#/Date
+    effectiveAt:
+      $ref: ./money.yaml#/Instant
+    fetchedAt:
+      $ref: ./money.yaml#/Instant
+    granularity:
+      type: string
+      enum:
+        - instant
+        - daily
+    revision:
+      $ref: ./money.yaml#/Revision
+    rate:
+      $ref: ./money.yaml#/Rate
+  required:
+    - providerAssetId
+    - source
+    - transport
+    - requestedDate
+    - effectiveAt
+    - fetchedAt
+    - granularity
+    - revision
+    - rate
+  description: >-
+    Source observation used by valuation; preserves effective time, transport, provider asset
+    identity and revision. No live fetch or cross-rate computation is performed by this schema.
+PlatformQuote:
+  type: object
+  additionalProperties: false
+  properties:
+    method:
+      type: string
+      enum:
+        - platform_quote
+    provider:
+      $ref: ./money.yaml#/Provider
+    base:
+      $ref: ./money.yaml#/Asset
+    quote:
+      $ref: ./money.yaml#/Asset
+    applicableAmount:
+      $ref: ./money.yaml#/PositiveMoney
+    rate:
+      $ref: ./money.yaml#/Rate
+    observedAt:
+      $ref: ./money.yaml#/Instant
+    fees:
+      type: array
+      items:
+        $ref: ./money.yaml#/Money
+    feeCoverage:
+      type: string
+      enum:
+        - included
+        - excluded
+    spreadCoverage:
+      type: string
+      enum:
+        - included
+        - excluded
+    quality:
+      $ref: ./quality.yaml#/DataQuality
+  required:
+    - method
+    - provider
+    - base
+    - quote
+    - applicableAmount
+    - rate
+    - observedAt
+    - fees
+    - feeCoverage
+    - spreadCoverage
+    - quality
+  description: >-
+    D-40: provider quote for the directed base-to-quote pair and applicable base amount, with known
+    fee/spread coverage. Application validates pair and amount-asset consistency. Reference
+    observations never populate this variant. Empty fees means confirmed zero, never unknown.
+UnavailableRate:
+  type: object
+  additionalProperties: false
+  properties:
+    method:
+      type: string
+      enum:
+        - unavailable
+    base:
+      $ref: ./money.yaml#/Asset
+    quote:
+      $ref: ./money.yaml#/Asset
+    requestedDate:
+      $ref: ./money.yaml#/Date
+    reason:
+      type: string
+      enum:
+        - valuation_unavailable
+        - quote_unavailable
+    detail:
+      type: string
+      enum:
+        - history_out_of_range
+        - missing_observation
+        - incomplete_quote
+        - unsupported_pair
+    quality:
+      $ref: ./quality.yaml#/DataQuality
+  required:
+    - method
+    - base
+    - quote
+    - requestedDate
+    - reason
+    - detail
+    - quality
+RateObservation:
+  oneOf:
+    - $ref: ./reports.yaml#/ValuationObservation
+    - $ref: ./reports.yaml#/PlatformQuote
+    - $ref: ./reports.yaml#/UnavailableRate

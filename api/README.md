@@ -28,8 +28,8 @@ must enforce authorization and state-dependent invariants transactionally. Fixtu
 
 Decimal strings have at most 256 characters, no exponent, and no asset-specific display truncation.
 Revisions are positive integers up to 9007199254740991 so JavaScript retains them exactly.
-Commands are identified before submission by their UUIDv4 Idempotency-Key. Metadata lives as long
-as the family; secret authentication ceremonies and upload bytes are excluded from command results.
+Commands are identified before submission by their UUIDv4 Idempotency-Key. D-41 retains terminal detail for 90 days and compact tombstones for 400 days after resolution;
+unresolved commands remain until reconciliation; secret authentication ceremonies and upload bytes are excluded from command results.
 
 See [RU implementation evidence](../spec/001-want-keep-mvp/evidence/task-1.2-domain-api.md)
 and [EN implementation evidence](../spec/001-want-keep-mvp/evidence/task-1.2-domain-api.en.md).
@@ -38,3 +38,7 @@ Validation-only alternatives belong under `allOf` alongside a concrete object. W
 TypeScript generator, top-level `anyOf` required-only branches widen the result to `unknown`.
 `web/tests/api/request-types.ts` is checked by `make typecheck` and asserts rejection of malformed
 financial/chat/rule inputs; runtime schema tests retain the stricter cross-field checks.
+
+D-43 admission is a read-only connection model backed by a pure connections domain policy.
+Storage, cleanup, trusted conformance evidence and atomic enforcement before sync jobs remain with their application owners.
+D-40 rates retain source legs and separate platform quotes/unavailable states; D-42 fixes XIRR output to 12 decimal places.

@@ -485,6 +485,7 @@
     tags:
     - rates
     summary: rates list
+    description: Reference observations preserve all source legs. Platform quotes require provider and applicable base amount with known fees/spread; otherwise quote_unavailable. Crypto history older than 365 days is valuation_unavailable; cached observations remain explicitly stale.
     parameters:
     - "$ref": "../components.yaml#/parameters/Cursor"
     - "$ref": "../components.yaml#/parameters/Limit"
@@ -503,6 +504,14 @@
       required: false
       schema:
         "$ref": "../schemas/money.yaml#/Date"
+    - name: provider
+      in: query
+      schema:
+        "$ref": "../schemas/money.yaml#/Provider"
+    - name: amount
+      in: query
+      schema:
+        "$ref": "../schemas/money.yaml#/PositiveDecimal"
     responses:
       '200':
         description: Success

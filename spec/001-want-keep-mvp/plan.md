@@ -49,7 +49,7 @@
 
 ### task-1.2
 
-Entry: task-1.1 в target; contracts version 10. Exit: Money/Asset/Rate/coverage, generated OpenAPI boundary, errors `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted`; connection `deploymentGate.status` и binding; sync до admission не запускает collector; D-41 recent/detail/tombstone semantics покрыты тестами.
+Entry: task-1.1 в target; contracts version 10. Exit: Money/Asset/Rate/coverage, generated OpenAPI boundary, errors `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted`; connection `deploymentGate.status` и binding; доменная policy запрещает sync до admission, пользовательские DTO не позволяют назначить admission; D-41 recent/detail/tombstone semantics покрыты тестами. Реальное атомарное применение перед job/IO проверяют task-3.3/task-4.x/task-8.1.
 
 ### task-1.3
 

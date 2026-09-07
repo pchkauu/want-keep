@@ -6,6 +6,7 @@ import (
 
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
+	connection "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/generated"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
@@ -43,11 +44,25 @@ func (ErrorConverter) ToResponse(err error, correlationID string) ErrorResponse 
 		response.Status, response.Body.Code = 409, "duplicate_command"
 	case errors.Is(err, command.ErrFinalCommand):
 		response.Status, response.Body.Code = 409, "command_final"
+	case errors.Is(err, command.ErrCommandExpired):
+		response.Status, response.Body.Code = 410, "command_expired"
+	case errors.Is(err, command.ErrCommandNotFound):
+		response.Status, response.Body.Code = 404, "not_found"
+	case errors.Is(err, connection.ErrProviderNotAdmitted):
+		response.Status, response.Body.Code = 409, "provider_not_admitted"
 	case errors.Is(err, ErrInvalidRequest), errors.Is(err, command.ErrInvalidCommand), errors.Is(err, household.ErrInvalidOwnership):
 		response.Status, response.Body.Code = 400, "invalid_request"
 	}
 	if response.Status != http.StatusInternalServerError {
 		response.Body.Message = "The request was rejected. Review the indicated fields, permissions or version."
+	}
+	switch response.Body.Code {
+	case "command_expired":
+		response.Body.Message = "Command details have expired. Recover the existing outcome; do not create a new command to retry it."
+	case "not_found":
+		response.Body.Message = "Command recovery is unavailable. This does not establish whether an effect occurred."
+	case "provider_not_admitted":
+		response.Body.Message = "This connection is awaiting deployment verification. Synchronization has not started."
 	}
 	var field FieldError
 	if errors.As(err, &field) {

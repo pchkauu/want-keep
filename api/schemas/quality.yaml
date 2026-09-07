@@ -19,6 +19,10 @@ ErrorCode:
   - command_final
   - source_reauth_required
   - source_partial
+  - source_ambiguous
+  - quote_unavailable
+  - command_expired
+  - provider_not_admitted
   - valuation_unavailable
   - clarification_required
   - ai_waiting

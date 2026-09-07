@@ -56,3 +56,35 @@ export const rule: Rule = {
 };
 // @ts-expect-error Regression assertion: a generated rule has required typed fields.
 export const emptyRule: Rule = {};
+
+type Gate = components["schemas"]["DeploymentGate"];
+export const pendingGate: Gate = {
+  status: "pending",
+  reasons: ["provider_pending"],
+};
+// @ts-expect-error Admitted requires the complete server binding and check time.
+export const incompleteAdmission: Gate = { status: "admitted", reasons: [] };
+export const forgedAdmission: components["schemas"]["ConnectionAction"] = {
+  expectedRevision: 1,
+  // @ts-expect-error User commands cannot assign server admission.
+  deploymentGate: pendingGate,
+};
+export const expired: components["schemas"]["ExpiredCommand"] = {
+  version: "1",
+  code: "command_expired",
+  message: "Details expired",
+  violations: [],
+  retryable: false,
+  correlationId: "10000000-0000-4000-8000-000000000001",
+};
+// @ts-expect-error Expired command responses require the safe error envelope.
+export const emptyExpired: components["schemas"]["ExpiredCommand"] = {};
+export const numericReturn: components["schemas"]["KnownReturn"] = {
+  state: "known",
+  // @ts-expect-error XIRR remains a decimal string.
+  ratio: 0.1,
+};
+// @ts-expect-error A quote must describe amount, direction, time, fees and spread.
+export const emptyQuote: components["schemas"]["PlatformQuote"] = {
+  method: "platform_quote",
+};

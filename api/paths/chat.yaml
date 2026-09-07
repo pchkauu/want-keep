@@ -193,6 +193,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: receipts.allocate
     requestBody:
       required: true
@@ -310,6 +316,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: chat.send
     requestBody:
       required: true
@@ -391,6 +403,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: clarifications.answer
     requestBody:
       required: true
@@ -475,6 +493,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: proposals.decide
     requestBody:
       required: true

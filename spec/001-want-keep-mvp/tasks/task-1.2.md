@@ -5,7 +5,7 @@
 
 Закрепить точность денег и типы публичных границ до адаптеров и UI.
 
-**Состояние:** Основа task-1.2 реализована по D-44. SDD Ready for development; приведение API и доменных политик к D-41/D-43 проверяется отдельным изменением. Runtime AC остаются у следующих задач.
+**Состояние:** Основа task-1.2 согласована с контрактом версии 10: D-41 retention/recovery и D-43 admission проверяются на уровне domain/DTO. SDD Ready for development; runtime AC остаются у следующих задач.
 
 **Зависимости:** `task-1.1`.
 
@@ -130,7 +130,7 @@ make check
 
 Establish money precision and public boundary types before adapters and UI.
 
-**Status:** The task-1.2 foundation is implemented under D-44. The SDD is Ready for development; API and domain-policy alignment with D-41/D-43 is verified in a separate change. Runtime ACs remain with subsequent tasks.
+**Status:** The task-1.2 foundation aligns with contract version 10: D-41 retention/recovery and D-43 admission are checked at domain/DTO level. The SDD is Ready for development; runtime ACs remain with subsequent tasks.
 
 **Dependencies:** `task-1.1`.
 

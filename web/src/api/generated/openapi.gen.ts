@@ -433,7 +433,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** commands recent */
+    /**
+     * commands recent
+     * @description Terminal commands resolved less than 30 days ago and all unresolved commands, scoped to the current actor and household.
+     */
     get: operations["commands_recent"];
     put?: never;
     post?: never;
@@ -565,7 +568,10 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** connections sync */
+    /**
+     * connections sync
+     * @description Requires current authorized connection and exact admitted deployment binding before job or collector IO. Otherwise returns provider_not_admitted (409); quarantine conformance never writes source records or postings.
+     */
     post: operations["connections_sync"];
     delete?: never;
     options?: never;
@@ -891,7 +897,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** rates list */
+    /**
+     * rates list
+     * @description Reference observations preserve all source legs. Platform quotes require provider and applicable base amount with known fees/spread; otherwise quote_unavailable. Crypto history older than 365 days is valuation_unavailable; cached observations remain explicitly stale.
+     */
     get: operations["rates_list"];
     put?: never;
     post?: never;
@@ -1550,6 +1559,20 @@ export interface components {
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
     };
+    AdmittedDeploymentGate: {
+      binding: components["schemas"]["DeploymentBinding"];
+      checkedAt: components["schemas"]["Instant"];
+      reasons: (
+        | "provider_pending"
+        | "host_pending"
+        | "provider_failed"
+        | "host_failed"
+        | "provider_revoked"
+        | "host_revoked"
+      )[];
+      /** @enum {string} */
+      status: "admitted";
+    };
     AllocationChange: {
       allocation: components["schemas"]["ExpenseAllocation"];
       expectedRevision: components["schemas"]["Revision"];
@@ -1616,6 +1639,20 @@ export interface components {
       locked: components["schemas"]["AmountValue"];
       owned: components["schemas"]["AmountValue"];
       quality: components["schemas"]["DataQuality"];
+    };
+    BlockedDeploymentGate: {
+      binding: components["schemas"]["DeploymentBinding"];
+      checkedAt: components["schemas"]["Instant"];
+      reasons: (
+        | "provider_pending"
+        | "host_pending"
+        | "provider_failed"
+        | "host_failed"
+        | "provider_revoked"
+        | "host_revoked"
+      )[];
+      /** @enum {string} */
+      status: "blocked";
     };
     Budget: {
       householdId: components["schemas"]["ID"];
@@ -1752,6 +1789,9 @@ export interface components {
     };
     /** Format: uuid */
     CommandID: string;
+    CommandOutcome:
+      | components["schemas"]["SucceededOutcome"]
+      | components["schemas"]["FailedOutcome"];
     CommandPending: {
       id: components["schemas"]["CommandID"];
       registeredAt: components["schemas"]["Instant"];
@@ -1764,7 +1804,7 @@ export interface components {
       revision: components["schemas"]["Revision"];
       type: string;
     };
-    /** @description Metadata retained for the lifetime of the family. Visible only to the originating authorized member; current result-resource authorization is checked independently. Unknown is client knowledge, never a terminal server status. */
+    /** @description D-41 retains terminal detail for 90 days after outcome or reconciliation; unresolved commands remain available until reconciliation. A compact tombstone survives unresolved state and 400 days after resolution. Visible only to the originating authorized member; current result-resource authorization is checked independently. Unknown is client knowledge, never a terminal server status. */
     CommandStatus:
       | components["schemas"]["CommandPending"]
       | components["schemas"]["CommandSucceeded"]
@@ -1789,6 +1829,7 @@ export interface components {
       state: "complete";
     };
     Connection: {
+      deploymentGate: components["schemas"]["DeploymentGate"];
       externalAccountOwnerId: components["schemas"]["ID"];
       generation: components["schemas"]["Revision"];
       historyFrom: components["schemas"]["Date"];
@@ -1849,6 +1890,21 @@ export interface components {
       /** @enum {string} */
       mode: "dedicated";
     };
+    DeploymentBinding: {
+      adapterBuildDigest: string;
+      allowlistRevision: string;
+      collectorImageDigest: string;
+      contractVersion: string;
+      environment: string;
+      nonSecretConfigRevision: string;
+      operatorPermissionRevision: string;
+      provider: components["schemas"]["Provider"];
+    };
+    /** @description Server-owned D-43 admission, separate from authentication. Only the admission service combines provider and host evidence for the exact binding. A missing or changed binding denies sync before job creation; clients and AI cannot set admission. */
+    DeploymentGate:
+      | components["schemas"]["PendingDeploymentGate"]
+      | components["schemas"]["AdmittedDeploymentGate"]
+      | components["schemas"]["BlockedDeploymentGate"];
     EmptyInput: Record<string, never>;
     EnrollmentInput: {
       authorizationToken?: string;
@@ -1896,6 +1952,10 @@ export interface components {
       | "command_final"
       | "source_reauth_required"
       | "source_partial"
+      | "source_ambiguous"
+      | "quote_unavailable"
+      | "command_expired"
+      | "provider_not_admitted"
       | "valuation_unavailable"
       | "clarification_required"
       | "ai_waiting"
@@ -1914,6 +1974,19 @@ export interface components {
       | components["schemas"]["AmountAllocation"]
       | components["schemas"]["ShareAllocation"]
       | components["schemas"]["UnresolvedAllocation"];
+    /** @description HTTP 410 safe error. The optional compact outcome is included only after result-resource authorization. It cannot authorize a second execution. */
+    ExpiredCommand: {
+      /** @enum {string} */
+      code: "command_expired";
+      correlationId: components["schemas"]["ID"];
+      currentRevision?: components["schemas"]["Revision"];
+      message: string;
+      outcome?: components["schemas"]["CommandOutcome"];
+      retryable: boolean;
+      /** @enum {string} */
+      version: "1";
+      violations: components["schemas"]["FieldViolation"][];
+    };
     ExplainableAmount: {
       inputs: components["schemas"]["CalculationInput"][];
       /** @enum {string} */
@@ -1924,6 +1997,12 @@ export interface components {
       quality: components["schemas"]["DataQuality"];
       reporting: components["schemas"]["AmountValue"];
       resources: components["schemas"]["ResourceReference"][];
+    };
+    FailedOutcome: {
+      commandId: components["schemas"]["CommandID"];
+      failureCode: components["schemas"]["ErrorCode"];
+      /** @enum {string} */
+      status: "failed";
     };
     FeeInput: {
       accountId: components["schemas"]["ID"];
@@ -2028,9 +2107,9 @@ export interface components {
       /** @enum {string} */
       state: "known";
     };
-    /** @description Dimensionless annualized XIRR ratio as an exact decimal string: 0.12 means 12%, -0.05 means -5%. A unique validated root greater than -1 is required; do not substitute provider APR. */
+    /** @description Dimensionless annualized D-42 XIRR ratio, rounded HALF_EVEN to 12 places. The application verifies the root lies between -1+1e-12 and 1000000; provider APR is never substituted. */
     KnownReturn: {
-      ratio: components["schemas"]["Decimal"];
+      ratio: string;
       /** @enum {string} */
       state: "known";
     };
@@ -2156,6 +2235,20 @@ export interface components {
     Payer:
       | components["schemas"]["KnownPayer"]
       | components["schemas"]["UnspecifiedPayer"];
+    PendingDeploymentGate: {
+      binding?: components["schemas"]["DeploymentBinding"];
+      checkedAt?: components["schemas"]["Instant"];
+      reasons: (
+        | "provider_pending"
+        | "host_pending"
+        | "provider_failed"
+        | "host_failed"
+        | "provider_revoked"
+        | "host_revoked"
+      )[];
+      /** @enum {string} */
+      status: "pending";
+    };
     PersonalOwnership: {
       householdId: components["schemas"]["ID"];
       personalOwnerId: components["schemas"]["ID"];
@@ -2166,6 +2259,23 @@ export interface components {
       personalOwnerId: components["schemas"]["ID"];
       /** @enum {string} */
       scope: "personal";
+    };
+    /** @description D-40: provider quote for the directed base-to-quote pair and applicable base amount, with known fee/spread coverage. Application validates pair and amount-asset consistency. Reference observations never populate this variant. Empty fees means confirmed zero, never unknown. */
+    PlatformQuote: {
+      applicableAmount: components["schemas"]["PositiveMoney"];
+      base: components["schemas"]["Asset"];
+      /** @enum {string} */
+      feeCoverage: "included" | "excluded";
+      fees: components["schemas"]["Money"][];
+      /** @enum {string} */
+      method: "platform_quote";
+      observedAt: components["schemas"]["Instant"];
+      provider: components["schemas"]["Provider"];
+      quality: components["schemas"]["DataQuality"];
+      quote: components["schemas"]["Asset"];
+      rate: components["schemas"]["Rate"];
+      /** @enum {string} */
+      spreadCoverage: "included" | "excluded";
     };
     /** @description Strictly positive decimal, with no exponent or binary-float conversion. */
     PositiveDecimal: string;
@@ -2215,6 +2325,10 @@ export interface components {
       quote: components["schemas"]["Asset"];
       value: components["schemas"]["PositiveDecimal"];
     };
+    RateObservation:
+      | components["schemas"]["ValuationObservation"]
+      | components["schemas"]["PlatformQuote"]
+      | components["schemas"]["UnavailableRate"];
     Receipt: {
       accountId: components["schemas"]["ID"];
       attachmentId: components["schemas"]["ID"];
@@ -2350,7 +2464,7 @@ export interface components {
       kind: "contribution" | "distribution" | "terminal_value";
       resources: components["schemas"]["ResourceReference"][];
     };
-    /** @description Native and reporting results are separate observations, even when the requested reporting asset matches the native asset. The application validates cash-flow asset/signs, dates, method and availability. Solver remains task-0.10/task-6.4. */
+    /** @description Native and reporting results are separate observations, even when the requested reporting asset matches the native asset. The application validates cash-flow asset/signs, dates, method and availability. D-42 fixes Actual/365, same-day aggregation, one sign transition, the decimal error bound, bisection and 12-place half-even output; task-6.4 implements the solver. */
     ReturnMetric: {
       asset: components["schemas"]["Asset"];
       /** @enum {string} */
@@ -2463,6 +2577,12 @@ export interface components {
       revision: string;
       sourceId: string;
     };
+    SucceededOutcome: {
+      commandId: components["schemas"]["CommandID"];
+      result: components["schemas"]["CommandResult"];
+      /** @enum {string} */
+      status: "succeeded";
+    };
     SystemStatus: {
       /** @enum {string} */
       ai: "available" | "waiting" | "budget_exhausted" | "unavailable";
@@ -2558,6 +2678,22 @@ export interface components {
       sent: components["schemas"]["PositiveMoney"];
       toAccountId: components["schemas"]["ID"];
     };
+    UnavailableRate: {
+      base: components["schemas"]["Asset"];
+      /** @enum {string} */
+      detail:
+        | "history_out_of_range"
+        | "missing_observation"
+        | "incomplete_quote"
+        | "unsupported_pair";
+      /** @enum {string} */
+      method: "unavailable";
+      quality: components["schemas"]["DataQuality"];
+      quote: components["schemas"]["Asset"];
+      /** @enum {string} */
+      reason: "valuation_unavailable" | "quote_unavailable";
+      requestedDate: components["schemas"]["Date"];
+    };
     UnavailableReturn: {
       /** @enum {string} */
       reason:
@@ -2566,6 +2702,8 @@ export interface components {
         | "missing_valuation"
         | "partial_history"
         | "no_unique_root"
+        | "no_bracket"
+        | "numeric_error_unbounded"
         | "solver_failure";
       /** @enum {string} */
       state: "unavailable";
@@ -2596,11 +2734,25 @@ export interface components {
       id: components["schemas"]["ID"];
       name: string;
     };
+    /** @description Source observation used by valuation; preserves effective time, transport, provider asset identity and revision. No live fetch or cross-rate computation is performed by this schema. */
+    ValuationLeg: {
+      effectiveAt: components["schemas"]["Instant"];
+      fetchedAt: components["schemas"]["Instant"];
+      /** @enum {string} */
+      granularity: "instant" | "daily";
+      providerAssetId: string;
+      rate: components["schemas"]["Rate"];
+      requestedDate: components["schemas"]["Date"];
+      revision: components["schemas"]["Revision"];
+      source: string;
+      transport: string;
+    };
     ValuationObservation: {
       fetchedAt: components["schemas"]["Instant"];
       /** @enum {string} */
       granularity: "instant" | "daily";
       id: components["schemas"]["ID"];
+      legs?: components["schemas"]["ValuationLeg"][];
       /** @enum {string} */
       method: "reference" | "executed";
       observedAt: components["schemas"]["Instant"];
@@ -2611,7 +2763,7 @@ export interface components {
       source: string;
     };
     ValuationObservationPage: {
-      items: components["schemas"]["ValuationObservation"][];
+      items: components["schemas"]["RateObservation"][];
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
     };
@@ -2713,6 +2865,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -2784,6 +2945,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -2824,6 +2994,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3189,6 +3368,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3296,6 +3484,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3336,6 +3533,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3377,6 +3583,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3418,6 +3633,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3489,6 +3713,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3529,6 +3762,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3602,6 +3844,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3666,6 +3917,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Command detail expired; a live tombstone still prevents replay. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3737,6 +3997,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3841,6 +4110,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3919,6 +4197,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -3959,6 +4246,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4030,6 +4326,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4137,6 +4442,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4177,6 +4491,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4217,6 +4540,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4481,6 +4813,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4548,6 +4889,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4619,6 +4969,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4702,6 +5061,8 @@ export interface operations {
         base?: components["schemas"]["Asset"];
         quote?: components["schemas"]["Asset"];
         date?: components["schemas"]["Date"];
+        provider?: components["schemas"]["Provider"];
+        amount?: components["schemas"]["PositiveDecimal"];
       };
       header?: never;
       path?: never;
@@ -4794,6 +5155,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4898,6 +5268,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -4936,6 +5315,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -5007,6 +5395,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -5078,6 +5475,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -5429,6 +5835,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -5469,6 +5884,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -5768,6 +6192,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -5844,6 +6277,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -5915,6 +6357,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -5955,6 +6406,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -5995,6 +6455,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -6035,6 +6504,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -6073,6 +6551,15 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];

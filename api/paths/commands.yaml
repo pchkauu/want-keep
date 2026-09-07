@@ -4,6 +4,7 @@
     operationId: commands_recent
     tags:
     - commands
+    description: Terminal commands resolved less than 30 days ago and all unresolved commands, scoped to the current actor and household.
     summary: commands recent
     parameters:
     - "$ref": "../components.yaml#/parameters/Cursor"
@@ -62,6 +63,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '409':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Command detail expired; a live tombstone still prevents replay.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
       '422':
         "$ref": "../components.yaml#/responses/Problem"
       '429':

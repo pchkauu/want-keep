@@ -79,7 +79,7 @@ CommandStatus:
   - "$ref": "./commands.yaml#/CommandPending"
   - "$ref": "./commands.yaml#/CommandSucceeded"
   - "$ref": "./commands.yaml#/CommandFailed"
-  description: Metadata retained for the lifetime of the family. Visible only to the
+  description: D-41 retains terminal detail for 90 days after outcome or reconciliation; unresolved commands remain available until reconciliation. A compact tombstone survives unresolved state and 400 days after resolution. Visible only to the
     originating authorized member; current result-resource authorization is checked
     independently. Unknown is client knowledge, never a terminal server status.
 EmptyInput:
@@ -120,3 +120,78 @@ CommandResult:
   - type
   - id
   - revision
+
+SucceededOutcome:
+  type: object
+  additionalProperties: false
+  properties:
+    commandId:
+      $ref: ./money.yaml#/CommandID
+    status:
+      type: string
+      enum:
+        - succeeded
+    result:
+      $ref: ./commands.yaml#/CommandResult
+  required:
+    - commandId
+    - status
+    - result
+FailedOutcome:
+  type: object
+  additionalProperties: false
+  properties:
+    commandId:
+      $ref: ./money.yaml#/CommandID
+    status:
+      type: string
+      enum:
+        - failed
+    failureCode:
+      $ref: ./quality.yaml#/ErrorCode
+  required:
+    - commandId
+    - status
+    - failureCode
+CommandOutcome:
+  oneOf:
+    - $ref: ./commands.yaml#/SucceededOutcome
+    - $ref: ./commands.yaml#/FailedOutcome
+ExpiredCommand:
+  type: object
+  additionalProperties: false
+  properties:
+    version:
+      type: string
+      enum:
+        - '1'
+    code:
+      type: string
+      enum:
+        - command_expired
+    message:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    violations:
+      type: array
+      items:
+        $ref: ./quality.yaml#/FieldViolation
+    retryable:
+      type: boolean
+    correlationId:
+      $ref: ./money.yaml#/ID
+    currentRevision:
+      $ref: ./money.yaml#/Revision
+    outcome:
+      $ref: ./commands.yaml#/CommandOutcome
+  required:
+    - version
+    - code
+    - message
+    - violations
+    - retryable
+    - correlationId
+  description: >-
+    HTTP 410 safe error. The optional compact outcome is included only after result-resource
+    authorization. It cannot authorize a second execution.

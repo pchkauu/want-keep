@@ -67,6 +67,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: accounts.create
     requestBody:
       required: true
@@ -151,6 +157,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: accounts.ownership
     requestBody:
       required: true
@@ -198,6 +210,12 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
     x-command-type: accounts.opening_correction
     requestBody:
       required: true

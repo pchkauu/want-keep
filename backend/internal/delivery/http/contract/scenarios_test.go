@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/contract"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/generated"
@@ -61,7 +62,8 @@ func TestTransferReferenceRevisionSurvivesBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	principal, _ := (household.Membership{ID: "membership", UserID: "actor", HouseholdID: "family", Active: true}).Principal()
-	cmd, err := command.NewCommand("10000000-0000-4000-8000-000000000004", "transfers.create", strings.Repeat("a", 64), principal)
+	now, _ := calendar.ParseInstant("2026-09-07T00:00:00Z")
+	cmd, err := command.NewCommand("10000000-0000-4000-8000-000000000004", "transfers.create", strings.Repeat("a", 64), principal, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +81,7 @@ func TestDimensionlessReturnValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, value := range []string{`{"state":"known","ratio":"0.123456789123456789"}`, `{"state":"known","ratio":"-0.05"}`, `{"state":"known","ratio":"0"}`, `{"state":"unavailable","reason":"no_unique_root"}`} {
+	for _, value := range []string{`{"state":"known","ratio":"0.123456789123"}`, `{"state":"known","ratio":"-0.050000000000"}`, `{"state":"known","ratio":"0.000000000000"}`, `{"state":"unavailable","reason":"no_unique_root"}`} {
 		var dto generated.ReturnValue
 		if err := b.Decode("ReturnValue", []byte(value), &dto); err != nil {
 			t.Fatal(err)
@@ -101,7 +103,7 @@ func TestDimensionlessReturnValues(t *testing.T) {
 			t.Fatal("return precision/state lost")
 		}
 	}
-	for _, value := range []string{`{"state":"known","ratio":0.12}`, `{"state":"known","ratio":"1e-2"}`, `{"state":"unavailable","reason":"no_unique_root","ratio":"0"}`, `{"state":"unavailable"}`} {
+	for _, value := range []string{`{"state":"known","ratio":"0.123456789123456789"}`, `{"state":"known","ratio":0.12}`, `{"state":"known","ratio":"1e-2"}`, `{"state":"unavailable","reason":"no_unique_root","ratio":"0"}`, `{"state":"unavailable"}`} {
 		var out json.RawMessage
 		if err := b.Decode("ReturnValue", []byte(value), &out); err == nil {
 			t.Fatal("invalid return accepted")

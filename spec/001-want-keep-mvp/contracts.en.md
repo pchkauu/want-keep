@@ -221,3 +221,5 @@ Observed samples never extend published history limits. Gaps and lifetime mismat
 The server configures model, reasoning, permitted tools and pricing, outside chat input. Every attempt records model/prompt/schema/pricing revision, input count, output cap, reservation, actual usage and validated outcome. Do not mix cache_write_tokens with cached input or bill reasoning twice on top of output. Budget months are UTC; unresolved reservations survive rollover and recovery. Model/contract changes require evaluation before qualification; never switch to a more expensive model to fix network failures.
 
 The 10 MiB/10-page upload limits remain. Page splitting preserves source evidence and cannot create separate expenses without matching. Research does not replace server regression/authorization/retry checks. This clarifies the target AI contract; no existing AI API/store requires data migration.
+
+The task-1.2 foundation aligns with contract version 10: D-41 retention/recovery and D-43 admission are checked at domain/DTO level. The SDD is Ready for development; runtime ACs remain with subsequent tasks.
