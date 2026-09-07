@@ -1,0 +1,71 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  color: #f7f7f7;
+  background: #1a1a1a;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+#root {
+  isolation: isolate;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.foundation-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 48px;
+  background: #1a1a1a;
+}
+
+.foundation-shell__content {
+  width: min(100%, 520px);
+  padding: 40px;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  background: #202020;
+}
+
+.foundation-shell .foundation-shell__eyebrow {
+  margin: 0 0 12px;
+  color: #8f84ff;
+  font:
+    600 14px/1.4 "Pixelify Sans",
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.foundation-shell h1 {
+  margin: 0;
+  color: #ffffff;
+  font:
+    600 48px/1.1 "Pixelify Sans",
+    monospace;
+}
+
+.foundation-shell p {
+  margin: 20px 0 0;
+  color: #b8b8b8;
+  font-size: 16px;
+  line-height: 1.6;
+}

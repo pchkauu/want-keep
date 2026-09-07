@@ -32,9 +32,16 @@ class SpecCatalog:
     return sorted({req for ac in task["acceptance"] for req in self.criteria[ac]["requirements"]})
 
   def task_status(self, task, lang):
+    if "status" in task:
+      return task["status"][lang]
     if task["kind"] == "research":
       return {"ru": "Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.", "en": "Research — not started; live access and paid runs require securely supplied owner access."}[lang]
     return {"ru": "Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.", "en": "Blocked by dependencies and the SDD Ready gate; implementation has not started."}[lang]
+
+  def task_verification_note(self, task, lang):
+    if "verification_note" in task:
+      return task["verification_note"][lang]
+    return {"ru": "Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.", "en": "The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers."}[lang]
 
   def criterion_text(self, criterion, lang):
     labels = {"ru": ("Дано", "Когда", "Тогда", "Уровень"), "en": ("Given", "When", "Then", "Level")}[lang]
@@ -64,7 +71,7 @@ class SpecCatalog:
       for ac in task["acceptance"]:
         criterion = self.criteria[ac]
         lines += [f"#### {ac}", "", self.criterion_text(criterion, lang), ""]
-      lines += ["### " + ("Проверка результата" if ru else "Verification"), "", "```sh", task["verification"]["command"], "```", "", task["verification"]["expected"][lang], "", ("Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа." if ru else "The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers."), "", "### " + ("Передача следующему агенту" if ru else "Handoff to the next agent"), "", ("Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP." if ru else "Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready."), "", "**Commit boundary:** " + ("логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя." if ru else "this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization."), ""]
+      lines += ["### " + ("Проверка результата" if ru else "Verification"), "", "```sh", task["verification"]["command"], "```", "", task["verification"]["expected"][lang], "", self.task_verification_note(task, lang), "", "### " + ("Передача следующему агенту" if ru else "Handoff to the next agent"), "", ("Записать изменённые контракты, команды и результаты, ограничения, незакрытые вопросы и разблокированные зависимости. Обновить обе языковые версии и трассировку. Закрывать задачу только по доказательству её результата; GitHub Closed само по себе не означает Ready MVP." if ru else "Record changed contracts, commands/results, limitations, unresolved questions and unblocked dependencies. Update both languages and traceability. Close the task only with evidence of its outcome; GitHub Closed alone does not mean the MVP is Ready."), "", "**Commit boundary:** " + ("логическая граница этой задачи; commit/push/deploy не разрешены данной карточкой и требуют действующей авторизации пользователя." if ru else "this task's logical boundary; this card does not authorize commit/push/deploy, which require current user authorization."), ""]
     return "\n".join(lines).rstrip() + "\n"
 
   def generated(self):

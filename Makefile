@@ -1,0 +1,125 @@
+SHELL := /bin/sh
+
+GO ?= go
+NPM ?= npm
+PYTHON ?= python3
+
+PKG ?= ./...
+FILTER ?= all
+AREA ?=
+PROVIDER ?=
+SCENARIO ?=
+SUITE ?=
+MODE ?=
+
+.DEFAULT_GOAL := help
+
+.PHONY: help bootstrap check format-check lint typecheck test build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-contract e2e eval-ai check-deploy backup-check restore-check
+
+help:
+	@echo "Want Keep repository commands"
+	@echo "  make bootstrap"
+	@echo "  make check"
+	@echo "  make test-go PKG=./internal/<feature>/..."
+	@echo "  make test-web FILTER=<feature|all>"
+	@echo "  make test-collector FILTER=<suite|all>"
+
+bootstrap:
+	cd backend && $(GO) mod download
+	$(NPM) ci --prefix web
+	$(NPM) ci --prefix collector
+
+check: format-check lint typecheck test build docs-check check-contracts
+
+format-check:
+	@unformatted="$$(find backend -type f -name '*.go' -print | xargs gofmt -l)"; \
+		if [ -n "$$unformatted" ]; then echo "Go files need formatting:"; echo "$$unformatted"; exit 1; fi
+	$(NPM) --prefix web run format:check
+	$(NPM) --prefix collector run format:check
+
+lint:
+	cd backend && $(GO) vet ./...
+	$(NPM) --prefix web run lint
+	$(NPM) --prefix collector run lint
+
+typecheck:
+	$(NPM) --prefix web run typecheck
+	$(NPM) --prefix collector run typecheck
+
+test: test-go
+	$(NPM) --prefix web run test
+	$(NPM) --prefix collector run test
+
+build:
+	$(NPM) --prefix web run build
+	$(NPM) --prefix collector run build
+
+docs-check:
+	$(PYTHON) spec/001-want-keep-mvp/tools/spec_tool.py check
+	$(PYTHON) -m unittest discover -s spec/001-want-keep-mvp/tools -p 'test_*.py'
+
+check-contracts:
+	sh scripts/check-openapi-state.sh
+
+generate-contracts:
+	@if [ ! -f api/openapi.yaml ] || [ ! -f api/oapi-codegen.yaml ] || [ ! -f scripts/generate-openapi.sh ]; then \
+		echo "OpenAPI generation is unavailable until task-1.2 supplies source, config and generator." >&2; exit 2; fi
+	sh scripts/generate-openapi.sh
+
+test-go:
+	cd backend && $(GO) test $(PKG)
+
+test-web:
+	@if [ "$(FILTER)" = "all" ]; then \
+		$(NPM) --prefix web run test; \
+	else \
+		$(NPM) --prefix web run test -- "$(FILTER)"; \
+	fi
+
+test-collector:
+	@if [ "$(FILTER)" = "all" ]; then \
+		$(NPM) --prefix collector run test; \
+	else \
+		$(NPM) --prefix collector run test -- "$(FILTER)"; \
+	fi
+
+test-integration:
+	@if [ -z "$(AREA)" ]; then echo "AREA=<suite|all> is required." >&2; exit 2; fi
+	@if [ "$(AREA)" = "all" ]; then suite_path="backend/test/integration"; else suite_path="backend/test/integration/$(AREA)"; fi; \
+		if [ ! -d "$$suite_path" ]; then echo "Integration suite '$(AREA)' is not implemented." >&2; exit 2; fi; \
+		if ! find "$$suite_path" -type f -name '*_test.go' -print -quit | grep -q .; then echo "Integration suite '$(AREA)' has no tests." >&2; exit 2; fi; \
+		cd backend && $(GO) test -tags=integration "./$${suite_path#backend/}/..."
+
+test-contract:
+	@if [ -z "$(PROVIDER)" ]; then echo "PROVIDER=<name> is required." >&2; exit 2; fi
+	@if [ ! -d "collector/contracts/$(PROVIDER)" ]; then echo "Provider contract suite '$(PROVIDER)' is not implemented." >&2; exit 2; fi
+	@if ! find "collector/contracts/$(PROVIDER)" -type f -name '*.test.ts' -print -quit | grep -q .; then echo "Provider contract suite '$(PROVIDER)' has no tests." >&2; exit 2; fi
+	$(NPM) --prefix collector run test -- "contracts/$(PROVIDER)"
+
+e2e:
+	@if [ -z "$(SCENARIO)" ]; then echo "SCENARIO=<name|all> is required." >&2; exit 2; fi
+	@if [ "$(SCENARIO)" = "all" ]; then suite_path="web/e2e"; else suite_path="web/e2e/$(SCENARIO).spec.ts"; fi; \
+		if [ ! -e "$$suite_path" ]; then echo "E2E scenario '$(SCENARIO)' is not implemented." >&2; exit 2; fi; \
+		if [ "$(SCENARIO)" = "all" ] && ! find "$$suite_path" -type f -name '*.spec.ts' -print -quit | grep -q .; then echo "E2E suite has no scenarios." >&2; exit 2; fi
+	$(NPM) --prefix web exec playwright test -- $(if $(filter all,$(SCENARIO)),,"e2e/$(SCENARIO).spec.ts")
+
+eval-ai:
+	@if [ -z "$(SUITE)" ]; then echo "SUITE=<name|all> is required." >&2; exit 2; fi
+	@if [ "$(SUITE)" = "all" ]; then suite_path="backend/test/ai"; else suite_path="backend/test/ai/$(SUITE)"; fi; \
+		if [ ! -d "$$suite_path" ]; then echo "AI evaluation suite '$(SUITE)' is not implemented." >&2; exit 2; fi; \
+		if ! find "$$suite_path" -type f -name '*_test.go' -print -quit | grep -q .; then echo "AI evaluation suite '$(SUITE)' has no tests." >&2; exit 2; fi; \
+		cd backend && $(GO) test "./$${suite_path#backend/}/..."
+
+check-deploy:
+	@if [ ! -f deploy/compose.yaml ]; then echo "Deployment configuration is not implemented." >&2; exit 2; fi
+	docker compose -f deploy/compose.yaml config --quiet
+
+backup-check:
+	@if [ "$(MODE)" != "synthetic" ]; then echo "MODE=synthetic is required." >&2; exit 2; fi
+	@if [ ! -f ops/backup/check.sh ]; then echo "Synthetic backup check is not implemented." >&2; exit 2; fi
+	sh ops/backup/check.sh
+
+restore-check:
+	@if [ "$(MODE)" != "synthetic" ]; then echo "MODE=synthetic is required." >&2; exit 2; fi
+	@if [ ! -f ops/restore/check.sh ]; then echo "Synthetic restore check is not implemented." >&2; exit 2; fi
+	sh ops/restore/check.sh

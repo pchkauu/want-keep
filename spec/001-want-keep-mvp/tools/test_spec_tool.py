@@ -26,6 +26,13 @@ class SpecCatalogTest(unittest.TestCase):
   def test_current_graph_is_valid(self):
     self.assertEqual([], SpecCatalog(self.source).validate_catalog())
 
+  def test_task_status_override_is_rendered(self):
+    catalog = SpecCatalog(self.source)
+    body = catalog.task_body(catalog.tasks["task-1.1"])
+    self.assertIn("Техническая основа реализована", body)
+    self.assertIn("The technical foundation is implemented", body)
+    self.assertIn("Интерфейс `make` создан task-1.1", body)
+
   def test_unknown_acceptance_is_rejected_before_render(self):
     errors = self.errors_for(lambda data: data["tasks"][0]["acceptance"].append("AC-999"))
     self.assertTrue(any("Unresolved AC" in error for error in errors))
