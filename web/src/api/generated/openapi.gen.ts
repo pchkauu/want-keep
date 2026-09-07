@@ -84,7 +84,7 @@ export interface paths {
     put?: never;
     /**
      * attachments upload
-     * @description Authenticated upload; validates family account, signature, 10 MiB and 10 PDF pages before processing. Upload creates evidence only; receipt/message command determines one financial effect.
+     * @description Authenticated upload reserves uploadId, persists private evidence and queues validation. Repeated identical input recovers its result; conflicting content returns 409. Download, preview and analysis require accepted validation. Bytes never enter command records. A receipt/message command later determines the financial effect.
      */
     post: operations["attachments_upload"];
     delete?: never;
@@ -119,6 +119,23 @@ export interface paths {
     };
     /** attachments content */
     get: operations["attachments_content"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/attachments/{attachmentId}/preview/{page}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read a safe raster preview of an accepted attachment */
+    get: operations["attachments_preview"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1390,6 +1407,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/system/privacy": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read private storage and processing availability */
+    get: operations["privacy_status"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/system/status": {
     parameters: {
       query?: never;
@@ -1659,19 +1693,41 @@ export interface components {
     /** @enum {string} */
     Asset: "RUB" | "USD" | "USDT" | "USDC" | "BTC" | "ETH";
     Attachment: {
+      accountId: components["schemas"]["ID"];
+      actorId: components["schemas"]["ID"];
       id: components["schemas"]["ID"];
       /** @enum {string} */
       mediaType: "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
       name: string;
+      /** @description Present only after successful validation; unknown is absent, never zero. */
+      pageCount?: number;
+      previewPages: components["schemas"]["AttachmentPreviewPage"][];
+      /** @description True only when every safe PNG page has been generated and accepted; storage availability is reported separately. */
+      previewReady: boolean;
+      /** @enum {string} */
+      reason:
+        | ""
+        | "storage_unavailable"
+        | "processor_unavailable"
+        | "invalid_document"
+        | "unsupported_content"
+        | "limit_exceeded";
       sizeBytes: number;
       /** @enum {string} */
       state: "uploaded" | "validating" | "accepted" | "rejected";
     };
-    /** @description Maximum 10 MiB and 10 PDF pages. MIME signature is verified; selected family account is required. */
+    AttachmentPreviewPage: {
+      height: number;
+      page: number;
+      width: number;
+    };
+    /** @description Client creates uploadId before sending; it is the attachment ID for result lookup. The same household/actor/uploadId with identical name, account, MIME and bytes replays; altered input conflicts. Uploads are separate from financial command retention. Maximum 10 MiB, 10 PDF pages and 40 megapixels for images. The selected family account is required. */
     AttachmentUpload: {
       accountId: components["schemas"]["ID"];
       /** Format: binary */
       file: string;
+      /** Format: uuid */
+      uploadId: string;
     };
     AuthenticationCredential: {
       authenticatorData: string;
@@ -2037,6 +2093,9 @@ export interface components {
       | "ai_waiting"
       | "ai_budget_exhausted"
       | "invalid_attachment"
+      | "upload_conflict"
+      | "attachment_not_ready"
+      | "private_storage_unavailable"
       | "backup_stale"
       | "invitation_invalid"
       | "invitation_revoked"
@@ -2424,6 +2483,15 @@ export interface components {
       locale: components["schemas"]["Locale"];
       pushEnabled: boolean;
       reportingAsset: components["schemas"]["Asset"];
+    };
+    /** @description Authenticated capabilities only; no keys, paths, credential IDs or diagnostic payloads. */
+    PrivacyStatus: {
+      /** @enum {string} */
+      attachments: "available" | "unavailable";
+      /** @enum {string} */
+      connections: "available" | "unavailable";
+      /** @enum {string} */
+      processor: "available" | "unavailable";
     };
     Proposal: {
       evidence: components["schemas"]["ResourceReference"][];
@@ -3220,7 +3288,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Authorized private bytes; no-store, nosniff, safe Content-Disposition. */
+      /** @description Accepted original only; family-authorized download with no-store, nosniff and attachment Content-Disposition. */
       200: {
         headers: {
           [name: string]: unknown;
@@ -3237,6 +3305,36 @@ export interface operations {
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  attachments_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachmentId: components["schemas"]["ID"];
+        page: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Re-encoded PNG; family authorization, no-store, nosniff and restrictive CSP. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "image/png": string;
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
       503: components["responses"]["Problem"];
     };
   };
@@ -6379,6 +6477,33 @@ export interface operations {
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  privacy_status: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authentication and ordinary accounting remain available when a private subsystem is unavailable. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PrivacyStatus"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
       503: components["responses"]["Problem"];
     };
   };

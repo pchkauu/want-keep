@@ -1,0 +1,46 @@
+services:
+  database:
+    image: postgres:17.11@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675
+    environment:
+      POSTGRES_DB: want_keep_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: synthetic-admin
+    tmpfs:
+      - /var/lib/postgresql/data:rw,nosuid,nodev,size=1073741824
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d want_keep_test']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  document-processor:
+    extends:
+      file: compose.yaml
+      service: document-processor
+    build:
+      target: runtime-faults
+    restart: 'no'
+  privacy-test:
+    build:
+      context: ../..
+      dockerfile: deploy/document-processor/Dockerfile
+      target: privacy-test
+    network_mode: service:database
+    user: '10000:10000'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=268435456,mode=1777
+    volumes:
+      - processor-socket:/run/want-keep:ro
+    environment:
+      WANT_KEEP_TEST_DATABASE_URL: postgres://postgres:synthetic-admin@127.0.0.1:5432/want_keep_test?sslmode=disable
+      WANT_KEEP_TEST_PROCESSOR_SOCKET: /run/want-keep/documents.sock
+    depends_on:
+      database:
+        condition: service_healthy
+      document-processor:
+        condition: service_started
+    command: ['-test.v', '-test.count=1', '-test.timeout=10m']
+volumes:
+  processor-socket:

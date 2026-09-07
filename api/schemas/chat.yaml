@@ -5,6 +5,26 @@ Attachment:
   properties:
     id:
       "$ref": "./money.yaml#/ID"
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    actorId:
+      "$ref": "./money.yaml#/ID"
+    reason:
+      type: string
+      enum: ['', storage_unavailable, processor_unavailable, invalid_document, unsupported_content, limit_exceeded]
+    pageCount:
+      type: integer
+      minimum: 1
+      maximum: 10
+      description: Present only after successful validation; unknown is absent, never zero.
+    previewReady:
+      type: boolean
+      description: True only when every safe PNG page has been generated and accepted; storage availability is reported separately.
+    previewPages:
+      type: array
+      maxItems: 10
+      items:
+        "$ref": "./chat.yaml#/AttachmentPreviewPage"
     name:
       type: string
       minLength: 1
@@ -29,6 +49,11 @@ Attachment:
       - rejected
   required:
   - id
+  - accountId
+  - actorId
+  - reason
+  - previewPages
+  - previewReady
   - name
   - mediaType
   - sizeBytes
@@ -37,16 +62,55 @@ AttachmentUpload:
   type: object
   additionalProperties: false
   properties:
+    uploadId:
+      type: string
+      format: uuid
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
     file:
       type: string
       format: binary
     accountId:
       "$ref": "./money.yaml#/ID"
   required:
+  - uploadId
   - file
   - accountId
-  description: Maximum 10 MiB and 10 PDF pages. MIME signature is verified; selected
-    family account is required.
+  description: Client creates uploadId before sending; it is the attachment ID for result lookup.
+    The same household/actor/uploadId with identical name, account, MIME and bytes replays;
+    altered input conflicts. Uploads are separate from financial command retention.
+    Maximum 10 MiB, 10 PDF pages and 40 megapixels for images. The selected family account is required.
+AttachmentPreviewPage:
+  type: object
+  additionalProperties: false
+  properties:
+    page:
+      type: integer
+      minimum: 1
+      maximum: 10
+    width:
+      type: integer
+      minimum: 1
+      maximum: 2048
+    height:
+      type: integer
+      minimum: 1
+      maximum: 2048
+  required: [page, width, height]
+PrivacyStatus:
+  type: object
+  additionalProperties: false
+  properties:
+    attachments:
+      type: string
+      enum: [available, unavailable]
+    connections:
+      type: string
+      enum: [available, unavailable]
+    processor:
+      type: string
+      enum: [available, unavailable]
+  required: [attachments, connections, processor]
+  description: Authenticated capabilities only; no keys, paths, credential IDs or diagnostic payloads.
 Receipt:
   type: object
   additionalProperties: false

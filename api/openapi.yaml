@@ -94,6 +94,10 @@ paths:
     "$ref": "./paths/chat.yaml#/~1attachments~1{attachmentId}"
   "/attachments/{attachmentId}/content":
     "$ref": "./paths/chat.yaml#/~1attachments~1{attachmentId}~1content"
+  "/attachments/{attachmentId}/preview/{page}":
+    "$ref": "./paths/chat.yaml#/~1attachments~1{attachmentId}~1preview~1{page}"
+  "/system/privacy":
+    "$ref": "./paths/chat.yaml#/~1system~1privacy"
   "/receipts/{receiptId}":
     "$ref": "./paths/chat.yaml#/~1receipts~1{receiptId}"
   "/receipts/{receiptId}/allocations":
@@ -399,6 +403,10 @@ components:
       "$ref": "./schemas/chat.yaml#/Attachment"
     AttachmentUpload:
       "$ref": "./schemas/chat.yaml#/AttachmentUpload"
+    AttachmentPreviewPage:
+      "$ref": "./schemas/chat.yaml#/AttachmentPreviewPage"
+    PrivacyStatus:
+      "$ref": "./schemas/chat.yaml#/PrivacyStatus"
     Receipt:
       "$ref": "./schemas/chat.yaml#/Receipt"
     Message:

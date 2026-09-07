@@ -185,6 +185,15 @@ func inspectImports(internalRoot string) ([]importViolation, error) {
 }
 
 func owningLayer(relative string) string {
+	path := filepath.ToSlash(relative)
+	if strings.HasPrefix(path, "connections/access/") {
+		return "application"
+	}
+	for _, prefix := range []string{"attachments/files/", "attachments/processor/", "connections/credentials/", "privacy/cryptobox/"} {
+		if strings.HasPrefix(path, prefix) {
+			return "gateways"
+		}
+	}
 	if strings.HasPrefix(filepath.ToSlash(relative), "identity/webauthn/") {
 		return "gateways"
 	}
@@ -210,6 +219,14 @@ func owningLayer(relative string) string {
 }
 
 func forbiddenImport(layer, importPath string) bool {
+	for _, prefix := range []string{"attachments/files", "attachments/processor", "connections/credentials", "privacy/cryptobox"} {
+		if (layer == "domain" || layer == "application" || layer == "ai") && packageOrSubpackage(importPath, modulePath+"/internal/"+prefix) {
+			return true
+		}
+	}
+	if layer == "domain" && packageOrSubpackage(importPath, modulePath+"/internal/connections/access") {
+		return true
+	}
 	switch layer {
 	case "domain":
 		if strings.HasPrefix(importPath, modulePath+"/internal/connections/admission") {

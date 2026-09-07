@@ -20,7 +20,7 @@ The specification passed task-0.10 and is ready for development. The decision-co
 | [task-1.2](tasks/task-1.2.md) | Define money types and API contract | task-1.1 | [#12](https://github.com/pchkauu/want-keep/issues/12) |
 | [task-1.3](tasks/task-1.3.md) | Create storage and transaction boundaries | task-1.2 | [#13](https://github.com/pchkauu/want-keep/issues/13) |
 | [task-1.4](tasks/task-1.4.md) | Implement passkeys and access recovery | task-1.3 | [#14](https://github.com/pchkauu/want-keep/issues/14) |
-| [task-1.5](tasks/task-1.5.md) | Protect secrets and private attachments | task-1.4, task-1.6 | [#15](https://github.com/pchkauu/want-keep/issues/15) |
+| [task-1.5](tasks/task-1.5.md) | Protect secrets and private attachments | task-1.4 | [#15](https://github.com/pchkauu/want-keep/issues/15) |
 | [task-1.6](tasks/task-1.6.md) | Implement household membership and resource permissions | task-1.4 | [#16](https://github.com/pchkauu/want-keep/issues/16) |
 | [task-2.1](tasks/task-2.1.md) | Implement accounts and opening balances | task-1.3, task-1.6 | [#17](https://github.com/pchkauu/want-keep/issues/17) |
 | [task-2.2](tasks/task-2.2.md) | Implement the transaction ledger and states | task-2.1, task-1.2 | [#18](https://github.com/pchkauu/want-keep/issues/18) |

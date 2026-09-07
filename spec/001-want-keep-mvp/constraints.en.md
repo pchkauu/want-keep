@@ -101,6 +101,8 @@ pgx v5.10.0 stays in storage; domain/application never import the driver or pgx.
 
 Auth uses domain/application, a WebAuthn adapter, delivery/identity and storage. D-45 and verification boundaries: [contract](contracts.en.md#task-14-sign-in-and-recovery-d-45), [evidence](evidence/task-1.4-identity.en.md).
 
+Task-1.5 (D-46) adds separate keyrings and an isolated processor. Domain/application never import crypto storage, SQL, HTTP or decoders; only the credentials adapter handles secrets. Processor runtime has no network/keys/DB/shared directory. Protected-function failures do not stop identity/accounting. [Contract](contracts.en.md), [verification and operational handoff](evidence/task-1.5-privacy.en.md).
+
 ## Household task-1.6
 
 An invitation does not assign principal or provide financial access before atomic enrollment. Identity lock precedes family/invitation lock; financial family scope and joining scope remain separate. Domain policies preserve current ownership, actor, payer and external owner. Migration 005 expands the schema; secret responses are never replayed. [Contract](contracts.en.md#task-16--invitations-and-household-permissions), [evidence](evidence/task-1.6-household.en.md).
