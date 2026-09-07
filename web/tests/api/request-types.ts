@@ -64,6 +64,37 @@ export const pendingGate: Gate = {
 };
 // @ts-expect-error Admitted requires the complete server binding and check time.
 export const incompleteAdmission: Gate = { status: "admitted", reasons: [] };
+type AdmittedGate = components["schemas"]["AdmittedDeploymentGate"];
+export const admittedGate: AdmittedGate = {
+  status: "admitted",
+  binding: {
+    provider: "bybit",
+    environment: "production",
+    adapterBuildDigest: "sha256:" + "a".repeat(64),
+    collectorImageDigest: "sha256:" + "b".repeat(64),
+    contractVersion: "10",
+    allowlistRevision: "1",
+    nonSecretConfigRevision: "1",
+    operatorPermissionRevision: "1",
+  },
+  admissionRevision: 3,
+  checkedAt: "2026-09-07T00:00:00Z",
+  reasons: [],
+};
+export const { admissionRevision, ...unversionedGate } = admittedGate;
+// @ts-expect-error A configured admission requires its own revision.
+export const missingAdmissionRevision: Gate = unversionedGate;
+export const stringAdmissionRevision: AdmittedGate = {
+  ...admittedGate,
+  // @ts-expect-error Revisions use exact safe integers, not strings.
+  admissionRevision: "3",
+};
+export const forgedAdmissionRevision: components["schemas"]["ConnectionAction"] =
+  {
+    expectedRevision: 1,
+    // @ts-expect-error A command cannot assign the server admission revision.
+    admissionRevision: 3,
+  };
 export const forgedAdmission: components["schemas"]["ConnectionAction"] = {
   expectedRevision: 1,
   // @ts-expect-error User commands cannot assign server admission.

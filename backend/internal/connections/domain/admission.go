@@ -77,6 +77,7 @@ type Admission struct {
 	binding  Binding
 	provider Check
 	host     Check
+	revision int64
 	valid    bool
 }
 
@@ -84,10 +85,12 @@ func NewAdmission(binding Binding) (Admission, error) {
 	if err := binding.Validate(); err != nil {
 		return Admission{}, err
 	}
-	return Admission{binding: binding, valid: true}, nil
+	return Admission{binding: binding, revision: 1, valid: true}, nil
 }
 
 func (a Admission) Binding() Binding { return a.binding }
+
+func (a Admission) Revision() int64 { return a.revision }
 
 func (a Admission) Status() AdmissionStatus {
 	if a.provider.Result == CheckFailed || a.provider.Result == CheckRevoked || a.host.Result == CheckFailed || a.host.Result == CheckRevoked {
@@ -145,6 +148,9 @@ func (a Admission) RecordCheck(check Check) (Admission, error) {
 		}
 		return Admission{}, ErrInvalidAdmission
 	}
+	if err := a.advanceRevision(); err != nil {
+		return Admission{}, err
+	}
 	if check.Kind == ProviderCheck {
 		a.provider = check
 	} else {
@@ -154,15 +160,46 @@ func (a Admission) RecordCheck(check Check) (Admission, error) {
 }
 
 func (a Admission) Rebind(binding Binding) (Admission, error) {
-	if a.valid && binding == a.binding {
+	if !a.valid {
+		return NewAdmission(binding)
+	}
+	if err := binding.Validate(); err != nil {
+		return Admission{}, err
+	}
+	if binding == a.binding {
 		return a, nil
 	}
-	return NewAdmission(binding)
+	if err := a.advanceRevision(); err != nil {
+		return Admission{}, err
+	}
+	a.binding = binding
+	a.provider = Check{}
+	a.host = Check{}
+	return a, nil
+}
+
+func (a *Admission) advanceRevision() error {
+	if a.revision < 1 || a.revision >= 9007199254740991 {
+		return ErrInvalidAdmission
+	}
+	a.revision++
+	return nil
 }
 
 // RequireSync is the domain precondition; the application must enforce it atomically before job creation.
 func (a Admission) RequireSync(current Binding) error {
 	if !a.valid || a.Status() != Admitted || current != a.binding {
+		return ErrProviderNotAdmitted
+	}
+	return nil
+}
+
+// RequireResult must run against current server state in the source/posting/outbox transaction.
+func (a Admission) RequireResult(issuedBinding Binding, issuedRevision int64) error {
+	if err := a.RequireSync(issuedBinding); err != nil {
+		return err
+	}
+	if issuedRevision != a.revision {
 		return ErrProviderNotAdmitted
 	}
 	return nil

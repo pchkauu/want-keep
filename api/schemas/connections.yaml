@@ -171,6 +171,14 @@ DeploymentBinding:
 PendingDeploymentGate:
   type: object
   additionalProperties: false
+  allOf:
+    - anyOf:
+        - required: [binding, admissionRevision]
+        - not:
+            anyOf:
+              - required: [binding]
+              - required: [admissionRevision]
+              - required: [checkedAt]
   properties:
     status:
       type: string
@@ -178,6 +186,8 @@ PendingDeploymentGate:
         - pending
     binding:
       $ref: ./connections.yaml#/DeploymentBinding
+    admissionRevision:
+      $ref: ./money.yaml#/Revision
     checkedAt:
       $ref: ./money.yaml#/Instant
     reasons:
@@ -207,6 +217,8 @@ AdmittedDeploymentGate:
         - admitted
     binding:
       $ref: ./connections.yaml#/DeploymentBinding
+    admissionRevision:
+      $ref: ./money.yaml#/Revision
     checkedAt:
       $ref: ./money.yaml#/Instant
     reasons:
@@ -225,6 +237,7 @@ AdmittedDeploymentGate:
   required:
     - status
     - binding
+    - admissionRevision
     - checkedAt
     - reasons
 BlockedDeploymentGate:
@@ -237,6 +250,8 @@ BlockedDeploymentGate:
         - blocked
     binding:
       $ref: ./connections.yaml#/DeploymentBinding
+    admissionRevision:
+      $ref: ./money.yaml#/Revision
     checkedAt:
       $ref: ./money.yaml#/Instant
     reasons:
@@ -256,6 +271,7 @@ BlockedDeploymentGate:
   required:
     - status
     - binding
+    - admissionRevision
     - checkedAt
     - reasons
 DeploymentGate:
@@ -265,5 +281,8 @@ DeploymentGate:
     - $ref: ./connections.yaml#/BlockedDeploymentGate
   description: >-
     Server-owned D-43 admission, separate from authentication. Only the admission service combines
-    provider and host evidence for the exact binding. A missing or changed binding denies sync
-    before job creation; clients and AI cannot set admission.
+    provider and host evidence for the exact binding. Each state/evidence/binding change increases
+    admissionRevision; an exact no-op preserves it. An absent admission has neither binding nor
+    revision nor checkedAt. Jobs and results carry immutable binding/revision, checked before IO
+    and in the source/posting/outbox transaction. Stale results remain in quarantine without a
+    source record or financial effect; clients and AI cannot set admission.

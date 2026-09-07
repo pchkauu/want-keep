@@ -570,7 +570,7 @@ export interface paths {
     put?: never;
     /**
      * connections sync
-     * @description Requires current authorized connection and exact admitted deployment binding before job or collector IO. Otherwise returns provider_not_admitted (409); quarantine conformance never writes source records or postings.
+     * @description Requires current authorized connection and exact admitted deployment binding before job or collector IO. Admission check and enqueue are atomic; jobs/results carry immutable binding and admissionRevision, rechecked before IO and in the source/posting/outbox transaction. A stale gate returns provider_not_admitted (409); results invalidated after IO starts remain in quarantine without source records or postings. Cancellation is best effort.
      */
     post: operations["connections_sync"];
     delete?: never;
@@ -1560,6 +1560,7 @@ export interface components {
       quality: components["schemas"]["DataQuality"];
     };
     AdmittedDeploymentGate: {
+      admissionRevision: components["schemas"]["Revision"];
       binding: components["schemas"]["DeploymentBinding"];
       checkedAt: components["schemas"]["Instant"];
       reasons: (
@@ -1641,6 +1642,7 @@ export interface components {
       quality: components["schemas"]["DataQuality"];
     };
     BlockedDeploymentGate: {
+      admissionRevision: components["schemas"]["Revision"];
       binding: components["schemas"]["DeploymentBinding"];
       checkedAt: components["schemas"]["Instant"];
       reasons: (
@@ -1900,7 +1902,7 @@ export interface components {
       operatorPermissionRevision: string;
       provider: components["schemas"]["Provider"];
     };
-    /** @description Server-owned D-43 admission, separate from authentication. Only the admission service combines provider and host evidence for the exact binding. A missing or changed binding denies sync before job creation; clients and AI cannot set admission. */
+    /** @description Server-owned D-43 admission, separate from authentication. Only the admission service combines provider and host evidence for the exact binding. Each state/evidence/binding change increases admissionRevision; an exact no-op preserves it. An absent admission has neither binding nor revision nor checkedAt. Jobs and results carry immutable binding/revision, checked before IO and in the source/posting/outbox transaction. Stale results remain in quarantine without a source record or financial effect; clients and AI cannot set admission. */
     DeploymentGate:
       | components["schemas"]["PendingDeploymentGate"]
       | components["schemas"]["AdmittedDeploymentGate"]
@@ -2236,6 +2238,7 @@ export interface components {
       | components["schemas"]["KnownPayer"]
       | components["schemas"]["UnspecifiedPayer"];
     PendingDeploymentGate: {
+      admissionRevision?: components["schemas"]["Revision"];
       binding?: components["schemas"]["DeploymentBinding"];
       checkedAt?: components["schemas"]["Instant"];
       reasons: (
@@ -2248,7 +2251,7 @@ export interface components {
       )[];
       /** @enum {string} */
       status: "pending";
-    };
+    } & (unknown | unknown);
     PersonalOwnership: {
       householdId: components["schemas"]["ID"];
       personalOwnerId: components["schemas"]["ID"];

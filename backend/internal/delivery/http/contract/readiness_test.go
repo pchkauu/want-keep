@@ -30,14 +30,58 @@ func TestAdmissionReadBoundaryAndUntrustedCommands(t *testing.T) {
 		}
 		data, _ := json.Marshal(dto)
 		var result struct {
-			Status  string
-			Binding *generated.DeploymentBinding
+			Status            string
+			Binding           *generated.DeploymentBinding
+			AdmissionRevision *int64
 		}
 		if err := json.Unmarshal(data, &result); err != nil || result.Status != string(admission.Status()) {
 			t.Fatal("admission state lost")
 		}
 		if admission.Binding().Provider != "" && (result.Binding == nil || result.Binding.OperatorPermissionRevision != "1" || result.Binding.AdapterBuildDigest != binding.AdapterBuildDigest) {
 			t.Fatal("binding lost")
+		}
+		if admission.Revision() == 0 {
+			if result.AdmissionRevision != nil || result.Binding != nil {
+				t.Fatal("missing admission was assigned a revision or binding")
+			}
+		} else if result.AdmissionRevision == nil || *result.AdmissionRevision != admission.Revision() {
+			t.Fatal("admission revision lost")
+		}
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(data, &fields); err != nil {
+			t.Fatal(err)
+		}
+		if admission.Revision() == 0 {
+			fields["checkedAt"] = json.RawMessage(`"2026-09-07T00:00:00Z"`)
+			invalid, _ := json.Marshal(fields)
+			var raw json.RawMessage
+			if b.Decode("DeploymentGate", invalid, &raw) == nil {
+				t.Fatal("check time without admission accepted")
+			}
+			continue
+		}
+		for _, revision := range []string{"", "0", "-1", "1.5", "9007199254740992", `"3"`, "null"} {
+			if revision == "" {
+				delete(fields, "admissionRevision")
+			} else {
+				fields["admissionRevision"] = json.RawMessage(revision)
+			}
+			invalid, _ := json.Marshal(fields)
+			var raw json.RawMessage
+			if b.Decode("DeploymentGate", invalid, &raw) == nil {
+				t.Fatal("invalid admission revision accepted", revision)
+			}
+		}
+		fields["admissionRevision"] = json.RawMessage("9007199254740991")
+		maximum, _ := json.Marshal(fields)
+		var raw json.RawMessage
+		if b.Decode("DeploymentGate", maximum, &raw) != nil {
+			t.Fatal("maximum exact revision rejected")
+		}
+		delete(fields, "binding")
+		invalid, _ := json.Marshal(fields)
+		if b.Decode("DeploymentGate", invalid, &raw) == nil {
+			t.Fatal("revision without binding accepted")
 		}
 	}
 	for _, input := range []struct{ schema, data string }{
@@ -46,6 +90,8 @@ func TestAdmissionReadBoundaryAndUntrustedCommands(t *testing.T) {
 		{"DeploymentGate", `{"status":"blocked","reasons":["secret details"]}`},
 		{"ConnectionCreate", `{"provider":"bybit","externalAccountOwnerId":"10000000-0000-4000-8000-000000000001","historyFrom":"2026-09-07","products":["funding"],"deploymentGate":{"status":"admitted"}}`},
 		{"ConnectionAction", `{"expectedRevision":1,"deploymentGate":{"status":"admitted"}}`},
+		{"ConnectionAction", `{"expectedRevision":1,"admissionRevision":3}`},
+		{"ConnectionCreate", `{"provider":"bybit","externalAccountOwnerId":"10000000-0000-4000-8000-000000000001","historyFrom":"2026-09-07","products":["funding"],"admissionRevision":3}`},
 	} {
 		var value json.RawMessage
 		if b.Decode(input.schema, []byte(input.data), &value) == nil {

@@ -22,6 +22,10 @@ func (b *Boundary) AdmissionToDTO(admission connection.Admission) (generated.Dep
 			reasons = append(reasons, generated.PendingDeploymentGateReasons(reason))
 		}
 		dto := generated.PendingDeploymentGate{Status: "pending", Binding: mapped, Reasons: reasons}
+		if mapped != nil {
+			revision := admission.Revision()
+			dto.AdmissionRevision = &revision
+		}
 		if checkedAt != "" {
 			dto.CheckedAt = &checkedAt
 		}
@@ -30,7 +34,7 @@ func (b *Boundary) AdmissionToDTO(admission connection.Admission) (generated.Dep
 		if mapped == nil {
 			return out, ErrInvalidRequest
 		}
-		err = out.FromAdmittedDeploymentGate(generated.AdmittedDeploymentGate{Status: "admitted", Binding: *mapped, CheckedAt: checkedAt, Reasons: []generated.AdmittedDeploymentGateReasons{}})
+		err = out.FromAdmittedDeploymentGate(generated.AdmittedDeploymentGate{Status: "admitted", Binding: *mapped, AdmissionRevision: admission.Revision(), CheckedAt: checkedAt, Reasons: []generated.AdmittedDeploymentGateReasons{}})
 	case connection.Blocked:
 		if mapped == nil {
 			return out, ErrInvalidRequest
@@ -39,7 +43,7 @@ func (b *Boundary) AdmissionToDTO(admission connection.Admission) (generated.Dep
 		for _, reason := range admission.Reasons() {
 			reasons = append(reasons, generated.BlockedDeploymentGateReasons(reason))
 		}
-		err = out.FromBlockedDeploymentGate(generated.BlockedDeploymentGate{Status: "blocked", Binding: *mapped, CheckedAt: checkedAt, Reasons: reasons})
+		err = out.FromBlockedDeploymentGate(generated.BlockedDeploymentGate{Status: "blocked", Binding: *mapped, AdmissionRevision: admission.Revision(), CheckedAt: checkedAt, Reasons: reasons})
 	default:
 		return out, ErrInvalidRequest
 	}

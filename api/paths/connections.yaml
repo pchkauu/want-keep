@@ -172,7 +172,7 @@
 "/connections/{connectionId}/sync":
   post:
     operationId: connections_sync
-    description: Requires current authorized connection and exact admitted deployment binding before job or collector IO. Otherwise returns provider_not_admitted (409); quarantine conformance never writes source records or postings.
+    description: Requires current authorized connection and exact admitted deployment binding before job or collector IO. Admission check and enqueue are atomic; jobs/results carry immutable binding and admissionRevision, rechecked before IO and in the source/posting/outbox transaction. A stale gate returns provider_not_admitted (409); results invalidated after IO starts remain in quarantine without source records or postings. Cancellation is best effort.
     tags:
     - connections
     summary: connections sync
