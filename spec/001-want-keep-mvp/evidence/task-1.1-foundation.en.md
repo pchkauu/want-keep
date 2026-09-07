@@ -12,7 +12,8 @@ Verified on 2026-09-07. The branch contains only the independent technical found
 - A synthetic collector test loads the Playwright API without starting a browser or using external accounts.
 - OpenAPI source/config/generator/output must be absent or change as a complete set.
 - Development/test/production examples contain no secrets.
-- A Go architecture test prevents domain/application dependencies on delivery/storage/integrations/gateways and infrastructure dependencies on delivery.
+- A Go architecture test rejects unapproved third-party and outer dependencies from inner layers, including HTTP and PostgreSQL drivers, and prevents infrastructure from depending on delivery.
+- The build verifies the Want Keep semantic theme for shadcn/Base UI; command tests verify pinned `gofmt` and the Playwright working directory without starting a browser.
 
 ## Verification
 

@@ -12,7 +12,8 @@
 - Collector загружает Playwright API в синтетическом тесте без запуска браузера и внешних аккаунтов.
 - OpenAPI source/config/generator/output должны отсутствовать или изменяться полным набором.
 - Development/test/production examples не содержат секретов.
-- Архитектурный Go-тест запрещает зависимость domain/application от delivery/storage/integrations/gateways и инфраструктуры от delivery.
+- Архитектурный Go-тест запрещает неодобренные сторонние и внешние зависимости внутренних слоёв, включая HTTP и PostgreSQL-драйверы, а также зависимость инфраструктуры от delivery.
+- Сборка проверяет semantic theme Want Keep для shadcn/Base UI; командные тесты проверяют pinned `gofmt` и рабочий каталог Playwright без запуска браузера.
 
 ## Проверки
 

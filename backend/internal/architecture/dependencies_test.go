@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,6 +16,9 @@ import (
 )
 
 const modulePath = "github.com/pchkauu/want-keep/backend"
+
+// Inner-layer third-party dependencies stay opt-in so framework and provider types cannot leak in unnoticed.
+var approvedInnerThirdPartyPackages = []string{}
 
 type importViolation struct {
 	file       string
@@ -48,15 +52,31 @@ func TestRepositoryLayerImports(t *testing.T) {
 
 func TestInspectImportsRejectsOutwardDependencies(t *testing.T) {
 	internalRoot := t.TempDir()
-	writeGoFile(t, internalRoot, "accounts/domain/account.go", `package domain
+	writeGoFile(t, internalRoot, "accounts/domain/http_account.go", `package domain
 
 import "net/http"
 
 var _ = http.MethodGet
 `)
-	writeGoFile(t, internalRoot, "accounts/application/service.go", `package application
+	writeGoFile(t, internalRoot, "accounts/domain/persisted_account.go", `package domain
+
+import _ "github.com/jackc/pgx/v5"
+`)
+	writeGoFile(t, internalRoot, "accounts/domain/coordinated_account.go", `package domain
+
+import _ "github.com/pchkauu/want-keep/backend/internal/accounts/application"
+`)
+	writeGoFile(t, internalRoot, "accounts/application/stored_service.go", `package application
 
 import _ "github.com/pchkauu/want-keep/backend/internal/storage"
+`)
+	writeGoFile(t, internalRoot, "accounts/application/http_service.go", `package application
+
+import _ "net/http"
+`)
+	writeGoFile(t, internalRoot, "accounts/application/ai_service.go", `package application
+
+import _ "github.com/pchkauu/want-keep/backend/internal/ai"
 `)
 	writeGoFile(t, internalRoot, "storage/repository.go", `package storage
 
@@ -67,8 +87,21 @@ import _ "github.com/pchkauu/want-keep/backend/internal/delivery"
 	if err != nil {
 		t.Fatalf("inspect fixture imports: %v", err)
 	}
-	if got, want := len(violations), 3; got != want {
-		t.Fatalf("violation count = %d, want %d: %v", got, want, violations)
+	got := make([]string, 0, len(violations))
+	for _, violation := range violations {
+		got = append(got, violation.String())
+	}
+	want := []string{
+		`accounts/application/ai_service.go: application layer must not import "github.com/pchkauu/want-keep/backend/internal/ai"`,
+		`accounts/application/http_service.go: application layer must not import "net/http"`,
+		`accounts/application/stored_service.go: application layer must not import "github.com/pchkauu/want-keep/backend/internal/storage"`,
+		`accounts/domain/coordinated_account.go: domain layer must not import "github.com/pchkauu/want-keep/backend/internal/accounts/application"`,
+		`accounts/domain/http_account.go: domain layer must not import "net/http"`,
+		`accounts/domain/persisted_account.go: domain layer must not import "github.com/jackc/pgx/v5"`,
+		`storage/repository.go: storage layer must not import "github.com/pchkauu/want-keep/backend/internal/delivery"`,
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("violations = %q, want %q", got, want)
 	}
 }
 
@@ -162,27 +195,58 @@ func owningLayer(relative string) string {
 }
 
 func forbiddenImport(layer, importPath string) bool {
-	outerPackages := []string{"/delivery", "/storage", "/integrations", "/gateways"}
 	switch layer {
 	case "domain":
-		if importPath == "net/http" || strings.HasPrefix(importPath, "net/http/") || importPath == "database/sql" || strings.HasPrefix(importPath, "database/sql/") || strings.Contains(importPath, "openai") || strings.Contains(importPath, "playwright") {
-			return true
-		}
-		for _, outerPackage := range append(outerPackages, "/ai") {
-			if strings.HasPrefix(importPath, modulePath+"/internal"+outerPackage) {
-				return true
-			}
-		}
+		return isForbiddenInnerImport(importPath, "application", "delivery", "storage", "integrations", "gateways", "ai")
 	case "application":
-		for _, outerPackage := range outerPackages {
-			if strings.HasPrefix(importPath, modulePath+"/internal"+outerPackage) {
-				return true
-			}
-		}
+		return isForbiddenInnerImport(importPath, "delivery", "storage", "integrations", "gateways", "ai")
 	case "storage", "integrations", "gateways", "ai":
-		return strings.HasPrefix(importPath, modulePath+"/internal/delivery")
+		return importsInternalLayer(importPath, "delivery")
 	}
 	return false
+}
+
+func isForbiddenInnerImport(importPath string, forbiddenLayers ...string) bool {
+	if packageOrSubpackage(importPath, "net/http") || packageOrSubpackage(importPath, "database/sql") {
+		return true
+	}
+	if importsInternalLayer(importPath, forbiddenLayers...) {
+		return true
+	}
+	return isThirdPartyImport(importPath)
+}
+
+func importsInternalLayer(importPath string, layers ...string) bool {
+	internalPath := strings.TrimPrefix(importPath, modulePath+"/internal/")
+	if internalPath == importPath {
+		return false
+	}
+	for _, part := range strings.Split(internalPath, "/") {
+		if slices.Contains(layers, part) {
+			return true
+		}
+	}
+	return false
+}
+
+func isThirdPartyImport(importPath string) bool {
+	if packageOrSubpackage(importPath, modulePath) {
+		return false
+	}
+	firstPart, _, _ := strings.Cut(importPath, "/")
+	if !strings.Contains(firstPart, ".") {
+		return false
+	}
+	for _, approvedPackage := range approvedInnerThirdPartyPackages {
+		if packageOrSubpackage(importPath, approvedPackage) {
+			return false
+		}
+	}
+	return true
+}
+
+func packageOrSubpackage(importPath, packagePath string) bool {
+	return importPath == packagePath || strings.HasPrefix(importPath, packagePath+"/")
 }
 
 func writeGoFile(t *testing.T, root, relative, contents string) {

@@ -1,10 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "../design-system/theme.css";
 
 :root {
-  color: #f7f7f7;
-  background: #1a1a1a;
-  font-family: "Manrope", system-ui, sans-serif;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--wk-font-interface);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -34,20 +36,18 @@ body {
   min-height: 100vh;
   place-items: center;
   padding: 48px;
-  background: #1a1a1a;
 }
 
 .foundation-shell__content {
   width: min(100%, 520px);
   padding: 40px;
-  border: 1px solid #303030;
+  border-width: 1px;
   border-radius: 8px;
-  background: #202020;
 }
 
 .foundation-shell .foundation-shell__eyebrow {
   margin: 0 0 12px;
-  color: #8f84ff;
+  color: var(--primary);
   font:
     600 14px/1.4 "Pixelify Sans",
     monospace;
@@ -57,7 +57,7 @@ body {
 
 .foundation-shell h1 {
   margin: 0;
-  color: #ffffff;
+  color: var(--foreground);
   font:
     600 48px/1.1 "Pixelify Sans",
     monospace;
@@ -65,7 +65,7 @@ body {
 
 .foundation-shell p {
   margin: 20px 0 0;
-  color: #b8b8b8;
+  color: var(--muted-foreground);
   font-size: 16px;
   line-height: 1.6;
 }

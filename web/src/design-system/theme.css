@@ -1,0 +1,53 @@
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --font-sans: var(--wk-font-interface);
+  --font-brand: var(--wk-font-brand);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+:root {
+  --background: #1a1a1a;
+  --foreground: #f7f7f7;
+  --card: #202020;
+  --card-foreground: #f7f7f7;
+  --popover: #262626;
+  --popover-foreground: #f7f7f7;
+  --primary: #5f4ef5;
+  --primary-foreground: #ffffff;
+  --secondary: #262626;
+  --secondary-foreground: #f0f0f0;
+  --muted: #202020;
+  --muted-foreground: #b8b8b8;
+  --accent: #29273a;
+  --accent-foreground: #f7f7f7;
+  --destructive: #d5646c;
+  --border: #343434;
+  --input: #3a3a3a;
+  --ring: #8f84ff;
+  --success: #54b98a;
+  --warning: #d4a956;
+  --wk-font-interface: "Manrope", system-ui, sans-serif;
+  --wk-font-brand: "Pixelify Sans", monospace;
+  --radius: 6px;
+}

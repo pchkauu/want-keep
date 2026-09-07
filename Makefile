@@ -11,10 +11,11 @@ PROVIDER ?=
 SCENARIO ?=
 SUITE ?=
 MODE ?=
+E2E_WEB_DIR ?= web
 
 .DEFAULT_GOAL := help
 
-.PHONY: help bootstrap check format-check lint typecheck test build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-contract e2e eval-ai check-deploy backup-check restore-check
+.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-contract e2e eval-ai check-deploy backup-check restore-check
 
 help:
 	@echo "Want Keep repository commands"
@@ -31,11 +32,20 @@ bootstrap:
 
 check: format-check lint typecheck test build docs-check check-contracts
 
-format-check:
-	@unformatted="$$(find backend -type f -name '*.go' -print | xargs gofmt -l)"; \
-		if [ -n "$$unformatted" ]; then echo "Go files need formatting:"; echo "$$unformatted"; exit 1; fi
+format-check: format-check-go
 	$(NPM) --prefix web run format:check
 	$(NPM) --prefix collector run format:check
+
+format-check-go:
+	@if ! go_root="$$(cd backend && $(GO) env GOROOT)"; then \
+		echo "Unable to resolve the module-selected Go toolchain." >&2; exit 1; \
+	fi; \
+	gofmt="$$go_root/bin/gofmt"; \
+	if [ ! -x "$$gofmt" ]; then echo "Pinned gofmt is unavailable at $$gofmt." >&2; exit 1; fi; \
+	if ! unformatted="$$(find backend -type f -name '*.go' -print0 | xargs -0 "$$gofmt" -l)"; then \
+		echo "Pinned gofmt failed." >&2; exit 1; \
+	fi; \
+	if [ -n "$$unformatted" ]; then echo "Go files need formatting:"; echo "$$unformatted"; exit 1; fi
 
 lint:
 	cd backend && $(GO) vet ./...
@@ -46,9 +56,12 @@ typecheck:
 	$(NPM) --prefix web run typecheck
 	$(NPM) --prefix collector run typecheck
 
-test: test-go
+test: test-tooling test-go
 	$(NPM) --prefix web run test
 	$(NPM) --prefix collector run test
+
+test-tooling:
+	sh scripts/check-make-contracts.sh
 
 build:
 	$(NPM) --prefix web run build
@@ -98,10 +111,10 @@ test-contract:
 
 e2e:
 	@if [ -z "$(SCENARIO)" ]; then echo "SCENARIO=<name|all> is required." >&2; exit 2; fi
-	@if [ "$(SCENARIO)" = "all" ]; then suite_path="web/e2e"; else suite_path="web/e2e/$(SCENARIO).spec.ts"; fi; \
+	@if [ "$(SCENARIO)" = "all" ]; then suite_path="$(E2E_WEB_DIR)/e2e"; else suite_path="$(E2E_WEB_DIR)/e2e/$(SCENARIO).spec.ts"; fi; \
 		if [ ! -e "$$suite_path" ]; then echo "E2E scenario '$(SCENARIO)' is not implemented." >&2; exit 2; fi; \
 		if [ "$(SCENARIO)" = "all" ] && ! find "$$suite_path" -type f -name '*.spec.ts' -print -quit | grep -q .; then echo "E2E suite has no scenarios." >&2; exit 2; fi
-	$(NPM) --prefix web exec playwright test -- $(if $(filter all,$(SCENARIO)),,"e2e/$(SCENARIO).spec.ts")
+	cd "$(E2E_WEB_DIR)" && $(NPM) exec playwright test -- $(if $(filter all,$(SCENARIO)),,"e2e/$(SCENARIO).spec.ts")
 
 eval-ai:
 	@if [ -z "$(SUITE)" ]; then echo "SUITE=<name|all> is required." >&2; exit 2; fi
