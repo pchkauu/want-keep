@@ -25,7 +25,7 @@ Dark modern pixel fintech: technological, calm, composed. Whitespace and clear h
 | focus | Inverted fill `#F5F5F5`, text `#1A1A1A`; no outline, visible during hover/active too |
 | success / warning / error | `#83C9A0` / `#D8B36A` / `#E58B91`, text/icon on dark surface; color accompanies a label |
 | spacing | 4 px step; working gaps 8/12/16/24/32/48, larger whitespace follows composition |
-| radius | 2 px badge, 4 px fields/regular buttons, 8 px panels and large sign-in CTA |
+| radius | 12 px fields/regular buttons, 24 px panels, 32 px prominent surfaces; pill badges (task-7.11 user reference) |
 | motion | Regular transitions 150–200 ms; separate event contract below |
 
 CSS custom properties in `web/src/design-system/theme.css` are the single source; shadcn/Tailwind reference them. The [allowed-pair matrix](design-contrast.md) is computed from CSS without rounding before threshold comparison. Normal CTA is `#5F4EF5`, hover `#6B5AF6`, active `#5142D5`, with white labels. Selected uses readable violet on `#262626` plus a selection mark; disabled preserves readable text without an available action. Focus inverts fill and label. Decorative/inactive alias exemptions never apply to text or meaningful indicators. Normal text ≥4.5:1, large text ≥3:1; meaningful boundaries/indicators ≥3:1. Brand `#5F4EF5` on `#1A1A1A` is about 3.23:1 and unsuitable for small text; white on purple is about 5.39:1. Purple logo is a brand mark; labels/help use legible text. [W3C: contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
@@ -88,3 +88,8 @@ AC-102: without developer hints, both members identify allowance/cash risk, expl
 `/__design/tokens` is dev/test only: brand composition, RU/EN typography, exact amounts, states and contrast pairs. Specimens and their CSS are excluded from the production bundle. `make test-web FILTER=design-tokens` checks tokens/resources/matrix; `make e2e SCENARIO=design-tokens` checks Chromium. MOT-01–05 durations are 800/800/1400/1800/200 ms; reduced motion zeroes them and regular transitions. Financial triggers and effects belong to task-7.15.
 
 Per user refinement, manual verification for current task-7.10 uses Chrome. Arc remains in the later product acceptance matrix and is not claimed verified here.
+
+
+## Component implementation
+
+The task-7.11 reference refines shapes and composition: rounded filled surfaces, a prominent accent block, inset rows and side action tiles. The user confirmed retaining the Want Keep palette. This replaces the earlier 2/4/8 px radius contract. [Component interfaces and catalog](design-components.en.md) document ownership, DateField drafts and verification boundaries. Mobile layouts and payment execution from the reference are excluded.

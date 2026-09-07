@@ -5,7 +5,7 @@
 
 Доступные компоненты с собственным оформлением.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализованы компоненты и dev/test-каталог; зависимость task-7.10 закрыта. Проверки и границы приёмки: evidence/task-7.11-components.md.
 
 **Зависимости:** `task-7.10`.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Зафиксировать shadcn/ui на Base UI, проверить состав перед генерацией, кастомизировать принадлежащие проекту исходники. Каталог: buttons, inputs/money/date/select, forms, dialog/alert/sheet, tabs/sidebar, table, badges/alerts, tooltip, skeleton/empty, charts legend и chat result. Все default/hover/focus/disabled/error/loading/selected и UISTATE. Без финансовых вычислений в компонентах; каталог доступен только в dev/test.
+Компоненты shadcn 4.21.0 на Base UI 1.8.0 принадлежат design-system. Округлые формы и вложенная композиция нового референса сохраняют палитру Want Keep; радиусы 12/24/32 px и pill badges, без обводок. Buttons/action tiles, поля и формы, календарь с ручным RU/EN вводом, выборы, overlays, desktop navigation, tables/pagination, feedback, legend/chat result. Денежный ввод сохраняет точные строки и черновики; дата — YYYY-MM-DD без timezone-сдвига. Каталог /__design/components, UISTATE-01–17 и синтетические композиции доступны только в dev/test. Прикладных финансовых вычислений, API и browser storage в компонентах нет.
 
 ### Границы изменений
 
@@ -77,7 +77,7 @@ make test-web FILTER=design-components
 
 Состояния доступны клавиатурой, фокус возвращается, подписи и ошибки читаемы; стандартное оформление заменено по design.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды существуют: make check; make test-web FILTER=design-components; make e2e SCENARIO=design-components; make e2e SCENARIO=design-tokens; git diff --check. Контракты: design-components.md; результаты и границы: evidence/task-7.11-components.md. По решению пользователя реальная браузерная проверка этой задачи использует Chrome; Arc остаётся последующей приёмке.
 
 ### Передача следующему агенту
 
@@ -89,7 +89,7 @@ make test-web FILTER=design-components
 
 Accessible components with custom styling.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Components and the dev/test catalog are implemented; task-7.10 is complete. Checks and acceptance limits: evidence/task-7.11-components.en.md.
 
 **Dependencies:** `task-7.10`.
 
@@ -97,7 +97,7 @@ Accessible components with custom styling.
 
 ### Change and contracts
 
-Pin shadcn/ui on Base UI, inspect selected generation before applying, customize project-owned sources. Catalog: buttons, inputs/money/date/select, forms, dialog/alert/sheet, tabs/sidebar, table, badges/alerts, tooltip, skeleton/empty, chart legends and chat results. Cover default/hover/focus/disabled/error/loading/selected and UISTATE. No financial calculations in components; catalog is dev/test only.
+Design-system owns shadcn 4.21.0 components on Base UI 1.8.0. Rounded shapes and inset composition follow the new reference while retaining the Want Keep palette; 12/24/32 px radii and pill badges, without outlines. Buttons/action tiles, inputs/forms, calendar with manual RU/EN entry, selections, overlays, desktop navigation, tables/pagination, feedback, legend/chat result. Money input retains exact strings and drafts; dates use YYYY-MM-DD without timezone shifting. /__design/components, UISTATE-01–17 and synthetic compositions are dev/test only. Components contain no application financial calculations, APIs or browser storage.
 
 ### Change boundaries
 
@@ -161,7 +161,7 @@ make test-web FILTER=design-components
 
 States work by keyboard, focus returns and labels/errors are legible; stock visuals are replaced according to design.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Commands exist: make check; make test-web FILTER=design-components; make e2e SCENARIO=design-components; make e2e SCENARIO=design-tokens; git diff --check. Contracts: design-components.en.md; results and limits: evidence/task-7.11-components.en.md. Per user decision, actual-browser verification for this task uses Chrome; Arc remains later acceptance.
 
 ### Handoff to the next agent
 
