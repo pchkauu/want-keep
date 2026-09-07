@@ -2,13 +2,13 @@
 
 [Русский](design.md) · [Screens](screens.en.md) · [Navigation](navigation.en.md)
 
-D-30/D-31, REQ-077–REQ-087, AC-094–AC-104. These specify the future interface and visual acceptance. Designs and application are not implemented yet.
+D-30/D-31, REQ-077–REQ-087, AC-094–AC-104. The task-7.10 visual foundation is implemented; product screens and their full acceptance remain follow-up work. [Evidence and boundaries](evidence/task-7.10-design.en.md).
 
 ## Platform and character
 
 Desktop web only on a macOS laptop in actual Chrome and Arc. Reference windows: 1280×720 and 1440×900 CSS px, at 100% and 200% zoom. Resizing preserves access to actions, figures and forms. Mobile adaptation, bottom navigation, home-screen installation and phone reference sizes are excluded. Browser push remains.
 
-Dark modern pixel fintech: technological, calm, composed. Whitespace and clear hierarchy take priority over decorative filling. Simple pixel geometry, thin lines, monochrome icons with purple accents. Pixel character does not turn forms/tables into a retro game. No light theme, including the first loading frame and browser elements where styling is supported.
+Dark modern pixel fintech: technological, calm, composed. Whitespace and clear hierarchy take priority over decorative filling. User refinement: restrained cyberpunk and Middle Eastern architectural rhythm. Obsidian planes, localized violet light, a white/violet wordmark, a sparse sand accent and arch forms. Conversation references establish material and mood; their phones and payment cards do not expand desktop MVP functionality. No card/field outlines, decorative contours, neon grids or pervasive glow. Group through space, typography and fills; geometry belongs to brand specimens, not every transaction. Pixel character does not turn forms/tables into a retro game. No light theme, including the first loading frame and browser elements where styling is supported.
 
 ## Tokens
 
@@ -18,22 +18,28 @@ Dark modern pixel fintech: technological, calm, composed. Whitespace and clear h
 | surface / surface-raised | `#202020` / `#262626`, nested region and panel |
 | brand / primary | `#5F4EF5`, primary CTA, brand, selected accent |
 | text-primary / secondary | `#F5F5F5` / `#B3B3B3`, primary and secondary text |
-| divider / control-border | `#3A3A3A` decorative separator / `#777777` meaningful field boundary; roles are not interchangeable |
-| focus | `#A79BFF`, visible outline offset from component |
+| brand backdrop / architecture | `#111114` / `#18171E`, deep brand planes without replacing the base background |
+| sand / warm surface | `#C7AF8F` / `#242220`, small warm accents |
+| accent-readable | `#A79BFF`, small accent text |
+| compatibility aliases | `border`, `input`, `ring` remain for shadcn/Tailwind; an alias does not prescribe an outline |
+| focus | Inverted fill `#F5F5F5`, text `#1A1A1A`; no outline, visible during hover/active too |
 | success / warning / error | `#83C9A0` / `#D8B36A` / `#E58B91`, text/icon on dark surface; color accompanies a label |
 | spacing | 4 px step; working gaps 8/12/16/24/32/48, larger whitespace follows composition |
 | radius | 2 px badge, 4 px fields/regular buttons, 8 px panels and large sign-in CTA |
 | motion | Regular transitions 150–200 ms; separate event contract below |
 
-These are initial semantic tokens, not permission to combine any foreground/background. During implementation task-7.10 pins a normal/hover/active/disabled/focus matrix and calculates contrast. Normal text ≥4.5:1, large text ≥3:1; meaningful boundaries/indicators ≥3:1. Brand `#5F4EF5` on `#1A1A1A` is about 3.23:1 and unsuitable for small text; white on purple is about 5.39:1. Purple logo is a brand mark; labels/help use legible text. [W3C: contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+CSS custom properties in `web/src/design-system/theme.css` are the single source; shadcn/Tailwind reference them. The [allowed-pair matrix](design-contrast.md) is computed from CSS without rounding before threshold comparison. Normal CTA is `#5F4EF5`, hover `#6B5AF6`, active `#5142D5`, with white labels. Selected uses readable violet on `#262626` plus a selection mark; disabled preserves readable text without an available action. Focus inverts fill and label. Decorative/inactive alias exemptions never apply to text or meaningful indicators. Normal text ≥4.5:1, large text ≥3:1; meaningful boundaries/indicators ≥3:1. Brand `#5F4EF5` on `#1A1A1A` is about 3.23:1 and unsuitable for small text; white on purple is about 5.39:1. Purple logo is a brand mark; labels/help use legible text. [W3C: contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
 
-Status colors are engineering defaults within the agreed muted palette. Error is not red alone, forecast not opacity alone, selected member not background alone. Minimal shadows may separate popovers; permanent cards use borders/space.
+Status colors are engineering defaults within the agreed muted palette. Error is not red alone, forecast not opacity alone, selected member not background alone. Minimal shadows may separate popovers; permanent cards use fills and space without outlines.
 
 ## Typography and logo
 
 - Pixelify Sans: logo/name, large headings, key amounts, selected badges/accent buttons. Avoid dense transaction rows, multiline explanations and small forms.
 - Manrope: transactions, forms, tables, descriptions, settings and secondary information. Base UI 14–16 px with sufficient line height; key amounts 28–40 px depending on space. Critical amounts are never ellipsized.
-- Fonts are local with license files. In task-7.10 check RU/EN, minus, percentages, currencies, eight BTC decimals, numeric alignment and fallback. Missing glyph uses a legible UI fallback, not a square. Pixelify Sans and Manrope have Cyrillic subsets in Google Fonts; actual selected-file coverage needs separate verification. [Pixelify Sans](https://raw.githubusercontent.com/google/fonts/main/ofl/pixelifysans/METADATA.pb), [Manrope](https://raw.githubusercontent.com/google/fonts/main/ofl/manrope/METADATA.pb).
+- Local full variable TTF files: Pixelify Sans 400–700 and Manrope 200–800, without conversion/subsetting. OFL files, source URLs, pinned revisions and SHA-256 are in `web/public/fonts/manifest.json`. Use `font-display: swap` and disable synthetic styles.
+- Brand chain: Pixelify Sans → Manrope → system-ui → sans-serif; interface: Manrope → system-ui → sans-serif. Selected Pixelify Sans lacks Cyrillic “О”, “П”, ₽, ₿ and narrow no-break space; fallback supplies those glyphs. Manrope covers those letters/currency signs; narrow space uses system fallback. Pixelify Sans has no `tnum`; tables/comparable amounts use Manrope tabular figures.
+- RUB/USD/USDT/USDC/BTC/ETH remain exact strings, including 18 fractional USDC/ETH digits and the 256-character limit. No `Number` conversion or ellipsis; wrapping preserves every digit. [Font coverage report](evidence/task-7.10-design.en.md#font-coverage).
+
 
 The user supplied the [original logo](assets/logo_512px.svg). Despite its 512px filename it has `viewBox="0 0 455 512"`: preserve proportions and pad a square container. Color `#5F4EF5`, pixel geometry without decorative distortion. Do not automatically redraw or replace it with emoji.
 
@@ -65,7 +71,7 @@ Animation responds to an event; static text explains the outcome and remains acc
 | MOT-02 | Confirmed savings top-up: a few sparkles around progress, 600–1000 ms | Principal is not return; forecast and repeat import never trigger it |
 | MOT-03 | Goal actually achieved: local pixel confetti, 1000–1600 ms | Once per confirmed achievement event; refund/correction never hidden by celebration |
 | MOT-04 | Major joint achievement: soft disco with slowly shifting geometric accents, up to 1800 ms | MOT-03 variant for completed joint goal, no flashing or abrupt brightness change; does not stack with confetti |
-| MOT-05 | Limit first exceeded: calm warning-icon/thin-outline appearance, 150–200 ms | Static excess amount and “View plan”; no celebratory reward for overspending |
+| MOT-05 | Limit first exceeded: calm warning-icon appearance, 150–200 ms | Static excess amount and “View plan”; no celebratory reward for overspending |
 
 Decorative effects default on when `prefers-reduced-motion` is absent; each member may disable them in SCR-031. Reduced motion replaces all MOT with static icon/text regardless of preference. Escape ends decoration without cancelling the transaction; effects never capture pointer/focus, obscure amounts/forms or shift layout. Financial numbers immediately show confirmed values without count-up through false amounts.
 
@@ -76,3 +82,9 @@ Trigger is a confirmed typed application event; page read, AI response, optimist
 For each SCR: question → primary answer → action → explanation → details. Technical fields stay below the primary level; amounts are labelled available/reserved/expected. Errors name the problem/action; partial history explains limits of conclusions. Clear status, familiar language, control, error prevention and progressive disclosure apply to concrete flows. [Nielsen Norman Group](https://www.nngroup.com/articles/ten-usability-heuristics/).
 
 AC-102: without developer hints, both members identify allowance/cash risk, explain an overview amount, enter a receipt and distinguish creation/linking, correct shares, explain a goal reserve, handle reauth/AI waiting, and sign in/recover own access. Protocol records expected answers on synthetic data, actual answers, mistakes, time and browser. Chromium automation replaces neither observation nor actual Chrome/Arc. Full WCAG conformance is not claimed without a separate audit.
+
+## Reproducible specimens
+
+`/__design/tokens` is dev/test only: brand composition, RU/EN typography, exact amounts, states and contrast pairs. Specimens and their CSS are excluded from the production bundle. `make test-web FILTER=design-tokens` checks tokens/resources/matrix; `make e2e SCENARIO=design-tokens` checks Chromium. MOT-01–05 durations are 800/800/1400/1800/200 ms; reduced motion zeroes them and regular transitions. Financial triggers and effects belong to task-7.15.
+
+Per user refinement, manual verification for current task-7.10 uses Chrome. Arc remains in the later product acceptance matrix and is not claimed verified here.

@@ -933,13 +933,13 @@ REQ: `REQ-076`.
 
 ## AC-094
 
-Dark-only Want Keep tokens and restrained pixel identity.
+Dark Want Keep tokens: restrained cyberpunk and Middle Eastern architectural rhythm.
 
 REQ: `REQ-077`.
 
 - **Given:** Overview, sign-in, form and table use one design system.
 - **When:** Backgrounds, surfaces, accents and states are inspected.
-- **Then:** Base #1A1A1A, surfaces #202020–#262626, brand #5F4EF5; no light-theme selector. Semantic states have text/icons, thin separators and minimal shadows.
+- **Then:** Base #1A1A1A, working surfaces #202020–#262626, brand #5F4EF5; no light theme. Brand planes #111114/#18171E, sparse sand accents #C7AF8F. No card/field outlines; group through fills, space and typography. Focus uses visible inverted fill; statuses have text/icons.
 - **Level:** `manual+e2e`.
 
 ## AC-095
@@ -948,7 +948,7 @@ Pixelify Sans serves branding and large accents; Manrope serves everyday UI.
 
 REQ: `REQ-078`.
 
-- **Given:** RU/EN strings, RUB/USD/USDT/BTC and long precise amounts exist.
+- **Given:** RU/EN strings, RUB/USD/USDT/USDC/BTC/ETH and long precise amounts exist.
 - **When:** Loaded and unavailable fonts are tested.
 - **Then:** Fonts are hosted locally with licenses; Cyrillic and currency symbols remain legible and fallback loses no glyphs or digits. Tables/forms use Manrope; large amounts may use Pixelify Sans.
 - **Level:** `manual+e2e`.

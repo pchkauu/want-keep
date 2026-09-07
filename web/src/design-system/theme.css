@@ -20,11 +20,19 @@
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-obsidian: var(--wk-obsidian);
+  --color-sand: var(--wk-sand);
+  --color-surface-warm: var(--wk-surface-warm);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-disabled: var(--disabled);
+  --color-disabled-foreground: var(--disabled-foreground);
+  --spacing: 0.25rem;
   --font-sans: var(--wk-font-interface);
   --font-brand: var(--wk-font-brand);
-  --radius-sm: calc(var(--radius) - 2px);
+  --radius-sm: var(--wk-radius-badge);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
+  --radius-lg: var(--wk-radius-panel);
 }
 
 :root {
@@ -36,11 +44,13 @@
   --popover-foreground: #f5f5f5;
   --primary: #5f4ef5;
   --primary-foreground: #ffffff;
+  --primary-hover: #6b5af6;
+  --primary-active: #5142d5;
   --secondary: #262626;
   --secondary-foreground: #f5f5f5;
   --muted: #202020;
   --muted-foreground: #b3b3b3;
-  --accent: #29273a;
+  --accent: #262626;
   --accent-foreground: #f5f5f5;
   --accent-readable: #a79bff;
   --destructive: #e58b91;
@@ -49,7 +59,55 @@
   --ring: #a79bff;
   --success: #83c9a0;
   --warning: #d8b36a;
+  --wk-obsidian: #111114;
+  --wk-sand: #c7af8f;
+  --wk-surface-architecture: #18171e;
+  --wk-surface-warm: #242220;
+  --wk-focus-fill: #f5f5f5;
+  --wk-focus-foreground: #1a1a1a;
+  --disabled: #262626;
+  --disabled-foreground: #b3b3b3;
   --wk-font-interface: "Manrope", system-ui, sans-serif;
-  --wk-font-brand: "Pixelify Sans", monospace;
-  --radius: 6px;
+  --wk-font-brand: "Pixelify Sans", "Manrope", system-ui, sans-serif;
+  --wk-space-1: 0.25rem;
+  --wk-space-2: 0.5rem;
+  --wk-space-3: 0.75rem;
+  --wk-space-4: 1rem;
+  --wk-space-6: 1.5rem;
+  --wk-space-8: 2rem;
+  --wk-space-12: 3rem;
+  --wk-radius-badge: 2px;
+  --radius: 4px;
+  --wk-radius-panel: 8px;
+  --wk-text-small: 0.875rem;
+  --wk-text-body: 1rem;
+  --wk-text-heading: 1.75rem;
+  --wk-text-amount: 2.5rem;
+  --wk-text-display: clamp(3rem, 5vw, 5.5rem);
+  --wk-leading-body: 1.5;
+  --wk-leading-heading: 1.2;
+  --wk-weight-body: 400;
+  --wk-weight-label: 600;
+  --wk-weight-heading: 600;
+  --wk-shadow-popover: 0 4px 12px #00000033;
+  --wk-motion-fast: 150ms;
+  --wk-motion-normal: 200ms;
+  --wk-motion-account: 800ms;
+  --wk-motion-saving: 800ms;
+  --wk-motion-goal: 1400ms;
+  --wk-motion-shared-goal: 1800ms;
+  --wk-motion-limit: 200ms;
+  --wk-motion-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --wk-motion-fast: 0ms;
+    --wk-motion-normal: 0ms;
+    --wk-motion-account: 0ms;
+    --wk-motion-saving: 0ms;
+    --wk-motion-goal: 0ms;
+    --wk-motion-shared-goal: 0ms;
+    --wk-motion-limit: 0ms;
+  }
 }

@@ -1,0 +1,3 @@
+# Preserve the upstream license bytes, including original line endings and spaces.
+web/public/fonts/manrope/OFL.txt -text whitespace=-blank-at-eol,cr-at-eol
+web/public/fonts/pixelifysans/OFL.txt -text whitespace=-blank-at-eol,cr-at-eol

@@ -462,7 +462,7 @@ Source: `D-18`. Acceptance: [AC-090](acceptance_criteria.en.md#ac-090).
 
 ## REQ-077
 
-Dark-only Want Keep tokens and restrained pixel identity.
+Dark Want Keep tokens: restrained cyberpunk and Middle Eastern architectural rhythm.
 
 Source: `D-30`. Acceptance: [AC-094](acceptance_criteria.en.md#ac-094).
 

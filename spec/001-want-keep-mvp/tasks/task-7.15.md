@@ -200,7 +200,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 ### Связанные требования
 
-- **REQ-077:** Только тёмная тема с токенами Want Keep и сдержанной pixel-айдентикой.
+- **REQ-077:** Тёмные токены Want Keep: сдержанный киберпанк и архитектурный ритм Ближнего Востока.
 - **REQ-082:** Экранные состояния объясняют последствия и безопасный следующий шаг без потери ввода.
 - **REQ-084:** Доступность проверяется на реальных Chrome и Arc, включая клавиатуру, фокус, контраст, масштаб и reduced motion.
 - **REQ-087:** Контекстные pixel-анимации подтверждают значимые события и предупреждают о лимитах, сохраняя доступность и достоверность результата.
@@ -213,7 +213,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 - **Дано:** Обзор, вход, форма и таблица используют одну дизайн-систему.
 - **Когда:** Проверяются фон, поверхности, акценты и состояния.
-- **Тогда:** Фон #1A1A1A, поверхности #202020–#262626, бренд #5F4EF5; нет переключателя светлой темы. Семантические статусы имеют текст/значок, разделители тонкие, тени минимальны.
+- **Тогда:** Фон #1A1A1A, рабочие поверхности #202020–#262626, бренд #5F4EF5; нет светлой темы. Брендовые плоскости #111114/#18171E, редкие песочные акценты #C7AF8F. Нет обводок карточек/полей; группировка заливкой, пространством и типографикой. Фокус заметен инверсией заливки; статусы имеют текст/значок.
 - **Уровень:** `manual+e2e`.
 
 #### AC-099
@@ -452,7 +452,7 @@ Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-077:** Dark-only Want Keep tokens and restrained pixel identity.
+- **REQ-077:** Dark Want Keep tokens: restrained cyberpunk and Middle Eastern architectural rhythm.
 - **REQ-082:** Screen states explain consequences and a safe next step without losing input.
 - **REQ-084:** Accessibility is checked in actual Chrome and Arc, including keyboard, focus, contrast, zoom and reduced motion.
 - **REQ-087:** Contextual pixel animations acknowledge milestones and warn about limits while preserving accessibility and truthful outcomes.
@@ -465,7 +465,7 @@ A link establishes coverage but does not prove the whole criterion; verification
 
 - **Given:** Overview, sign-in, form and table use one design system.
 - **When:** Backgrounds, surfaces, accents and states are inspected.
-- **Then:** Base #1A1A1A, surfaces #202020–#262626, brand #5F4EF5; no light-theme selector. Semantic states have text/icons, thin separators and minimal shadows.
+- **Then:** Base #1A1A1A, working surfaces #202020–#262626, brand #5F4EF5; no light theme. Brand planes #111114/#18171E, sparse sand accents #C7AF8F. No card/field outlines; group through fills, space and typography. Focus uses visible inverted fill; statuses have text/icons.
 - **Level:** `manual+e2e`.
 
 #### AC-099

@@ -5,7 +5,7 @@
 
 Единый визуальный фундамент desktop Want Keep.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализована визуальная основа и dev/test-образцы; task-1.1 включена в базу. Продуктовые экраны и общий каталог компонентов остаются последующим задачам.
 
 **Зависимости:** `task-1.1`.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-По design.md создать semantic colors/spacing/radius/type/motion tokens; сохранить logo_512px.svg без изменения пропорций. Локально разместить Pixelify Sans и Manrope с лицензиями и fallback. Рассчитать контраст каждой пары; брендовый фиолетовый не использовать как мелкий текст на тёмном фоне. Без темы light.
+Единый источник CSS-токенов: графит, обсидиановые брендовые плоскости, фиолетовый и песочный акцент по референсам пользователя. Без обводок; видимый фокус через инверсию. Сохранить shadcn/Tailwind-алиасы, logo_512px.svg побайтно, полные локальные variable Pixelify Sans/Manrope с OFL, закреплёнными источниками и SHA-256. Точные суммы остаются строками; табличные цифры — Manrope. Длительности и reduced motion без финансовых триггеров. /__design/tokens не входит в production bundle.
 
 ### Границы изменений
 
@@ -25,7 +25,7 @@
 
 ### Связанные требования
 
-- **REQ-077:** Только тёмная тема с токенами Want Keep и сдержанной pixel-айдентикой.
+- **REQ-077:** Тёмные токены Want Keep: сдержанный киберпанк и архитектурный ритм Ближнего Востока.
 - **REQ-078:** Pixelify Sans используется для бренда и крупных акцентов, Manrope — для повседневного интерфейса.
 
 ### Критерии приёмки
@@ -36,12 +36,12 @@
 
 - **Дано:** Обзор, вход, форма и таблица используют одну дизайн-систему.
 - **Когда:** Проверяются фон, поверхности, акценты и состояния.
-- **Тогда:** Фон #1A1A1A, поверхности #202020–#262626, бренд #5F4EF5; нет переключателя светлой темы. Семантические статусы имеют текст/значок, разделители тонкие, тени минимальны.
+- **Тогда:** Фон #1A1A1A, рабочие поверхности #202020–#262626, бренд #5F4EF5; нет светлой темы. Брендовые плоскости #111114/#18171E, редкие песочные акценты #C7AF8F. Нет обводок карточек/полей; группировка заливкой, пространством и типографикой. Фокус заметен инверсией заливки; статусы имеют текст/значок.
 - **Уровень:** `manual+e2e`.
 
 #### AC-095
 
-- **Дано:** Есть RU/EN строки, RUB/USD/USDT/BTC и длинные точные суммы.
+- **Дано:** Есть RU/EN строки, RUB/USD/USDT/USDC/BTC/ETH и длинные точные суммы.
 - **Когда:** Проверяются загруженные и недоступные шрифты.
 - **Тогда:** Шрифты размещены локально с лицензиями; кириллица и валютные символы читаемы, fallback не теряет символы или разряды. Таблицы и формы используют Manrope, крупные суммы могут использовать Pixelify Sans.
 - **Уровень:** `manual+e2e`.
@@ -54,7 +54,7 @@ make test-web FILTER=design-tokens
 
 Токены воспроизводимы, шрифты RU/EN и длинные суммы читаемы, лицензии включены, contrast matrix приложена.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды существуют: make check; make test-web FILTER=design-tokens; make e2e SCENARIO=design-tokens; git diff --check. Матрица: design-contrast.md; покрытие шрифтов и границы: evidence/task-7.10-design.md. По уточнению пользователя ручная проверка этой задачи использует Chrome; Arc остаётся последующей продуктовой приёмке.
 
 ### Передача следующему агенту
 
@@ -66,7 +66,7 @@ make test-web FILTER=design-tokens
 
 A consistent desktop Want Keep visual foundation.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Visual foundation and dev/test specimens implemented; task-1.1 is included in the base. Product screens and the full component catalog remain downstream.
 
 **Dependencies:** `task-1.1`.
 
@@ -74,7 +74,7 @@ A consistent desktop Want Keep visual foundation.
 
 ### Change and contracts
 
-Implement semantic color/spacing/radius/type/motion tokens from design.en.md; preserve logo_512px.svg proportions. Host Pixelify Sans and Manrope locally with licenses and fallbacks. Calculate each contrast pair; do not use brand purple as small text on dark surfaces. No light theme.
+One CSS token source: graphite, obsidian brand planes, violet and sand accent following user references. No outlines; visible focus through inversion. Preserve shadcn/Tailwind aliases, byte-identical logo_512px.svg, full local variable Pixelify Sans/Manrope with OFL, pinned sources and SHA-256. Exact amounts remain strings; tabular figures use Manrope. Durations/reduced motion without financial triggers. /__design/tokens stays outside the production bundle.
 
 ### Change boundaries
 
@@ -86,7 +86,7 @@ Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-077:** Dark-only Want Keep tokens and restrained pixel identity.
+- **REQ-077:** Dark Want Keep tokens: restrained cyberpunk and Middle Eastern architectural rhythm.
 - **REQ-078:** Pixelify Sans serves branding and large accents; Manrope serves everyday UI.
 
 ### Acceptance criteria
@@ -97,12 +97,12 @@ A link establishes coverage but does not prove the whole criterion; verification
 
 - **Given:** Overview, sign-in, form and table use one design system.
 - **When:** Backgrounds, surfaces, accents and states are inspected.
-- **Then:** Base #1A1A1A, surfaces #202020–#262626, brand #5F4EF5; no light-theme selector. Semantic states have text/icons, thin separators and minimal shadows.
+- **Then:** Base #1A1A1A, working surfaces #202020–#262626, brand #5F4EF5; no light theme. Brand planes #111114/#18171E, sparse sand accents #C7AF8F. No card/field outlines; group through fills, space and typography. Focus uses visible inverted fill; statuses have text/icons.
 - **Level:** `manual+e2e`.
 
 #### AC-095
 
-- **Given:** RU/EN strings, RUB/USD/USDT/BTC and long precise amounts exist.
+- **Given:** RU/EN strings, RUB/USD/USDT/USDC/BTC/ETH and long precise amounts exist.
 - **When:** Loaded and unavailable fonts are tested.
 - **Then:** Fonts are hosted locally with licenses; Cyrillic and currency symbols remain legible and fallback loses no glyphs or digits. Tables/forms use Manrope; large amounts may use Pixelify Sans.
 - **Level:** `manual+e2e`.
@@ -115,7 +115,7 @@ make test-web FILTER=design-tokens
 
 Tokens are reproducible, RU/EN fonts and long amounts are readable, licenses included and contrast matrix attached.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Commands exist: make check; make test-web FILTER=design-tokens; make e2e SCENARIO=design-tokens; git diff --check. Matrix: design-contrast.md; font coverage and boundaries: evidence/task-7.10-design.en.md. Per user refinement this task uses Chrome for manual verification; Arc remains later product acceptance.
 
 ### Handoff to the next agent
 

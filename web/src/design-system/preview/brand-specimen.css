@@ -1,0 +1,102 @@
+.brand-specimen {
+  margin-block: var(--wk-space-12);
+}
+.brand-specimen__intro {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--wk-space-4);
+  margin-block-end: var(--wk-space-6);
+}
+.brand-specimen__intro h1 {
+  margin: 0;
+  font-size: var(--wk-text-heading);
+  font-weight: var(--wk-weight-heading);
+}
+.brand-specimen__intro p {
+  margin: 0;
+  color: var(--wk-sand);
+  font-size: var(--wk-text-small);
+}
+.brand-specimen__scene {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 440px;
+  display: grid;
+  place-items: center;
+  padding: var(--wk-space-12);
+  background: var(--wk-obsidian);
+  border-radius: var(--wk-radius-panel);
+}
+.brand-specimen__architecture {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-end: -50px;
+  height: 100%;
+  max-width: 48%;
+  z-index: -1;
+}
+.brand-specimen__arch-back {
+  fill: var(--wk-surface-architecture);
+}
+.brand-specimen__arch-light {
+  fill: var(--primary);
+}
+.brand-specimen__arch-front {
+  fill: var(--wk-obsidian);
+}
+.brand-specimen__identity {
+  text-align: center;
+}
+.brand-specimen__identity img {
+  height: 112px;
+  width: auto;
+  margin-block-end: var(--wk-space-8);
+}
+.brand-specimen__name {
+  margin: 0;
+  font-size: var(--wk-text-display);
+  line-height: 1.1;
+}
+.brand-specimen__name span {
+  color: var(--primary);
+}
+.brand-specimen__tagline,
+.brand-specimen__corner,
+.brand-specimen__footnote {
+  font-size: var(--wk-text-small);
+  color: var(--muted-foreground);
+  letter-spacing: 0.24em;
+  line-height: 1.5;
+}
+.brand-specimen__tagline {
+  margin-block-start: var(--wk-space-4);
+}
+.brand-specimen__corner {
+  position: absolute;
+  inset: var(--wk-space-8) auto auto var(--wk-space-8);
+}
+.brand-specimen__footnote {
+  position: absolute;
+  inset: auto var(--wk-space-8) var(--wk-space-8) auto;
+  text-align: right;
+}
+.brand-specimen__caption {
+  color: var(--muted-foreground);
+  font-size: var(--wk-text-small);
+  margin-block-start: var(--wk-space-4);
+}
+@media (max-width: 900px) {
+  .brand-specimen__scene {
+    padding: var(--wk-space-8) var(--wk-space-4);
+  }
+  .brand-specimen__architecture {
+    max-width: 70%;
+  }
+  .brand-specimen__corner,
+  .brand-specimen__footnote {
+    display: none;
+  }
+}
