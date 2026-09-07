@@ -5,7 +5,7 @@
 
 Поднять воспроизводимую основу Go, React и сборщика без продуктовых заглушек, выдаваемых за функции.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Техническая основа реализована; общий барьер готовности task-0.10 остаётся открытым.
 
 **Зависимости:** `task-0.10`.
 
@@ -17,11 +17,16 @@
 
 ### Границы изменений
 
+- `.nvmrc`
 - `backend/go.mod`
 - `web/package.json`
 - `collector/package.json`
 - `Makefile`
 - `.github/workflows/ci.yml`
+- `api/`
+- `config/environments/`
+- `scripts/check-openapi-state.sh`
+- `spec/001-want-keep-mvp/evidence/task-1.1-foundation.md`
 
 Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
 
@@ -64,7 +69,7 @@ make check
 
 Локальный clean bootstrap и CI выполняют документированные команды; архитектурные границы и lockfiles согласованы.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Интерфейс `make` создан task-1.1. Отсутствующая suite завершается ошибкой; live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
 ### Передача следующему агенту
 
@@ -76,7 +81,7 @@ make check
 
 Establish reproducible Go, React and collector foundations without presenting stubs as features.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** The technical foundation is implemented; the overall task-0.10 readiness gate remains open.
 
 **Dependencies:** `task-0.10`.
 
@@ -88,11 +93,16 @@ Create the chosen modular layout and pin compatible tool/dependency versions. Im
 
 ### Change boundaries
 
+- `.nvmrc`
 - `backend/go.mod`
 - `web/package.json`
 - `collector/package.json`
 - `Makefile`
 - `.github/workflows/ci.yml`
+- `api/`
+- `config/environments/`
+- `scripts/check-openapi-state.sh`
+- `spec/001-want-keep-mvp/evidence/task-1.1-foundation.md`
 
 These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
 
@@ -135,7 +145,7 @@ make check
 
 Clean local bootstrap and CI execute documented commands; architectural boundaries and lockfiles agree.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The `make` interface is provided by task-1.1. A missing suite fails explicitly; live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 
 ### Handoff to the next agent
 

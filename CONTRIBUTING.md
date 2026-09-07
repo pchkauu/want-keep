@@ -6,9 +6,9 @@ This repository is **source-available**. You may fork it, modify it, self-host i
 
 ## Current scope
 
-Application code is not published yet. Useful contributions today are documentation and repository process.
+The reproducible Go, React/Vite and Playwright collector foundation is available. Product workflows and public APIs are not implemented yet.
 
-The agreed target stack and task dependencies are documented in the [MVP specification](spec/001-want-keep-mvp/README.en.md). When application code lands, this file will gain concrete runtime, test, and lint commands. Do not present planned commands as available or claim that the application can be started locally.
+The agreed target stack and task dependencies are documented in the [MVP specification](spec/001-want-keep-mvp/README.en.md). Do not present a foundation build or a planned suite as a finished product feature.
 
 ## How to contribute
 
@@ -16,14 +16,21 @@ The agreed target stack and task dependencies are documented in the [MVP specifi
 2. Create a branch.
 3. Make focused changes.
 4. Add or update tests when code exists.
-5. Run the project validation commands when they exist.
+5. Run the project validation commands.
 6. Open a pull request.
 
 Discuss large changes in an issue first.
 
-## How to run the project
+## Verification
 
-There is no application runtime in this repository yet.
+Use Go 1.26.5 and Node.js 24.19.0, then run:
+
+```sh
+make bootstrap
+make check
+```
+
+`make check` covers formatting, lint, type checking, unit tests, builds, specification validation and the OpenAPI source/generated-state contract. See `make help` and the architecture constraints for targeted commands. A target for a future suite fails until that suite exists.
 
 For hand-authored specification changes, update both RU/EN Markdown versions. Requirements, acceptance criteria, screens/forms/states and task cards are generated from `spec/001-want-keep-mvp/catalog.json`; edit that source and run these existing documentation commands from the repository root:
 
@@ -77,18 +84,12 @@ Maintainers may ask for smaller PRs if a change mixes unrelated work.
 
 ## Tests
 
-When application code exists:
-
 - add or update tests for changed behavior
 - do not weaken tests to hide a failure
-
-Until then, documentation PRs should match what is actually in the repository.
 
 ## Code quality
 
 Prefer small, readable changes.
-
-Once a stack is published:
 
 - use the project formatter, linter, and test commands
 - do not introduce dependencies without a clear need

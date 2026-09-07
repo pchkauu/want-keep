@@ -2976,6 +2976,10 @@
     {
       "id": "task-1.1",
       "kind": "implementation",
+      "status": {
+        "ru": "Техническая основа реализована; общий барьер готовности task-0.10 остаётся открытым.",
+        "en": "The technical foundation is implemented; the overall task-0.10 readiness gate remains open."
+      },
       "title": {
         "ru": "Создать структуру проекта и команды проверки",
         "en": "Create project structure and verification commands"
@@ -2993,11 +2997,16 @@
         "AC-062"
       ],
       "targets": [
+        ".nvmrc",
         "backend/go.mod",
         "web/package.json",
         "collector/package.json",
         "Makefile",
-        ".github/workflows/ci.yml"
+        ".github/workflows/ci.yml",
+        "api/",
+        "config/environments/",
+        "scripts/check-openapi-state.sh",
+        "spec/001-want-keep-mvp/evidence/task-1.1-foundation.md"
       ],
       "behavior": {
         "ru": "Создать выбранную модульную структуру и закрепить совместимые версии инструментов/зависимостей. Реализовать контракт Makefile из constraints для Go, web, collector, интеграционных и E2E-проверок; CI запускает доступные проверки. Зафиксировать OpenAPI-source → generation порядок и отдельные окружения; runtime-команды документируются только после появления реализации.",
@@ -3009,6 +3018,10 @@
           "ru": "Локальный clean bootstrap и CI выполняют документированные команды; архитектурные границы и lockfiles согласованы.",
           "en": "Clean local bootstrap and CI execute documented commands; architectural boundaries and lockfiles agree."
         }
+      },
+      "verification_note": {
+        "ru": "Интерфейс `make` создан task-1.1. Отсутствующая suite завершается ошибкой; live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.",
+        "en": "The `make` interface is provided by task-1.1. A missing suite fails explicitly; live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers."
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/11"
     },
