@@ -186,3 +186,50 @@ func TestRatesExplainUnavailableAndQuoteCoverage(t *testing.T) {
 		}
 	}
 }
+
+func TestValuationRequiresSourceLegs(t *testing.T) {
+	b, err := contract.NewBoundary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const source = `{"id":"10000000-0000-4000-8000-000000000001","revision":1,"rate":{"base":"BTC","quote":"RUB","value":"5000000.000000000001"},"requestedDate":"2026-09-07","observedAt":"2026-09-07T00:00:00Z","fetchedAt":"2026-09-07T01:00:00Z","source":"synthetic-cross","method":"reference","granularity":"daily","quality":{"coverage":{"state":"complete","reasons":[]},"freshness":"fresh"}}`
+	const legs = `[{"providerAssetId":"bitcoin","source":"CoinGecko","transport":"demo-api","requestedDate":"2026-09-07","effectiveAt":"2026-09-07T00:00:00Z","fetchedAt":"2026-09-07T01:00:00Z","granularity":"daily","revision":2,"rate":{"base":"BTC","quote":"USD","value":"50000.00000000000001"}},{"providerAssetId":"USD","source":"CBR","transport":"daily-xml","requestedDate":"2026-09-07","effectiveAt":"2026-09-05T00:00:00Z","fetchedAt":"2026-09-07T01:00:00Z","granularity":"daily","revision":3,"rate":{"base":"USD","quote":"RUB","value":"100"}}]`
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(source), &fields); err != nil {
+		t.Fatal(err)
+	}
+	fields["legs"] = json.RawMessage(legs)
+	data, _ := json.Marshal(fields)
+	var dto generated.ValuationObservation
+	if err := b.Decode("ValuationObservation", data, &dto); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(dto)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var roundtrip generated.ValuationObservation
+	if err := b.Decode("ValuationObservation", encoded, &roundtrip); err != nil {
+		t.Fatal(err)
+	}
+	if len(roundtrip.Legs) != 2 || roundtrip.Legs[0].ProviderAssetId != "bitcoin" || roundtrip.Legs[0].Rate.Value != "50000.00000000000001" || roundtrip.Legs[1].EffectiveAt != "2026-09-05T00:00:00Z" || roundtrip.Legs[1].Revision != 3 {
+		t.Fatal("source leg provenance or precision lost")
+	}
+	for _, method := range []string{"reference", "executed"} {
+		fields["method"], _ = json.Marshal(method)
+		for _, invalidLegs := range []string{"", "[]", "null", `[{}]`} {
+			if invalidLegs == "" {
+				delete(fields, "legs")
+			} else {
+				fields["legs"] = json.RawMessage(invalidLegs)
+			}
+			invalid, _ := json.Marshal(fields)
+			for _, schema := range []string{"ValuationObservation", "RateObservation"} {
+				var raw json.RawMessage
+				if b.Decode(schema, invalid, &raw) == nil {
+					t.Fatal("valuation with missing/incomplete source legs accepted", schema, method, invalidLegs)
+				}
+			}
+		}
+	}
+}

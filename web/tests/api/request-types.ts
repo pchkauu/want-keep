@@ -119,3 +119,19 @@ export const numericReturn: components["schemas"]["KnownReturn"] = {
 export const emptyQuote: components["schemas"]["PlatformQuote"] = {
   method: "platform_quote",
 };
+
+type Valuation = components["schemas"]["ValuationObservation"];
+const untracedValuation: Omit<Valuation, "legs"> = {
+  id: "10000000-0000-4000-8000-000000000001",
+  revision: 1,
+  rate: { base: "BTC", quote: "RUB", value: "5000000.000000000001" },
+  requestedDate: "2026-09-07",
+  observedAt: "2026-09-07T00:00:00Z",
+  fetchedAt: "2026-09-07T01:00:00Z",
+  source: "synthetic-cross",
+  method: "reference",
+  granularity: "daily",
+  quality: { coverage: { state: "complete", reasons: [] }, freshness: "fresh" },
+};
+// @ts-expect-error A successful valuation must retain its source observations.
+export const missingValuationLegs: Valuation = untracedValuation;

@@ -228,6 +228,7 @@ ValuationObservation:
   - source
   - method
   - granularity
+  - legs
   - quality
 Insight:
   type: object

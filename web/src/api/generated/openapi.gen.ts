@@ -2755,7 +2755,7 @@ export interface components {
       /** @enum {string} */
       granularity: "instant" | "daily";
       id: components["schemas"]["ID"];
-      legs?: components["schemas"]["ValuationLeg"][];
+      legs: components["schemas"]["ValuationLeg"][];
       /** @enum {string} */
       method: "reference" | "executed";
       observedAt: components["schemas"]["Instant"];
