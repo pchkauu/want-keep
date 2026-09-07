@@ -163,6 +163,12 @@ EnrollmentOptions:
       type: string
       minLength: 1
       maxLength: 2000
+    excludeCredentials:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 2000
     algorithms:
       type: array
       items:
@@ -191,6 +197,7 @@ EnrollmentOptions:
   - userName
   - userDisplayName
   - algorithms
+  - excludeCredentials
   - timeout
   - residentKey
   - userVerification
@@ -248,7 +255,8 @@ RecoveryCodes:
         type: string
         minLength: 1
         maxLength: 1024
-      minItems: 1
+      minItems: 10
+      maxItems: 10
   required:
   - codes
   description: One-time display; never retained in command status, telemetry or chat.
@@ -278,6 +286,12 @@ Session:
       type: string
       minLength: 1
       maxLength: 2000
+    authenticatedAt:
+      $ref: './money.yaml#/Instant'
+    expiresAt:
+      $ref: './money.yaml#/Instant'
+    idleExpiresAt:
+      $ref: './money.yaml#/Instant'
     current:
       type: boolean
     createdAt:
@@ -286,6 +300,9 @@ Session:
   - id
   - name
   - current
+  - authenticatedAt
+  - expiresAt
+  - idleExpiresAt
   - createdAt
 PasskeyPage:
   type: object
@@ -321,3 +338,38 @@ SessionPage:
   required:
   - items
   - quality
+
+LoginOptionsInput:
+  type: object
+  additionalProperties: false
+  properties:
+    purpose:
+      type: string
+      enum: [login, reauthentication]
+      default: login
+EnrollmentResult:
+  oneOf:
+    - $ref: '#/InitialEnrollmentResult'
+    - $ref: '#/AdditionalPasskeyResult'
+InitialEnrollmentResult:
+  type: object
+  additionalProperties: false
+  properties:
+    purpose:
+      type: string
+      enum: [bootstrap, recovery]
+    me:
+      $ref: './household.yaml#/Me'
+    recoveryCodes:
+      $ref: '#/RecoveryCodes'
+  required: [purpose, me, recoveryCodes]
+AdditionalPasskeyResult:
+  type: object
+  additionalProperties: false
+  properties:
+    purpose:
+      type: string
+      enum: [add_passkey]
+    me:
+      $ref: './household.yaml#/Me'
+  required: [purpose, me]

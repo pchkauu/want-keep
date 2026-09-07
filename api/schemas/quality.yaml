@@ -3,6 +3,12 @@ ErrorCode:
   type: string
   enum:
   - unauthorized
+  - authentication_attempt_rejected
+  - reauthentication_required
+  - last_passkey
+  - bootstrap_unavailable
+  - rate_limited
+  - service_unavailable
   - forbidden
   - not_found
   - scope_mismatch

@@ -5,10 +5,27 @@
     tags:
     - auth
     summary: auth login options
-    parameters: []
+    parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        description: Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me.
+        schema:
+          type: string
+          minLength: 32
+          maxLength: 1024
     responses:
       '200':
-        description: Success
+        description: Success; private no-store response. Session/enrollment secrets are never replayed.
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              enum: [no-store]
+          Set-Cookie:
+            description: Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain.
+            schema:
+              type: string
         content:
           application/json:
             schema:
@@ -39,17 +56,34 @@
       content:
         application/json:
           schema:
-            "$ref": "../schemas/commands.yaml#/EmptyInput"
+            "$ref": "../schemas/auth.yaml#/LoginOptionsInput"
 "/auth/login/verify":
   post:
     operationId: auth_login_verify
     tags:
     - auth
     summary: auth login verify
-    parameters: []
+    parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        description: Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me.
+        schema:
+          type: string
+          minLength: 32
+          maxLength: 1024
     responses:
       '200':
-        description: Success
+        description: Success; private no-store response. Session/enrollment secrets are never replayed.
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              enum: [no-store]
+          Set-Cookie:
+            description: Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain.
+            schema:
+              type: string
         content:
           application/json:
             schema:
@@ -87,10 +121,27 @@
     tags:
     - auth
     summary: auth enrollment options
-    parameters: []
+    parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        description: Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me.
+        schema:
+          type: string
+          minLength: 32
+          maxLength: 1024
     responses:
       '200':
-        description: Success
+        description: Success; private no-store response. Session/enrollment secrets are never replayed.
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              enum: [no-store]
+          Set-Cookie:
+            description: Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain.
+            schema:
+              type: string
         content:
           application/json:
             schema:
@@ -128,14 +179,31 @@
     tags:
     - auth
     summary: auth enrollment verify
-    parameters: []
+    parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        description: Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me.
+        schema:
+          type: string
+          minLength: 32
+          maxLength: 1024
     responses:
       '200':
-        description: Success
+        description: Success; private no-store response. Session/enrollment secrets are never replayed.
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              enum: [no-store]
+          Set-Cookie:
+            description: Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain.
+            schema:
+              type: string
         content:
           application/json:
             schema:
-              "$ref": "../schemas/auth.yaml#/RecoveryCodes"
+              "$ref": "../schemas/auth.yaml#/EnrollmentResult"
       '400':
         "$ref": "../components.yaml#/responses/Problem"
       '401':
@@ -169,10 +237,27 @@
     tags:
     - auth
     summary: auth recovery
-    parameters: []
+    parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        description: Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me.
+        schema:
+          type: string
+          minLength: 32
+          maxLength: 1024
     responses:
       '200':
-        description: Success
+        description: Success; private no-store response. Session/enrollment secrets are never replayed.
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              enum: [no-store]
+          Set-Cookie:
+            description: Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain.
+            schema:
+              type: string
         content:
           application/json:
             schema:
@@ -235,3 +320,31 @@
         "$ref": "../components.yaml#/responses/Problem"
     description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
       and authorization purpose; does not use financial-command retention.'
+
+"/auth/session/activity":
+  post:
+    operationId: auth_session_activity
+    tags: [auth]
+    summary: Record explicit foreground activity without extending absolute session expiry
+    description: Requires a currently active session. Background polling must not call this endpoint. Does not create a financial command.
+    parameters:
+      - $ref: '../components.yaml#/parameters/CSRF'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/commands.yaml#/EmptyInput'
+    responses:
+      '204':
+        description: Activity recorded
+      '400':
+        $ref: '../components.yaml#/responses/Problem'
+      '401':
+        $ref: '../components.yaml#/responses/Problem'
+      '403':
+        $ref: '../components.yaml#/responses/Problem'
+      '429':
+        $ref: '../components.yaml#/responses/Problem'
+      '503':
+        $ref: '../components.yaml#/responses/Problem'

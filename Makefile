@@ -15,7 +15,7 @@ E2E_WEB_DIR ?= web
 
 .DEFAULT_GOAL := help
 
-.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-contract e2e eval-ai check-deploy backup-check restore-check
+.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-contract e2e eval-ai check-deploy backup-check restore-check
 
 help:
 	@echo "Want Keep repository commands"
@@ -104,6 +104,9 @@ test-integration:
 		if [ ! -d "$$suite_path" ]; then echo "Integration suite '$(AREA)' is not implemented." >&2; exit 2; fi; \
 		if ! find "$$suite_path" -type f -name '*_test.go' -print -quit | grep -q .; then echo "Integration suite '$(AREA)' has no tests." >&2; exit 2; fi; \
 		cd backend && $(GO) test -count=1 -tags=integration "./$${suite_path#backend/}/..."
+
+test-identity-race:
+	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/identity/...
 
 test-storage-race:
 	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/storage/...

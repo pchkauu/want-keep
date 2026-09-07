@@ -185,6 +185,9 @@ func inspectImports(internalRoot string) ([]importViolation, error) {
 }
 
 func owningLayer(relative string) string {
+	if strings.HasPrefix(filepath.ToSlash(relative), "identity/webauthn/") {
+		return "gateways"
+	}
 	if strings.HasPrefix(filepath.ToSlash(relative), "connections/admission/") {
 		return "application"
 	}

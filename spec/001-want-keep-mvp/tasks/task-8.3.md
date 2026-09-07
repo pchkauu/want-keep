@@ -56,7 +56,7 @@
 
 - **Дано:** Оба участника зарегистрировали собственные passkey и личные коды восстановления.
 - **Когда:** Участник восстанавливает свой вход, повторяет код, пробует чужой origin и сброс входа партнёра.
-- **Тогда:** Свой вход восстановлен с отзывом своих старых сессий/подписок; сессии партнёра сохранены; повтор кода, чужой origin и сброс чужого входа отклонены.
+- **Тогда:** Свой вход восстановлен после нового passkey с атомарным отзывом своих старых ключей, recovery-кодов, сессий и подписок; доступ партнёра сохранён. Повтор кода, чужой origin и сброс чужого входа отклонены.
 - **Уровень:** `end-to-end`.
 
 #### AC-050
@@ -179,7 +179,7 @@ A link establishes coverage but does not prove the whole criterion; verification
 
 - **Given:** Both members enrolled their own passkeys and personal recovery codes.
 - **When:** A member recovers their sign-in, reuses a code, tries an alien origin and attempts to reset their partner’s sign-in.
-- **Then:** Own access is restored with own old sessions/subscriptions revoked; the partner’s sessions remain; code reuse, alien origins and resetting the partner’s sign-in fail.
+- **Then:** Own access is restored after a new passkey with atomic revocation of own old keys, recovery codes, sessions and subscriptions; the partner’s access remains. Code reuse, alien origin and resetting the partner’s sign-in fail.
 - **Level:** `end-to-end`.
 
 #### AC-050

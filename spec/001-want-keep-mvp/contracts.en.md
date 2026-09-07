@@ -2,7 +2,7 @@
 
 [Русский](contracts.md)
 
-Project contract version 10; task-0.10 declared the SDD Ready for development on 2026-09-07. Task-1.2 implements OpenAPI and basic domain types; HTTP handlers and a database schema do not exist yet. D-37–D-43 resolve fundamental rules; provider-specific permissions and conformance remain task-4.x/task-8.x entry/deployment gates. REQ/AC take precedence over adapter assumptions.
+Project contract version 10; task-0.10 declared the SDD Ready for development on 2026-09-07. Task-1.2 implements OpenAPI and basic domain types; Task-1.3 provides storage; task-1.4 provides identity HTTP handlers. D-37–D-43 resolve fundamental rules; provider-specific permissions and conformance remain task-4.x/task-8.x entry/deployment gates. REQ/AC take precedence over adapter assumptions.
 
 Task-1.2 review clarification: payer is explicit known/memberId, unknown or not_applicable, entered/corrected independently from actor and shares. Existing movement links require each ID/expectedRevision and atomic validation. Plan preview distinguishes create/update/delete and lineId; expectedRevision identifies the Budget aggregate, advanced by every line change/approval. ReturnsReport carries decimal-string dimensionless XIRR ratios, native/reporting basis, dated cash flows and unavailable reasons; task-6.4 still owns the solver. These changes affect unreleased DTOs; both clients regenerate together and no deployed data requires migration.
 
@@ -229,3 +229,21 @@ The task-1.2 foundation aligns with contract version 10: D-41 retention/recovery
 ## Storage task-1.3 — contract 10
 
 Internal application/repository boundaries, D-39/D-41/D-43 transactions, precision, migrations, roles and downstream handoff are specified in the [implementation report](evidence/task-1.3-storage.en.md). Public OpenAPI is unchanged. Source/page and checkpoint are atomic; command registration precedes execution; financial effect and terminal outcome commit together. Transaction callbacks must not perform external IO.
+
+## Task-1.4: sign-in and recovery (D-45)
+
+Task-1.4 implements the auth part of contract 10. This does not establish UI or production readiness. User/Household/Membership remain separate; operator bootstrap creates the first household only after verified passkey enrollment. Task-1.6 owns the second member’s invitation application boundary; an arbitrary purpose/token cannot authorize enrollment.
+
+Sessions use opaque 256-bit tokens in Secure HttpOnly SameSite=Lax host-only cookies with Path=/. Only the hash is stored. Absolute lifetime is 12 hours and inactivity timeout is 30 minutes; GET and polling do not extend access. POST /auth/session/activity requires Origin/CSRF, records user activity and cannot revive expiry. Task-7.1 calls it only for explicit foreground activity, at most once per minute. Me includes session.id, authenticatedAt, expiresAt and idleExpiresAt. CSRF is derived from the session token and kept in client memory.
+
+LoginOptionsInput.purpose is login (default) or reauthentication. The latter binds the current user/session and requires CSRF. Key changes and code replacement require own authentication within 5 minutes. Logout/session revocation revokes associated push bindings; passkey revocation revokes sessions created with that key. The last active key cannot be removed. Lists expose only own resources; cursors bind user, session and list type.
+
+WebAuthn uses ES256/RS256, discoverable credentials, required UV and none attestation. A server challenge lasts 5 minutes and binds browser/purpose/RP/origin. One-use completion and rejection persist atomically. Cross-origin/iframe contexts and unsolicited extensions are denied. A nonzero signCount violation denies access; zero counters are allowed. The library and its types stay in the outer adapter.
+
+Recovery uses ten random 128-bit codes, hashed storage and one-time display. Verification consumes one code and creates a 10-minute browser-bound grant without financial access. Only successful new passkey enrollment atomically advances generation, revokes the user’s old keys/sessions/codes/subscriptions and issues new codes/session. Cancellation preserves old access; the consumed code is not returned. Generation changes reject old grants/enrollment; a revoked key cannot finish login. Adding a backup key preserves recovery codes. EnrollmentResult distinguishes bootstrap/recovery with recoveryCodes from add_passkey without codes.
+
+After a lost post-commit response, secrets are not replayed: sign in with the new passkey, then freshly authenticate and replace codes if needed. Email/partner/operator reset after bootstrap is unavailable. Operator tokens are 256-bit, last 30 minutes, use a private output file and hashed DB storage. Reissuing before initialization invalidates the previous token; reissuing after initialization is forbidden.
+
+Auth tables contain no financial documents/messages. PostgreSQL serializes the small auth workload through the bootstrap row and additionally locks the user profile. Financial transactions do not take that lock. Infrastructure failure rolls back effects; ceremony rejection commits consumed/audit through a savepoint. Rate limits use fixed 15-minute windows: deployment 600, source 120, browser 60, known user 30; an explicit rejection requires a new ceremony. Bounded maintenance removes expired attempts/rate windows. D-41 financial command retention does not apply to auth secrets.
+
+Migration 004 extends the schema; 001–003 remain unchanged. OpenAPI/generated Go/TypeScript update together; no deployed auth clients exist. Task-7.1 owns screens, memory-only CSRF, activity and unknown-response UX; task-1.6 owns invitations and household policies; the notification task checks bindings at registration and immediately before sending; task-8.1 owns TLS/proxy/operator secrets/maintenance scheduling. The registered Raiffeisen callback stays unchanged.

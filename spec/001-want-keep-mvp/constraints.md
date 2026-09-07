@@ -96,3 +96,7 @@ CI, synthetic integration, live source readback, physical-device push и restore
 ## PostgreSQL task-1.3
 
 pgx v5.10.0 остаётся в storage; domain/application не импортируют драйвер или pgx.Tx. Application boundary connections/admission распознаётся архитектурным тестом. Тестовая БД PostgreSQL 17.11 закреплена digest; production major подтверждает task-8.1. READ COMMITTED + admission-before-household lock order; maintenance отделён от application. [Контракт хранения и запуск](evidence/task-1.3-storage.md).
+
+## Identity task-1.4
+
+Auth использует domain/application, WebAuthn adapter, delivery/identity и storage. Правила D-45 и границы приёмки: [контракт](contracts.md#task-14-вход-и-восстановление-d-45), [evidence](evidence/task-1.4-identity.md).
