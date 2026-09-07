@@ -23,7 +23,7 @@ Implemented PostgreSQL scheduling, sync/outbox/ai queues, workers, leases/heartb
 
 Confirmed sync reconciliation requires a `Page` with the same evidence reference. After validating current admission and generation, the trusted transaction enables existing source/account application contracts and atomically saves the page, omissions, checkpoint and reconciliation. The last page adds a receipt and success timestamp; an intermediate page continues from the new cursor. Normal running-attempt fencing remains intact. Invalidation/disconnect preserve unknown outcomes even for legacy jobs without an external marker.
 
-A successful `CommitPage` acknowledges the currently marked external source action and clears its marker atomically with the checkpoint; the next page marks a new action. For legacy unresolved-plus-active work, confirmed absence retires the old attempt while retaining the replacement. A confirmed intermediate page retains its new checkpoint and revokes the older replacement; any unknown external effect of that replacement keeps a separate unresolved barrier.
+A successful `CommitPage` acknowledges the currently marked external source action and clears its marker atomically with the checkpoint; the next page marks a new action. For legacy unresolved-plus-active work, confirmed absence retires the old attempt while retaining the replacement. Every confirmed page retains its new checkpoint and revokes the older replacement, including final pages and exhausted attempts; any unknown external effect of that replacement keeps a separate unresolved barrier. Regression scenarios check that completion prevents replay and that a new job resumes from the confirmed checkpoint after attempt exhaustion.
 
 ## Startup and migration
 

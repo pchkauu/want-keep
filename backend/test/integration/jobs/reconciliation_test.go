@@ -22,13 +22,26 @@ import (
 )
 
 func TestConfirmedSyncPageReconciliation(t *testing.T) {
-	for _, complete := range []bool{false, true} {
-		t.Run(map[bool]string{false: "continue", true: "complete"}[complete], func(t *testing.T) {
+	for _, test := range []struct {
+		name                  string
+		complete, lastAttempt bool
+	}{
+		{name: "continue"},
+		{name: "complete", complete: true},
+		{name: "last_attempt", lastAttempt: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
 			connection := f.connection()
 			b := binding()
 			gate := f.admit(b)
 			issued := f.issued(gate, connection, b)
+			if test.lastAttempt {
+				if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET attempt=max_attempts WHERE id=$1`, issued.ID); err != nil {
+					t.Fatal(err)
+				}
+				issued.Attempt = issued.MaxAttempts
+			}
 			account := f.account(money.RUB, "1000")
 			revision := f.revision(uuid.NewString(), account, "-100", money.RUB, 1)
 			input := ledger.SourceInput{Key: ledger.SourceKey{HouseholdID: f.family.ID, Provider: b.Provider, ExternalAccountID: "synthetic-stable", Product: "current", Log: "statement", RecordID: "confirmed"}, PayloadHash: strings.Repeat("a", 64), EvidenceRef: "synthetic:confirmed", Classification: "new", Operation: &revision, ConnectionID: connection, JobID: issued.ID, FetchedAt: f.now}
@@ -38,15 +51,12 @@ func TestConfirmedSyncPageReconciliation(t *testing.T) {
 			if err := f.store.SetJobOutcome(testContext, f.p, issued, jobs.Unresolved, jobs.ExternalUnknown, 0); err != nil {
 				t.Fatal(err)
 			}
-			replacement := ""
-			if !complete {
-				replacement = uuid.NewString()
-				_, err := f.admin.Exec(testContext, `INSERT INTO want_keep.jobs(household_id,id,actor_id,kind,connection_id,connection_generation,binding,admission_revision,state,max_attempts,available_at,deadline,secret_purpose) SELECT household_id,$2,actor_id,kind,connection_id,connection_generation,binding,admission_revision,'ready',5,clock_timestamp(),deadline,secret_purpose FROM want_keep.jobs WHERE id=$1`, issued.ID, replacement)
-				if err != nil {
-					t.Fatal(err)
-				}
+			replacement := uuid.NewString()
+			_, err := f.admin.Exec(testContext, `INSERT INTO want_keep.jobs(household_id,id,actor_id,kind,connection_id,connection_generation,binding,admission_revision,state,max_attempts,available_at,deadline,secret_purpose) SELECT household_id,$2,actor_id,kind,connection_id,connection_generation,binding,admission_revision,'ready',5,clock_timestamp(),deadline,secret_purpose FROM want_keep.jobs WHERE id=$1`, issued.ID, replacement)
+			if err != nil {
+				t.Fatal(err)
 			}
-			r := app.Reconciliation{Job: issued, EvidenceRef: input.EvidenceRef, Outcome: "confirmed", Page: &admission.Page{EvidenceRef: input.EvidenceRef, NextCursor: "page2", Coverage: "complete", Complete: complete}}
+			r := app.Reconciliation{Job: issued, EvidenceRef: input.EvidenceRef, Outcome: "confirmed", Page: &admission.Page{EvidenceRef: input.EvidenceRef, NextCursor: "page2", Coverage: "complete", Complete: test.complete}}
 			source := journal.NewSources(f.store, f.writer)
 			apply := func(ctx context.Context, p household.Principal) error {
 				_, err := source.Apply(ctx, p, input)
@@ -73,25 +83,36 @@ func TestConfirmedSyncPageReconciliation(t *testing.T) {
 				t.Fatal("confirmed effect lost or duplicated")
 			}
 			progress, err := f.store.SyncProgress(testContext, f.p, connection)
-			if err != nil || progress.Cursor != "page2" || progress.Completed != complete || (progress.LastSuccessAt != nil) != complete {
+			if err != nil || progress.Cursor != "page2" || progress.Completed != test.complete || (progress.LastSuccessAt != nil) != test.complete {
 				t.Fatal("reconciliation checkpoint", err)
 			}
 			current, err := f.store.Job(testContext, f.p, issued.ID)
 			if err != nil || current.ExternalStarted {
 				t.Fatal(err)
 			}
-			if complete {
+			sibling, err := f.store.Job(testContext, f.p, replacement)
+			if err != nil || sibling.State != jobs.Canceled || !sibling.CancelRequested {
+				t.Fatal("obsolete continuation retained", err)
+			}
+			if test.complete {
 				if current.State != jobs.Succeeded || f.count("job_receipts") != 1 {
 					t.Fatal("terminal receipt missing")
 				}
-			} else {
-				sibling, err := f.store.Job(testContext, f.p, replacement)
-				if err != nil || sibling.State != jobs.Canceled || !sibling.CancelRequested {
-					t.Fatal("obsolete continuation retained", err)
+				rows, err := f.restart().ClaimJobs(testContext, "sync", 1, time.Minute)
+				if err != nil || len(rows) != 0 {
+					t.Fatal("completed source repeated", err)
 				}
+			} else {
 				next := f.issued(gate, connection, b)
-				if next.ID != issued.ID || next.LeaseToken == issued.LeaseToken || next.Cursor != "page2" {
+				if next.LeaseToken == issued.LeaseToken || next.Cursor != "page2" || next.ID == replacement {
 					t.Fatal("confirmed page was repeated")
+				}
+				if test.lastAttempt {
+					if current.State != jobs.Failed || next.ID == issued.ID {
+						t.Fatal("attempt limit ignored")
+					}
+				} else if next.ID != issued.ID {
+					t.Fatal("unfinished attempt replaced")
 				}
 			}
 		})

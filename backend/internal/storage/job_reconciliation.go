@@ -79,23 +79,22 @@ func (s *Store) ReconcileJob(ctx context.Context, p household.Principal, r jobs.
 					state = "failed"
 				}
 			}
-			if state == "ready" && current.Kind == domain.Sync {
-				if r.Outcome == "absent" {
-					// Legacy queues could already have a replacement; preserve its continuation.
-					var replacement bool
-					err = scope.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM want_keep.jobs WHERE household_id=$1 AND connection_id=$2 AND id!=$3 AND state IN ('ready','running','waiting') AND NOT cancel_requested)`, p.HouseholdID(), current.ConnectionID, current.ID).Scan(&replacement)
-					if err != nil {
-						return err
-					}
-					if replacement {
-						state = "canceled"
-					}
-				} else {
-					// This confirmed page owns the newest checkpoint. Fence older continuations.
-					_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN external_started THEN 'unresolved' ELSE 'canceled' END,reason=CASE WHEN external_started THEN 'external_unknown' ELSE 'canceled' END,cancel_requested=true WHERE household_id=$1 AND connection_id=$2 AND id!=$3 AND state IN ('ready','running','waiting') AND NOT cancel_requested`, p.HouseholdID(), current.ConnectionID, current.ID)
-					if err != nil {
-						return err
-					}
+			if current.Kind == domain.Sync && r.Outcome == "absent" && state == "ready" {
+				// Legacy queues could already have a replacement; preserve its continuation.
+				var replacement bool
+				err = scope.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM want_keep.jobs WHERE household_id=$1 AND connection_id=$2 AND id!=$3 AND state IN ('ready','running','waiting') AND NOT cancel_requested)`, p.HouseholdID(), current.ConnectionID, current.ID).Scan(&replacement)
+				if err != nil {
+					return err
+				}
+				if replacement {
+					state = "canceled"
+				}
+			}
+			if current.Kind == domain.Sync && r.Outcome == "confirmed" {
+				// Every confirmed page owns the newest checkpoint, including terminal attempts.
+				_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN external_started THEN 'unresolved' ELSE 'canceled' END,reason=CASE WHEN external_started THEN 'external_unknown' ELSE 'canceled' END,cancel_requested=true WHERE household_id=$1 AND connection_id=$2 AND id!=$3 AND state IN ('ready','running','waiting') AND NOT cancel_requested`, p.HouseholdID(), current.ConnectionID, current.ID)
+				if err != nil {
+					return err
 				}
 			}
 			if state == "succeeded" {
