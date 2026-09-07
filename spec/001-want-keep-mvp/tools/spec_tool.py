@@ -72,7 +72,10 @@ class SpecCatalog:
           lines += [f"- **{state_id} — {state['title'][lang]}:** {state['behavior'][lang]}"]
         lines.append("")
       lines += ["", ("Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу." if ru else "Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work."), "", "### " + ("Связанные требования" if ru else "Linked requirements"), ""]
-      lines += [f"- **{req}:** {self.requirements[req]['title'][lang]}" for req in reqs]
+      if task.get("requirements_display") == "ids":
+        lines += [("Полные формулировки проверяемого поведения приведены в AC ниже. REQ: " if ru else "The AC scenarios below contain the complete verifiable behavior. REQ: ") + ", ".join(f"`{req}`" for req in reqs) + "."]
+      else:
+        lines += [f"- **{req}:** {self.requirements[req]['title'][lang]}" for req in reqs]
       lines += ["", "### " + ("Критерии приёмки" if ru else "Acceptance criteria"), "", ("Связь задаёт покрытие, но не доказывает весь критерий; точный результат проверяется ниже." if ru else "A link establishes coverage but does not prove the whole criterion; verification below records the exact result."), ""]
       for ac in task["acceptance"]:
         criterion = self.criteria[ac]
@@ -197,6 +200,8 @@ class SpecCatalog:
         errors.append(f"Unresolved dependency in {task['id']}")
       if task["kind"] not in ("research", "specification", "implementation", "verification"):
         errors.append(f"Invalid task kind: {task['id']}")
+      if task.get("requirements_display") not in (None, "ids"):
+        errors.append(f"Invalid requirements display: {task['id']}")
       if "status" in task and (not isinstance(task["status"], dict) or set(task["status"]) != {"ru", "en"}):
         errors.append(f"Invalid task status translation: {task['id']}")
       for target in task["targets"]:

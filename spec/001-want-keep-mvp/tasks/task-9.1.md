@@ -24,63 +24,7 @@
 
 ### Связанные требования
 
-- **REQ-006:** Перевод между счетами семьи, включая счета разных участников, меняет остатки без дохода или расхода по основной сумме.
-- **REQ-007:** Обмен и P2P-конвертация собственных денег сохраняют обе валютные суммы, фактический курс и комиссии.
-- **REQ-008:** Повторные импорты, чек и запись чата объединяют доказательства одной операции без повторного учёта.
-- **REQ-010:** Возврат уменьшает расходы исходного месяца покупки, сохраняя дату реального поступления денег.
-- **REQ-016:** Позиции чека распределяют одну оплаченную сумму по категориям без дублирования итога.
-- **REQ-018:** Каждая новая или содержательно изменённая операция получает AI-проверку своей версии.
-- **REQ-019:** AI автоматизирует внутренний учёт через проверяемые команды; неопределённость остаётся явной.
-- **REQ-020:** AI-инсайты по доходам и расходам ссылаются на проверяемые данные и отделяют прогноз от факта.
-- **REQ-024:** План поддерживает обязательные расходы по датам и повторяемые платежи.
-- **REQ-026:** Прогнозируемые доходы имеют сумму, валюту, дату и отдельное состояние исполнения.
-- **REQ-029:** Одни средства нельзя одновременно зарезервировать на несколько целей или повторно учесть через выделенный счёт.
-- **REQ-030:** Дневные лимиты показывают семейный и индивидуальный доступный/прогнозный остаток, по категориям и с отдельным обеспечением каждой валютой.
-- **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
-- **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
-- **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
-- **REQ-037:** Исторические расходы используют зафиксированную оценку на дату операции, текущий капитал — актуальную оценку.
-- **REQ-042:** Alfa автоматически читает debit, current/savings, deposits и кэшбэк по проверенному контракту.
-- **REQ-043:** Raiffeisen через RBO API читает только расчётный счёт ИП: остатки, поступления, списания, комиссии и историю (D-35).
-- **REQ-044:** Интеграция Ozon Банк автоматически читает дебетовую карту и связанный основной счёт: остатки, операции и доступные сведения в пределах подтверждённого контракта. Другие продукты Ozon отложены до расширения контракта.
-- **REQ-045:** Bybit автоматически читает Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен. Остальные продукты отложены без блокировки по D-36.
-- **REQ-046:** Aifory Pro автоматически читает RUB-счета, USDT, ETH и используемую криптокарту, включая движения и комиссии этих продуктов. Остальные продукты отложены и не блокируют MVP.
-- **REQ-047:** Интеграция EMCD автоматически читает используемые криптокарты, Coinhold/Grow, кошелёк USDT и исторические P2P-ордера по D-34; майнинг никогда не использовался и вместе с другими неиспользуемыми продуктами отложен без блокировки.
-- **REQ-051:** AI ограничен бюджетом $50/месяц и деградирует в очередь ожидания без остановки обычного учёта.
-- **REQ-052:** Дашборд объединяет счета, план/факт, доходы, расходы, цели и дневные лимиты с детализацией.
-- **REQ-054:** Интерфейс, чат и документация поддерживают RU/EN без изменения финансовой семантики.
-- **REQ-055:** Веб-приложение предназначено для ноутбука macOS в Chrome и Arc; изменение окна и масштаба сохраняет доступность ежедневного учёта.
-- **REQ-056:** Развёртывание укладывается в $40/месяц на сервер в DE/NL/BG; отдельные платные источники не используются.
-- **REQ-057:** Зашифрованная резервная копия выгружается на MacBook ежечасно при его доступности; восстановление проверяется.
-- **REQ-058:** Операционные статусы показывают ошибки импорта, AI, курсов, резервирования и расходы без утечки финансового содержимого.
-- **REQ-060:** Текст чеков, банковских описаний и ответов AI не может расширять полномочия агента.
-- **REQ-061:** Повторные задания, перезапуски и параллельные изменения не создают двойных финансовых эффектов.
-- **REQ-063:** Пользователь, семья и членство моделируются отдельно; ограничение двух участников задаётся конфигурацией.
-- **REQ-064:** Оба участника видят все финансовые данные и изменяют операции; личные цели и части плана изменяет только их владелец.
-- **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
-- **REQ-066:** Все доходы и доступные средства входят в семейный пул; общий бюджет и личные разрезы используют один финансовый факт.
-- **REQ-067:** Расходы и позиции чеков имеют личное или совместное назначение; общая доля по умолчанию 50/50 с исключениями статьи или покупки.
-- **REQ-068:** Взаимный долг учитывается только по явному указанию и не увеличивает активы или расходы семьи.
-- **REQ-069:** Резервы личных и совместных целей задаются явно; совместные цели отображаются отдельным общим блоком без персональных долей.
-- **REQ-070:** Сумма индивидуальных дневных лимитов не превышает семейный предел одной валюты; счёт плательщика не меняет долю расходов.
-- **REQ-071:** Один общий чат сохраняет автора сообщения и проверяет полномочия инициатора AI-команды при исполнении.
-- **REQ-072:** Конкурирующие изменения, ответы на уточнения и отмены проверяют версию и текущие права, сохраняя обоих авторов.
-- **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
-- **REQ-074:** Изменения плана и целей уведомляют второго участника; прочтение и push-подписки принадлежат конкретному пользователю.
-- **REQ-075:** Восстановление данных сохраняет пользователей, членство, принадлежность, роли, историю и общий семейный учёт.
-- **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
-- **REQ-077:** Только тёмная тема с токенами Want Keep и сдержанной pixel-айдентикой.
-- **REQ-078:** Pixelify Sans используется для бренда и крупных акцентов, Manrope — для повседневного интерфейса.
-- **REQ-079:** Компоненты shadcn/ui на Base UI принадлежат проекту и оформляются собственными семантическими токенами.
-- **REQ-080:** Каждый экран отвечает на вопрос пользователя и ведёт к следующему полезному действию.
-- **REQ-081:** Навигация desktop сохраняет контекст и не меняет права при смене представления семьи.
-- **REQ-082:** Экранные состояния объясняют последствия и безопасный следующий шаг без потери ввода.
-- **REQ-083:** Экран входа сохраняет композицию присланного референса и личное восстановление доступа.
-- **REQ-084:** Доступность проверяется на реальных Chrome и Arc, включая клавиатуру, фокус, контраст, масштаб и reduced motion.
-- **REQ-085:** Семь основных пользовательских задач выполняются без помощи разработчика с объяснимым финансовым результатом.
-- **REQ-086:** Детализация счёта зависит от продукта и показывает доступность денег перед служебными сведениями.
-- **REQ-087:** Контекстные pixel-анимации подтверждают значимые события и предупреждают о лимитах, сохраняя доступность и достоверность результата.
-- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации и окружения.
+Полные формулировки проверяемого поведения приведены в AC ниже. REQ: `REQ-006`, `REQ-007`, `REQ-008`, `REQ-010`, `REQ-016`, `REQ-018`, `REQ-019`, `REQ-020`, `REQ-024`, `REQ-026`, `REQ-029`, `REQ-030`, `REQ-031`, `REQ-035`, `REQ-036`, `REQ-037`, `REQ-042`, `REQ-043`, `REQ-044`, `REQ-045`, `REQ-046`, `REQ-047`, `REQ-051`, `REQ-052`, `REQ-054`, `REQ-055`, `REQ-056`, `REQ-057`, `REQ-058`, `REQ-060`, `REQ-061`, `REQ-063`, `REQ-064`, `REQ-065`, `REQ-066`, `REQ-067`, `REQ-068`, `REQ-069`, `REQ-070`, `REQ-071`, `REQ-072`, `REQ-073`, `REQ-074`, `REQ-075`, `REQ-076`, `REQ-077`, `REQ-078`, `REQ-079`, `REQ-080`, `REQ-081`, `REQ-082`, `REQ-083`, `REQ-084`, `REQ-085`, `REQ-086`, `REQ-087`, `REQ-088`.
 
 ### Критерии приёмки
 
@@ -412,7 +356,7 @@
 
 - **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
 - **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
-- **Тогда:** Сервер возвращает `provider_not_admitted`, collector не запускается и проводок нет. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding; любое расхождение снова закрывает sync.
+- **Тогда:** Если binding уже неполон или устарел, сервер возвращает `provider_not_admitted` без job, collector IO и проводки. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding. Job/result несёт неизменяемые binding и `admissionRevision`; смена binding во время read отменяет работу best effort, а обязательная commit-time revalidation сохраняет stale result в quarantine без source record или проводки.
 - **Уровень:** `integration+security`.
 
 ### Проверка результата
@@ -454,63 +398,7 @@ Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-006:** Transfers between household accounts, including different members’ accounts, change balances without principal income or expense.
-- **REQ-007:** Exchange and P2P conversion of owned money preserve both currency amounts, the actual rate and fees.
-- **REQ-008:** Repeated imports, receipts and chat entries combine evidence of one transaction without double counting.
-- **REQ-010:** A refund reduces expenses in the purchase month while preserving the actual cash receipt date.
-- **REQ-016:** Receipt items allocate one paid amount across categories without duplicating the total.
-- **REQ-018:** Every new or materially changed transaction receives AI review of its version.
-- **REQ-019:** AI automates internal accounting through validated commands; uncertainty remains explicit.
-- **REQ-020:** AI income/expense insights reference verifiable data and separate forecasts from facts.
-- **REQ-024:** The plan supports dated obligations and recurring payments.
-- **REQ-026:** Forecast income has an amount, currency, date and separate fulfillment state.
-- **REQ-029:** The same money cannot be reserved for multiple goals or counted again through a dedicated account.
-- **REQ-030:** Daily limits show household and individual available/forecast allowances, by category and with separate funding in each currency.
-- **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
-- **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
-- **REQ-036:** Mining rewards are separate from transfers between owned wallets.
-- **REQ-037:** Historical expenses use a fixed transaction-date valuation; current wealth uses a current valuation.
-- **REQ-042:** Alfa automatically reads debit, current/savings, deposits and cashback under a verified contract.
-- **REQ-043:** Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35).
-- **REQ-044:** The Ozon Bank integration automatically reads the debit card and linked main account: balances, transactions and available details under a verified contract. Other Ozon products are deferred until a contract extension.
-- **REQ-045:** Bybit automatically reads Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; the official API is preferred. Other products are deferred without blocking under D-36.
-- **REQ-046:** Aifory Pro automatically reads RUB accounts, USDT, ETH and the existing crypto card, including these products’ movements and fees. Other products are deferred and do not block the MVP.
-- **REQ-047:** The EMCD integration automatically reads used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders under D-34; mining has never been used and is deferred with other unused products without blocking readiness.
-- **REQ-051:** AI is limited to $50/month and degrades to a waiting queue without stopping ordinary accounting.
-- **REQ-052:** The dashboard combines accounts, plan/actuals, income, expenses, goals and daily limits with drill-down.
-- **REQ-054:** UI, chat and documentation support RU/EN without changing financial semantics.
-- **REQ-055:** The web app targets macOS laptops in Chrome and Arc; window resizing and zoom preserve daily accounting access.
-- **REQ-056:** Deployment fits $40/month for a server in DE/NL/BG; no separately paid data sources are used.
-- **REQ-057:** An encrypted backup is pulled to the MacBook hourly while reachable; recovery is tested.
-- **REQ-058:** Operational status exposes import, AI, FX, backup failures and spend without leaking financial content.
-- **REQ-060:** Receipt text, bank descriptions and AI outputs cannot expand agent authority.
-- **REQ-061:** Repeated jobs, restarts and concurrent changes cannot create duplicate financial effects.
-- **REQ-063:** User, household and membership are separate models; the two-member limit is configured.
-- **REQ-064:** Both members see all financial data and edit transactions; only the owner edits personal goals and plan portions.
-- **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
-- **REQ-066:** All income and available funds enter the household pool; household and individual budget views share one financial fact.
-- **REQ-067:** Expenses and receipt items have personal or joint attribution; joint shares default to 50/50 with line or purchase overrides.
-- **REQ-068:** An inter-member debt is recorded only explicitly and does not increase household assets or expenses.
-- **REQ-069:** Personal and joint goal reservations are explicit; joint goals appear in a separate shared block without personal shares.
-- **REQ-070:** Individual daily allowances sum to no more than the household ceiling in one currency; the payer’s account does not change expense shares.
-- **REQ-071:** One shared chat retains message authors and checks the AI command initiator’s authority at execution.
-- **REQ-072:** Competing edits, clarification answers and reversals check revision and current permissions while retaining both authors.
-- **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
-- **REQ-074:** Plan and goal changes notify the other member; read state and push subscriptions belong to the individual user.
-- **REQ-075:** Data recovery preserves users, memberships, ownership, roles, history and shared household accounting.
-- **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
-- **REQ-077:** Dark-only Want Keep tokens and restrained pixel identity.
-- **REQ-078:** Pixelify Sans serves branding and large accents; Manrope serves everyday UI.
-- **REQ-079:** Project-owned shadcn/ui components on Base UI use custom semantic tokens.
-- **REQ-080:** Each screen answers a user question and leads to a useful next action.
-- **REQ-081:** Desktop navigation preserves context and changing household views never changes authority.
-- **REQ-082:** Screen states explain consequences and a safe next step without losing input.
-- **REQ-083:** Sign-in preserves the supplied reference composition and personal access recovery.
-- **REQ-084:** Accessibility is checked in actual Chrome and Arc, including keyboard, focus, contrast, zoom and reduced motion.
-- **REQ-085:** Seven core user tasks are completed without developer help with explainable financial outcomes.
-- **REQ-086:** Account details depend on the product and show availability before technical details.
-- **REQ-087:** Contextual pixel animations acknowledge milestones and warn about limits while preserving accessibility and truthful outcomes.
-- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
+The AC scenarios below contain the complete verifiable behavior. REQ: `REQ-006`, `REQ-007`, `REQ-008`, `REQ-010`, `REQ-016`, `REQ-018`, `REQ-019`, `REQ-020`, `REQ-024`, `REQ-026`, `REQ-029`, `REQ-030`, `REQ-031`, `REQ-035`, `REQ-036`, `REQ-037`, `REQ-042`, `REQ-043`, `REQ-044`, `REQ-045`, `REQ-046`, `REQ-047`, `REQ-051`, `REQ-052`, `REQ-054`, `REQ-055`, `REQ-056`, `REQ-057`, `REQ-058`, `REQ-060`, `REQ-061`, `REQ-063`, `REQ-064`, `REQ-065`, `REQ-066`, `REQ-067`, `REQ-068`, `REQ-069`, `REQ-070`, `REQ-071`, `REQ-072`, `REQ-073`, `REQ-074`, `REQ-075`, `REQ-076`, `REQ-077`, `REQ-078`, `REQ-079`, `REQ-080`, `REQ-081`, `REQ-082`, `REQ-083`, `REQ-084`, `REQ-085`, `REQ-086`, `REQ-087`, `REQ-088`.
 
 ### Acceptance criteria
 
@@ -842,7 +730,7 @@ A link establishes coverage but does not prove the whole criterion; verification
 
 - **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
 - **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
-- **Then:** The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again.
+- **Then:** If the binding is already incomplete or stale, the server returns `provider_not_admitted` with no job, collector IO or posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding. Each job/result carries immutable binding and `admissionRevision`; a binding change during a read cancels work best effort, while mandatory commit-time revalidation retains a stale result in quarantine without a source record or posting.
 - **Level:** `integration+security`.
 
 ### Verification

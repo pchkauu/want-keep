@@ -43,7 +43,7 @@
 | task-4.5 Aifory | Structured session read; Playwright только при необходимости | D-33 namespace/unknown rules | Permission, structured fixtures, card lifecycle/fees/FX, pagination, reauth, two accounts |
 | task-4.6 EMCD | Structured session read; Playwright только при необходимости | D-34 namespace/unknown rules | Fixtures wallet/Grow/card/P2P, balance/lifecycle/fees, pagination, reauth, two accounts |
 
-Провал provider gate сохраняет источник отключённым. `backend/internal/connections/admission/` и storage adapter task-1.3 владеют aggregate, атомарным combine/invalidate и admission-check + enqueue. task-4.x provider evidence и task-8.x host evidence объединяет только admission service для точного D-43 binding; любой stale binding снова закрывает sync, а collector проверяет его перед IO. Это не блокирует ручной учёт, доменные функции или проверенные другие источники. Write actions не входят ни в один fallback.
+Провал provider gate сохраняет источник отключённым. `backend/internal/connections/admission/` и storage adapter task-1.3 владеют aggregate, monotonic `admissionRevision`, атомарным combine/invalidate, admission-check + enqueue и commit-time result fence. task-4.x provider evidence и task-8.x host evidence объединяет только admission service для точного D-43 binding; stale binding закрывает новый sync, а stale result остаётся в quarantine без source/posting. Cancel начатого read — best effort. Это не блокирует ручной учёт, доменные функции или проверенные другие источники. Write actions не входят ни в один fallback.
 
 ## Контрактные entry/exit gates
 
@@ -53,7 +53,7 @@ Entry: task-1.1 в target; contracts version 8. Exit: Money/Asset/Rate/coverage,
 
 ### task-1.3
 
-Entry: versioned API/value objects task-1.2. Exit: atomic source/posting/revision/outbox; D-39 unique key and collision evidence; D-41 independent cleanup jobs; persisted D-43 aggregate/repository, atomic provider+host combine/invalidate and admission-check + job enqueue; restart/revoke/binding-race tests on isolated PostgreSQL.
+Entry: versioned API/value objects task-1.2. Exit: atomic source/posting/revision/outbox; D-39 unique key and collision evidence; D-41 independent cleanup jobs; persisted D-43 aggregate/repository, monotonic admission revision, atomic provider+host combine/invalidate, admission-check + job enqueue and commit-time stale-result quarantine; restart/revoke-before-and-after-IO/binding-race tests on isolated PostgreSQL.
 
 ### task-6.1 и task-6.4
 

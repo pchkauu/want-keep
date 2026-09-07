@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Закрепить контракт коллектора и provider gateway: capability, source records, account references, coverage, balance snapshots, revisions, cursor, errors. Сохранять исходник до нормализации, namespace ID, связь счетов/карт и provenance значений. Отсутствующие поля/unsupported не становятся нулём. Golden-like contract fixtures должны быть синтетическими и проверять смысл, не только JSON shape.
+Закрепить контракт коллектора и provider gateway: capability, source records, account references, coverage, balance snapshots, revisions, cursor, errors. Сохранять исходник до нормализации, namespace ID, связь счетов/карт и provenance значений. Отсутствующие поля/unsupported не становятся нулём. Golden-like contract fixtures должны быть синтетическими и проверять смысл, не только JSON shape. Каждый server-issued job и result содержит immutable exact admission binding и `admissionRevision`; application commit принимает result только при совпадении current `admitted` revision в той же транзакции, что source/posting/outbox, иначе сохраняет evidence в quarantine без финансового эффекта.
 
 ### Границы изменений
 
@@ -36,6 +36,7 @@
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации, разрешения оператора и окружения.
 
 ### Критерии приёмки
 
@@ -125,13 +126,20 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Если binding уже неполон или устарел, сервер возвращает `provider_not_admitted` без job, collector IO и проводки. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding. Job/result несёт неизменяемые binding и `admissionRevision`; смена binding во время read отменяет работу best effort, а обязательная commit-time revalidation сохраняет stale result в quarantine без source record или проводки.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
 make check-contracts && make test-integration AREA=ingestion
 ```
 
-Round-trip и ошибки контракта проверены; replay и частичное покрытие не меняют семантику.
+Round-trip и ошибки контракта проверены; replay и частичное покрытие не меняют семантику. Stale admission result не пересекает commit boundary.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
@@ -153,7 +161,7 @@ Normalize data without leaking provider models into the domain.
 
 ### Change and contracts
 
-Define collector/provider-gateway contracts: capability, source records, account references, coverage, balance snapshots, revisions, cursor and errors. Retain raw data before normalization, namespace IDs and track account/card relationships and provenance. Missing/unsupported fields never become zero. Synthetic contract fixtures test semantics, not only JSON shape.
+Define collector/provider-gateway contracts: capability, source records, account references, coverage, balance snapshots, revisions, cursor and errors. Retain raw data before normalization, namespace IDs and track account/card relationships and provenance. Missing/unsupported fields never become zero. Synthetic contract fixtures test semantics, not only JSON shape. Every server-issued job and result carries the immutable exact admission binding and `admissionRevision`; application commit accepts a result only when the current `admitted` revision matches in the same transaction as source/posting/outbox, otherwise it retains evidence in quarantine without a financial effect.
 
 ### Change boundaries
 
@@ -176,6 +184,7 @@ Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration, operator-permission and environment revisions.
 
 ### Acceptance criteria
 
@@ -265,13 +274,20 @@ A link establishes coverage but does not prove the whole criterion; verification
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** If the binding is already incomplete or stale, the server returns `provider_not_admitted` with no job, collector IO or posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding. Each job/result carries immutable binding and `admissionRevision`; a binding change during a read cancels work best effort, while mandatory commit-time revalidation retains a stale result in quarantine without a source record or posting.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
 make check-contracts && make test-integration AREA=ingestion
 ```
 
-Contract round trips and errors pass; replay and partial coverage preserve semantics.
+Contract round trips and errors pass; replay and partial coverage preserve semantics. A stale-admission result cannot cross the commit boundary.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 

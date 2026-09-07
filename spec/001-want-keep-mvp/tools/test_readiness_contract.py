@@ -48,6 +48,7 @@ class ReadinessContractTest(unittest.TestCase):
       for contract_marker in (
         "commandId",
         "deploymentGate.status",
+        "admissionRevision",
         "adapterBuildDigest",
         "backend/internal/connections/admission/",
         "camtCrossReportFingerprint",
@@ -62,6 +63,7 @@ class ReadinessContractTest(unittest.TestCase):
       "task-0.10",
       "task-1.2",
       "task-1.3",
+      "task-3.2",
       "task-3.3",
       "task-4.1",
       "task-4.2",
@@ -79,6 +81,18 @@ class ReadinessContractTest(unittest.TestCase):
       if "AC-106" in task["acceptance"]
     }
     self.assertEqual(expected_tasks, actual_tasks)
+
+  def test_end_to_end_issue_body_stays_publishable(self):
+    task = next(task for task in self.catalog["tasks"] if task["id"] == "task-9.1")
+    self.assertEqual("ids", task["requirements_display"])
+    body = self.document("tasks/task-9.1.md")
+    self.assertLess(len(body), 60_000)
+    for requirement in {
+      requirement
+      for acceptance_id in task["acceptance"]
+      for requirement in self.acceptance(acceptance_id)["requirements"]
+    }:
+      self.assertIn(f"`{requirement}`", body)
 
   def test_xirr_reference_vector_and_ambiguity_examples(self):
     getcontext().prec = 40
@@ -102,6 +116,16 @@ class ReadinessContractTest(unittest.TestCase):
   def sign_transitions(flows):
     signs = [flow > 0 for flow in flows if flow]
     return sum(left != right for left, right in zip(signs, signs[1:]))
+
+  def acceptance(self, identifier):
+    for requirement in self.catalog["requirements"]:
+      if requirement["acceptance"]["id"] == identifier:
+        return {"requirements": [requirement["id"]]}
+    return next(
+      acceptance
+      for acceptance in self.catalog["extra_acceptance"]
+      if acceptance["id"] == identifier
+    )
 
 
 if __name__ == "__main__":

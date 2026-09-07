@@ -25,7 +25,7 @@ Ready относится к спецификации. Приложение ещ�
 
 ## Provider gates
 
-D-38 разрешает разработку по нормализованным контрактам и safe states. По D-43 конкретный provider включается только server-owned admission для точного binding build/contract/allowlist/config/permission/environment: task-4.x подтверждает provider evidence, task-8.x — target-host/deployment evidence. Несовпадение возвращает `provider_not_admitted` до collector IO.
+D-38 разрешает разработку по нормализованным контрактам и safe states. По D-43 конкретный provider включается только server-owned admission для точного binding build/contract/allowlist/config/permission/environment: task-4.x подтверждает provider evidence, task-8.x — target-host/deployment evidence. Несовпадение до read возвращает `provider_not_admitted`; job/result несут `admissionRevision`, а commit-time revalidation оставляет in-flight stale result в quarantine без финансового эффекта.
 
 При пробеле используются typed states `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable` или `command_expired`. Неизвестное значение не становится нулём, а неоднозначный source record не создаёт проводку.
 

@@ -30,7 +30,7 @@ This verdict applies to SDD decision completeness. The application, connectors, 
 - Terminal command detail: 90 days after outcome; unresolved: through reconciliation + 90 days; a tombstone with `commandId` lives throughout unresolved state and 400 days after terminal/reconciled outcome; recent: 30 days terminal + every unresolved; expired detail → HTTP 410 `command_expired`.
 - FX gap beyond 365 days → `valuation_unavailable`; incomplete platform quote → `quote_unavailable`.
 - XIRR: Actual/365, same-day aggregation, both signs, one sign transition, fractional powers in 50-digit HALF_EVEN decimal with `1e-24` NPV error bound, bisection from `-1 + 1e-12` through `1,000,000`, `1e-12` solver tolerance, 512 iterations.
-- Provider admission: aggregate/repository in the `backend/internal/connections/admission/` application boundary, storage adapter in task-1.3; server-owned exact environment/build/contract/allowlist/configuration/permission binding; atomic task-4.x provider evidence + task-8.x host evidence; stale/missing binding → `provider_not_admitted` before a job or collector IO.
+- Provider admission: aggregate/repository in the `backend/internal/connections/admission/` application boundary, storage adapter in task-1.3; server-owned exact environment/build/contract/allowlist/configuration/permission binding and monotonic `admissionRevision`; atomic task-4.x provider evidence + task-8.x host evidence; stale/missing binding → `provider_not_admitted` before a new job or collector IO, commit-time stale result → quarantine without source/posting.
 
 ## Synthetic contract checks
 
@@ -55,7 +55,8 @@ This verdict applies to SDD decision completeness. The application, connectors, 
 | No sign transition; `-100,+230,-132`; same-day net zero | Explained `unavailable` |
 | Terminal command older than 90, tombstone younger than 400 days | `command_expired`; same key/hash does not execute again, different hash rejected |
 | Unresolved command older than 90 days | Retained until reconciliation; included in `/commands/recent` |
-| Admission belongs to an old build/allowlist/configuration or revocation races enqueue | Atomic invalidate/check+enqueue and collector recheck yield `provider_not_admitted`; stale binding creates no job/provider IO/source record/posting |
+| Revocation/binding change occurs before enqueue or provider IO | Atomic invalidate/check+enqueue and collector recheck yield `provider_not_admitted`; no job or provider IO starts |
+| Revocation/binding change occurs after provider IO starts | Cancellation is best effort; the result with the old `admissionRevision` fails commit-time revalidation and remains in quarantine without a source record/posting |
 
 ## Evidence boundary
 
