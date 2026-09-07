@@ -22,6 +22,19 @@ if (import.meta.env.DEV && window.location.pathname === "/__design/tokens") {
       );
     },
   );
+} else if (
+  import.meta.env.DEV &&
+  window.location.pathname === "/__design/components"
+) {
+  void import("@/design-system/catalog/ComponentCatalog").then(
+    ({ ComponentCatalog }) => {
+      reactRoot.render(
+        <StrictMode>
+          <ComponentCatalog />
+        </StrictMode>,
+      );
+    },
+  );
 } else {
   reactRoot.render(
     <StrictMode>
