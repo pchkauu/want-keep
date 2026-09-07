@@ -14,9 +14,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
+	accounts "github.com/pchkauu/want-keep/backend/internal/accounts/application"
 	attachments "github.com/pchkauu/want-keep/backend/internal/attachments/application"
 	"github.com/pchkauu/want-keep/backend/internal/attachments/files"
 	"github.com/pchkauu/want-keep/backend/internal/attachments/processor"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
+	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
+	accountdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/accounts"
 	attachmentdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/attachments"
 	delivery "github.com/pchkauu/want-keep/backend/internal/delivery/identity"
 	application "github.com/pchkauu/want-keep/backend/internal/identity/application"
@@ -89,7 +94,24 @@ func run() error {
 	processingStopped := make(chan struct{})
 	go func() { defer close(processingStopped); _ = attachmentService.Run(processing) }()
 	defer func() { cancelProcessing(); <-processingStopped }()
+	now := func() calendar.Instant {
+		at, err := calendar.ParseInstant(time.Now().UTC().Format(time.RFC3339Nano))
+		if err != nil {
+			panic(err)
+		}
+		return at
+	}
+	accountService := accounts.NewService(database, database, now, uuid.NewString)
+	executor := commands.NewExecutor(database, database, now)
+	queries := commands.NewQueries(database, database.AuthorizeCommandResult)
+	accountHandler, err := accountdelivery.New(accountService, executor, queries, service, database, config, now)
+	if err != nil {
+		return err
+	}
 	mux := http.NewServeMux()
+	mux.Handle("/api/v1/accounts", accountHandler)
+	mux.Handle("/api/v1/accounts/", accountHandler)
+	mux.Handle("/api/v1/commands/", accountHandler)
 	mux.Handle("/api/v1/attachments", attachmentHandler)
 	mux.Handle("/api/v1/attachments/", attachmentHandler)
 	mux.Handle("/api/v1/system/privacy", attachmentHandler)

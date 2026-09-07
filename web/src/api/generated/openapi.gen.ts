@@ -1613,10 +1613,15 @@ export interface components {
     Account: {
       asset: components["schemas"]["Asset"];
       balance: components["schemas"]["Balance"];
+      cardAliases: components["schemas"]["CardAlias"][];
       connectionId?: components["schemas"]["ID"];
       externalAccountOwnerId?: components["schemas"]["ID"];
+      externalAssetCode?: string;
+      fundingAvailability: components["schemas"]["AmountValue"];
       id: components["schemas"]["ID"];
       name: string;
+      network?: string;
+      opening?: components["schemas"]["OpeningPoint"];
       openingDate: components["schemas"]["Date"];
       ownership: components["schemas"]["Ownership"];
       /** @enum {string} */
@@ -1629,10 +1634,14 @@ export interface components {
         | "deposit"
         | "wallet"
         | "funding"
+        | "spot"
+        | "futures"
+        | "mining"
         | "earn"
         | "coinhold"
         | "crypto_card";
       revision: components["schemas"]["Revision"];
+      sourceBalance?: components["schemas"]["SourceBalance"];
     };
     /** @description Manual cash account. Opening money must match account asset and is not income. Imported products are created only by verified adapters. */
     AccountCreate: {
@@ -1864,6 +1873,11 @@ export interface components {
       amount: components["schemas"]["AmountValue"];
       name: string;
       resources: components["schemas"]["ResourceReference"][];
+    };
+    CardAlias: {
+      id: components["schemas"]["ID"];
+      label: string;
+      lastFour: string;
     };
     Category: {
       id: components["schemas"]["ID"];
@@ -2401,11 +2415,27 @@ export interface components {
     NotificationRead: {
       notificationIds: components["schemas"]["ID"][];
     };
+    OpeningAmounts: {
+      available: components["schemas"]["AmountValue"];
+      debt: components["schemas"]["AmountValue"];
+      locked: components["schemas"]["AmountValue"];
+      owned: components["schemas"]["AmountValue"];
+    };
     OpeningCorrection: {
-      balance: components["schemas"]["Money"];
+      balances: components["schemas"]["OpeningAmounts"];
       date: components["schemas"]["Date"];
       expectedRevision: components["schemas"]["Revision"];
       reason: string;
+    };
+    OpeningPoint: {
+      actorId: components["schemas"]["ID"];
+      balances: components["schemas"]["OpeningAmounts"];
+      confirmed: boolean;
+      date: components["schemas"]["Date"];
+      reason: string;
+      recordedAt: components["schemas"]["Instant"];
+      revision: components["schemas"]["Revision"];
+      timezone: components["schemas"]["Timezone"];
     };
     Ownership:
       | components["schemas"]["PersonalOwnership"]
@@ -2765,6 +2795,14 @@ export interface components {
     SharedScopeInput: {
       /** @enum {string} */
       scope: "household";
+    };
+    SourceBalance: {
+      balances: components["schemas"]["Balance"];
+      connectionId: components["schemas"]["ID"];
+      creditLimit: components["schemas"]["AmountValue"];
+      evidenceRef: string;
+      id: components["schemas"]["ID"];
+      ownAvailabilityVerified: boolean;
     };
     /** @description Source identity is household-scoped and stable across connection recreation. External identifiers, raw asset codes and networks are separate from normalized Money.Asset; unknown aliases are never mapped by resemblance. */
     SourceReference: {

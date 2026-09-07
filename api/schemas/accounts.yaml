@@ -93,9 +93,28 @@ Account:
       - deposit
       - wallet
       - funding
+      - spot
+      - futures
+      - mining
       - earn
       - coinhold
       - crypto_card
+    opening:
+      $ref: './accounts.yaml#/OpeningPoint'
+    cardAliases:
+      type: array
+      items:
+        $ref: './accounts.yaml#/CardAlias'
+    sourceBalance:
+      $ref: './accounts.yaml#/SourceBalance'
+    fundingAvailability:
+      $ref: './quality.yaml#/AmountValue'
+    network:
+      type: string
+      maxLength: 2000
+    externalAssetCode:
+      type: string
+      maxLength: 2000
     balance:
       "$ref": "./accounts.yaml#/Balance"
     openingDate:
@@ -113,6 +132,8 @@ Account:
   - product
   - balance
   - openingDate
+  - cardAliases
+  - fundingAvailability
 AccountCreate:
   type: object
   additionalProperties: false
@@ -166,8 +187,8 @@ OpeningCorrection:
       "$ref": "./money.yaml#/Revision"
     date:
       "$ref": "./money.yaml#/Date"
-    balance:
-      "$ref": "./money.yaml#/Money"
+    balances:
+      "$ref": "./accounts.yaml#/OpeningAmounts"
     reason:
       type: string
       minLength: 1
@@ -175,7 +196,7 @@ OpeningCorrection:
   required:
   - expectedRevision
   - date
-  - balance
+  - balances
   - reason
 Reconciliation:
   type: object
@@ -250,3 +271,72 @@ ReconciliationPage:
   required:
   - items
   - quality
+OpeningAmounts:
+  type: object
+  additionalProperties: false
+  properties:
+    owned:
+      $ref: './quality.yaml#/AmountValue'
+    available:
+      $ref: './quality.yaml#/AmountValue'
+    locked:
+      $ref: './quality.yaml#/AmountValue'
+    debt:
+      $ref: './quality.yaml#/AmountValue'
+  required: [owned, available, locked, debt]
+OpeningPoint:
+  type: object
+  additionalProperties: false
+  properties:
+    revision:
+      $ref: './money.yaml#/Revision'
+    date:
+      $ref: './money.yaml#/Date'
+    timezone:
+      $ref: './money.yaml#/Timezone'
+    confirmed:
+      type: boolean
+    balances:
+      $ref: './accounts.yaml#/OpeningAmounts'
+    actorId:
+      $ref: './money.yaml#/ID'
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    recordedAt:
+      $ref: './money.yaml#/Instant'
+  required: [revision, date, timezone, confirmed, balances, actorId, reason, recordedAt]
+CardAlias:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: './money.yaml#/ID'
+    label:
+      type: string
+      minLength: 1
+      maxLength: 100
+    lastFour:
+      type: string
+      pattern: '^[0-9]{4}$'
+  required: [id, label, lastFour]
+SourceBalance:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      $ref: './money.yaml#/ID'
+    connectionId:
+      $ref: './money.yaml#/ID'
+    balances:
+      $ref: './accounts.yaml#/Balance'
+    creditLimit:
+      $ref: './quality.yaml#/AmountValue'
+    ownAvailabilityVerified:
+      type: boolean
+    evidenceRef:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required: [id, connectionId, balances, creditLimit, ownAvailabilityVerified, evidenceRef]

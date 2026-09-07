@@ -33,6 +33,7 @@ type Repository interface {
 	FenceSyncResult(context.Context, household.Principal, jobs.Job) error
 	Quarantine(context.Context, jobs.Job, string, string) error
 	SaveCheckpoint(context.Context, jobs.Job, string, string, []string) error
+	ImportOmissions(context.Context, household.Principal, string) ([]string, error)
 	FinishJob(context.Context, household.Principal, jobs.Job) error
 }
 
@@ -222,6 +223,11 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 			if err = apply(ctx); err != nil {
 				return err
 			}
+			omissions, err := s.repository.ImportOmissions(ctx, p, issued.ID)
+			if err != nil {
+				return err
+			}
+			page = page.WithOmissions(append(append([]string{}, current.Gaps...), omissions...))
 			if err = s.repository.SaveCheckpoint(ctx, issued, page.NextCursor, page.Coverage, page.Gaps); err != nil {
 				return err
 			}

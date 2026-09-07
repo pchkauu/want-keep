@@ -15,7 +15,7 @@ E2E_WEB_DIR ?= web
 
 .DEFAULT_GOAL := help
 
-.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-household-race test-contract e2e eval-ai check-deploy backup-check restore-check
+.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-household-race test-accounts-race test-contract e2e eval-ai check-deploy backup-check restore-check
 
 help:
 	@echo "Want Keep repository commands"
@@ -154,3 +154,6 @@ restore-check:
 	@if [ "$(MODE)" != "synthetic" ]; then echo "MODE=synthetic is required." >&2; exit 2; fi
 	@if [ ! -f ops/restore/check.sh ]; then echo "Synthetic restore check is not implemented." >&2; exit 2; fi
 	sh ops/restore/check.sh
+
+test-accounts-race:
+	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/accounts/...

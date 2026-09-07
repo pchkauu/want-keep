@@ -8,7 +8,6 @@ import (
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
-	reporting "github.com/pchkauu/want-keep/backend/internal/reporting/domain"
 )
 
 type Journal interface {
@@ -44,43 +43,11 @@ func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Rev
 	if expected != actual || actual >= command.MaxRevision || r.Revision != actual+1 {
 		return commands.Rejection{Code: "version_conflict"}
 	}
-	deltas, err := r.Deltas(previous)
-	if err != nil {
-		return err
-	}
 	if err = w.journal.AppendRevision(ctx, r, expected); err != nil {
 		return err
 	}
-	for id, delta := range deltas {
-		a, err := w.accounts.Account(ctx, p, id)
-		if err != nil {
-			return err
-		}
-		if a.Asset != delta.Asset() {
-			return ledger.ErrInvalidRevision
-		}
-		for _, field := range []string{"owned", "available"} {
-			balance, err := w.accounts.Balance(ctx, p, id, field)
-			if err != nil {
-				return err
-			}
-			value, known := balance.Amount.Value()
-			if !known {
-				continue
-			}
-			value, err = value.Add(delta)
-			if err != nil {
-				return err
-			}
-			balance.Amount, err = reporting.KnownAmount(value)
-			if err != nil {
-				return err
-			}
-			// A journal projection does not change the timestamp or quality of the source observation.
-			if err = w.accounts.RecordBalance(ctx, balance); err != nil {
-				return err
-			}
-		}
+	if err = accounts.NewProjector(w.accounts).Apply(ctx, p, r, previous); err != nil {
+		return err
 	}
 	return w.journal.EmitEvent(ctx, "transaction", r.OperationID, r.Revision, "transaction.changed")
 }

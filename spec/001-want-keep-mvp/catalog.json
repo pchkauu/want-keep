@@ -3450,20 +3450,40 @@
         "AC-105"
       ],
       "targets": [
-        "backend/internal/accounts/"
+        "backend/internal/accounts/",
+        "backend/internal/delivery/accounts/",
+        "backend/internal/storage/account*.go",
+        "backend/internal/storage/import_omissions.go",
+        "backend/internal/connections/admission/",
+        "backend/internal/commands/application/executor.go",
+        "backend/internal/ledger/application/writer.go",
+        "backend/migrations/007_accounts_opening_balances.sql",
+        "backend/test/integration/accounts/",
+        "api/schemas/accounts.yaml",
+        "backend/cmd/api/main.go",
+        "Makefile",
+        ".github/workflows/ci.yml"
       ],
       "behavior": {
-        "ru": "Разделить логический аккаунт платформы, счёт актива и карту-доступ к счёту, чтобы карты не дублировали баланс. Поддержать ручные наличные счета, выбранную дату начала, явный начальный остаток и снимки источника с owned/available/locked/debt. Неизвестные значения сохранять неизвестными, неподдерживаемые активы — в покрытии источника.",
-        "en": "Separate platform identity, asset account and card-as-access-to-account so cards do not duplicate balances. Support manual cash accounts, selected start date, explicit opening balance and source snapshots with owned/available/locked/debt. Preserve unknown values and track unsupported assets in source coverage."
+        "ru": "Разделить логический аккаунт платформы, счёт актива и карту-доступ к счёту, чтобы карты не дублировали баланс. Поддержать ручные наличные счета, выбранную дату начала, явный начальный остаток и снимки источника с owned/available/locked/debt. Неизвестные значения сохранять неизвестными, неподдерживаемые активы — в покрытии источника. Открытие — начало дня в timezone семьи; correction хранит историю и пересчитывает текущие проведённые движения с новой даты. Источник и проекция раздельны; подтверждённая собственная доступность снимка без более поздних движений используется для резервов, без сложения с журналом. Импорт — только внутри admitted CommitPage; неизвестный актив/неоднозначность сохраняют evidence. Команды имеют отдельную pending-регистрацию, атомарный результат, replay до revision, owner-проверку и личное чтение статуса.",
+        "en": "Separate platform identity, asset account and card-as-access-to-account so cards do not duplicate balances. Support manual cash accounts, selected start date, explicit opening balance and source snapshots with owned/available/locked/debt. Preserve unknown values and track unsupported assets in source coverage. Opening is the start of day in the household timezone; corrections preserve history and recalculate current posted movements from the new date. Source and projection stay separate; verified own snapshot availability without later movements funds reserves without adding the ledger. Import runs only within admitted CommitPage; unknown assets/ambiguity preserve evidence. Commands have separate pending registration, atomic outcomes, replay before revision checks, owner checks and actor-only status reads."
       },
       "verification": {
-        "command": "make test-go PKG=./internal/accounts/...",
+        "command": "make check; make test-integration AREA=accounts; make test-accounts-race",
         "expected": {
-          "ru": "Пять базовых счетов, карточные алиасы, долг и начальные остатки считаются без ложного дохода или двойного капитала.",
-          "en": "Five baseline accounts, card aliases, debt and opening balances produce no false income or duplicated wealth."
+          "ru": "Семь счетов AC-002 и все шесть активов, точные суммы, алиасы, отдельный долг, история opening, изоляция, replay и admitted импорт проверены на изолированной PostgreSQL; отсутствующая БД завершает suite ошибкой.",
+          "en": "Seven AC-002 accounts and all six assets, exact amounts, aliases, separate debt, opening history, isolation, replay and admitted import are checked on isolated PostgreSQL; missing DB fails the suite."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/17"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/17",
+      "status": {
+        "ru": "Реализованы backend/API счетов, начальных остатков и admitted import-контракт; UI, адаптеры и полная сверка — в следующих задачах.",
+        "en": "Account/opening backend/API and admitted import contract implemented; UI, adapters and full reconciliation remain downstream."
+      },
+      "verification_note": {
+        "ru": "Доказательства и границы: evidence/task-2.1-accounts.md. Команды доступны; зависимости включены в базу. Обязательны storage/identity/household, соответствующие race и privacy-регрессии. Это не проверка production или браузерного UI.",
+        "en": "Evidence and boundaries: evidence/task-2.1-accounts.en.md. Commands exist; dependencies are included in the base. Storage/identity/household, corresponding race and privacy regressions are required. This does not verify production or browser UI."
+      }
     },
     {
       "id": "task-2.2",
@@ -6071,12 +6091,12 @@
         "en": "Account and opening balance"
       },
       "fields": {
-        "ru": "Название, тип продукта, валюта, личный владелец/семейный, дата начала, начальные собственные/заёмные/заблокированные суммы по типу.",
-        "en": "Name, product type, currency, personal owner/household, start date, own/borrowed/blocked opening amounts by type."
+        "ru": "Название, валюта, личный/семейный наличный счёт, дата начала в timezone семьи и точный остаток. Импортный продукт имеет отдельные owned/available/locked/debt, подтверждение и источник; карты — алиасы без баланса.",
+        "en": "Name, asset, personal/household cash account, start date in household timezone and exact opening balance. Imported products have separate owned/available/locked/debt, confirmation and provenance; cards are balance-free aliases."
       },
       "rules": {
-        "ru": "Оба member создают счета и исправляют факты учёта. При смене владельца или personal/household принадлежности существующего личного счёта требуется его текущий владелец; для семейного счёта — любой member. Проверенный внешний владелец и история операций этим не меняются. Точные decimal, валюта обязательна. Импортируемые поля меняются через correction; начальный остаток не доход.",
-        "en": "Both members create accounts and correct accounting facts. Changing owner or personal/household scope of an existing personal account requires its current owner; either member may change a household account. This never changes verified external ownership or transaction history. Exact decimals and currency required. Imported fields change through correction; opening balance is not income."
+        "ru": "Оба member создают счета и исправляют факты учёта. При смене владельца или personal/household принадлежности существующего личного счёта требуется его текущий владелец; для семейного счёта — любой member. Проверенный внешний владелец и история операций этим не меняются. Точные decimal, валюта обязательна. Импортируемые поля меняются через correction; начальный остаток не доход. Ручное создание — только наличные, личный счёт только для себя. Перенос даты сохраняет операции до неё в истории; новое открытие заменяет прежнее в расчёте. Дата не может быть в будущем. Неизвестный ответ восстанавливается по прежнему Idempotency-Key через /commands; partial/unknown не равны нулю.",
+        "en": "Both members create accounts and correct accounting facts. Changing owner or personal/household scope of an existing personal account requires its current owner; either member may change a household account. This never changes verified external ownership or transaction history. Exact decimals and currency required. Imported fields change through correction; opening balance is not income. Manual creation is cash only; a personal account is created for oneself. Moving the date keeps earlier operations in history; the new opening replaces the previous calculation input. The date cannot be in the future. Unknown outcomes use the original Idempotency-Key via /commands; partial/unknown are not zero."
       },
       "result": {
         "ru": "Счёт в учёте создан/исправлен с audit; это не открытие банковского продукта.",
