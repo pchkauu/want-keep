@@ -20,6 +20,8 @@ paths:
     "$ref": "./paths/auth.yaml#/~1auth~1enrollment~1options"
   "/auth/enrollment/verify":
     "$ref": "./paths/auth.yaml#/~1auth~1enrollment~1verify"
+  "/auth/session/activity":
+    "$ref": "./paths/auth.yaml#/~1auth~1session~1activity"
   "/auth/recovery":
     "$ref": "./paths/auth.yaml#/~1auth~1recovery"
   "/auth/logout":
@@ -187,7 +189,7 @@ components:
       type: apiKey
       in: cookie
       name: want_keep_session
-      description: Secure HttpOnly SameSite session cookie. Origin and session-bound
+      description: Secure HttpOnly SameSite=Lax host-only cookie with Path=/, a 12-hour absolute lifetime and 30-minute inactivity lifetime. Origin and session-bound
         CSRF validation are required for authenticated browser mutations.
   parameters:
     IdempotencyKey:
@@ -199,6 +201,14 @@ components:
     Limit:
       "$ref": "./components.yaml#/parameters/Limit"
   schemas:
+    LoginOptionsInput:
+      "$ref": "./schemas/auth.yaml#/LoginOptionsInput"
+    EnrollmentResult:
+      "$ref": "./schemas/auth.yaml#/EnrollmentResult"
+    InitialEnrollmentResult:
+      "$ref": "./schemas/auth.yaml#/InitialEnrollmentResult"
+    AdditionalPasskeyResult:
+      "$ref": "./schemas/auth.yaml#/AdditionalPasskeyResult"
     ID:
       "$ref": "./schemas/money.yaml#/ID"
     CommandID:

@@ -247,6 +247,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/auth/session/activity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record explicit foreground activity without extending absolute session expiry
+     * @description Requires a currently active session. Background polling must not call this endpoint. Does not create a financial command.
+     */
+    post: operations["auth_session_activity"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/budgets": {
     parameters: {
       query?: never;
@@ -1559,6 +1579,11 @@ export interface components {
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
     };
+    AdditionalPasskeyResult: {
+      me: components["schemas"]["Me"];
+      /** @enum {string} */
+      purpose: "add_passkey";
+    };
     AdmittedDeploymentGate: {
       admissionRevision: components["schemas"]["Revision"];
       binding: components["schemas"]["DeploymentBinding"];
@@ -1919,6 +1944,7 @@ export interface components {
       /** @enum {string} */
       attestation: "none";
       challenge: string;
+      excludeCredentials: string[];
       /** @enum {string} */
       residentKey: "required";
       rpId: string;
@@ -1930,6 +1956,9 @@ export interface components {
       /** @enum {string} */
       userVerification: "required";
     };
+    EnrollmentResult:
+      | components["schemas"]["InitialEnrollmentResult"]
+      | components["schemas"]["AdditionalPasskeyResult"];
     EnrollmentVerifyInput: {
       attemptId: components["schemas"]["ID"];
       credential: components["schemas"]["RegistrationCredential"];
@@ -1938,6 +1967,12 @@ export interface components {
     /** @enum {string} */
     ErrorCode:
       | "unauthorized"
+      | "authentication_attempt_rejected"
+      | "reauthentication_required"
+      | "last_passkey"
+      | "bootstrap_unavailable"
+      | "rate_limited"
+      | "service_unavailable"
       | "forbidden"
       | "not_found"
       | "scope_mismatch"
@@ -2063,6 +2098,12 @@ export interface components {
       /** @enum {string} */
       state: "partial" | "unavailable";
     };
+    InitialEnrollmentResult: {
+      me: components["schemas"]["Me"];
+      /** @enum {string} */
+      purpose: "bootstrap" | "recovery";
+      recoveryCodes: components["schemas"]["RecoveryCodes"];
+    };
     Insight: {
       evidence: components["schemas"]["ResourceReference"][];
       id: components["schemas"]["ID"];
@@ -2125,6 +2166,13 @@ export interface components {
       /** @enum {string} */
       userVerification: "required";
     };
+    LoginOptionsInput: {
+      /**
+       * @default login
+       * @enum {string}
+       */
+      purpose: "login" | "reauthentication";
+    };
     LoginVerifyInput: {
       attemptId: components["schemas"]["ID"];
       credential: components["schemas"]["AuthenticationCredential"];
@@ -2134,6 +2182,7 @@ export interface components {
       csrfToken: string;
       membership: components["schemas"]["Membership"];
       preferences: components["schemas"]["Preferences"];
+      session: components["schemas"]["Session"];
       user: components["schemas"]["User"];
     };
     MemberAmount: {
@@ -2525,9 +2574,12 @@ export interface components {
       | components["schemas"]["PersonalScopeInput"]
       | components["schemas"]["SharedScopeInput"];
     Session: {
+      authenticatedAt: components["schemas"]["Instant"];
       createdAt: components["schemas"]["Instant"];
       current: boolean;
+      expiresAt: components["schemas"]["Instant"];
       id: components["schemas"]["ID"];
+      idleExpiresAt: components["schemas"]["Instant"];
       name: string;
     };
     SessionPage: {
@@ -3113,7 +3165,10 @@ export interface operations {
   auth_enrollment_options: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me. */
+        "X-CSRF-Token"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -3123,9 +3178,12 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3146,7 +3204,10 @@ export interface operations {
   auth_enrollment_verify: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me. */
+        "X-CSRF-Token"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -3156,13 +3217,16 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["RecoveryCodes"];
+          "application/json": components["schemas"]["EnrollmentResult"];
         };
       };
       400: components["responses"]["Problem"];
@@ -3179,19 +3243,25 @@ export interface operations {
   auth_login_options: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me. */
+        "X-CSRF-Token"?: string;
+      };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["EmptyInput"];
+        "application/json": components["schemas"]["LoginOptionsInput"];
       };
     };
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3212,7 +3282,10 @@ export interface operations {
   auth_login_verify: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me. */
+        "X-CSRF-Token"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -3222,9 +3295,12 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3275,7 +3351,10 @@ export interface operations {
   auth_recovery: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description Required for reauthentication, adding a passkey and verification that replaces an existing browser session. Must match the session-bound token from /me. */
+        "X-CSRF-Token"?: string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -3285,9 +3364,12 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3302,6 +3384,36 @@ export interface operations {
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  auth_session_activity: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Session-bound token; validate Origin as well. Exceptions use ceremony-bound challenge/state. */
+        "X-CSRF-Token": components["parameters"]["CSRF"];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EmptyInput"];
+      };
+    };
+    responses: {
+      /** @description Activity recorded */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
       503: components["responses"]["Problem"];
     };
   };
@@ -4567,9 +4679,12 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -4600,9 +4715,12 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -4636,9 +4754,12 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -4702,9 +4823,12 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -4731,9 +4855,12 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Success */
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
       200: {
         headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
           [name: string]: unknown;
         };
         content: {

@@ -151,6 +151,8 @@ Me:
       "$ref": "./household.yaml#/Membership"
     preferences:
       "$ref": "./household.yaml#/Preferences"
+    session:
+      $ref: './auth.yaml#/Session'
     csrfToken:
       type: string
       minLength: 32
@@ -160,6 +162,7 @@ Me:
   - membership
   - preferences
   - csrfToken
+  - session
   description: Private no-store response. The session-bound CSRF token is held in
     memory, not URL or persistent browser storage.
 SetupInput:
