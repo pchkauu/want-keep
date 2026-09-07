@@ -3318,12 +3318,11 @@
         "en": "Protect secrets and private attachments"
       },
       "goal": {
-        "ru": "Создать границу хранения, не отдающую ключи и файлы посторонним или AI.",
-        "en": "Create storage boundaries that withhold keys and files from unauthorized users and AI."
+        "ru": "Защитить секреты подключений и семейные документы; передавать AI только явно разрешённые принятые вложения.",
+        "en": "Protect connection secrets and household documents; provide AI only explicitly authorized accepted attachments."
       },
       "depends_on": [
-        "task-1.4",
-        "task-1.6"
+        "task-1.4"
       ],
       "acceptance": [
         "AC-015",
@@ -3337,22 +3336,37 @@
         "AC-090"
       ],
       "targets": [
+        "backend/internal/privacy/",
         "backend/internal/connections/",
         "backend/internal/attachments/",
-        "backend/internal/config/"
+        "backend/internal/delivery/",
+        "backend/internal/storage/",
+        "backend/migrations/005_privacy.sql",
+        "backend/cmd/",
+        "backend/test/integration/privacy/",
+        "deploy/document-processor/",
+        "api/"
       ],
       "behavior": {
-        "ru": "Разделить зашифрованные секреты коннекторов, банковские сессии и приватные файлы. Проверять владельца при каждом чтении/скачивании, размер/тип файла и безопасный preview. Master/recovery-ключи не входят в БД/логи; отзыв подключения закрывает задания и сессии. Не выдавать браузерный профиль через публичный API.",
-        "en": "Separate encrypted connector secrets, bank sessions and private files. Authorize every read/download and validate file size/type and safe preview. Master/recovery keys stay outside DB/logs; disconnecting closes jobs/sessions. Never expose browser profiles through public APIs."
+        "ru": "D-46: два приватных keyring, AES-256-GCM/AAD, owner/session/generation/purpose grant и сохранённый job admission/lease. Отключение атомарно отзывает секреты и задания. Семейные JPEG/PNG/WebP/PDF до 10 MiB/10 страниц проходят изолированный процессор; только accepted выдаётся как download/PNG preview или AI input. Upload ID восстанавливает результат без financial command payload. При отказе защиты вход и обычный учёт продолжаются. Task-1.6 не блокирует этот результат; приглашения остаются там.",
+        "en": "D-46: two private keyrings, AES-256-GCM/AAD, owner/session/generation/purpose grants and persisted job admission/leases. Disconnect atomically revokes secrets and jobs. Household JPEG/PNG/WebP/PDF up to 10 MiB/10 pages pass isolated processing; only accepted content is available as downloads/PNG previews or AI input. Upload IDs recover outcomes without financial command payloads. Protection failures leave sign-in and ordinary accounting available. Task-1.6 does not block this result; invitations remain there."
       },
       "verification": {
-        "command": "make test-integration AREA=privacy",
+        "command": "make check\nmake test-integration AREA=privacy\nmake test-integration AREA=identity\nmake test-integration AREA=storage\nmake test-identity-race\nmake test-storage-race",
         "expected": {
           "ru": "Проверки доступа, отзыва, malformed upload и redaction проходят; доменные и AI-интерфейсы не содержат секретов.",
           "en": "Authorization, revocation, malformed-upload and redaction checks pass; domain/AI interfaces contain no secrets."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/15"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/15",
+      "verification_note": {
+        "ru": "Privacy suite требует реальную PostgreSQL, HTTP, файловое хранилище и закреплённый изолированный Linux processor; race включён. Evidence: evidence/task-1.5-privacy.md. Банки, AI-вызовы, Chrome/Arc, UI и production не подтверждаются этой задачей.",
+        "en": "Privacy suite requires real PostgreSQL, HTTP, file storage and the pinned isolated Linux processor; race detection is enabled. Evidence: evidence/task-1.5-privacy.en.md. Banks, AI calls, Chrome/Arc, UI and production are not established by this task."
+      },
+      "status": {
+        "ru": "Реализована backend/API-защита секретов и вложений; product UI, AI extraction и реальные адаптеры остаются профильным задачам.",
+        "en": "Backend/API protection for secrets and attachments implemented; product UI, AI extraction and live adapters remain with their owning tasks."
+      }
     },
     {
       "id": "task-1.6",

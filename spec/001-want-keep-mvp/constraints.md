@@ -100,3 +100,5 @@ pgx v5.10.0 остаётся в storage; domain/application не импорти�
 ## Identity task-1.4
 
 Auth использует domain/application, WebAuthn adapter, delivery/identity и storage. Правила D-45 и границы приёмки: [контракт](contracts.md#task-14-вход-и-восстановление-d-45), [evidence](evidence/task-1.4-identity.md).
+
+Task-1.5 (D-46) добавляет отдельные keyring и изолированный processor. Domain/application не импортируют crypto storage, SQL, HTTP или декодеры; секреты доступны только credentials adapter. Runtime processor лишён сети/ключей/БД/общего каталога. Отказ защищённых функций не останавливает identity/учёт. [Контракт](contracts.md), [проверки и эксплуатационная передача](evidence/task-1.5-privacy.md).

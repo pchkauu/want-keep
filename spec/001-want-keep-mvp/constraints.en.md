@@ -100,3 +100,5 @@ pgx v5.10.0 stays in storage; domain/application never import the driver or pgx.
 ## Identity task-1.4
 
 Auth uses domain/application, a WebAuthn adapter, delivery/identity and storage. D-45 and verification boundaries: [contract](contracts.en.md#task-14-sign-in-and-recovery-d-45), [evidence](evidence/task-1.4-identity.en.md).
+
+Task-1.5 (D-46) adds separate keyrings and an isolated processor. Domain/application never import crypto storage, SQL, HTTP or decoders; only the credentials adapter handles secrets. Processor runtime has no network/keys/DB/shared directory. Protected-function failures do not stop identity/accounting. [Contract](contracts.en.md), [verification and operational handoff](evidence/task-1.5-privacy.en.md).

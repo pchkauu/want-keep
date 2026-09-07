@@ -3,23 +3,30 @@
 
 ## RU
 
-Создать границу хранения, не отдающую ключи и файлы посторонним или AI.
+Защитить секреты подключений и семейные документы; передавать AI только явно разрешённые принятые вложения.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализована backend/API-защита секретов и вложений; product UI, AI extraction и реальные адаптеры остаются профильным задачам.
 
-**Зависимости:** `task-1.4`, `task-1.6`.
+**Зависимости:** `task-1.4`.
 
 **Тип:** `implementation`.
 
 ### Изменение и контракты
 
-Разделить зашифрованные секреты коннекторов, банковские сессии и приватные файлы. Проверять владельца при каждом чтении/скачивании, размер/тип файла и безопасный preview. Master/recovery-ключи не входят в БД/логи; отзыв подключения закрывает задания и сессии. Не выдавать браузерный профиль через публичный API.
+D-46: два приватных keyring, AES-256-GCM/AAD, owner/session/generation/purpose grant и сохранённый job admission/lease. Отключение атомарно отзывает секреты и задания. Семейные JPEG/PNG/WebP/PDF до 10 MiB/10 страниц проходят изолированный процессор; только accepted выдаётся как download/PNG preview или AI input. Upload ID восстанавливает результат без financial command payload. При отказе защиты вход и обычный учёт продолжаются. Task-1.6 не блокирует этот результат; приглашения остаются там.
 
 ### Границы изменений
 
+- `backend/internal/privacy/`
 - `backend/internal/connections/`
 - `backend/internal/attachments/`
-- `backend/internal/config/`
+- `backend/internal/delivery/`
+- `backend/internal/storage/`
+- `backend/migrations/005_privacy.sql`
+- `backend/cmd/`
+- `backend/test/integration/privacy/`
+- `deploy/document-processor/`
+- `api/`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -106,12 +113,17 @@
 ### Проверка результата
 
 ```sh
+make check
 make test-integration AREA=privacy
+make test-integration AREA=identity
+make test-integration AREA=storage
+make test-identity-race
+make test-storage-race
 ```
 
 Проверки доступа, отзыва, malformed upload и redaction проходят; доменные и AI-интерфейсы не содержат секретов.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Privacy suite требует реальную PostgreSQL, HTTP, файловое хранилище и закреплённый изолированный Linux processor; race включён. Evidence: evidence/task-1.5-privacy.md. Банки, AI-вызовы, Chrome/Arc, UI и production не подтверждаются этой задачей.
 
 ### Передача следующему агенту
 
@@ -121,23 +133,30 @@ make test-integration AREA=privacy
 
 ## EN
 
-Create storage boundaries that withhold keys and files from unauthorized users and AI.
+Protect connection secrets and household documents; provide AI only explicitly authorized accepted attachments.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Backend/API protection for secrets and attachments implemented; product UI, AI extraction and live adapters remain with their owning tasks.
 
-**Dependencies:** `task-1.4`, `task-1.6`.
+**Dependencies:** `task-1.4`.
 
 **Kind:** `implementation`.
 
 ### Change and contracts
 
-Separate encrypted connector secrets, bank sessions and private files. Authorize every read/download and validate file size/type and safe preview. Master/recovery keys stay outside DB/logs; disconnecting closes jobs/sessions. Never expose browser profiles through public APIs.
+D-46: two private keyrings, AES-256-GCM/AAD, owner/session/generation/purpose grants and persisted job admission/leases. Disconnect atomically revokes secrets and jobs. Household JPEG/PNG/WebP/PDF up to 10 MiB/10 pages pass isolated processing; only accepted content is available as downloads/PNG previews or AI input. Upload IDs recover outcomes without financial command payloads. Protection failures leave sign-in and ordinary accounting available. Task-1.6 does not block this result; invitations remain there.
 
 ### Change boundaries
 
+- `backend/internal/privacy/`
 - `backend/internal/connections/`
 - `backend/internal/attachments/`
-- `backend/internal/config/`
+- `backend/internal/delivery/`
+- `backend/internal/storage/`
+- `backend/migrations/005_privacy.sql`
+- `backend/cmd/`
+- `backend/test/integration/privacy/`
+- `deploy/document-processor/`
+- `api/`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -224,12 +243,17 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
+make check
 make test-integration AREA=privacy
+make test-integration AREA=identity
+make test-integration AREA=storage
+make test-identity-race
+make test-storage-race
 ```
 
 Authorization, revocation, malformed-upload and redaction checks pass; domain/AI interfaces contain no secrets.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Privacy suite requires real PostgreSQL, HTTP, file storage and the pinned isolated Linux processor; race detection is enabled. Evidence: evidence/task-1.5-privacy.en.md. Banks, AI calls, Chrome/Arc, UI and production are not established by this task.
 
 ### Handoff to the next agent
 
