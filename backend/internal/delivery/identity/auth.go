@@ -94,7 +94,31 @@ func (s *Server) enrollmentOptions(w http.ResponseWriter, r *http.Request) {
 	if !s.decode(w, r, "EnrollmentInput", &input) {
 		return
 	}
-	if input.Purpose == "add_passkey" {
+	invitation, err := input.AsInvitationEnrollmentInput()
+	if err != nil {
+		s.problem(w, identity.ErrAttempt)
+		return
+	}
+	if invitation.Purpose == "invitation" {
+		request, err := s.request(w, r, true)
+		if err != nil {
+			s.problem(w, err)
+			return
+		}
+		enrollment, err := s.service.BeginInvitation(r.Context(), request, identity.Token(*invitation.AuthorizationToken), application.InvitedProfile{Name: invitation.Name, Locale: string(invitation.Locale), ReportingAsset: string(invitation.ReportingAsset)})
+		if err != nil {
+			s.problem(w, err)
+			return
+		}
+		s.write(w, 200, s.enrollmentDTO(enrollment))
+		return
+	}
+	existing, err := input.AsExistingEnrollmentInput()
+	if err != nil {
+		s.problem(w, identity.ErrAttempt)
+		return
+	}
+	if existing.Purpose == "add_passkey" {
 		if _, ok := s.authorize(w, r, true); !ok {
 			return
 		}
@@ -105,10 +129,10 @@ func (s *Server) enrollmentOptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := ""
-	if input.AuthorizationToken != nil {
-		token = *input.AuthorizationToken
+	if existing.AuthorizationToken != nil {
+		token = *existing.AuthorizationToken
 	}
-	enrollment, err := s.service.BeginEnrollment(r.Context(), request, identity.Purpose(input.Purpose), identity.Token(token))
+	enrollment, err := s.service.BeginEnrollment(r.Context(), request, identity.Purpose(existing.Purpose), identity.Token(token))
 	if err != nil {
 		s.problem(w, err)
 		return

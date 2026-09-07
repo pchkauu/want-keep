@@ -22,14 +22,11 @@ func (s *Store) CreateAccount(ctx context.Context, a account.Account) error {
 	if err = a.Validate(); err != nil {
 		return err
 	}
-	if err = a.Ownership.RequireRead(scope.principal); err != nil {
+	if err = a.Ownership.RequireCreate(scope.principal); err != nil {
 		return err
 	}
 	if a.Revision != 1 {
 		return command.ErrVersionConflict
-	}
-	if a.Ownership.Scope() == household.Personal && a.Ownership.PersonalOwnerID() != scope.principal.UserID() {
-		return household.ErrForbidden
 	}
 	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.accounts(household_id,id,name,asset,scope,owner_id,product,revision,opening_date,external_account_id) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')::uuid,$7,$8,$9,NULLIF($10,'')::uuid)`, a.Ownership.HouseholdID(), a.ID, a.Name, a.Asset, a.Ownership.Scope(), string(a.Ownership.PersonalOwnerID()), a.Product, a.Revision, a.OpeningDate.String(), a.ExternalAccountID)
 	return err

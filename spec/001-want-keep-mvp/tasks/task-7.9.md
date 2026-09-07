@@ -33,7 +33,7 @@
 
 **Структура сверху вниз:** Состав/приглашение → описание общего доступа → личные/общие ресурсы и правила.
 
-**Следующее действие:** Если есть место, выдать/обновить приглашение FORM-02; свои средства входа SCR-033.
+**Следующее действие:** Если есть место, выдать/перевыпустить приглашение после собственного passkey-подтверждения до 5 минут; отозвать действующей сессией. Сначала показать метаданные/revision; секрет повторно не читается.
 
 **Объяснение и детализация:** Нет смены ролей, выхода/замены участника и восстановления партнёром в MVP.
 
@@ -47,7 +47,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Поля:** Имя участника/семьи, язык, таймзона/валюта; закрытое приглашение, имя второго участника и passkey.
 
-**Проверки и права:** Однократный операторский bootstrap; invitation ограничен семьёй, сроком и одноразовым использованием; конфигурация максимум 2 активных участника.
+**Проверки и права:** Операторский bootstrap однократен. Приглашение одно, случайное, на 24 часа; выдача/перевыпуск требуют собственной auth до 5 минут и expectedRevision. Отзыв с CSRF не требует свежей auth. Принятие проверяет browser/purpose/revision, inviter membership и лимит атомарно с новым passkey/сессией/кодами.
 
 **Результат:** Создано членство, показаны личные recovery-коды; далее onboarding. Секреты не в URL журналов/аналитики.
 
@@ -180,7 +180,7 @@ Show the current member, separate sign-in/invitation, personal/household ownersh
 
 **Top-down structure:** Members/invitation → shared-access explanation → personal/shared resources and rules.
 
-**Next action:** If capacity allows, issue/renew invitation FORM-02; own access methods SCR-033.
+**Next action:** When capacity exists, issue/reissue after own passkey confirmation within 5 minutes; revoke with an active session. Show metadata/revision first; never reread the secret.
 
 **Explanation and details:** No role changing, member exit/replacement or partner recovery in MVP.
 
@@ -194,7 +194,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Fields:** Member/household name, language, timezone/currency; private invitation, joining member name and passkey.
 
-**Validation and permissions:** Single-use operator bootstrap; invitation is household-bound, expiring and single-use; configured maximum 2 active members.
+**Validation and permissions:** Operator bootstrap is one-time. One random invitation lasts 24 hours; issue/reissue requires own authentication within 5 minutes and expectedRevision. Revocation uses CSRF without fresh auth. Acceptance checks browser/purpose/revision, inviter membership and capacity atomically with a new passkey/session/codes.
 
 **Outcome:** Membership created, personal recovery codes shown; proceed to onboarding. Secrets excluded from URL logs/analytics.
 

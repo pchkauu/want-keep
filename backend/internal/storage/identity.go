@@ -13,12 +13,13 @@ import (
 // Authentication is serialized for the private two-member deployment. Financial transactions do not acquire this lock.
 func (s *Store) WithinIdentity(ctx context.Context, fn func(context.Context) error) error {
 	return s.transact(ctx, func(ctx context.Context, scope *transactionScope) error {
-		if scope.householdLocked || scope.admissionKey != "" {
+		if scope.householdLocked || scope.admissionKey != "" || scope.invitationHouseholdID != "" {
 			return ErrTransactionRequired
 		}
 		if _, err := scope.tx.Exec(ctx, "SELECT singleton FROM want_keep.identity_bootstrap WHERE singleton=true FOR UPDATE"); err != nil {
 			return identity.ErrUnavailable
 		}
+		scope.identityLocked = true
 		return fn(ctx)
 	})
 }

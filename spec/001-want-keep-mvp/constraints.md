@@ -100,3 +100,7 @@ pgx v5.10.0 остаётся в storage; domain/application не импорти�
 ## Identity task-1.4
 
 Auth использует domain/application, WebAuthn adapter, delivery/identity и storage. Правила D-45 и границы приёмки: [контракт](contracts.md#task-14-вход-и-восстановление-d-45), [evidence](evidence/task-1.4-identity.md).
+
+## Household task-1.6
+
+Приглашение не назначает principal и не даёт финансового доступа до атомарной регистрации. Identity lock предшествует family/invitation lock; family scope и joining scope не смешиваются. Раздельные доменные policies сохраняют текущего владельца, actor, payer и external owner. Миграция 005 расширяет схему, secret responses не replay-ятся. [Контракт](contracts.md#task-16-приглашения-и-семейные-права), [evidence](evidence/task-1.6-household.md).

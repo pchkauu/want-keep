@@ -20,7 +20,7 @@ func (s *Store) CreateGoal(ctx context.Context, g goals.Goal) error {
 	if err = g.Validate(); err != nil {
 		return err
 	}
-	if err = g.Ownership.RequireOwnerEdit(scope.principal); err != nil {
+	if err = g.Ownership.RequireCreate(scope.principal); err != nil {
 		return err
 	}
 	if g.Revision != 1 {

@@ -9,6 +9,7 @@ import (
 
 // Initialization is called only by the future closed bootstrap/invitation use cases.
 type Repository interface {
+	InvitationRepository
 	InitializeHousehold(context.Context, household.Household, []household.User, []household.Membership, calendar.Timezone, int) error
 	AddMember(context.Context, household.User, household.Membership) error
 	Membership(context.Context, household.HouseholdID, household.UserID) (household.Membership, error)
