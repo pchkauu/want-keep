@@ -114,7 +114,7 @@ Household:
     members:
       type: array
       items:
-        "$ref": "./household.yaml#/Membership"
+        "$ref": "./household.yaml#/HouseholdMember"
     maxActiveMembers:
       type: integer
       minimum: 1
@@ -195,57 +195,115 @@ SetupInput:
   - locale
   - reportingAsset
   - bootstrapToken
+HouseholdMember:
+  type: object
+  additionalProperties: false
+  properties:
+    membership:
+      $ref: '#/Membership'
+    user:
+      $ref: '#/User'
+  required: [membership, user]
 Invitation:
   type: object
   additionalProperties: false
   properties:
     id:
-      "$ref": "./money.yaml#/ID"
-    token:
-      type: string
-      writeOnly: true
+      $ref: './money.yaml#/ID'
+    invitedBy:
+      $ref: './money.yaml#/ID'
     expiresAt:
-      "$ref": "./money.yaml#/Instant"
-  required:
-  - id
-  - expiresAt
-  description: One-use invitation; private token is returned only by InvitationCreated.
-    Stored hashed; 24-hour lifetime.
+      $ref: './money.yaml#/Instant'
+    status:
+      type: string
+      enum: [active, revoked, accepted]
+      description: Active means not revoked or consumed; expiresAt independently limits usability.
+  required: [id, invitedBy, expiresAt, status]
+InvitationState:
+  type: object
+  additionalProperties: false
+  properties:
+    revision:
+      $ref: './money.yaml#/Revision'
+    current:
+      $ref: '#/Invitation'
+  required: [revision]
+InvitationMutationInput:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      $ref: './money.yaml#/Revision'
+  required: [expectedRevision]
 InvitationCreated:
   type: object
   additionalProperties: false
   properties:
-    id:
-      "$ref": "./money.yaml#/ID"
+    state:
+      $ref: '#/InvitationState'
     invitationToken:
       type: string
-      minLength: 32
-      maxLength: 1024
-    expiresAt:
-      "$ref": "./money.yaml#/Instant"
-  required:
-  - id
-  - invitationToken
-  - expiresAt
-InvitationAcceptInput:
+      minLength: 43
+      maxLength: 43
+  required: [state, invitationToken]
+  description: Secret appears once. After an unknown outcome, read metadata and explicitly reissue using its revision. Never replay the secret.
+InvitationTokenInput:
   type: object
   additionalProperties: false
   properties:
     invitationToken:
       type: string
-      minLength: 32
+      minLength: 1
+      maxLength: 1024
+      writeOnly: true
+  required: [invitationToken]
+InvitationPreview:
+  type: object
+  additionalProperties: false
+  properties:
+    householdName:
+      type: string
+    inviterName:
+      type: string
+    expiresAt:
+      $ref: './money.yaml#/Instant'
+  required: [householdName, inviterName, expiresAt]
+InvitationEnrollmentInput:
+  type: object
+  additionalProperties: false
+  properties:
+    purpose:
+      type: string
+      enum: [invitation]
+    authorizationToken:
+      type: string
+      minLength: 1
       maxLength: 1024
       writeOnly: true
     name:
       type: string
       minLength: 1
       maxLength: 2000
+    locale:
+      $ref: './money.yaml#/Locale'
+    reportingAsset:
+      $ref: './money.yaml#/Asset'
+  required: [purpose, authorizationToken, name, locale, reportingAsset]
+InvitationAcceptInput:
+  type: object
+  additionalProperties: false
+  properties:
+    invitationToken:
+      type: string
+      minLength: 1
+      maxLength: 1024
+      writeOnly: true
     enrollmentAttemptId:
-      "$ref": "./money.yaml#/ID"
+      $ref: './money.yaml#/ID'
+    credentialName:
+      type: string
+      minLength: 1
+      maxLength: 2000
     credential:
-      "$ref": "./auth.yaml#/RegistrationCredential"
-  required:
-  - invitationToken
-  - name
-  - enrollmentAttemptId
-  - credential
+      $ref: './auth.yaml#/RegistrationCredential'
+  required: [invitationToken, enrollmentAttemptId, credentialName, credential]

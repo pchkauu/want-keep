@@ -125,6 +125,9 @@ func (s *Store) CreateConnection(ctx context.Context, c admission.Connection) er
 	if err != nil {
 		return err
 	}
+	if c.HouseholdID != scope.principal.HouseholdID() {
+		return household.ErrForbidden
+	}
 	if c.ID == "" || c.Generation != 1 || c.Owner == "" {
 		return jobs.ErrInvalidJob
 	}
@@ -142,7 +145,7 @@ func (s *Store) Connection(ctx context.Context, p household.Principal, id string
 		return admission.Connection{}, err
 	}
 	c := admission.Connection{ID: id}
-	err = q.QueryRow(ctx, `SELECT provider,external_owner_id,generation,authorized FROM want_keep.connections WHERE household_id=$1 AND id=$2`, p.HouseholdID(), id).Scan(&c.Provider, &c.Owner, &c.Generation, &c.Authorized)
+	err = q.QueryRow(ctx, `SELECT household_id,provider,external_owner_id,generation,authorized FROM want_keep.connections WHERE household_id=$1 AND id=$2`, p.HouseholdID(), id).Scan(&c.HouseholdID, &c.Provider, &c.Owner, &c.Generation, &c.Authorized)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c, ErrNotFound
 	}
@@ -172,6 +175,9 @@ func (s *Store) CreateSyncJob(ctx context.Context, c admission.Connection, a con
 		return jobs.Job{}, ErrTransactionRequired
 	}
 	if err = a.RequireSync(a.Binding()); err != nil {
+		return jobs.Job{}, err
+	}
+	if err = (connections.ExternalOwnership{HouseholdID: c.HouseholdID, OwnerID: c.Owner}).RequireManage(scope.principal); err != nil {
 		return jobs.Job{}, err
 	}
 	if !c.Authorized || c.Provider != a.Binding().Provider {

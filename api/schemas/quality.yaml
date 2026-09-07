@@ -35,6 +35,9 @@ ErrorCode:
   - ai_budget_exhausted
   - invalid_attachment
   - backup_stale
+  - invitation_invalid
+  - invitation_revoked
+  - already_authenticated
   - invitation_expired
   - invitation_used
   - member_limit_reached

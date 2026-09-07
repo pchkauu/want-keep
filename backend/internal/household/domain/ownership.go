@@ -49,3 +49,15 @@ func (o Ownership) RequireOwnerEdit(principal Principal) error {
 	}
 	return nil
 }
+
+func (o Ownership) RequireCreate(principal Principal) error {
+	return o.RequireOwnerEdit(principal)
+}
+
+// Check the existing ownership first so a foreign personal resource cannot be made shared to bypass authorization.
+func (o Ownership) RequireChange(principal Principal, next Ownership) error {
+	if err := o.RequireOwnerEdit(principal); err != nil {
+		return err
+	}
+	return next.RequireRead(principal)
+}

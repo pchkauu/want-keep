@@ -717,13 +717,34 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /** household read */
+    get: operations["household_invitations"];
     put?: never;
     /**
      * household invite
-     * @description Ceremony-bound operation: one-use challenge/attempt, verified Origin and authorization purpose; does not use financial-command retention.
+     * @description Issue or replace one invitation. Requires own authentication newer than five minutes, current membership, CSRF and expectedRevision. Secret responses are never retained or replayed.
      */
     post: operations["household_invite"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/household/invitations/{id}/revoke": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Revoke current invitation
+     * @description Revoke with active membership, CSRF and expectedRevision. Invalidates pending enrollment. No fresh authentication required.
+     */
+    post: operations["household_revoke_invitation"];
     delete?: never;
     options?: never;
     head?: never;
@@ -761,6 +782,26 @@ export interface paths {
      * @description Ceremony-bound operation: one-use challenge/attempt, verified Origin and authorization purpose; does not use financial-command retention.
      */
     post: operations["household_accept"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/invitations/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Preview invitation without financial access
+     * @description Ceremony-bound operation: one-use challenge/attempt, verified Origin and authorization purpose; does not use financial-command retention.
+     */
+    post: operations["household_preview_invitation"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1933,11 +1974,9 @@ export interface components {
       | components["schemas"]["AdmittedDeploymentGate"]
       | components["schemas"]["BlockedDeploymentGate"];
     EmptyInput: Record<string, never>;
-    EnrollmentInput: {
-      authorizationToken?: string;
-      /** @enum {string} */
-      purpose: "bootstrap" | "invitation" | "add_passkey" | "recovery";
-    };
+    EnrollmentInput:
+      | components["schemas"]["ExistingEnrollmentInput"]
+      | components["schemas"]["InvitationEnrollmentInput"];
     EnrollmentOptions: {
       algorithms: number[];
       attemptId: components["schemas"]["ID"];
@@ -1999,10 +2038,18 @@ export interface components {
       | "ai_budget_exhausted"
       | "invalid_attachment"
       | "backup_stale"
+      | "invitation_invalid"
+      | "invitation_revoked"
+      | "already_authenticated"
       | "invitation_expired"
       | "invitation_used"
       | "member_limit_reached"
       | "internal_error";
+    ExistingEnrollmentInput: {
+      authorizationToken?: string;
+      /** @enum {string} */
+      purpose: "bootstrap" | "add_passkey" | "recovery";
+    };
     ExistingTransaction: {
       expectedRevision: components["schemas"]["Revision"];
       transactionId: components["schemas"]["ID"];
@@ -2087,9 +2134,13 @@ export interface components {
     Household: {
       id: components["schemas"]["ID"];
       maxActiveMembers: number;
-      members: components["schemas"]["Membership"][];
+      members: components["schemas"]["HouseholdMember"][];
       name: string;
       timezone: components["schemas"]["Timezone"];
+    };
+    HouseholdMember: {
+      membership: components["schemas"]["Membership"];
+      user: components["schemas"]["User"];
     };
     /** Format: uuid */
     ID: string;
@@ -2101,7 +2152,7 @@ export interface components {
     InitialEnrollmentResult: {
       me: components["schemas"]["Me"];
       /** @enum {string} */
-      purpose: "bootstrap" | "recovery";
+      purpose: "bootstrap" | "recovery" | "invitation";
       recoveryCodes: components["schemas"]["RecoveryCodes"];
     };
     Insight: {
@@ -2119,21 +2170,48 @@ export interface components {
     };
     /** Format: date-time */
     Instant: string;
-    /** @description One-use invitation; private token is returned only by InvitationCreated. Stored hashed; 24-hour lifetime. */
     Invitation: {
       expiresAt: components["schemas"]["Instant"];
       id: components["schemas"]["ID"];
-      token?: string;
+      invitedBy: components["schemas"]["ID"];
+      /**
+       * @description Active means not revoked or consumed; expiresAt independently limits usability.
+       * @enum {string}
+       */
+      status: "active" | "revoked" | "accepted";
     };
     InvitationAcceptInput: {
       credential: components["schemas"]["RegistrationCredential"];
+      credentialName: string;
       enrollmentAttemptId: components["schemas"]["ID"];
       invitationToken: string;
-      name: string;
     };
+    /** @description Secret appears once. After an unknown outcome, read metadata and explicitly reissue using its revision. Never replay the secret. */
     InvitationCreated: {
+      invitationToken: string;
+      state: components["schemas"]["InvitationState"];
+    };
+    InvitationEnrollmentInput: {
+      authorizationToken: string;
+      locale: components["schemas"]["Locale"];
+      name: string;
+      /** @enum {string} */
+      purpose: "invitation";
+      reportingAsset: components["schemas"]["Asset"];
+    };
+    InvitationMutationInput: {
+      expectedRevision: components["schemas"]["Revision"];
+    };
+    InvitationPreview: {
       expiresAt: components["schemas"]["Instant"];
-      id: components["schemas"]["ID"];
+      householdName: string;
+      inviterName: string;
+    };
+    InvitationState: {
+      current?: components["schemas"]["Invitation"];
+      revision: components["schemas"]["Revision"];
+    };
+    InvitationTokenInput: {
       invitationToken: string;
     };
     KnownAmount: {
@@ -4738,6 +4816,38 @@ export interface operations {
       503: components["responses"]["Problem"];
     };
   };
+  household_invitations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InvitationState"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
   household_invite: {
     parameters: {
       query?: never;
@@ -4750,7 +4860,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["EmptyInput"];
+        "application/json": components["schemas"]["InvitationMutationInput"];
       };
     };
     responses: {
@@ -4764,6 +4874,47 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["InvitationCreated"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  household_revoke_invitation: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Session-bound token; validate Origin as well. Exceptions use ceremony-bound challenge/state. */
+        "X-CSRF-Token": components["parameters"]["CSRF"];
+      };
+      path: {
+        id: components["schemas"]["ID"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["InvitationMutationInput"];
+      };
+    };
+    responses: {
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InvitationState"];
         };
       };
       400: components["responses"]["Problem"];
@@ -4832,7 +4983,43 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["Me"];
+          "application/json": components["schemas"]["InitialEnrollmentResult"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  household_preview_invitation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["InvitationTokenInput"];
+      };
+    };
+    responses: {
+      /** @description Success; private no-store response. Session/enrollment secrets are never replayed. */
+      200: {
+        headers: {
+          "Cache-Control"?: "no-store";
+          /** @description Session or ceremony cookie where applicable; Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. */
+          "Set-Cookie"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InvitationPreview"];
         };
       };
       400: components["responses"]["Problem"];

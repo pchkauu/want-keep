@@ -116,6 +116,10 @@ LoginVerifyInput:
   - attemptId
   - credential
 EnrollmentInput:
+  oneOf:
+  - $ref: '#/ExistingEnrollmentInput'
+  - $ref: './household.yaml#/InvitationEnrollmentInput'
+ExistingEnrollmentInput:
   type: object
   additionalProperties: false
   properties:
@@ -123,7 +127,6 @@ EnrollmentInput:
       type: string
       enum:
       - bootstrap
-      - invitation
       - add_passkey
       - recovery
     authorizationToken:
@@ -357,7 +360,7 @@ InitialEnrollmentResult:
   properties:
     purpose:
       type: string
-      enum: [bootstrap, recovery]
+      enum: [bootstrap, recovery, invitation]
     me:
       $ref: './household.yaml#/Me'
     recoveryCodes:
