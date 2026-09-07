@@ -41,7 +41,7 @@
 - **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
 - **REQ-037:** Исторические расходы используют зафиксированную оценку на дату операции, текущий капитал — актуальную оценку.
 - **REQ-042:** Интеграция Альфа-Банк автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
-- **REQ-043:** Интеграция Райффайзенбанк РФ автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
+- **REQ-043:** Raiffeisen через RBO API читает только расчётный счёт ИП: остатки, поступления, списания, комиссии и историю (D-35).
 - **REQ-044:** Интеграция Ozon Банк автоматически читает дебетовую карту и связанный основной счёт: остатки, операции и доступные сведения в пределах подтверждённого контракта. Другие продукты Ozon отложены до расширения контракта.
 - **REQ-045:** Bybit автоматически читает Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен. Остальные продукты отложены без блокировки по D-36.
 - **REQ-046:** Aifory Pro автоматически читает RUB-счета, USDT, ETH и используемую криптокарту, включая движения и комиссии этих продуктов. Остальные продукты отложены и не блокируют MVP.
@@ -94,9 +94,9 @@
 
 #### AC-043
 
-- **Дано:** Подключён разрешённый личный аккаунт Райффайзенбанк РФ с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый расчётный счёт ИП в RBO API.
+- **Когда:** Запрошены остатки и движения, повторный импорт и intraday no-statements.
+- **Тогда:** Данные совпадают с источником; дублей нет, комиссии учтены отдельно. Неизвестный текущий остаток не равен нулю: видны последний подтверждённый остаток, его дата и пробел покрытия.
 - **Уровень:** `contract+manual`.
 
 #### AC-044
@@ -463,7 +463,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-036:** Mining rewards are separate from transfers between owned wallets.
 - **REQ-037:** Historical expenses use a fixed transaction-date valuation; current wealth uses a current valuation.
 - **REQ-042:** The Alfa-Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
-- **REQ-043:** The Raiffeisenbank Russia integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+- **REQ-043:** Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35).
 - **REQ-044:** The Ozon Bank integration automatically reads the debit card and linked main account: balances, transactions and available details under a verified contract. Other Ozon products are deferred until a contract extension.
 - **REQ-045:** Bybit automatically reads Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; the official API is preferred. Other products are deferred without blocking under D-36.
 - **REQ-046:** Aifory Pro automatically reads RUB accounts, USDT, ETH and the existing crypto card, including these products’ movements and fees. Other products are deferred and do not block the MVP.
@@ -516,9 +516,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-043
 
-- **Given:** An authorized personal Raiffeisenbank Russia account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized entrepreneur current account is connected through RBO API.
+- **When:** Request balances, movements, repeated import and intraday no-statements.
+- **Then:** Data matches the source; no duplicates, fees recorded separately. Unknown current balance is not zero: show the last verified balance, its date and the coverage gap.
 - **Level:** `contract+manual`.
 
 #### AC-044

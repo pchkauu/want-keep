@@ -15,7 +15,7 @@ Verdict: Not Ready
 | ID | Что неизвестно | Владелец закрытия | Доказательство закрытия |
 | --- | --- | --- | --- |
 | BLK-01 | Автоматическое чтение и полное покрытие Alfa retail | task-0.10, evidence task-0.1 | [Исследование завершено с блокерами](evidence/alfa.md): UI прочитан, retail API опубликован; нужны разрешённый автоматический контракт, identity/история/reauth/второй аккаунт, кредитка и точные условия |
-| BLK-02 | Read-доступ и полное покрытие Raif РФ retail | task-0.2 | То же для Raif |
+| BLK-02 | Raif: текущие остатки, полный mapping/история и auth lifecycle | task-0.10, evidence task-0.2 | [Evidence](evidence/raiffeisen.md): исследование завершено. RAIF-B01/B05 закрыты; B02/B03/B04/B06 открыты. API-счёт с Mac/VPS и две исторические выписки проверены; D-35 — только счёт ИП. task-4.2 и MVP Not Ready |
 | BLK-03 | Эксплуатационный контракт дебетовой карты и основного счёта Ozon по D-32 | task-0.10, evidence task-0.3 | [Исследование завершено с блокерами](evidence/ozon.md): структуры чтения получены; нужны конец истории, допустимая эксплуатация сессии, второй аккаунт и недоступная семантика. Другие продукты Ozon не требуются |
 | BLK-04 | Bybit Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P по D-36 | task-0.10, evidence task-0.4 | [Исследование](evidence/bybit.md): BYBIT-B02–B05 — read-only private API, формы/связи/история, Earn lifecycle и P2P eligibility/read-контракт. Остальные продукты не требуются |
 | BLK-05 | Aifory: RUB, USDT, ETH и используемая карта USD по D-33 | task-0.10, evidence task-0.5 | [Исследование](evidence/aifory.md): AIFORY-B02–B04 — право автоматизации, структурированный read-контракт, identity/history/reauth, card lifecycle/fees/FX. Другие продукты не требуются |
@@ -83,6 +83,20 @@ Self review Avida: завершён, pass, 0 оставшихся findings/quest
 Проверки: spec_tool check — pass; 10 regression-тестов документационного инструмента — pass; граф REQ/AC/task/SCR, RU/EN presence, generated consistency, ссылки и whitespace — pass. Смысловая RU/EN проверка выполнена независимыми review-ролями. Коммитов, push и реализации приложения нет.
 
 Вердикт приложения остаётся Not Ready: BLK-01–BLK-10 выше не закрыты. Внешние контракты, live-проверки шести сервисов, AI eval, серверная смета/retention и Ready-план предстоят. Chrome/Arc, пользовательская/анимационная приёмка и backup/restore runtime не запускались: приложения ещё нет. Следующий исполнимый этап — исследования task-0.1–task-0.9 и проверка task-0.10.
+
+## Raiffeisen: завершение исследования task-0.2, 2026-09-07
+
+[Evidence RU](evidence/raiffeisen.md) / [EN](evidence/raiffeisen.en.md), [JSON](evidence/raiffeisen.samples.json), [XML](evidence/raiffeisen.camt053.sample.xml): RAIF-E01–E24 и RAIF-B01–B06. D-35 ограничивает интеграцию расчётным счётом ИП; REQ-043/AC-043 и task-0.2/task-4.2 уточнены с сохранением ID. AC-070 о кредитных/накопительных условиях снят только с Raif.
+
+Владелец завершил регистрацию и первичный выпуск Refresh-токена. Прямой refresh grant с Mac вернул HTTP 200 и изменил Refresh-токен; комплект сохранён атомарно локально с 0600 в каталоге 0700. Два GET счетов с Mac — HTTP 200, один стабильный UUID id и отдельный number. После отдельного разрешения владельца один GET с VPS — HTTP 200, тот же счёт; access/id токены переданы в память по SSH без установки credentials на сервер. Токены и исходные ответы не выводятся и не включены в Git.
+
+Историческая цепочка за август: dryRun 200 → generation 202 → status completed → XML 200. Независимая выписка за 1–30 августа дала те же семь NtryRef и Ntry. В camt.053.001.08 два CRDT/пять DBIT, все BOOK; Decimal-сверка OPBD + движения = CLBD прошла. JSON RUR явно сопоставляется с XML RUB. Фактические completed/no-statements расходятся с OpenAPI COMPLETED/NO_STATEMENTS; исходные значения сохраняются. Первоначальная строгая проверка статуса остановила скачивание до фиксации реального значения; после исправления выполнен GET существующего отчёта без новой генерации.
+
+Intraday за 2026-09-07 вернул HTTP 404 с code=no-statements. Текущий/available/locked остаток, точная семантика FCHG, полный архив, поздние изменения, reauth/второй аккаунт и lifecycle refresh 30/180 дней остаются открытыми. RAIF-B01/B05 закрыты, структурная часть B02 подтверждена; B02/B03/B04/B06 переданы task-0.10. Исследование завершено по README, task-4.2 и MVP остаются Not Ready.
+
+Инфраструктура предыдущего шага: DNS/TLS, nginx -t, HTTPS 204/503, HTTP 308 без query, unknown-path 404, unknown-SNI rejection и тест продления Certbot прошли. Callback приложения пока 503. Диагностические Python-скрипты — инструменты исследования, не Go-коннектор; полный Code Flow/семейная авторизация и банковские платежи не реализовывались.
+
+Проверки: 18 синтетических тестов диагностического клиента, 14 тестов spec_tool, render/check (87 REQ, 105 AC, 67 задач, 35 экранов, 67 GitHub mappings), RU/EN-ID/примеры/ссылки, JSON/XML и Decimal-сверка синтетического примера — pass. Сканирование артефактов на реальные credentials/реквизиты/имя владельца и git diff --check — pass. Сокращение REQ-043/AC-043 сохранило условия и вернуло task-9.1 в лимит длины Issue: 59 811 символов; лимит генератора не менялся. Проверки API выше — live, guard/allowlist — синтетические. XSD, sandbox и полный end-to-end приложения не запускались; выполнен локальный review. Commit/push и readback GitHub фиксируются результатом доставки в [Issue #2](https://github.com/pchkauu/want-keep/issues/2). Связанные task-0.10/task-4.2/task-9.1 обновляются с сохранением Not Ready; параллельные изменения других задач не входят в этот результат.
 
 ## Ozon: завершение исследования task-0.3, 2026-09-07
 

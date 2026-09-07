@@ -1012,24 +1012,24 @@
     },
     {
       "id": "REQ-043",
-      "decision": "D-13",
+      "decision": "D-35",
       "title": {
-        "ru": "Интеграция Райффайзенбанк РФ автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.",
-        "en": "The Raiffeisenbank Russia integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract."
+        "ru": "Raiffeisen через RBO API читает только расчётный счёт ИП: остатки, поступления, списания, комиссии и историю (D-35).",
+        "en": "Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35)."
       },
       "acceptance": {
         "id": "AC-043",
         "given": {
-          "ru": "Подключён разрешённый личный аккаунт Райффайзенбанк РФ с тестируемыми продуктами.",
-          "en": "An authorized personal Raiffeisenbank Russia account with the tested products is connected."
+          "ru": "Подключён разрешённый расчётный счёт ИП в RBO API.",
+          "en": "An authorized entrepreneur current account is connected through RBO API."
         },
         "when": {
-          "ru": "Запрошены счета, остатки, операции и необходимые условия продуктов.",
-          "en": "Accounts, balances, transactions and required product terms are requested."
+          "ru": "Запрошены остатки и движения, повторный импорт и intraday no-statements.",
+          "en": "Request balances, movements, repeated import and intraday no-statements."
         },
         "then": {
-          "ru": "Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.",
-          "en": "Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage."
+          "ru": "Данные совпадают с источником; дублей нет, комиссии учтены отдельно. Неизвестный текущий остаток не равен нулю: видны последний подтверждённый остаток, его дата и пробел покрытия.",
+          "en": "Data matches the source; no duplicates, fees recorded separately. Unknown current balance is not zero: show the last verified balance, its date and the coverage gap."
         },
         "level": "contract+manual"
       }
@@ -2606,25 +2606,31 @@
         "en": "Verify Raiffeisenbank Russia read contract"
       },
       "goal": {
-        "ru": "Получить проверяемую матрицу доступа к обязательным продуктам Райффайзенбанк РФ.",
-        "en": "Produce a verifiable access matrix for mandatory Raiffeisenbank Russia products."
+        "ru": "Получить проверяемый контракт чтения расчётного счёта ИП через RBO API.",
+        "en": "Produce a verifiable read contract for the individual entrepreneur current account through RBO API."
       },
       "depends_on": [],
       "acceptance": [
         "AC-043",
         "AC-041",
         "AC-048",
-        "AC-070",
         "AC-079",
         "AC-087"
       ],
       "targets": [
         "spec/001-want-keep-mvp/evidence/raiffeisen.md",
-        "spec/001-want-keep-mvp/evidence/raiffeisen.en.md"
+        "spec/001-want-keep-mvp/evidence/raiffeisen.en.md",
+        "spec/001-want-keep-mvp/evidence/raiffeisen.samples.json",
+        "spec/001-want-keep-mvp/evidence/raiffeisen.camt053.sample.xml",
+        "deploy/raiffeisen-research/"
       ],
+      "status": {
+        "ru": "Исследование завершено 2026-09-07 с открытыми контрактными вопросами. D-35 ограничивает Raif расчётным счётом ИП. Refresh grant, GET счетов с Mac и VPS, две исторические CAMT.053-выписки и сверка остатков прошли; семь NtryRef и записей совпали между отчётами. Текущий CAMT.052 вернул 404 no-statements. RAIF-B01 и RAIF-B05 закрыты; RAIF-B02/B03/B04/B06 остаются в BLK-02. task-4.2 и MVP Not Ready. Evidence RU/EN, синтетические JSON/XML и диагностические скрипты подготовлены. Оставшиеся вопросы переданы task-0.10; закрытие исследования не снимает Ready gate.",
+        "en": "Research completed on 2026-09-07 with open contract questions. D-35 limits Raif to the individual entrepreneur current account. Refresh grant, account GETs from Mac and VPS, two historical CAMT.053 statements and balance reconciliation passed; seven NtryRefs and entries matched across reports. Current CAMT.052 returned 404 no-statements. RAIF-B01 and RAIF-B05 closed; RAIF-B02/B03/B04/B06 remain in BLK-02. task-4.2 and MVP Not Ready. RU/EN evidence, synthetic JSON/XML and diagnostic scripts prepared. Remaining questions are assigned to task-0.10; research closure does not remove the Ready gate."
+      },
       "behavior": {
-        "ru": "Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.",
-        "en": "Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity."
+        "ru": "По D-35 исследовать официальный RBO API расчётного счёта ИП: остатки, поступления, списания, комиссии и историю. Личные карты, кредиты, накопления и вклады Raif не входят в MVP. Сохранить исходные JSON/CAMT только приватно; в репозитории — синтетические примеры. Зафиксировать RUR→RUB, accounts.id отдельно от number/accountKeys, CAMT.053.001.08, NtryRef и вложенные TxDtls, фактический completed против OpenAPI COMPLETED и no-statements против NO_STATEMENTS. Подтвердить границы истории, текущие/доступные/заблокированные остатки, точное значение кодов комиссий, ротацию/reauth, внешний аккаунт и независимость участников. Частичное подтверждение или документированный блокер завершает исследование по README, но не снимает Ready gate task-0.10 и не заменяет автоматический импорт ручной выпиской.",
+        "en": "Under D-35 research the official RBO API for the individual entrepreneur current account: balances, incoming/outgoing movements, fees and history. Raif personal cards, credit, savings and deposits are outside the MVP. Keep original JSON/CAMT private; repository examples are synthetic. Record RUR→RUB, accounts.id separate from number/accountKeys, CAMT.053.001.08, NtryRef and nested TxDtls, actual completed versus OpenAPI COMPLETED and no-statements versus NO_STATEMENTS. Verify history boundaries, current/available/locked balances, exact fee-code semantics, rotation/reauth, external-account identity and member isolation. Partial evidence or documented blockers can complete research under README, but do not remove the task-0.10 Ready gate or replace automatic import with manual statements."
       },
       "verification": {
         "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
@@ -2633,7 +2639,11 @@
           "en": "The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/2"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/2",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже содержит make-команды; наличие команды не означает реализацию адаптера или прохождение live-проверок. Исследовательские проверки Raif: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Токены и исходные ответы подключаются только приватно; незакрытые RAIF-B02/B03/B04/B06 остаются барьером реализации.",
+        "en": "The task-1.1 foundation already contains make commands; a command existing does not establish an implemented adapter or passing live checks. Raif research checks: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Tokens and original responses stay private; unresolved RAIF-B02/B03/B04/B06 remain an implementation gate."
+      }
     },
     {
       "id": "task-0.3",
@@ -2986,8 +2996,8 @@
         "spec/001-want-keep-mvp/plan.md"
       ],
       "behavior": {
-        "ru": "Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. Закрыть сроки хранения command status/idempotency для retry/recovery, не смешивая их с бессрочным финансовым audit. Для Aifory действует D-33: закрыть AIFORY-B02–B04 только для RUB, USDT, ETH и используемой карты; AIFORY-B05/остальные продукты не блокируют. Согласовать структурированный read-контракт, право автоматизации, identity/history и card lifecycle; учесть ETH в оценке. Для Bybit действует D-36: закрыть BYBIT-B02–B05 для Funding USDT/USDC/ETH/BTC, используемого Easy Earn и P2P; прочие продукты BYBIT-B06 не блокируют. Проверить read-only scopes/UID, приватные формы/units/связи/историю и eligibility либо разрешённый browser-read P2P; дополнить валютную оценку USDC.",
-        "en": "Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. Resolve command-status/idempotency retention for retry/recovery, distinct from durable financial audit. Apply Aifory D-33: close AIFORY-B02–B04 only for RUB, USDT, ETH and the existing card; AIFORY-B05/other products do not block. Establish the structured read contract, automation permission, identity/history and card lifecycle; include ETH valuation. Apply Bybit D-36: close BYBIT-B02–B05 for Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; other products BYBIT-B06 do not block. Verify read-only scopes/UID, private shapes/units/linkage/history and eligibility or permitted P2P browser reads; include USDC valuation."
+        "ru": "Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. Закрыть сроки хранения command status/idempotency для retry/recovery, не смешивая их с бессрочным финансовым audit. Для Aifory действует D-33: закрыть AIFORY-B02–B04 только для RUB, USDT, ETH и используемой карты; AIFORY-B05/остальные продукты не блокируют. Согласовать структурированный read-контракт, право автоматизации, identity/history и card lifecycle; учесть ETH в оценке. Для Bybit действует D-36: закрыть BYBIT-B02–B05 для Funding USDT/USDC/ETH/BTC, используемого Easy Earn и P2P; прочие продукты BYBIT-B06 не блокируют. Проверить read-only scopes/UID, приватные формы/units/связи/историю и eligibility либо разрешённый browser-read P2P; дополнить валютную оценку USDC. Для Raiffeisen по D-35 закрыть RAIF-B02/B03/B04/B06: CAMT mapping и ID при исправлениях, глубину/полноту истории, текущие/доступные/заблокированные остатки и комиссии, auth lifecycle и независимость аккаунтов. Использовать evidence/raiffeisen; RAIF-B01/B05 закрыты только в указанном объёме. Закрытие task-0.2 не разблокирует task-4.2 без Ready.",
+        "en": "Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. Resolve command-status/idempotency retention for retry/recovery, distinct from durable financial audit. Apply Aifory D-33: close AIFORY-B02–B04 only for RUB, USDT, ETH and the existing card; AIFORY-B05/other products do not block. Establish the structured read contract, automation permission, identity/history and card lifecycle; include ETH valuation. Apply Bybit D-36: close BYBIT-B02–B05 for Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; other products BYBIT-B06 do not block. Verify read-only scopes/UID, private shapes/units/linkage/history and eligibility or permitted P2P browser reads; include USDC valuation. For Raiffeisen under D-35 close RAIF-B02/B03/B04/B06: CAMT mapping and revision identity, history depth/completeness, current/available/locked balances and fees, auth lifecycle and independent accounts. Use evidence/raiffeisen; RAIF-B01/B05 are closed only within the stated scope. Closing task-0.2 does not unblock task-4.2 without Ready."
       },
       "verification": {
         "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
@@ -3819,8 +3829,8 @@
         "en": "Implement Raiffeisenbank Russia connector"
       },
       "goal": {
-        "ru": "Автоматически получать согласованные данные всех обязательных продуктов Райффайзенбанк РФ.",
-        "en": "Automatically retrieve consistent data for all mandatory Raiffeisenbank Russia products."
+        "ru": "Автоматически получать согласованные остатки и движения расчётного счёта ИП через RBO API по D-35.",
+        "en": "Automatically retrieve consistent balances and movements of the individual entrepreneur current account through RBO API under D-35."
       },
       "depends_on": [
         "task-0.2",
@@ -3834,7 +3844,6 @@
         "AC-041",
         "AC-048",
         "AC-063",
-        "AC-070",
         "AC-071",
         "AC-079",
         "AC-087",
@@ -3845,8 +3854,8 @@
         "collector/src/providers/raiffeisen/"
       ],
       "behavior": {
-        "ru": "Различать розничный и корпоративный доступ; покрыть карты, текущие/накопительные счета, вклады, выписки и условия кредиток. Реализовать только доказанный в evidence/raiffeisen способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.",
-        "en": "Distinguish retail from corporate access; cover cards, current/savings accounts, deposits, statements and credit-card terms. Implement only the access method established in evidence/raiffeisen, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect."
+        "ru": "Реализовать RBO API-коннектор только расчётного счёта ИП по D-35 после закрытия оставшихся RAIF-B02/B03/B04/B06 в task-0.10. Начальные evidence и синтетические JSON/XML находятся в evidence/raiffeisen*. Обрабатывать lower-camel-case поля accounts, явный алиас RUR→RUB, отдельные UUID id и 20-значный number/accountKeys, Decimal, CAMT.053.001.08 и вложенные записи без двойного учёта. Сохранять source status/code и только подтверждённые преобразования completed/COMPLETED, no-statements/NO_STATEMENTS. no-statements не означает нулевой остаток. NtryRef подтверждён на двух перекрывающихся отчётах, но reconnect/коррекции требуют проверки. Коды FCHG/NTRF не заменяют доказательство типа расхода или внутреннего перевода. Реализовать защищённый Code Flow по contracts, атомарную ротацию, allowlist чтения, почасовой импорт и полноту истории. Два внешних аккаунта участников изолированы; повторное подключение связывается с прежним источником, старое задание после отключения не применяется. Прочие продукты Raif отложены; Playwright возможен только при доказанном API-пробеле.",
+        "en": "Implement the RBO API connector for the individual entrepreneur current account only under D-35, after task-0.10 resolves RAIF-B02/B03/B04/B06. Initial evidence and synthetic JSON/XML are in evidence/raiffeisen*. Handle lower-camel-case account fields, explicit RUR→RUB alias, separate UUID id and 20-digit number/accountKeys, Decimal, CAMT.053.001.08 and nested entries without double posting. Preserve source status/code and only verified mappings for completed/COMPLETED and no-statements/NO_STATEMENTS. no-statements is not a zero balance. NtryRef was verified across two overlapping reports, but reconnect/correction behaviour needs testing. FCHG/NTRF codes do not establish expense or internal-transfer classification. Implement protected Code Flow under contracts, atomic rotation, a read allowlist, hourly imports and history completeness. Isolate members’ external accounts; reconnect links the existing source and stale jobs cannot apply after disconnect. Other Raif products are deferred; Playwright requires a proven API gap."
       },
       "verification": {
         "command": "make test-contract PROVIDER=raiffeisen && make test-integration AREA=raiffeisen",
@@ -3855,7 +3864,11 @@
           "en": "All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/30"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/30",
+      "verification_note": {
+        "ru": "Основа task-1.1 уже содержит make-команды; наличие команды не означает реализацию адаптера или прохождение live-проверок. Исследовательские проверки Raif: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Токены и исходные ответы подключаются только приватно; незакрытые RAIF-B02/B03/B04/B06 остаются барьером реализации.",
+        "en": "The task-1.1 foundation already contains make commands; a command existing does not establish an implemented adapter or passing live checks. Raif research checks: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Tokens and original responses stay private; unresolved RAIF-B02/B03/B04/B06 remain an implementation gate."
+      }
     },
     {
       "id": "task-4.3",

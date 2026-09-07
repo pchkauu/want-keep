@@ -54,3 +54,5 @@ git diff --check
 D-36: Bybit — Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен, остальные продукты отложены без блокировки. USDC добавлен в учёт/оценку. [Исследование](evidence/bybit.md); приватный доступ, история и P2P eligibility остаются в BLK-04.
 
 Исследование курсов task-0.7: CBR выбран основным USD/RUB, CoinGecko Demo — отдельные BTC/ETH/USDT/USDC в USD для current и history ≤365 дней, Frankfurter `providers=CBR` — fallback/cross-check. TradingView отвергнут как серверный источник. [Evidence и открытые FX-B02–FX-B04](evidence/fx.md); BLK-07 и Ready закрывает task-0.10.
+
+Уточнение D-35: Raiffeisen — только расчётный счёт ИП через RBO API; личные карты, кредиты, накопления и вклады исключены без блокировки. [Исследование](evidence/raiffeisen.md): исторические данные прочитаны, оставшиеся вопросы — BLK-02.

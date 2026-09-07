@@ -3,7 +3,7 @@
 
 ## RU
 
-Автоматически получать согласованные данные всех обязательных продуктов Райффайзенбанк РФ.
+Автоматически получать согласованные остатки и движения расчётного счёта ИП через RBO API по D-35.
 
 **Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Различать розничный и корпоративный доступ; покрыть карты, текущие/накопительные счета, вклады, выписки и условия кредиток. Реализовать только доказанный в evidence/raiffeisen способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.
+Реализовать RBO API-коннектор только расчётного счёта ИП по D-35 после закрытия оставшихся RAIF-B02/B03/B04/B06 в task-0.10. Начальные evidence и синтетические JSON/XML находятся в evidence/raiffeisen*. Обрабатывать lower-camel-case поля accounts, явный алиас RUR→RUB, отдельные UUID id и 20-значный number/accountKeys, Decimal, CAMT.053.001.08 и вложенные записи без двойного учёта. Сохранять source status/code и только подтверждённые преобразования completed/COMPLETED, no-statements/NO_STATEMENTS. no-statements не означает нулевой остаток. NtryRef подтверждён на двух перекрывающихся отчётах, но reconnect/коррекции требуют проверки. Коды FCHG/NTRF не заменяют доказательство типа расхода или внутреннего перевода. Реализовать защищённый Code Flow по contracts, атомарную ротацию, allowlist чтения, почасовой импорт и полноту истории. Два внешних аккаунта участников изолированы; повторное подключение связывается с прежним источником, старое задание после отключения не применяется. Прочие продукты Raif отложены; Playwright возможен только при доказанном API-пробеле.
 
 ### Границы изменений
 
@@ -27,15 +27,11 @@
 - **REQ-006:** Перевод между счетами семьи, включая счета разных участников, меняет остатки без дохода или расхода по основной сумме.
 - **REQ-007:** Обмен и P2P-конвертация собственных денег сохраняют обе валютные суммы, фактический курс и комиссии.
 - **REQ-008:** Повторные импорты, чек и запись чата объединяют доказательства одной операции без повторного учёта.
-- **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
-- **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
-- **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
 - **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
 - **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-040:** Каждый источник обновляется раз в час и по запросу с видимым временем успешного обновления.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-043:** Интеграция Райффайзенбанк РФ автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
+- **REQ-043:** Raiffeisen через RBO API читает только расчётный счёт ИП: остатки, поступления, списания, комиссии и историю (D-35).
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-061:** Повторные задания, перезапуски и параллельные изменения не создают двойных финансовых эффектов.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
@@ -48,9 +44,9 @@
 
 #### AC-043
 
-- **Дано:** Подключён разрешённый личный аккаунт Райффайзенбанк РФ с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый расчётный счёт ИП в RBO API.
+- **Когда:** Запрошены остатки и движения, повторный импорт и intraday no-statements.
+- **Тогда:** Данные совпадают с источником; дублей нет, комиссии учтены отдельно. Неизвестный текущий остаток не равен нулю: видны последний подтверждённый остаток, его дата и пробел покрытия.
 - **Уровень:** `contract+manual`.
 
 #### AC-040
@@ -80,13 +76,6 @@
 - **Когда:** Приходят поздняя сторона, исправление комиссии и повтор старой страницы.
 - **Тогда:** Состояние ожидания связи сменяется проверенным обменом; доход/расход основной суммы не удваивается, устаревшая комиссия не восстанавливается.
 - **Уровень:** `integration`.
-
-#### AC-070
-
-- **Дано:** Банк передаёт баланс, но не условия грейса; ставка Earn имеет неизвестную базу начисления.
-- **Когда:** Открываются прогнозы.
-- **Тогда:** Баланс отображается; льгота и точный прогноз имеют причину недоступности; AI не извлекает гарантированную бизнес-логику из рекламной формулировки.
-- **Уровень:** `contract+end-to-end`.
 
 #### AC-071
 
@@ -124,7 +113,7 @@ make test-contract PROVIDER=raiffeisen && make test-integration AREA=raiffeisen
 
 Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже содержит make-команды; наличие команды не означает реализацию адаптера или прохождение live-проверок. Исследовательские проверки Raif: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Токены и исходные ответы подключаются только приватно; незакрытые RAIF-B02/B03/B04/B06 остаются барьером реализации.
 
 ### Передача следующему агенту
 
@@ -134,7 +123,7 @@ make test-contract PROVIDER=raiffeisen && make test-integration AREA=raiffeisen
 
 ## EN
 
-Automatically retrieve consistent data for all mandatory Raiffeisenbank Russia products.
+Automatically retrieve consistent balances and movements of the individual entrepreneur current account through RBO API under D-35.
 
 **Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
 
@@ -144,7 +133,7 @@ Automatically retrieve consistent data for all mandatory Raiffeisenbank Russia p
 
 ### Change and contracts
 
-Distinguish retail from corporate access; cover cards, current/savings accounts, deposits, statements and credit-card terms. Implement only the access method established in evidence/raiffeisen, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect.
+Implement the RBO API connector for the individual entrepreneur current account only under D-35, after task-0.10 resolves RAIF-B02/B03/B04/B06. Initial evidence and synthetic JSON/XML are in evidence/raiffeisen*. Handle lower-camel-case account fields, explicit RUR→RUB alias, separate UUID id and 20-digit number/accountKeys, Decimal, CAMT.053.001.08 and nested entries without double posting. Preserve source status/code and only verified mappings for completed/COMPLETED and no-statements/NO_STATEMENTS. no-statements is not a zero balance. NtryRef was verified across two overlapping reports, but reconnect/correction behaviour needs testing. FCHG/NTRF codes do not establish expense or internal-transfer classification. Implement protected Code Flow under contracts, atomic rotation, a read allowlist, hourly imports and history completeness. Isolate members’ external accounts; reconnect links the existing source and stale jobs cannot apply after disconnect. Other Raif products are deferred; Playwright requires a proven API gap.
 
 ### Change boundaries
 
@@ -158,15 +147,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-006:** Transfers between household accounts, including different members’ accounts, change balances without principal income or expense.
 - **REQ-007:** Exchange and P2P conversion of owned money preserve both currency amounts, the actual rate and fees.
 - **REQ-008:** Repeated imports, receipts and chat entries combine evidence of one transaction without double counting.
-- **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
-- **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
-- **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
 - **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
 - **REQ-036:** Mining rewards are separate from transfers between owned wallets.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-040:** Each source refreshes hourly and on demand with a visible last-success timestamp.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-043:** The Raiffeisenbank Russia integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+- **REQ-043:** Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35).
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-061:** Repeated jobs, restarts and concurrent changes cannot create duplicate financial effects.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
@@ -179,9 +164,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-043
 
-- **Given:** An authorized personal Raiffeisenbank Russia account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized entrepreneur current account is connected through RBO API.
+- **When:** Request balances, movements, repeated import and intraday no-statements.
+- **Then:** Data matches the source; no duplicates, fees recorded separately. Unknown current balance is not zero: show the last verified balance, its date and the coverage gap.
 - **Level:** `contract+manual`.
 
 #### AC-040
@@ -211,13 +196,6 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **When:** The late leg, fee correction and replayed old page arrive.
 - **Then:** Pending matching becomes a verified exchange; principal is not double-counted and the stale fee is not restored.
 - **Level:** `integration`.
-
-#### AC-070
-
-- **Given:** A bank exposes balance but no grace terms; an Earn rate has an unknown accrual basis.
-- **When:** Forecasts are opened.
-- **Then:** Balance is shown; grace eligibility and exact forecasts explain unavailability; AI does not turn marketing wording into guaranteed business rules.
-- **Level:** `contract+end-to-end`.
 
 #### AC-071
 
@@ -255,7 +233,7 @@ make test-contract PROVIDER=raiffeisen && make test-integration AREA=raiffeisen
 
 All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already contains make commands; a command existing does not establish an implemented adapter or passing live checks. Raif research checks: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Tokens and original responses stay private; unresolved RAIF-B02/B03/B04/B06 remain an implementation gate.
 
 ### Handoff to the next agent
 

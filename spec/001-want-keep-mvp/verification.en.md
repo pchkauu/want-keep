@@ -15,7 +15,7 @@ Prepared proposal, 87 REQ, 105 AC, architecture, contracts/formulas, glossary, M
 | ID | Unknown | Closure owner | Required evidence |
 | --- | --- | --- | --- |
 | BLK-01 | Automatic Alfa retail reading/full coverage | task-0.10, task-0.1 evidence | [Research completed with blockers](evidence/alfa.en.md): UI read, retail API published; needs authorised automatic contract, identity/history/reauth/second account, credit card and exact terms |
-| BLK-02 | Raif Russia retail read access/full coverage | task-0.2 | The equivalent for Raif |
+| BLK-02 | Raif: current balances, full mapping/history and auth lifecycle | task-0.10, task-0.2 evidence | [Evidence](evidence/raiffeisen.en.md): research completed. RAIF-B01/B05 closed; B02/B03/B04/B06 open. API account from Mac/VPS and two historical statements verified; D-35 — entrepreneur account only. task-4.2 and MVP Not Ready |
 | BLK-03 | Operational Ozon debit-card/main-account contract under D-32 | task-0.10, task-0.3 evidence | [Research completed with blockers](evidence/ozon.en.md): read structures obtained; needs history completion, acceptable session operation, second account and unavailable semantics. Other Ozon products not required |
 | BLK-04 | Bybit Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P under D-36 | task-0.10, task-0.4 evidence | [Research](evidence/bybit.en.md): BYBIT-B02–B05 — read-only private API, shapes/linkage/history, Earn lifecycle and P2P eligibility/read contract. Other products are unnecessary |
 | BLK-05 | Aifory: RUB, USDT, ETH and existing USD card under D-33 | task-0.10, task-0.5 evidence | [Research](evidence/aifory.en.md): AIFORY-B02–B04 — automation permission, structured read contract, identity/history/reauth, card lifecycle/fees/FX. Other products not required |
@@ -83,6 +83,20 @@ Avida self review: completed, pass, 0 remaining findings/questions, all 106 chan
 Checks: spec_tool check — pass; 10 documentation-tool regression tests — pass; REQ/AC/task/SCR graph, RU/EN presence, generated consistency, links and whitespace — pass. Independent reviewer roles checked semantic RU/EN parity. No commits, push or application implementation.
 
 Application verdict remains Not Ready: BLK-01–BLK-10 above remain open. External contracts, six-platform live checks, AI eval, server costs/retention and the Ready plan remain future work. Chrome/Arc, user/animation acceptance and backup/restore runtime have not run because the app does not exist. Next executable stage: task-0.1–task-0.9 research and task-0.10 readiness review.
+
+## Raiffeisen: task-0.2 research completion, 2026-09-07
+
+[RU evidence](evidence/raiffeisen.md) / [EN](evidence/raiffeisen.en.md), [JSON](evidence/raiffeisen.samples.json), [XML](evidence/raiffeisen.camt053.sample.xml): RAIF-E01–E24 and RAIF-B01–B06. D-35 limits the integration to the entrepreneur current account; REQ-043/AC-043 and task-0.2/task-4.2 refined with IDs preserved. AC-070 on credit/savings terms removed only from Raif.
+
+The owner completed registration and initial Refresh-token issuance. Direct Mac refresh grant returned HTTP 200 and changed the Refresh token; the set was atomically saved locally with 0600 in a 0700 directory. Two Mac account GETs returned HTTP 200, one stable UUID id and separate number. After separate owner approval, one VPS GET returned HTTP 200 and the same account; access/id tokens were passed through SSH into memory without installing credentials on the server. Tokens and original responses are not printed or committed.
+
+Historical August flow: dryRun 200 → generation 202 → status completed → XML 200. An independent August 1–30 statement returned the same seven NtryRefs and Ntry elements. camt.053.001.08 contains two CRDT/five DBIT, all BOOK; Decimal reconciliation OPBD + movements = CLBD passed. JSON RUR explicitly maps to XML RUB. Actual completed/no-statements differ from OpenAPI COMPLETED/NO_STATEMENTS; original values retained. Initial strict status validation stopped download until the actual value was established; after the fix, the existing report was read without another generation.
+
+Intraday for 2026-09-07 returned HTTP 404 with code=no-statements. Current/available/locked balance, exact FCHG semantics, full archive, late changes, reauth/second account and refresh lifecycle 30/180 days remain open. RAIF-B01/B05 closed; structural B02 part verified; B02/B03/B04/B06 handed to task-0.10. Research completed under README; task-4.2 and MVP remain Not Ready.
+
+Previous-step infrastructure: DNS/TLS, nginx -t, HTTPS 204/503, HTTP 308 without query, unknown-path 404, unknown-SNI rejection and Certbot renewal simulation passed. Application callback still 503. Diagnostic Python scripts are research tools, not the Go connector; full Code Flow/household authorization and bank payments were not implemented.
+
+Checks: 18 synthetic diagnostic-client tests, 14 spec_tool tests, render/check (87 REQ, 105 AC, 67 tasks, 35 screens, 67 GitHub mappings), RU/EN IDs/examples/links, JSON/XML and Decimal reconciliation of the synthetic sample — pass. Scanning artifacts for actual credentials/account details/owner name and git diff --check — pass. Shortening REQ-043/AC-043 preserved conditions and brought task-9.1 within the Issue length limit: 59,811 characters; generator limits unchanged. API checks above are live; guard/allowlist tests are synthetic. XSD, sandbox and full application end-to-end were not run; local review completed. Commit/push and GitHub readback are recorded in the delivery result in [Issue #2](https://github.com/pchkauu/want-keep/issues/2). Related task-0.10/task-4.2/task-9.1 are updated while retaining Not Ready; concurrent changes for other tasks are excluded from this result.
 
 ## Ozon: task-0.3 research completion, 2026-09-07
 

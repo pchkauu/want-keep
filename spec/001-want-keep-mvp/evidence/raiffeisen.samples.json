@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "observed_at": "2026-09-07",
+  "accounts": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "number": "00000000000000000000",
+      "name": "Синтетический расчётный счёт",
+      "organizationName": "Синтетический предприниматель",
+      "currency": "RUR"
+    }
+  ],
+  "statement_accepted": {
+    "reportId": "00000000-0000-4000-8000-000000000002"
+  },
+  "statement_status": {
+    "reportId": "00000000-0000-4000-8000-000000000002",
+    "status": "completed"
+  },
+  "intraday_no_statements": {
+    "code": "no-statements"
+  }
+}

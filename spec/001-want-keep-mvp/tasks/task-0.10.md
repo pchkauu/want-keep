@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. Закрыть сроки хранения command status/idempotency для retry/recovery, не смешивая их с бессрочным финансовым audit. Для Aifory действует D-33: закрыть AIFORY-B02–B04 только для RUB, USDT, ETH и используемой карты; AIFORY-B05/остальные продукты не блокируют. Согласовать структурированный read-контракт, право автоматизации, identity/history и card lifecycle; учесть ETH в оценке. Для Bybit действует D-36: закрыть BYBIT-B02–B05 для Funding USDT/USDC/ETH/BTC, используемого Easy Earn и P2P; прочие продукты BYBIT-B06 не блокируют. Проверить read-only scopes/UID, приватные формы/units/связи/историю и eligibility либо разрешённый browser-read P2P; дополнить валютную оценку USDC.
+Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. Закрыть сроки хранения command status/idempotency для retry/recovery, не смешивая их с бессрочным финансовым audit. Для Aifory действует D-33: закрыть AIFORY-B02–B04 только для RUB, USDT, ETH и используемой карты; AIFORY-B05/остальные продукты не блокируют. Согласовать структурированный read-контракт, право автоматизации, identity/history и card lifecycle; учесть ETH в оценке. Для Bybit действует D-36: закрыть BYBIT-B02–B05 для Funding USDT/USDC/ETH/BTC, используемого Easy Earn и P2P; прочие продукты BYBIT-B06 не блокируют. Проверить read-only scopes/UID, приватные формы/units/связи/историю и eligibility либо разрешённый browser-read P2P; дополнить валютную оценку USDC. Для Raiffeisen по D-35 закрыть RAIF-B02/B03/B04/B06: CAMT mapping и ID при исправлениях, глубину/полноту истории, текущие/доступные/заблокированные остатки и комиссии, auth lifecycle и независимость аккаунтов. Использовать evidence/raiffeisen; RAIF-B01/B05 закрыты только в указанном объёме. Закрытие task-0.2 не разблокирует task-4.2 без Ready.
 
 ### Границы изменений
 
@@ -34,7 +34,7 @@
 - **REQ-038:** Курсы обмена учитывают направление, сервис, время, сумму применимости и известные комиссии.
 - **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-042:** Интеграция Альфа-Банк автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
-- **REQ-043:** Интеграция Райффайзенбанк РФ автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
+- **REQ-043:** Raiffeisen через RBO API читает только расчётный счёт ИП: остатки, поступления, списания, комиссии и историю (D-35).
 - **REQ-044:** Интеграция Ozon Банк автоматически читает дебетовую карту и связанный основной счёт: остатки, операции и доступные сведения в пределах подтверждённого контракта. Другие продукты Ozon отложены до расширения контракта.
 - **REQ-045:** Bybit автоматически читает Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен. Остальные продукты отложены без блокировки по D-36.
 - **REQ-046:** Aifory Pro автоматически читает RUB-счета, USDT, ETH и используемую криптокарту, включая движения и комиссии этих продуктов. Остальные продукты отложены и не блокируют MVP.
@@ -99,9 +99,9 @@
 
 #### AC-043
 
-- **Дано:** Подключён разрешённый личный аккаунт Райффайзенбанк РФ с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый расчётный счёт ИП в RBO API.
+- **Когда:** Запрошены остатки и движения, повторный импорт и intraday no-statements.
+- **Тогда:** Данные совпадают с источником; дублей нет, комиссии учтены отдельно. Неизвестный текущий остаток не равен нулю: видны последний подтверждённый остаток, его дата и пробел покрытия.
 - **Уровень:** `contract+manual`.
 
 #### AC-044
@@ -286,7 +286,7 @@ Obtain a Ready specification before application implementation.
 
 ### Change and contracts
 
-Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. Resolve command-status/idempotency retention for retry/recovery, distinct from durable financial audit. Apply Aifory D-33: close AIFORY-B02–B04 only for RUB, USDT, ETH and the existing card; AIFORY-B05/other products do not block. Establish the structured read contract, automation permission, identity/history and card lifecycle; include ETH valuation. Apply Bybit D-36: close BYBIT-B02–B05 for Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; other products BYBIT-B06 do not block. Verify read-only scopes/UID, private shapes/units/linkage/history and eligibility or permitted P2P browser reads; include USDC valuation.
+Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. Resolve command-status/idempotency retention for retry/recovery, distinct from durable financial audit. Apply Aifory D-33: close AIFORY-B02–B04 only for RUB, USDT, ETH and the existing card; AIFORY-B05/other products do not block. Establish the structured read contract, automation permission, identity/history and card lifecycle; include ETH valuation. Apply Bybit D-36: close BYBIT-B02–B05 for Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; other products BYBIT-B06 do not block. Verify read-only scopes/UID, private shapes/units/linkage/history and eligibility or permitted P2P browser reads; include USDC valuation. For Raiffeisen under D-35 close RAIF-B02/B03/B04/B06: CAMT mapping and revision identity, history depth/completeness, current/available/locked balances and fees, auth lifecycle and independent accounts. Use evidence/raiffeisen; RAIF-B01/B05 are closed only within the stated scope. Closing task-0.2 does not unblock task-4.2 without Ready.
 
 ### Change boundaries
 
@@ -307,7 +307,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-038:** Exchange quotes include direction, provider, timestamp, applicable amount and known fees.
 - **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-042:** The Alfa-Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
-- **REQ-043:** The Raiffeisenbank Russia integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+- **REQ-043:** Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35).
 - **REQ-044:** The Ozon Bank integration automatically reads the debit card and linked main account: balances, transactions and available details under a verified contract. Other Ozon products are deferred until a contract extension.
 - **REQ-045:** Bybit automatically reads Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; the official API is preferred. Other products are deferred without blocking under D-36.
 - **REQ-046:** Aifory Pro automatically reads RUB accounts, USDT, ETH and the existing crypto card, including these products’ movements and fees. Other products are deferred and do not block the MVP.
@@ -372,9 +372,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-043
 
-- **Given:** An authorized personal Raiffeisenbank Russia account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized entrepreneur current account is connected through RBO API.
+- **When:** Request balances, movements, repeated import and intraday no-statements.
+- **Then:** Data matches the source; no duplicates, fees recorded separately. Unknown current balance is not zero: show the last verified balance, its date and the coverage gap.
 - **Level:** `contract+manual`.
 
 #### AC-044

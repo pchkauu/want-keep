@@ -3,9 +3,9 @@
 
 ## RU
 
-Получить проверяемую матрицу доступа к обязательным продуктам Райффайзенбанк РФ.
+Получить проверяемый контракт чтения расчётного счёта ИП через RBO API.
 
-**Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
+**Состояние:** Исследование завершено 2026-09-07 с открытыми контрактными вопросами. D-35 ограничивает Raif расчётным счётом ИП. Refresh grant, GET счетов с Mac и VPS, две исторические CAMT.053-выписки и сверка остатков прошли; семь NtryRef и записей совпали между отчётами. Текущий CAMT.052 вернул 404 no-statements. RAIF-B01 и RAIF-B05 закрыты; RAIF-B02/B03/B04/B06 остаются в BLK-02. task-4.2 и MVP Not Ready. Evidence RU/EN, синтетические JSON/XML и диагностические скрипты подготовлены. Оставшиеся вопросы переданы task-0.10; закрытие исследования не снимает Ready gate.
 
 **Зависимости:** нет.
 
@@ -13,23 +13,22 @@
 
 ### Изменение и контракты
 
-Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.
+По D-35 исследовать официальный RBO API расчётного счёта ИП: остатки, поступления, списания, комиссии и историю. Личные карты, кредиты, накопления и вклады Raif не входят в MVP. Сохранить исходные JSON/CAMT только приватно; в репозитории — синтетические примеры. Зафиксировать RUR→RUB, accounts.id отдельно от number/accountKeys, CAMT.053.001.08, NtryRef и вложенные TxDtls, фактический completed против OpenAPI COMPLETED и no-statements против NO_STATEMENTS. Подтвердить границы истории, текущие/доступные/заблокированные остатки, точное значение кодов комиссий, ротацию/reauth, внешний аккаунт и независимость участников. Частичное подтверждение или документированный блокер завершает исследование по README, но не снимает Ready gate task-0.10 и не заменяет автоматический импорт ручной выпиской.
 
 ### Границы изменений
 
 - `spec/001-want-keep-mvp/evidence/raiffeisen.md`
 - `spec/001-want-keep-mvp/evidence/raiffeisen.en.md`
+- `spec/001-want-keep-mvp/evidence/raiffeisen.samples.json`
+- `spec/001-want-keep-mvp/evidence/raiffeisen.camt053.sample.xml`
+- `deploy/raiffeisen-research/`
 
 Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
 
 ### Связанные требования
 
-- **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
-- **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
-- **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-043:** Интеграция Райффайзенбанк РФ автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
+- **REQ-043:** Raiffeisen через RBO API читает только расчётный счёт ИП: остатки, поступления, списания, комиссии и историю (D-35).
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
@@ -40,9 +39,9 @@
 
 #### AC-043
 
-- **Дано:** Подключён разрешённый личный аккаунт Райффайзенбанк РФ с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый расчётный счёт ИП в RBO API.
+- **Когда:** Запрошены остатки и движения, повторный импорт и intraday no-statements.
+- **Тогда:** Данные совпадают с источником; дублей нет, комиссии учтены отдельно. Неизвестный текущий остаток не равен нулю: видны последний подтверждённый остаток, его дата и пробел покрытия.
 - **Уровень:** `contract+manual`.
 
 #### AC-041
@@ -58,13 +57,6 @@
 - **Когда:** Возникают запрос на платёж, неподтверждённый маршрут или MFA/CAPTCHA.
 - **Тогда:** Платёж и неизвестный маршрут блокируются; MFA/CAPTCHA передаётся владельцу, источник приостанавливается; остальные источники продолжают работать.
 - **Уровень:** `integration`.
-
-#### AC-070
-
-- **Дано:** Банк передаёт баланс, но не условия грейса; ставка Earn имеет неизвестную базу начисления.
-- **Когда:** Открываются прогнозы.
-- **Тогда:** Баланс отображается; льгота и точный прогноз имеют причину недоступности; AI не извлекает гарантированную бизнес-логику из рекламной формулировки.
-- **Уровень:** `contract+end-to-end`.
 
 #### AC-079
 
@@ -88,7 +80,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 Документ на двух языках содержит источник и дату, проверенные и непроверенные поля, примеры запросов/ответов без секретов и итог по каждому продукту. Реальный read-only прогон выполняется только после безопасного предоставления доступа владельцем; его отсутствие явно записано.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Основа task-1.1 уже содержит make-команды; наличие команды не означает реализацию адаптера или прохождение live-проверок. Исследовательские проверки Raif: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Токены и исходные ответы подключаются только приватно; незакрытые RAIF-B02/B03/B04/B06 остаются барьером реализации.
 
 ### Передача следующему агенту
 
@@ -98,9 +90,9 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 ## EN
 
-Produce a verifiable access matrix for mandatory Raiffeisenbank Russia products.
+Produce a verifiable read contract for the individual entrepreneur current account through RBO API.
 
-**Status:** Research — not started; live access and paid runs require securely supplied owner access.
+**Status:** Research completed on 2026-09-07 with open contract questions. D-35 limits Raif to the individual entrepreneur current account. Refresh grant, account GETs from Mac and VPS, two historical CAMT.053 statements and balance reconciliation passed; seven NtryRefs and entries matched across reports. Current CAMT.052 returned 404 no-statements. RAIF-B01 and RAIF-B05 closed; RAIF-B02/B03/B04/B06 remain in BLK-02. task-4.2 and MVP Not Ready. RU/EN evidence, synthetic JSON/XML and diagnostic scripts prepared. Remaining questions are assigned to task-0.10; research closure does not remove the Ready gate.
 
 **Dependencies:** none.
 
@@ -108,23 +100,22 @@ Produce a verifiable access matrix for mandatory Raiffeisenbank Russia products.
 
 ### Change and contracts
 
-Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity.
+Under D-35 research the official RBO API for the individual entrepreneur current account: balances, incoming/outgoing movements, fees and history. Raif personal cards, credit, savings and deposits are outside the MVP. Keep original JSON/CAMT private; repository examples are synthetic. Record RUR→RUB, accounts.id separate from number/accountKeys, CAMT.053.001.08, NtryRef and nested TxDtls, actual completed versus OpenAPI COMPLETED and no-statements versus NO_STATEMENTS. Verify history boundaries, current/available/locked balances, exact fee-code semantics, rotation/reauth, external-account identity and member isolation. Partial evidence or documented blockers can complete research under README, but do not remove the task-0.10 Ready gate or replace automatic import with manual statements.
 
 ### Change boundaries
 
 - `spec/001-want-keep-mvp/evidence/raiffeisen.md`
 - `spec/001-want-keep-mvp/evidence/raiffeisen.en.md`
+- `spec/001-want-keep-mvp/evidence/raiffeisen.samples.json`
+- `spec/001-want-keep-mvp/evidence/raiffeisen.camt053.sample.xml`
+- `deploy/raiffeisen-research/`
 
 These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
 
 ### Linked requirements
 
-- **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
-- **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
-- **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-043:** The Raiffeisenbank Russia integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+- **REQ-043:** Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35).
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
@@ -135,9 +126,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-043
 
-- **Given:** An authorized personal Raiffeisenbank Russia account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized entrepreneur current account is connected through RBO API.
+- **When:** Request balances, movements, repeated import and intraday no-statements.
+- **Then:** Data matches the source; no duplicates, fees recorded separately. Unknown current balance is not zero: show the last verified balance, its date and the coverage gap.
 - **Level:** `contract+manual`.
 
 #### AC-041
@@ -153,13 +144,6 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **When:** A payment request, unapproved route or MFA/CAPTCHA appears.
 - **Then:** Payments and unknown routes are blocked; MFA/CAPTCHA is handed to the owner and that source pauses; other sources continue.
 - **Level:** `integration`.
-
-#### AC-070
-
-- **Given:** A bank exposes balance but no grace terms; an Earn rate has an unknown accrual basis.
-- **When:** Forecasts are opened.
-- **Then:** Balance is shown; grace eligibility and exact forecasts explain unavailability; AI does not turn marketing wording into guaranteed business rules.
-- **Level:** `contract+end-to-end`.
 
 #### AC-079
 
@@ -183,7 +167,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation already contains make commands; a command existing does not establish an implemented adapter or passing live checks. Raif research checks: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Tokens and original responses stay private; unresolved RAIF-B02/B03/B04/B06 remain an implementation gate.
 
 ### Handoff to the next agent
 

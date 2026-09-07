@@ -558,13 +558,13 @@ REQ: `REQ-042`.
 
 ## AC-043
 
-The Raiffeisenbank Russia integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35).
 
 REQ: `REQ-043`.
 
-- **Given:** An authorized personal Raiffeisenbank Russia account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized entrepreneur current account is connected through RBO API.
+- **When:** Request balances, movements, repeated import and intraday no-statements.
+- **Then:** Data matches the source; no duplicates, fees recorded separately. Unknown current balance is not zero: show the last verified balance, its date and the coverage gap.
 - **Level:** `contract+manual`.
 
 ## AC-044

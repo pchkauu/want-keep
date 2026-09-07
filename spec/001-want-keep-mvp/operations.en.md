@@ -6,7 +6,7 @@
 
 D-15: server at most $40/month in Germany, the Netherlands or Bulgaria; OpenAI separately at most $50/month. Paid external data is not authorized. Initial load is hundreds of transactions/month; receipt pages, chat length and backfill are measured separately.
 
-Target profile to validate: one VPS with Go API/worker, PostgreSQL, web/reverse proxy and one sequential collector. Select RAM/CPU/disk using measurements. Server cost includes mandatory IP, storage and taxes, converted to USD at the estimate date. No tariff is chosen or purchased; task-0.9 must verify reachability and cost. A cloud region being available does not prove bank/OpenAI reachability.
+Target profile to validate: one VPS with Go API/worker, PostgreSQL, web/reverse proxy and one sequential collector. Select RAM/CPU/disk using measurements. Server cost includes mandatory IP, storage and taxes, converted to USD at the estimate date. On 2026-09-07 the owner supplied an already rented VPS in Germany and the want-keep.tech domain. Ubuntu 26.04.1 LTS, 1 vCPU, about 889 MiB RAM and a roughly 14 GiB filesystem were verified; [research HTTPS](../../deploy/raiffeisen-research/README.en.md) was configured. The price was not supplied and full-MVP load was not measured: task-0.9 still needs to verify resource sufficiency and cost. A cloud region and HTTPS being available do not establish bank/OpenAI reachability. The application, PostgreSQL, background workers and backups are not deployed.
 
 ## OpenAI
 

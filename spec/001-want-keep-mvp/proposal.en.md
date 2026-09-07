@@ -28,7 +28,7 @@ This stage delivers bilingual specifications, criteria, architecture, integratio
 | D-10 | Goals have amount, currency, deadline and virtual-reservation or dedicated-account mode. No double reservation. Daily allowances are overall/per-category and available/forecast with separate funding by currency. |
 | D-11 | Credit cards with debt, payments and grace; savings with actual/forecast and comparable dated-cash-flow returns; realized/unrealized trading P&L, fees, funding and mining. No trading terminal. |
 | D-12 | Transaction-date expense valuation, current wealth valuation and separate FX effects. Reference rates and available provider buy/sell quotes with fees. USD, USDT and USDC are not automatically equal. |
-| D-13 | Alfa-Bank, Raif Russia: cards, current/savings accounts, deposits; Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding USDT/USDC/ETH/BTC, Easy Earn, P2P (D-36); Aifory: RUB accounts, USDT, ETH and existing card with their movements (D-33); EMCD: used cards, Coinhold/Grow, USDT wallet and P2P history (D-34). Read-only; browser automation allowed. |
+| D-13 | Alfa-Bank: cards, current/savings accounts, deposits; Raif Russia: individual entrepreneur current account through RBO API (D-35); Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding USDT/USDC/ETH/BTC, Easy Earn, P2P (D-36); Aifory: RUB accounts, USDT, ETH and existing card with their movements (D-33); EMCD: used cards, Coinhold/Grow, USDT wallet and P2P history (D-34). Read-only; browser automation allowed. |
 | D-14 | Separate passkeys and personal one-time recovery codes for each member; partner-assisted reset is unavailable. Protected secrets, attachments and sessions; AI has no payment authority. |
 | D-15 | For the whole household: server up to $40/month in DE/NL/BG, OpenAI up to $50/month; separately sourced data must be free. Hourly MacBook backups while reachable; visible backup age, conditional RPO and recovery target within four hours. |
 | D-16 | UI, AI interaction and documentation in RU/EN. Dashboard covers plan/actuals, income/expenses, goals and daily allowances. In-app and web-push notifications. |
@@ -93,6 +93,14 @@ REQ-002/REQ-003/REQ-046, their ACs and downstream tasks were updated with IDs pr
 | ID | Decision |
 | --- | --- |
 | D-34 | Current EMCD scope: used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders. Mining has never been used; neither its current data nor history is required. Mining and other unused products/wallets are deferred without blocking the MVP; expansion requires a new decision and verified contracts. Retain all included-wallet movements. Automation and quality for selected products, shared features and other providers are not reduced. |
+
+## Raiffeisen refinement, 2026-09-07
+
+| ID | Decision |
+| --- | --- |
+| D-35 | The owner explicitly confirmed the current Raif scope as the individual entrepreneur current account only: balances, incoming/outgoing movements, fees and history through RBO API. Raif personal cards, credit, savings accounts and deposits are excluded from the current MVP and do not block readiness. Other providers and shared features are unchanged. |
+
+REQ-043/AC-043 and task-0.2/task-4.2 were refined with IDs preserved; the Raif link to AC-070 on credit/savings terms was removed. This changes the target contract; no runtime schemas or data are migrated. [Research outcome](evidence/raiffeisen.en.md).
 
 ## Bybit refinement, 2026-09-07
 

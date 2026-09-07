@@ -258,9 +258,9 @@ Source: `D-13`. Acceptance: [AC-042](acceptance_criteria.en.md#ac-042).
 
 ## REQ-043
 
-The Raiffeisenbank Russia integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35).
 
-Source: `D-13`. Acceptance: [AC-043](acceptance_criteria.en.md#ac-043).
+Source: `D-35`. Acceptance: [AC-043](acceptance_criteria.en.md#ac-043).
 
 ## REQ-044
 

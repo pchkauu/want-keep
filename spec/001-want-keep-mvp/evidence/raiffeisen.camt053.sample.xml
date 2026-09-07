@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic structural example, not a real statement or an XSD validation claim. -->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+  <BkToCstmrStmt>
+    <GrpHdr><MsgId>SYNTHETIC-MESSAGE</MsgId><CreDtTm>2026-09-01T06:00:00+03:00</CreDtTm></GrpHdr>
+    <Stmt>
+      <Id>SYNTHETIC-STATEMENT</Id>
+      <CreDtTm>2026-09-01T06:00:00+03:00</CreDtTm>
+      <FrToDt><FrDtTm>2026-08-01T00:00:00+03:00</FrDtTm><ToDtTm>2026-08-31T23:59:59+03:00</ToDtTm></FrToDt>
+      <Acct><Id><Othr><Id>00000000000000000000</Id></Othr></Id><Ccy>RUB</Ccy></Acct>
+      <Bal><Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp><Amt Ccy="RUB">100.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><DtTm>2026-08-01T00:00:00+03:00</DtTm></Dt></Bal>
+      <Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy="RUB">990.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><DtTm>2026-08-31T23:59:59+03:00</DtTm></Dt></Bal>
+      <Ntry>
+        <NtryRef>SYNTHETIC-ENTRY-1</NtryRef><Amt Ccy="RUB">1000.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><DtTm>2026-08-10T12:00:00+03:00</DtTm></BookgDt><ValDt><DtTm>2026-08-10T12:00:00+03:00</DtTm></ValDt>
+        <BkTxCd><Prtry><Cd>NTRF</Cd></Prtry></BkTxCd>
+        <NtryDtls><TxDtls><Refs><EndToEndId>SYNTHETIC-END-1</EndToEndId></Refs><Amt Ccy="RUB">1000.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><RmtInf><Ustrd>Синтетическое поступление</Ustrd></RmtInf></TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>SYNTHETIC-ENTRY-2</NtryRef><Amt Ccy="RUB">100.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><DtTm>2026-08-11T12:00:00+03:00</DtTm></BookgDt><ValDt><DtTm>2026-08-11T12:00:00+03:00</DtTm></ValDt>
+        <BkTxCd><Prtry><Cd>NTRF</Cd></Prtry></BkTxCd>
+        <NtryDtls><TxDtls><Refs><EndToEndId>SYNTHETIC-END-2</EndToEndId></Refs><Amt Ccy="RUB">100.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><RmtInf><Ustrd>Синтетическое списание</Ustrd></RmtInf></TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <NtryRef>SYNTHETIC-ENTRY-3</NtryRef><Amt Ccy="RUB">10.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts><Cd>BOOK</Cd></Sts>
+        <BookgDt><DtTm>2026-08-12T12:00:00+03:00</DtTm></BookgDt><ValDt><DtTm>2026-08-12T12:00:00+03:00</DtTm></ValDt>
+        <BkTxCd><Prtry><Cd>FCHG</Cd></Prtry></BkTxCd>
+        <NtryDtls><TxDtls><Refs><EndToEndId>SYNTHETIC-END-3</EndToEndId></Refs><Amt Ccy="RUB">10.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><RmtInf><Ustrd>Синтетическая запись с кодом FCHG</Ustrd></RmtInf></TxDtls></NtryDtls>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

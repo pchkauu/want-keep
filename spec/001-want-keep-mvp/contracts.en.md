@@ -88,6 +88,16 @@ Target prefix `/api/v1`, JSON, money strings, UTC RFC3339 timestamps plus explic
 
 task-1.2 materializes OpenAPI only after Ready; exact form fields follow the models above and verified provider contracts. Client/generated types never become domain types.
 
+### Raiffeisen authorization callback
+
+RAIF-E15 registered `https://want-keep.tech/api/v1/connections/raiffeisen/callback`: future `GET /connections/raiffeisen/callback` under the shared API prefix. This extends the protected Connections enrollment flow; it is not an existing application endpoint. Compatibility: external registration fixes the path; changes require preparing the new handler and updating bank registration first. RAIF-E16 verifies DNS/HTTPS; the server OAuth handler is not implemented and the placeholder returns 503. Do not start Code Flow until the handler is verified. Initial RBO Refresh-token issuance for research does not replace this contract. See [evidence](evidence/raiffeisen.en.md).
+
+The callback accepts `state` and `code`, or safely handles provider denial. The browser OAuth redirect is an exception to the general JSON/Idempotency-Key rules: it is a GET protected by single-use state, not a financial-ledger command. Protected authorization initiation creates a time-limited attempt with state, nonce, PKCE S256/verifier and bindings to household, connection, its version, current principal and externalAccountOwnerId. Lifetime is configurable; the callback requires the same authenticated owner session. URL parameters cannot assign a user, household or owner; disconnection, attempt expiry and version changes prevent result application.
+
+At callback, the server checks state and bindings, then atomically claims a valid attempt once and exchanges code using the exact registered redirect_uri and verifier. Client secret/verifier/tokens stay server-side; ID token validation includes signature, issuer, audience, lifetimes and nonce under the verified OIDC contract. An unknown exchange outcome does not automatically retry the single-use code; the attempt gets an explicit status, and a subsequent login creates a new attempt without duplicating the connection. Code, state and tokens are excluded from request/error logs, traces and analytics; the callback loads no third-party resources and returns `Cache-Control: no-store`, `Referrer-Policy: no-referrer`. A 303 leads to a safe connection screen without secrets in the URL. Persisted results let repeated redirects display status without another exchange.
+
+task-4.2 checks success, bank denial, missing/foreign/expired state, repeated callbacks, another user's or an expired session, connection disconnection/version changes, invalid nonce/ID token, unknown exchange outcome and secret-free logs. This refines REQ-048/REQ-073 and AC-048/AC-087; implementation and runtime checks remain future work.
+
 ## Collector and AI
 
 Collector read jobs contain job ID, connection reference, authorized action/product, range/cursor, deadline and short-lived authorization binding. Calls stay on an authenticated private network; credentials come from isolated secret stores/profiles, never AI payloads. Results contain source records, account references, balance snapshots, next cursor, coverage and typed status/errors. Never return/log full secrets/sessions. Unknown products/fields remain unsupported/unknown.
