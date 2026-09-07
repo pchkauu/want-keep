@@ -79,7 +79,7 @@ TradingView **не подходит** как серверный источник
 | FX-B02 | OPEN | task-0.10: принять `valuation_unavailable` для crypto старше 365 дней либо отдельно проверить разрешённый archive/платный источник. Текущий курс/peg не допускаются |
 | FX-B03 | OPEN | task-0.1–task-0.6/task-0.10: получить provider-specific executable buy/sell, amount, fee/spread и timestamp или утвердить UI `quote unavailable`; reference price не заменяет их |
 | FX-B04 | OPEN | владелец + task-0.10: создать бесплатный CoinGecko Demo key, проверить keyed endpoints/usage endpoint и зафиксировать атрибуцию. Секрет не публиковать |
-| FX-B05 | CLOSED FOR RESEARCH | DE/NL/BG reachability выбранных endpoints подтверждена датированными probes; task-0.9 всё ещё проверяет фактический VPS/runtime |
+| FX-B05 | CLOSED FOR RESEARCH | DE/NL/BG reachability подтверждена датированными probes; task-0.9 также подтвердила публичные rate endpoints с фактического немецкого VPS. Реальный адаптер/soak остаётся runtime-проверкой task-6.1/task-8.1 |
 | FX-B06 | CLOSED | Гипотеза TradingView проверена и отвергнута для non-display valuation |
 
 BLK-07 содержит FX-B02–FX-B04 до решения task-0.10. task-0.7 завершает исследование и разблокирует формализацию контракта, но task-6.1 и MVP остаются **Not Ready** до общего Ready-барьера.

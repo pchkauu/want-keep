@@ -8,7 +8,7 @@
 
 ## Владельцы поведения и структура
 
-Модульный монолит Go с API и worker-процессами, PostgreSQL, React/TypeScript/Vite и отдельным Playwright TypeScript collector. Один VPS, Docker Compose; без обязательных Redis, Kafka, Kubernetes, vector DB или Python-сервиса.
+Модульный монолит Go с API и worker-процессами, managed PostgreSQL, React/TypeScript/Vite и отдельным Playwright TypeScript collector. Production: один VPS 2 vCPU/4 ГБ/50 ГБ в Германии для приложения и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в той же private VPC без публичного IP; Docker Compose управляет приложением, но не production-БД. Development и integration используют изолированный PostgreSQL-контейнер. Redis, Kafka, Kubernetes, vector DB и Python-сервис не обязательны. Конфигурация и незакрытые runtime gates: [исследование task-0.9](evidence/hosting.md).
 
 | Планируемая область | Ответственность |
 | --- | --- |

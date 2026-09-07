@@ -2,7 +2,7 @@
 
 Verdict: Not Ready
 
-Date: 2026-09-06. This verdict concerns the complete specification's readiness for application implementation. It neither prevents agreed documentation/backlog delivery nor describes an implemented application.
+Updated: 2026-09-07. This verdict concerns the complete specification's readiness for application implementation. It neither prevents agreed documentation/backlog delivery nor describes an implemented application.
 
 ## Artifact state
 
@@ -22,7 +22,7 @@ Prepared proposal, 87 REQ, 105 AC, architecture, contracts/formulas, glossary, M
 | BLK-06 | EMCD: USDT wallet, used Grow/crypto cards and P2P history under D-34 | task-0.10, evidence task-0.6 | [Research](evidence/emcd.en.md): EMCD-B02–B04 — structured read/access, identity/history/reauth, balances/Grow/card/P2P. Mining has never been used; other products are unnecessary |
 | BLK-07 | Free current/historical FX valuation and provider quotes | task-0.10, task-0.7 evidence | [Research](evidence/fx.en.md): CBR + CoinGecko Demo cover current/≤365d; FX-B02–FX-B04 — >365d crypto history, provider executable quotes and keyed Demo probe/attribution |
 | BLK-08 | OpenAI models, measured quality/cost and request limits | task-0.8 | Financial-invariant evaluation with tokens/errors and selected versions/limits |
-| BLK-09 | Concrete VPS/reachability/cost and Mac backup retention | task-0.9 | Dated ≤$40 estimate, reachability, retention/capacity and recovery design |
+| BLK-09 | Runtime admission of selected VPS/managed PostgreSQL, hardening, load, Alfa route and backup/restore | task-8.1–task-8.3, task-0.10/task-4.1; [task-0.9 research](evidence/hosting.en.md) | Research/estimate/retention complete; HOST-B01–HOST-B06 require provisioning, security/load readback and rehearsal before application ACs |
 | BLK-10 | Full structured grace/accrual terms, exact API boundaries and XIRR solver | task-0.10 | Verified input contracts, algorithms/vectors, updated RU/EN and independent Ready review |
 
 BLK-01–BLK-06 need separately and securely supplied owner access. None was supplied in the initial 2026-09-06 stage; subsequent research is recorded separately. Marketing pages, mocks or corporate API availability do not close these blockers.
@@ -40,6 +40,14 @@ Research checks are separate from application checks: local spec validation, gen
 TradingView was tested and rejected: libraries require an external datafeed, while its terms prohibit automated price referencing/non-display processing. CBR/CoinGecko returned HTTP 200 from DE/NL/BG; Frankfurter succeeded from DE/BG and then three NL networks after one probe-local DNS failure. This is a dated snapshot, not an SLA or actual VPS runtime.
 
 Research is complete under the README rule. BLK-07 retains FX-B02–FX-B04 under task-0.10: a decision for crypto history older than 365 days, provider-specific executable quotes/fees, and CoinGecko Demo key creation/verification with attribution. task-6.1 and the MVP remain Not Ready. Application AC-037/AC-038/AC-039/AC-074 are not claimed as passed.
+
+## Infrastructure: task-0.9 research completion, 2026-09-07
+
+[RU evidence](evidence/hosting.md) / [EN](evidence/hosting.en.md): a German 2 vCPU/4 GB/50 GB application server and 1 vCPU/2 GB/20 GB managed PostgreSQL are selected in one private VPC with no public DB IP. Pricing snapshot: RUB 2,520/month under annual pricing; conservative no-discount pricing with 10% reserve is RUB 3,055.56/$35.29 at CBR 86.5857 RUB/USD, below $40. The owner's current server costs RUB 800/month, but read-only inspection found 1 vCPU, less than 1 GB RAM and no product runtime; it remains a research endpoint.
+
+HOST-E01–HOST-E15 record server/OS/TLS/services, official pricing/VPC/DB contracts, public reachability from Germany, security gaps and Mac capacity. Safe Alfa DNS/TLS routing is not established. The backup design specifies Mac-initiated logical dump plus immutable attachments, manifest/checksums, a separate recovery key, retention of 48 hourly/30 daily/8 weekly/12 monthly points and a 20 GiB cap.
+
+task-0.9 is complete under the research rule and unblocks the infrastructure part of task-0.10. HOST-B01–HOST-B06 retain provisioning/invoice, hardening, load/cgroups, Alfa routing, private DB/TLS/roles and backup/restore rehearsal under task-8.1–task-8.3 and task-0.10/task-4.1. AC-048/AC-056/AC-057/AC-058 and the MVP remain Not Ready; no server setting changed.
 
 ## Checks for this stage
 
@@ -82,7 +90,7 @@ Avida self review: completed, pass, 0 remaining findings/questions, all 106 chan
 
 Checks: spec_tool check — pass; 10 documentation-tool regression tests — pass; REQ/AC/task/SCR graph, RU/EN presence, generated consistency, links and whitespace — pass. Independent reviewer roles checked semantic RU/EN parity. No commits, push or application implementation.
 
-Application verdict remains Not Ready: BLK-01–BLK-10 above remain open. External contracts, six-platform live checks, AI eval, server costs/retention and the Ready plan remain future work. Chrome/Arc, user/animation acceptance and backup/restore runtime have not run because the app does not exist. Next executable stage: task-0.1–task-0.9 research and task-0.10 readiness review.
+Application verdict remains Not Ready: BLK-01–BLK-10 above contain open contract or runtime gates. External contracts, six-platform live checks, AI evaluation and the Ready plan remain future work. task-0.9 closed infrastructure selection, estimate and retention; provisioning, hardening, load, safe Alfa routing and backup/restore rehearsal are assigned through HOST-B01–HOST-B06. Chrome/Arc and user/animation acceptance have not run because the app does not exist. Next executable stage: remaining research and task-0.10 readiness review.
 
 ## Raiffeisen: task-0.2 research completion, 2026-09-07
 

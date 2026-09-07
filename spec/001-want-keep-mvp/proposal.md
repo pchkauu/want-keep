@@ -32,7 +32,7 @@ Execution mode: autonomous
 | D-14 | Отдельные passkey и личные одноразовые recovery-коды каждого участника; сброс чужого входа партнёром недоступен. Защита секретов, вложений и сессий; AI не получает платёжных полномочий. |
 | D-15 | Для всей семьи сервер до $40/месяц в DE/NL/BG, OpenAI до $50/месяц; отдельные источники только бесплатные. Копии ежечасно на MacBook при доступности; возраст копии виден, RPO условный, цель восстановления до четырёх часов. |
 | D-16 | UI, AI-общение и документация RU/EN. Дашборд план/факт, доходов/расходов, целей и дневных лимитов. Уведомления внутри приложения и web-push. |
-| D-17 | Go, PostgreSQL, React/TypeScript/Vite, отдельный Playwright TypeScript collector, Docker Compose. Финансовый домен независим от transport/storage/UI/AI SDK, точная арифметика и явные границы. |
+| D-17 | Go, managed PostgreSQL, React/TypeScript/Vite, отдельный Playwright TypeScript collector, Docker Compose. Production: сервер приложения 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной private VPC Германии; локально — изолированный PostgreSQL. Финансовый домен независим от transport/storage/UI/AI SDK, точная арифметика и явные границы. |
 
 ## Сохранённые границы
 

@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-В изолированном окружении восстановить только выбранный полный набор, проверить manifest, версии схемы, keys и attachments; сравнить ledger balances, audit и незавершённые jobs. Не восстанавливать старые browser/auth sessions как активные без безопасной реавторизации; не повторять платные AI-запросы с неизвестной оплатой. Измерить RTO и сформировать RU/EN runbook.
+В изолированном окружении создать чистый managed PostgreSQL совместимой major-версии и восстановить только выбранный полный Mac-набор. Проверить manifest/checksums, версии схемы, необходимые keys и attachments; сравнить ledger balances, audit и незавершённые jobs. Не восстанавливать старые browser/auth sessions как активные без безопасной реавторизации; не повторять платные AI-запросы с неизвестной оплатой. Измерить RTO ≤4 часов на целевом профиле и сформировать RU/EN runbook с действиями при недоступном provider restore.
 
 ### Границы изменений
 
@@ -136,7 +136,7 @@ Demonstrate consistent accounting/file recovery within four hours.
 
 ### Change and contracts
 
-In an isolated environment restore only a chosen complete set, verify manifest, schema versions, keys and attachments; compare ledger balances, audit and pending jobs. Do not revive old browser/auth sessions without safe reauthorization or replay AI calls with unknown charges. Measure RTO and write an RU/EN runbook.
+In an isolated environment create a clean managed PostgreSQL instance on a compatible major and restore only a selected complete Mac set. Verify manifest/checksums, schema versions, required keys and attachments; compare ledger balances, audit and pending jobs. Do not revive old browser/auth sessions without safe reauthorization or replay AI calls with unknown charges. Measure RTO ≤4 hours on the target profile and write an RU/EN runbook including provider-restore unavailability.
 
 ### Change boundaries
 

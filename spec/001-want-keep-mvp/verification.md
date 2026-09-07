@@ -2,7 +2,7 @@
 
 Verdict: Not Ready
 
-Дата: 2026-09-06. Объект вердикта — готовность полной спецификации к реализации приложения. Это не запрет на доставку согласованных документов/backlog и не статус выполненного приложения.
+Дата актуализации: 2026-09-07. Объект вердикта — готовность полной спецификации к реализации приложения. Это не запрет на доставку согласованных документов/backlog и не статус выполненного приложения.
 
 ## Состояние артефактов
 
@@ -22,7 +22,7 @@ Verdict: Not Ready
 | BLK-06 | EMCD: кошелёк USDT, используемые Grow/криптокарты и история P2P по D-34 | task-0.10, evidence task-0.6 | [Исследование](evidence/emcd.md): EMCD-B02–B04 — structured read/access, identity/history/reauth, балансы/Grow/card/P2P. Майнинг не использовался никогда; другие продукты не требуются |
 | BLK-07 | Бесплатная текущая/историческая FX-оценка и сервисные котировки | task-0.10, evidence task-0.7 | [Исследование](evidence/fx.md): CBR + CoinGecko Demo закрывают current/≤365d; FX-B02–FX-B04 — crypto history >365d, provider executable quotes и keyed Demo probe/attribution |
 | BLK-08 | Модели OpenAI, измеренное качество/стоимость, ограничения запросов | task-0.8 | Eval с финансовыми инвариантами, токенами/ошибками, выбранные версии/лимиты |
-| BLK-09 | Конкретный VPS/доступность/смета и политика хранения копий Mac | task-0.9 | Датированная смета ≤$40, достижимость, retention/capacity и recovery design |
+| BLK-09 | Runtime-допуск выбранных VPS/managed PostgreSQL, hardening, нагрузка, Alfa route и backup/restore | task-8.1–task-8.3, task-0.10/task-4.1; [task-0.9 research](evidence/hosting.md) | Исследование/смета/retention завершены; HOST-B01–HOST-B06 требуют provisioning, security/load readback и rehearsal до application AC |
 | BLK-10 | Полные структурированные условия grace/accrual, точные границы API и solver XIRR | task-0.10 | Подтверждённые input contracts, алгоритмы/векторы, обновлённые RU/EN и независимый Ready review |
 
 Для закрытия BLK-01–BLK-06 нужны отдельные безопасно предоставленные доступы владельца. На исходном этапе 2026-09-06 они не предоставлялись; последующие исследования отражены отдельно. Нельзя закрыть блокер ссылкой на маркетинговую страницу, mock или наличие API у юридических лиц.
@@ -40,6 +40,14 @@ Verdict: Not Ready
 TradingView проверен и отвергнут: библиотеки требуют внешний datafeed, а terms запрещают automated price referencing/non-display processing. CBR/CoinGecko дали HTTP 200 из DE/NL/BG; Frankfurter подтвердился из DE/BG и повторно из трёх NL networks после единичной probe DNS failure. Это датированный snapshot, не SLA или фактический VPS runtime.
 
 Research завершён по правилу README. BLK-07 сохраняет FX-B02–FX-B04 под task-0.10: решение для crypto history старше 365 дней, provider-specific executable quotes/fees и создание/проверка CoinGecko Demo key с attribution. task-6.1 и MVP остаются Not Ready. AC-037/AC-038/AC-039/AC-074 в приложении не заявлены как пройденные.
+
+## Инфраструктура: завершение исследования task-0.9, 2026-09-07
+
+[RU evidence](evidence/hosting.md) / [EN](evidence/hosting.en.md): выбран немецкий сервер приложения 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной private VPC без публичного DB IP. Снимок цены: 2 520 ₽/месяц по годовому тарифу; консервативно без скидки и с 10% резервом — 3 055.56 ₽/$35.29 при CBR 86.5857 RUB/USD, ниже $40. Текущий сервер владельца стоит 800 ₽/месяц, но read-only аудит показал 1 vCPU, менее 1 ГБ RAM и отсутствие product runtime; он остаётся исследовательским стендом.
+
+HOST-E01–HOST-E15 фиксируют server/OS/TLS/services, официальные price/VPC/DB contracts, публичную достижимость из Германии, security gap и Mac capacity. Safe Alfa DNS/TLS route не подтверждён. Backup design задаёт Mac-initiated logical dump + immutable attachments, manifest/checksums, отдельный recovery key, retention 48 hourly/30 daily/8 weekly/12 monthly и cap 20 GiB.
+
+task-0.9 завершена по правилу исследования и разблокирует инфраструктурную часть task-0.10. HOST-B01–HOST-B06 сохраняют provisioning/invoice, hardening, load/cgroups, Alfa route, private DB/TLS/roles и backup/restore rehearsal за task-8.1–task-8.3 и task-0.10/task-4.1. AC-048/AC-056/AC-057/AC-058 и MVP остаются Not Ready; сервер не изменялся.
 
 ## Проверки этого этапа
 
@@ -82,7 +90,7 @@ Self review Avida: завершён, pass, 0 оставшихся findings/quest
 
 Проверки: spec_tool check — pass; 10 regression-тестов документационного инструмента — pass; граф REQ/AC/task/SCR, RU/EN presence, generated consistency, ссылки и whitespace — pass. Смысловая RU/EN проверка выполнена независимыми review-ролями. Коммитов, push и реализации приложения нет.
 
-Вердикт приложения остаётся Not Ready: BLK-01–BLK-10 выше не закрыты. Внешние контракты, live-проверки шести сервисов, AI eval, серверная смета/retention и Ready-план предстоят. Chrome/Arc, пользовательская/анимационная приёмка и backup/restore runtime не запускались: приложения ещё нет. Следующий исполнимый этап — исследования task-0.1–task-0.9 и проверка task-0.10.
+Вердикт приложения остаётся Not Ready: BLK-01–BLK-10 выше содержат открытые контрактные или runtime gates. Внешние контракты, live-проверки шести сервисов, AI eval и Ready-план предстоят. task-0.9 закрыла выбор инфраструктуры, смету и retention; provisioning, hardening, нагрузка, safe Alfa route и backup/restore rehearsal переданы HOST-B01–HOST-B06. Chrome/Arc и пользовательская/анимационная приёмка не запускались: приложения ещё нет. Следующий исполнимый этап — оставшиеся исследования и проверка task-0.10.
 
 ## Raiffeisen: завершение исследования task-0.2, 2026-09-07
 

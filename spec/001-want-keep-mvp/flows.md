@@ -76,17 +76,23 @@ flowchart TD
 ```mermaid
 sequenceDiagram
   participant M as MacBook
-  participant S as Сервер
+  participant S as VPS приложения
+  participant P as Managed PostgreSQL
+  participant F as Неизменяемые вложения
   participant B as Локальная копия
   M->>S: Авторизованный hourly pull при доступности
-  S-->>M: Consistent DB snapshot + file inventory + manifest
+  S->>P: Logical dump по private VPC
+  S->>F: Inventory по consistent cutoff
+  P-->>S: Поток DB
+  F-->>S: Вложения + manifest
+  S-->>M: Ограниченный поток export
   M->>M: Проверить части и checksum
   M->>B: Атомарно завершить зашифрованный набор
   M->>S: Подтверждение проверенного manifest
-  Note over M,S: Недоступный Mac увеличивает возраст последней полной копии
+  Note over M,P: Недоступный Mac увеличивает возраст последней полной копии
 ```
 
-Последняя полная копия не заменяется незавершённой. Recovery-ключ должен быть доступен вне единственной аварийной системы. Восстановление старого набора не активирует старые банковские сессии автоматически.
+Последняя полная копия не заменяется незавершённой. Recovery-ключ должен быть доступен вне единственной аварийной системы. Retention: 48 почасовых, 30 дневных, 8 недельных и 12 месячных точек при cap 20 GiB; последний полный набор не удаляется. RPO до часа условен доступностью Mac и проверкой набора. Восстановление старого набора в чистый managed PostgreSQL не активирует старые банковские сессии автоматически. Подробный контракт и открытые runtime gates: [hosting evidence](evidence/hosting.md).
 
 ## Семейные права и разрезы
 

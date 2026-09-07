@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Реализовать инициируемый MacBook hourly pull: согласованный DB snapshot, immutable attachment inventory и manifest с checksum/version/timestamps; атомарно завершать набор лишь после проверки всех частей. Шифровать получателю, recovery-ключ хранить отдельно; не открывать входящий доступ на Mac. Сохранять последнюю полную копию при обрыве, показывать fresh/stale/failed и условный RPO; документы RU/EN.
+Реализовать через launchd инициируемый Mac hourly pull без входящего порта: restricted non-root export principal, согласованный cutoff, потоковый logical pg_dump managed PostgreSQL через VPS/private VPC, immutable attachment inventory и manifest с checksum/version/timestamps. Шифровать на стороне получателя; recovery key хранить в Mac Keychain с независимой аварийной копией. Набор завершать атомарно после проверки. Retention: 48 hourly/30 daily/8 weekly/12 monthly; cap 20 GiB, warning 15 GiB или <25 GiB свободно, последний complete set не удалять. Проверять volume encryption/capacity и показывать fresh/stale/failed, age и условный RPO; документы RU/EN.
 
 ### Границы изменений
 
@@ -105,7 +105,7 @@ Obtain consistent server-independent copies while the Mac is reachable.
 
 ### Change and contracts
 
-Implement Mac-initiated hourly pull: consistent DB snapshot, immutable attachment inventory and a checksum/version/timestamp manifest; complete a set atomically only after all parts verify. Encrypt to the recipient and keep recovery keys separately; do not open inbound Mac access. Retain the last complete set on interruption and show fresh/stale/failed with conditional RPO; document RU/EN.
+Implement a launchd-driven hourly Mac pull with no inbound Mac port: restricted non-root export principal, consistent cutoff, streaming logical pg_dump of managed PostgreSQL through VPS/private VPC, immutable attachment inventory and checksum/version/timestamp manifest. Encrypt on the recipient; keep the recovery key in Mac Keychain with an independent emergency copy. Complete a set atomically after verification. Retention: 48 hourly/30 daily/8 weekly/12 monthly; 20 GiB cap, warning at 15 GiB or <25 GiB free, never delete the last complete set. Preflight volume encryption/capacity and show fresh/stale/failed, age and conditional RPO; document RU/EN.
 
 ### Change boundaries
 

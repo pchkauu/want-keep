@@ -8,7 +8,7 @@ Go 1.26.5 and Node.js 24.19.0 LTS are pinned. Web uses React 19.2.8, Vite 8.2.2,
 
 ## Behavior ownership and layout
 
-A modular Go monolith with API/worker processes, PostgreSQL, React/TypeScript/Vite and a separate Playwright TypeScript collector. One VPS and Docker Compose; no mandatory Redis, Kafka, Kubernetes, vector database or Python service.
+A modular Go monolith with API/worker processes, managed PostgreSQL, React/TypeScript/Vite and a separate Playwright TypeScript collector. Production uses one German 2 vCPU/4 GB/50 GB application VPS and 1 vCPU/2 GB/20 GB managed PostgreSQL in the same private VPC without a public IP; Docker Compose owns the application, not the production DB. Development and integration use an isolated PostgreSQL container. Redis, Kafka, Kubernetes, a vector database and a Python service are not mandatory. Configuration and open runtime gates: [task-0.9 research](evidence/hosting.en.md).
 
 | Planned area | Responsibility |
 | --- | --- |

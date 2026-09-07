@@ -79,7 +79,7 @@ TradingView is **not suitable** as a server-side rate source for Want Keep. Char
 | FX-B02 | OPEN | task-0.10: accept `valuation_unavailable` for crypto older than 365 days or separately verify an allowed archive/paid source. Current prices/pegs are forbidden substitutes |
 | FX-B03 | OPEN | task-0.1–task-0.6/task-0.10: obtain provider-specific executable buy/sell, amount, fee/spread and timestamp or approve UI `quote unavailable`; reference price cannot replace them |
 | FX-B04 | OPEN | owner + task-0.10: create a free CoinGecko Demo key, verify keyed endpoints/usage endpoint and record attribution. Never publish the secret |
-| FX-B05 | CLOSED FOR RESEARCH | DE/NL/BG reachability of selected endpoints was established by dated probes; task-0.9 still verifies actual VPS/runtime |
+| FX-B05 | CLOSED FOR RESEARCH | Dated probes established DE/NL/BG reachability; task-0.9 also confirmed the public rate endpoints from the actual German VPS. The real adapter/soak remains a task-6.1/task-8.1 runtime check |
 | FX-B06 | CLOSED | TradingView hypothesis tested and rejected for non-display valuation |
 
 BLK-07 retains FX-B02–FX-B04 until task-0.10 decides them. task-0.7 completes research and unblocks contract formalization, while task-6.1 and the MVP remain **Not Ready** pending the common Ready gate.

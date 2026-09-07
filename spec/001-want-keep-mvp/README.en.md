@@ -16,7 +16,7 @@ This package records the agreed MVP and full backlog for later execution by an A
 
 ## For the next agent
 
-Finish task-0.1–task-0.9 and record research evidence. Without securely supplied access, do not claim live verification. The owner authorized task-1.1 early only as an independent technical foundation. task-0.10 still resolves contracts, updates RU/EN and reviews SDD readiness; product implementation remains blocked until then and `plan.md` intentionally does not exist.
+Finish the open research work within task-0.1–task-0.8 and record its evidence. [task-0.9 is complete](evidence/hosting.en.md): a German 2 vCPU/4 GB/50 GB VPS and 1 vCPU/2 GB/20 GB managed PostgreSQL in a private VPC are selected; the estimate is below $40, while provisioning, hardening, Alfa routing and backup/restore runtime are assigned to later tasks. Without securely supplied access, do not claim live verification. The owner authorized task-1.1 early only as an independent technical foundation. task-0.10 still resolves contracts, updates RU/EN and reviews SDD readiness; product implementation remains blocked until then and `plan.md` intentionally does not exist.
 
 Each card in `tasks/` contains the complete RU/EN body for one GitHub Issue. IDs remain stable. Closing an Issue is not evidence. Research may finish with a documented blocker; this does not make the dependent integration ready.
 

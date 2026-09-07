@@ -6,7 +6,9 @@
 
 D-15: server at most $40/month in Germany, the Netherlands or Bulgaria; OpenAI separately at most $50/month. Paid external data is not authorized. Initial load is hundreds of transactions/month; receipt pages, chat length and backfill are measured separately.
 
-Target profile to validate: one VPS with Go API/worker, PostgreSQL, web/reverse proxy and one sequential collector. Select RAM/CPU/disk using measurements. Server cost includes mandatory IP, storage and taxes, converted to USD at the estimate date. On 2026-09-07 the owner supplied an already rented VPS in Germany and the want-keep.tech domain. Ubuntu 26.04.1 LTS, 1 vCPU, about 889 MiB RAM and a roughly 14 GiB filesystem were verified; [research HTTPS](../../deploy/raiffeisen-research/README.en.md) was configured. The price was not supplied and full-MVP load was not measured: task-0.9 still needs to verify resource sufficiency and cost. A cloud region and HTTPS being available do not establish bank/OpenAI reachability. The application, PostgreSQL, background workers and backups are not deployed.
+task-0.9 completed the dated [infrastructure research](evidence/hosting.en.md) on 2026-09-07. The owner selected a German 2 vCPU/4 GB/50 GB VPS for web/reverse proxy, Go API/worker and one sequential collector, plus 1 vCPU/2 GB/20 GB managed PostgreSQL in the same private VPC with no public DB IP. Annual pricing with one VPS IPv4 is RUB 2,520/month; conservative no-discount pricing plus 10% reserve is RUB 3,055.56/$35.29 at CBR 86.5857 RUB/USD, below $40. Re-read pricing, tax, IP and FX before purchase.
+
+The current research VPS costs RUB 800/month per the owner. Read-only audit found Ubuntu 26.04.1 LTS, 1 vCPU, about 889 MiB RAM, no swap and a roughly 14 GiB filesystem; application, DB and backup are not deployed. It is not admitted for production. Before financial data, task-8.1 hardens SSH/firewall/monitoring/secrets, creates the private DB connection, reads back the invoice and measures peak CPU/RAM/disk/collector use. From the current VPS, public OpenAI/rate endpoints and several platforms are reachable with stated limits; safe Alfa-Bank DNS/TLS routing is not established and remains HOST-B04 for task-0.10/task-4.1.
 
 ## OpenAI
 
@@ -27,11 +29,13 @@ Full transactions/receipts excluding secrets are permitted. API data is not used
 
 ## MacBook backups
 
-The Mac initiates outbound pull; Mac reachability is a condition, not an around-the-clock promise. The server prepares a consistent set: DB snapshot, immutable attachment inventory and version/time/checksum manifest. Success requires the local recipient to verify every part.
+The Mac initiates outbound pull; Mac reachability is a condition, not an around-the-clock promise. Through a restricted non-root export principal, the VPS streams a logical managed PostgreSQL dump over the private network plus an immutable attachment inventory. The consistent set contains cutoff, schema/version/time and checksums. Success requires the local recipient to verify every part; no inbound Mac access is opened.
 
 Encrypt backups; store private recovery keys separately from the sole backup and failed server. Server/master keys and access recovery codes are never published or printed. An external cloud backup is not part of the agreed MVP.
 
-While the Mac is unreachable show last-complete-set age and the actual potential loss window. Hourly RPO depends on reachability and successful completion; interrupted downloads never update success timestamps. Resume copying after reconnection while retaining the last valid set. task-0.9 resolves retention/count and Mac disk limits before any automatic removal of old sets; this package authorizes no such deletion.
+While the Mac is unreachable show last-complete-set age and the actual potential loss window. Hourly RPO depends on reachability and successful completion; interrupted downloads never update success timestamps. Resume copying after reconnection while retaining the last valid set.
+
+MVP policy retains 48 hourly, 30 daily, 8 weekly and 12 monthly points; the deduplicated repository cap is 20 GiB, with a warning at 15 GiB or less than 25 GiB free. Never delete the last complete set. The inspected Mac had about 46 GiB free, but target-volume encryption is unverified; task-8.2 must preflight capacity/encryption/recovery-key access and measure actual size. If policy cannot fit, report an explicit failure and require more storage instead of removing the last safety point.
 
 An isolated rehearsal restores DB/attachments/schema, checks balances, audit, identities and jobs and measures the four-hour RTO target. Do not automatically revive old bank/web sessions. Check unknown AI charges before retries. This document does not prove runtime recovery or preservation of real data.
 

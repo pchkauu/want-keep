@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Создать Docker Compose для Go API/worker, PostgreSQL, web/reverse proxy и изолированного collector; ограничения памяти/параллелизма и private network. Секреты вне Git, TLS, миграции до зависимых consumers, health/status и redacted logs. Описать deployment/rollback и проверять смету после налогов/IP/disks; provisioning — отдельное действие владельца в рамках будущей реализации.
+По evidence task-0.9 подготовить VPS в Германии 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной private VPC без публичного DB IP. Docker Compose запускает Go API/worker, web/reverse proxy и изолированный sequential collector; PostgreSQL входит только в локальные/integration окружения. До данных: key-only non-root SSH, provider+host firewall, закрытый/защищённый Zabbix, TLS/private DB endpoint и разделённые DB roles, секреты вне Git, redacted logs, pinned images, cgroups/pids/network allowlist. Миграции выполняются до consumers. Измерить RAM/CPU/disk/collector, health/degradation, deployment/rollback и прочитать итоговую смету с налогом/IP; provisioning требует отдельной авторизации владельца.
 
 ### Границы изменений
 
@@ -146,7 +146,7 @@ Run services within the agreed budget with observable failures.
 
 ### Change and contracts
 
-Create Docker Compose for Go API/worker, PostgreSQL, web/reverse proxy and isolated collector with memory/concurrency limits and private networking. Keep secrets outside Git; configure TLS, migrations before dependent consumers, health/status and redacted logs. Document deployment/rollback and check tax/IP/disk-inclusive pricing; provisioning is a separate owner action during future implementation.
+Using task-0.9 evidence, prepare a German 2 vCPU/4 GB/50 GB VPS and 1 vCPU/2 GB/20 GB managed PostgreSQL in one private VPC with no public DB IP. Docker Compose runs Go API/worker, web/reverse proxy and an isolated sequential collector; PostgreSQL remains containerized only in development/integration environments. Before data: key-only non-root SSH, provider and host firewalls, closed/protected Zabbix, TLS/private DB endpoint with separate DB roles, secrets outside Git, redacted logs, pinned images and cgroup/pid/network allowlists. Run migrations before consumers. Measure RAM/CPU/disk/collector, health/degradation and deployment/rollback, and read back the tax/IP-inclusive cost; provisioning requires separate owner authorization.
 
 ### Change boundaries
 

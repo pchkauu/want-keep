@@ -5,7 +5,7 @@
 
 Подобрать проверяемую конфигурацию в DE/NL/BG до $40 с копиями на Mac.
 
-**Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
+**Состояние:** Исследование завершено 2026-09-07 с эксплуатационными блокерами. Владелец выбрал сервер приложения в Германии 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в той же private VPC. Смета: 2 520 ₽/мес. по годовому тарифу; консервативно без скидки и с резервом 10% — 3 055.56 ₽/$35.29 при зафиксированном курсе, ниже $40. Текущий VPS 1 vCPU/<1 ГБ исследован read-only и не допущен как production. HOST-B01–HOST-B06 переданы task-8.1–task-8.3 и task-0.10/task-4.1; безопасная достижимость Alfa, hardening, нагрузка и backup/restore runtime не подтверждены. task-0.9 завершена, но AC приложения и MVP остаются Not Ready.
 
 **Зависимости:** нет.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Сопоставить актуальный тариф с Go, PostgreSQL и одним последовательным браузерным worker; включить диск, IP, налог, валюту расчёта и хранение временного backup-набора. Проверить достижимость платформ и OpenAI из разрешённого региона после появления доступа. Описать исходящее pull-копирование с Mac, хранение recovery-ключа отдельно от единственной копии и условный RPO. Ничего не покупать и не развёртывать в рамках исследования.
+Evidence/hosting.md и .en.md фиксируют выбранные владельцем VPS 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной немецкой private VPC, датированные цены/НДС/IP/курс и смету с резервом. Текущий VPS проверен read-only по ресурсам, ОС, TLS, listeners, SSH/firewall/update и публичной достижимости OpenAI/rates/платформ без секретов. Safe Alfa DNS/TLS остаётся блокером. Backup contract: Mac-initiated hourly pull, streaming logical dump и immutable attachments, manifest/checksums, отдельный recovery key, retention 48 hourly/30 daily/8 weekly/12 monthly и лимит 20 GiB с безопасным отказом. HOST-B01–HOST-B06 назначают provisioning, hardening, load, Alfa route и backup/restore runtime следующим задачам. Исследование ничего не покупает и не меняет на сервере; его завершение не доказывает AC приложения или Ready.
 
 ### Границы изменений
 
@@ -64,10 +64,10 @@
 ### Проверка результата
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-Есть датированная смета и схема восстановления; неподтверждённая доступность не объявлена рабочей.
+RU/EN evidence совпадают по HOST-E01–HOST-E15 и HOST-B01–HOST-B06; выбранные компоненты, смета, security/backup gates и ограничения reachability воспроизводимы. IP, секреты и финансовые данные не опубликованы; provisioning/runtime не выданы за пройденные AC.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
@@ -81,7 +81,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 Identify a verifiable DE/NL/BG configuration under $40 with Mac backups.
 
-**Status:** Research — not started; live access and paid runs require securely supplied owner access.
+**Status:** Research completed on 2026-09-07 with operational blockers. The owner selected a German 2 vCPU/4 GB/50 GB application server and 1 vCPU/2 GB/20 GB managed PostgreSQL in the same private VPC. Estimate: RUB 2,520/month under annual pricing; conservative no-discount total plus 10% reserve is RUB 3,055.56/$35.29 at the recorded FX rate, below $40. The current 1 vCPU/<1 GB VPS was inspected read-only and is not admitted for production. HOST-B01–HOST-B06 are assigned to task-8.1–task-8.3 and task-0.10/task-4.1; safe Alfa reachability, hardening, load and backup/restore runtime remain unverified. task-0.9 is complete, but application ACs and the MVP remain Not Ready.
 
 **Dependencies:** none.
 
@@ -89,7 +89,7 @@ Identify a verifiable DE/NL/BG configuration under $40 with Mac backups.
 
 ### Change and contracts
 
-Match current pricing to Go, PostgreSQL and one sequential browser worker; include disk, IP, tax, billing currency and temporary backup-set storage. Verify platform/OpenAI reachability from an allowed region once access exists. Describe outbound Mac pull backups, recovery-key custody separate from the sole backup and conditional RPO. Do not purchase or deploy during research.
+Evidence/hosting.md and .en.md record the owner-selected 2 vCPU/4 GB/50 GB VPS and 1 vCPU/2 GB/20 GB managed PostgreSQL in one German private VPC, dated pricing/VAT/IP/FX and a reserved estimate. The current VPS was inspected read-only for resources, OS, TLS, listeners, SSH/firewall/update state and public OpenAI/rate/platform reachability without secrets. Safe Alfa DNS/TLS remains blocked. Backup contract: Mac-initiated hourly pull, streaming logical dump plus immutable attachments, manifest/checksums, separate recovery key, retention of 48 hourly/30 daily/8 weekly/12 monthly points and a 20 GiB cap with safe failure. HOST-B01–HOST-B06 assign provisioning, hardening, load, Alfa route and backup/restore runtime to later tasks. Research purchases or changes nothing on the server; completion does not prove application ACs or Ready.
 
 ### Change boundaries
 
@@ -140,10 +140,10 @@ A criterion link establishes coverage; research or a partial task does not prove
 ### Verification
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-A dated estimate and recovery design exist; unverified reachability is not reported as working.
+RU/EN evidence align on HOST-E01–HOST-E15 and HOST-B01–HOST-B06; selected components, estimate, security/backup gates and reachability limits are reproducible. No IPs, secrets or financial data are published, and provisioning/runtime are not presented as passing ACs.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 

@@ -32,7 +32,7 @@ This stage delivers bilingual specifications, criteria, architecture, integratio
 | D-14 | Separate passkeys and personal one-time recovery codes for each member; partner-assisted reset is unavailable. Protected secrets, attachments and sessions; AI has no payment authority. |
 | D-15 | For the whole household: server up to $40/month in DE/NL/BG, OpenAI up to $50/month; separately sourced data must be free. Hourly MacBook backups while reachable; visible backup age, conditional RPO and recovery target within four hours. |
 | D-16 | UI, AI interaction and documentation in RU/EN. Dashboard covers plan/actuals, income/expenses, goals and daily allowances. In-app and web-push notifications. |
-| D-17 | Go, PostgreSQL, React/TypeScript/Vite, separate Playwright TypeScript collector, Docker Compose. Financial domain independent of transport/storage/UI/AI SDK; exact arithmetic and explicit boundaries. |
+| D-17 | Go, managed PostgreSQL, React/TypeScript/Vite, separate Playwright TypeScript collector and Docker Compose. Production uses a 2 vCPU/4 GB/50 GB application server plus 1 vCPU/2 GB/20 GB managed PostgreSQL in one German private VPC; local environments use isolated PostgreSQL. Financial domain remains independent of transport/storage/UI/AI SDK with exact arithmetic and explicit boundaries. |
 
 ## Preserved boundaries
 
