@@ -74,7 +74,7 @@ func (f *fixture) importAccount(s *admission.Service, input accounts.ImportInput
 	j := f.issued(s, input.ConnectionID)
 	input.JobID = j.ID
 	var out accounts.ImportResult
-	page := admission.Page{EvidenceRef: input.EvidenceRef, Coverage: "partial", Gaps: []string{"history_not_reconciled"}, Complete: true}
+	page := admission.Page{EvidenceRef: input.EvidenceRef, Coverage: "complete", Complete: true}
 	applied, err := s.CommitPage(testContext, f.p, j, page, func(ctx context.Context) error {
 		var e error
 		out, e = f.service().Import(ctx, f.p, f.store, input)
@@ -251,5 +251,73 @@ func TestImportedOpeningDoesNotRewriteSourceOrDoubleSpend(t *testing.T) {
 		if err := f.admin.QueryRow(testContext, `SELECT has_table_privilege('want_keep_app',$1,'UPDATE') OR has_table_privilege('want_keep_app',$1,'DELETE')`, "want_keep."+table).Scan(&allowed); err != nil || allowed {
 			t.Fatal("mutable account history", table, err)
 		}
+	}
+}
+
+func TestConfirmedRURMappingAndTransactionalOmissionCoverage(t *testing.T) {
+	f := newFixture(t)
+	s := f.admit()
+	input := f.input(f.connection(f.p))
+	input.ExternalAssetCode = "RUR"
+	first := f.importAccount(s, input)
+	if first.Account == nil || first.Account.ExternalAssetCode != "RUR" || first.Account.Asset != "RUB" {
+		t.Fatal("RUR not preserved", first.Reason)
+	}
+	input.Observation.ID = uuid.NewString()
+	input.ExternalAssetCode = "RUB"
+	input.ConnectionID = f.connection(f.p)
+	again := f.importAccount(s, input)
+	if again.Account == nil || again.Account.ID != first.Account.ID {
+		t.Fatal("source symbol became identity", again.Reason)
+	}
+	input.ExternalID = "unsupported-account"
+	input.ExternalAssetCode = "USDC.E"
+	input.Asset = "USDC"
+	omitted := f.importAccount(s, input)
+	if omitted.Reason != "unsupported_asset" {
+		t.Fatal(omitted.Reason)
+	}
+	input = f.input(f.connection(f.q))
+	ambiguous := f.importAccount(s, input)
+	if ambiguous.Reason != "source_ambiguous" {
+		t.Fatal(ambiguous.Reason)
+	}
+	var bad int
+	if err := f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.jobs j JOIN want_keep.quarantine q ON (q.household_id,q.job_id)=(j.household_id,j.id) WHERE q.reason IN ('unsupported_asset','source_ambiguous') AND (j.coverage!='partial' OR NOT(q.reason=ANY(j.gaps)))`).Scan(&bad); err != nil || bad != 0 {
+		t.Fatal("omission committed as complete", bad, err)
+	}
+	if f.count("accounts") != 1 || f.count("quarantine") != 2 {
+		t.Fatal("omission evidence or account identity lost")
+	}
+}
+
+func TestOmissionSurvivesFollowingCompletePage(t *testing.T) {
+	f := newFixture(t)
+	s := f.admit()
+	input := f.input(f.connection(f.p))
+	input.ExternalAssetCode = "USDC.E"
+	input.Asset = "USDC"
+	job := f.issued(s, input.ConnectionID)
+	input.JobID = job.ID
+	page := admission.Page{EvidenceRef: input.EvidenceRef, Coverage: "complete", NextCursor: "next"}
+	applied, err := s.CommitPage(testContext, f.p, job, page, func(ctx context.Context) error {
+		_, err := f.service().Import(ctx, f.p, f.store, input)
+		return err
+	})
+	if err != nil || !applied {
+		t.Fatal("first page", err)
+	}
+	page.Cursor, page.NextCursor, page.Complete = "next", "done", true
+	applied, err = s.CommitPage(testContext, f.p, job, page, func(context.Context) error { return nil })
+	if err != nil || !applied {
+		t.Fatal("second page", err)
+	}
+	var coverage, cursor string
+	var gaps []string
+	if err := f.admin.QueryRow(testContext, `SELECT coverage,cursor,gaps FROM want_keep.jobs WHERE id=$1`, job.ID).Scan(&coverage, &cursor, &gaps); err != nil {
+		t.Fatal(err)
+	}
+	if coverage != "partial" || cursor != "done" || len(gaps) != 1 || gaps[0] != "unsupported_asset" {
+		t.Fatal("later page erased omission", coverage, cursor, gaps)
 	}
 }

@@ -161,7 +161,11 @@ func (s *Service) result(ctx context.Context, p household.Principal, id, kind, r
 	if err != nil {
 		return command.Result{}, err
 	}
-	if err = s.repository.AccountEvent(ctx, p, id, a.Revision, kind, reason, origin, s.now()); err != nil {
+	event := account.Event{AccountID: id, Revision: a.Revision, Kind: account.EventKind(kind), Origin: account.EventOrigin(origin), Reason: reason, At: s.now()}
+	if err = event.Validate(); err != nil {
+		return command.Result{}, err
+	}
+	if err = s.repository.AccountEvent(ctx, p, event); err != nil {
 		return command.Result{}, err
 	}
 	return command.Result{ResourceType: "account", ResourceID: id, Revision: a.Revision}, nil

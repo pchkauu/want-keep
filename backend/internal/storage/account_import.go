@@ -34,8 +34,8 @@ func (s *Store) ResolveImportedAccount(ctx context.Context, p household.Principa
 	if _, err = money.ParseAsset(string(input.Asset)); err != nil {
 		return account.Account{}, false, err
 	}
-	if input.ExternalAssetCode != string(input.Asset) {
-		return account.Account{}, false, money.ErrUnsupportedAsset
+	if err = input.ValidateAsset(); err != nil {
+		return account.Account{}, false, err
 	}
 	external, err := s.ResolveExternalAccount(ctx, c.Provider, input.ExternalID, c.Owner)
 	if err != nil {
@@ -52,7 +52,7 @@ func (s *Store) ResolveImportedAccount(ctx context.Context, p household.Principa
 		if e != nil {
 			return a, false, e
 		}
-		if a.Network != input.Network || a.ExternalAssetCode != input.ExternalAssetCode {
+		if a.Network != input.Network {
 			return a, false, ledger.ErrSourceAmbiguous
 		}
 		return a, false, nil

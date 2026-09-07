@@ -130,3 +130,46 @@ func TestSourceFundingRequiresOwnConsistentFreshFunds(t *testing.T) {
 		t.Fatal("newer journal effect missed")
 	}
 }
+
+func TestOpeningStartsAtEarliestExistingLocalInstant(t *testing.T) {
+	for _, tc := range []struct{ zone, date, want string }{
+		{"America/Havana", "2026-03-08", "2026-03-08T05:00:00Z"},
+		{"America/Sao_Paulo", "2018-11-04", "2018-11-04T03:00:00Z"},
+		{"America/Havana", "2026-11-01", "2026-11-01T04:00:00Z"},
+		{"Pacific/Apia", "2011-12-30", ""},
+		{"Europe/Moscow", "2026-08-01", "2026-07-31T21:00:00Z"},
+	} {
+		t.Run(tc.zone+tc.date, func(t *testing.T) {
+			date, _ := calendar.ParseDate(tc.date)
+			zone, _ := calendar.ParseTimezone(tc.zone)
+			got, err := (Opening{Date: date, Timezone: zone}).Instant()
+			if tc.want == "" {
+				if err == nil {
+					t.Fatal("whole skipped date accepted")
+				}
+				return
+			}
+			if err != nil || got.String() != tc.want {
+				t.Fatal(got.String(), err)
+			}
+		})
+	}
+}
+
+func TestAccountEventEligibilityIsDomainOwned(t *testing.T) {
+	at, _ := calendar.ParseInstant("2026-09-07T12:00:00Z")
+	for _, kind := range []EventKind{Created, OpeningCorrected, OwnershipChanged} {
+		for _, origin := range []EventOrigin{Interactive, LiveSync, HistoricalBackfill} {
+			e := Event{AccountID: "account", Revision: 1, Kind: kind, Origin: origin, Reason: "Confirmed event", At: at}
+			if err := e.Validate(); err != nil {
+				t.Fatal(err)
+			}
+			if e.CelebrationEligible() != (kind == Created && origin != HistoricalBackfill) {
+				t.Fatal("incorrect eligibility")
+			}
+		}
+	}
+	if (Event{Kind: "unverified"}).Validate() == nil {
+		t.Fatal("invalid event accepted")
+	}
+}

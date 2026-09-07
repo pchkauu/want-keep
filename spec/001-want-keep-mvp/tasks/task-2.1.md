@@ -20,6 +20,8 @@
 - `backend/internal/accounts/`
 - `backend/internal/delivery/accounts/`
 - `backend/internal/storage/account*.go`
+- `backend/internal/storage/import_omissions.go`
+- `backend/internal/connections/admission/`
 - `backend/internal/commands/application/executor.go`
 - `backend/internal/ledger/application/writer.go`
 - `backend/migrations/007_accounts_opening_balances.sql`
@@ -136,6 +138,8 @@ Separate platform identity, asset account and card-as-access-to-account so cards
 - `backend/internal/accounts/`
 - `backend/internal/delivery/accounts/`
 - `backend/internal/storage/account*.go`
+- `backend/internal/storage/import_omissions.go`
+- `backend/internal/connections/admission/`
 - `backend/internal/commands/application/executor.go`
 - `backend/internal/ledger/application/writer.go`
 - `backend/migrations/007_accounts_opening_balances.sql`

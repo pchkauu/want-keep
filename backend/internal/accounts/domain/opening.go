@@ -94,11 +94,30 @@ func (o Opening) Instant() (calendar.Instant, error) {
 	if err != nil {
 		return calendar.Instant{}, calendar.ErrInvalidTime
 	}
-	at, err := time.ParseInLocation(time.DateOnly, o.Date.String(), zone)
-	if err != nil || at.Format(time.DateOnly) != o.Date.String() {
+	date, err := time.Parse(time.DateOnly, o.Date.String())
+	if err != nil {
 		return calendar.Instant{}, calendar.ErrInvalidTime
 	}
-	return calendar.ParseInstant(at.UTC().Format(time.RFC3339Nano))
+	// Visit UTC offset intervals in order: a midnight gap begins at the transition,
+	// while a repeated midnight uses its first occurrence. A skipped whole date has no candidate.
+	end := date.Add(72 * time.Hour)
+	for start := date.Add(-48 * time.Hour); start.Before(end); {
+		local := start.In(zone)
+		_, offset := local.Zone()
+		_, bound := local.ZoneBounds()
+		if bound.IsZero() || bound.After(end) {
+			bound = end
+		}
+		candidate := date.Add(-time.Duration(offset) * time.Second)
+		if candidate.Before(start) {
+			candidate = start
+		}
+		if candidate.Before(bound) && candidate.In(zone).Format(time.DateOnly) == o.Date.String() {
+			return calendar.ParseInstant(candidate.UTC().Format(time.RFC3339Nano))
+		}
+		start = bound
+	}
+	return calendar.Instant{}, calendar.ErrInvalidTime
 }
 
 type Effect struct {

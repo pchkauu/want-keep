@@ -96,7 +96,7 @@ func (s *Store) ChangeAccountOwnership(ctx context.Context, p household.Principa
 	}
 	return nil
 }
-func (s *Store) AccountEvent(ctx context.Context, p household.Principal, id string, revision uint64, kind, reason, origin string, at calendar.Instant) error {
+func (s *Store) AccountEvent(ctx context.Context, p household.Principal, event account.Event) error {
 	scope, err := s.familyScope(ctx)
 	if err != nil {
 		return err
@@ -104,12 +104,15 @@ func (s *Store) AccountEvent(ctx context.Context, p household.Principal, id stri
 	if scope.principal != p {
 		return household.ErrForbidden
 	}
-	stamp, ns := splitInstant(at)
-	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.account_events(household_id,id,account_id,revision,actor_id,command_id,kind,reason,origin,eligible,at,at_ns) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')::uuid,$7,$8,$9,$10,$11,$12)`, p.HouseholdID(), newID(), id, revision, p.UserID(), commands.CurrentCommandID(ctx), kind, reason, origin, kind == "created" && origin != "historical_backfill", stamp, ns)
+	if err = event.Validate(); err != nil {
+		return err
+	}
+	stamp, ns := splitInstant(event.At)
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.account_events(household_id,id,account_id,revision,actor_id,command_id,kind,reason,origin,eligible,at,at_ns) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')::uuid,$7,$8,$9,$10,$11,$12)`, p.HouseholdID(), newID(), event.AccountID, event.Revision, p.UserID(), commands.CurrentCommandID(ctx), event.Kind, event.Reason, event.Origin, event.CelebrationEligible(), stamp, ns)
 	if err != nil {
 		return err
 	}
-	return s.EmitEvent(ctx, "account", id, revision, "account."+kind)
+	return s.EmitEvent(ctx, "account", event.AccountID, event.Revision, "account."+string(event.Kind))
 }
 func (s *Store) CardAliases(ctx context.Context, p household.Principal, id string) ([]account.CardAlias, error) {
 	q, err := s.reader(ctx, p)

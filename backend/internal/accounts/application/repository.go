@@ -24,7 +24,7 @@ type CatalogRepository interface {
 	SaveOpening(context.Context, account.Opening) error
 	ChangeAccountOwnership(context.Context, household.Principal, string, uint64, household.Ownership) error
 	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
-	AccountEvent(context.Context, household.Principal, string, uint64, string, string, string, calendar.Instant) error
+	AccountEvent(context.Context, household.Principal, account.Event) error
 	CardAliases(context.Context, household.Principal, string) ([]account.CardAlias, error)
 	LatestObservation(context.Context, household.Principal, string) (account.Observation, bool, error)
 	AccountFunding(context.Context, household.Principal, string) (reporting.Amount, error)
