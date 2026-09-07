@@ -1,0 +1,561 @@
+---
+ResourceReference:
+  type: object
+  additionalProperties: false
+  properties:
+    type:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+  required:
+  - type
+  - id
+CalculationInput:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    amount:
+      "$ref": "./quality.yaml#/AmountValue"
+    resources:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+  required:
+  - name
+  - amount
+  - resources
+ExplainableAmount:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    kind:
+      type: string
+      enum:
+      - actual
+      - forecast
+      - reserved
+      - revaluation
+    native:
+      type: array
+      items:
+        "$ref": "./money.yaml#/Money"
+    reporting:
+      "$ref": "./quality.yaml#/AmountValue"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+    method:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    inputs:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/CalculationInput"
+    resources:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+  required:
+  - name
+  - kind
+  - native
+  - reporting
+  - quality
+  - method
+  - inputs
+  - resources
+ReportContext:
+  type: object
+  additionalProperties: false
+  properties:
+    view:
+      type: string
+      enum:
+      - household
+      - member
+    memberId:
+      "$ref": "./money.yaml#/ID"
+    reportingAsset:
+      "$ref": "./money.yaml#/Asset"
+    from:
+      "$ref": "./money.yaml#/Date"
+    to:
+      "$ref": "./money.yaml#/Date"
+    timezone:
+      "$ref": "./money.yaml#/Timezone"
+  required:
+  - view
+  - reportingAsset
+  - from
+  - to
+  - timezone
+  description: Member view requires memberId belonging to the current family. A display
+    filter never changes principal.
+Report:
+  type: object
+  additionalProperties: false
+  properties:
+    context:
+      "$ref": "./reports.yaml#/ReportContext"
+    amounts:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ExplainableAmount"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - context
+  - amounts
+  - quality
+UpcomingPayment:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    label:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    dueDate:
+      "$ref": "./money.yaml#/Date"
+    outstanding:
+      "$ref": "./quality.yaml#/AmountValue"
+    risk:
+      type: string
+      enum:
+      - covered
+      - shortfall
+      - unknown
+  required:
+  - id
+  - label
+  - dueDate
+  - outstanding
+  - risk
+Dashboard:
+  type: object
+  additionalProperties: false
+  properties:
+    context:
+      "$ref": "./reports.yaml#/ReportContext"
+    dailyLimits:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ExplainableAmount"
+    upcomingPayments:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/UpcomingPayment"
+    planActual:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ExplainableAmount"
+    goals:
+      type: array
+      items:
+        "$ref": "./goals.yaml#/Goal"
+    attention:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - context
+  - dailyLimits
+  - upcomingPayments
+  - planActual
+  - goals
+  - attention
+  - quality
+ValuationObservation:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    rate:
+      "$ref": "./money.yaml#/Rate"
+    requestedDate:
+      "$ref": "./money.yaml#/Date"
+    observedAt:
+      "$ref": "./money.yaml#/Instant"
+    fetchedAt:
+      "$ref": "./money.yaml#/Instant"
+    source:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    method:
+      type: string
+      enum:
+      - reference
+      - executed
+    granularity:
+      type: string
+      enum:
+      - instant
+      - daily
+    legs:
+      type: array
+      minItems: 1
+      items:
+        "$ref": "./reports.yaml#/ValuationLeg"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - id
+  - revision
+  - rate
+  - requestedDate
+  - observedAt
+  - fetchedAt
+  - source
+  - method
+  - granularity
+  - legs
+  - quality
+Insight:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    summary:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    evidence:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+      minItems: 1
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+    proposalId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - id
+  - revision
+  - summary
+  - evidence
+  - quality
+ValuationObservationPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/RateObservation"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+InsightPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/Insight"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+KnownReturn:
+  type: object
+  additionalProperties: false
+  properties:
+    state:
+      type: string
+      enum:
+        - known
+    ratio:
+      type: string
+      maxLength: 256
+      pattern: ^-?(0|[1-9][0-9]*)\.[0-9]{12}$
+  required:
+    - state
+    - ratio
+  description: >-
+    Dimensionless annualized D-42 XIRR ratio, rounded HALF_EVEN to 12 places. The application
+    verifies the root lies between -1+1e-12 and 1000000; provider APR is never substituted.
+UnavailableReturn:
+  type: object
+  additionalProperties: false
+  properties:
+    state:
+      type: string
+      enum:
+      - unavailable
+    reason:
+      type: string
+      enum:
+      - no_sign_change
+      - zero_period
+      - missing_valuation
+      - partial_history
+      - no_unique_root
+      - no_bracket
+      - numeric_error_unbounded
+      - solver_failure
+  required:
+  - state
+  - reason
+ReturnValue:
+  oneOf:
+  - "$ref": "./reports.yaml#/KnownReturn"
+  - "$ref": "./reports.yaml#/UnavailableReturn"
+ReturnCashFlow:
+  type: object
+  additionalProperties: false
+  properties:
+    date:
+      "$ref": "./money.yaml#/Date"
+    amount:
+      "$ref": "./money.yaml#/Money"
+    kind:
+      type: string
+      enum:
+      - contribution
+      - distribution
+      - terminal_value
+    resources:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+  required:
+  - date
+  - amount
+  - kind
+  - resources
+  description: 'Signed cash flows in the metric asset: contributions negative, distributions/terminal
+    value positive. Source links retain provenance; historical FX applies to each
+    dated flow.'
+ReturnMetric:
+  type: object
+  additionalProperties: false
+  properties:
+    basis:
+      type: string
+      enum:
+      - native
+      - reporting
+    asset:
+      "$ref": "./money.yaml#/Asset"
+    kind:
+      type: string
+      enum:
+      - actual
+      - forecast
+    method:
+      type: string
+      enum:
+      - xirr
+    value:
+      "$ref": "./reports.yaml#/ReturnValue"
+    flows:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ReturnCashFlow"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - basis
+  - asset
+  - kind
+  - method
+  - value
+  - flows
+  - quality
+  description: Native and reporting results are separate observations, even when the
+    requested reporting asset matches the native asset. The application validates
+    cash-flow asset/signs, dates, method and availability. D-42 fixes Actual/365, same-day aggregation, one sign transition, the decimal error bound, bisection and 12-place half-even output; task-6.4 implements the solver.
+ReturnsReport:
+  type: object
+  additionalProperties: false
+  properties:
+    context:
+      "$ref": "./reports.yaml#/ReportContext"
+    amounts:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ExplainableAmount"
+    returns:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ReturnMetric"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - context
+  - amounts
+  - returns
+  - quality
+
+ValuationLeg:
+  type: object
+  additionalProperties: false
+  properties:
+    providerAssetId:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    source:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    transport:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    requestedDate:
+      $ref: ./money.yaml#/Date
+    effectiveAt:
+      $ref: ./money.yaml#/Instant
+    fetchedAt:
+      $ref: ./money.yaml#/Instant
+    granularity:
+      type: string
+      enum:
+        - instant
+        - daily
+    revision:
+      $ref: ./money.yaml#/Revision
+    rate:
+      $ref: ./money.yaml#/Rate
+  required:
+    - providerAssetId
+    - source
+    - transport
+    - requestedDate
+    - effectiveAt
+    - fetchedAt
+    - granularity
+    - revision
+    - rate
+  description: >-
+    Source observation used by valuation; preserves effective time, transport, provider asset
+    identity and revision. No live fetch or cross-rate computation is performed by this schema.
+PlatformQuote:
+  type: object
+  additionalProperties: false
+  properties:
+    method:
+      type: string
+      enum:
+        - platform_quote
+    provider:
+      $ref: ./money.yaml#/Provider
+    base:
+      $ref: ./money.yaml#/Asset
+    quote:
+      $ref: ./money.yaml#/Asset
+    applicableAmount:
+      $ref: ./money.yaml#/PositiveMoney
+    rate:
+      $ref: ./money.yaml#/Rate
+    observedAt:
+      $ref: ./money.yaml#/Instant
+    fees:
+      type: array
+      items:
+        $ref: ./money.yaml#/Money
+    feeCoverage:
+      type: string
+      enum:
+        - included
+        - excluded
+    spreadCoverage:
+      type: string
+      enum:
+        - included
+        - excluded
+    quality:
+      $ref: ./quality.yaml#/DataQuality
+  required:
+    - method
+    - provider
+    - base
+    - quote
+    - applicableAmount
+    - rate
+    - observedAt
+    - fees
+    - feeCoverage
+    - spreadCoverage
+    - quality
+  description: >-
+    D-40: provider quote for the directed base-to-quote pair and applicable base amount, with known
+    fee/spread coverage. Application validates pair and amount-asset consistency. Reference
+    observations never populate this variant. Empty fees means confirmed zero, never unknown.
+UnavailableRate:
+  type: object
+  additionalProperties: false
+  properties:
+    method:
+      type: string
+      enum:
+        - unavailable
+    base:
+      $ref: ./money.yaml#/Asset
+    quote:
+      $ref: ./money.yaml#/Asset
+    requestedDate:
+      $ref: ./money.yaml#/Date
+    reason:
+      type: string
+      enum:
+        - valuation_unavailable
+        - quote_unavailable
+    detail:
+      type: string
+      enum:
+        - history_out_of_range
+        - missing_observation
+        - incomplete_quote
+        - unsupported_pair
+    quality:
+      $ref: ./quality.yaml#/DataQuality
+  required:
+    - method
+    - base
+    - quote
+    - requestedDate
+    - reason
+    - detail
+    - quality
+RateObservation:
+  oneOf:
+    - $ref: ./reports.yaml#/ValuationObservation
+    - $ref: ./reports.yaml#/PlatformQuote
+    - $ref: ./reports.yaml#/UnavailableRate

@@ -1,0 +1,82 @@
+---
+"/commands/recent":
+  get:
+    operationId: commands_recent
+    tags:
+    - commands
+    description: Terminal commands resolved less than 30 days ago and all unresolved commands, scoped to the current actor and household.
+    summary: commands recent
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatusPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/commands/{commandId}":
+  get:
+    operationId: commands_read
+    tags:
+    - commands
+    summary: commands read
+    parameters:
+    - name: commandId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/CommandID"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Command detail expired; a live tombstone still prevents replay.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: Only the current actor own commands in the verified family. not_found
+      never proves absence of an effect. Retry only with the original key; check result-resource
+      permissions before exposing details.

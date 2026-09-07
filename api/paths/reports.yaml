@@ -1,0 +1,573 @@
+---
+"/reports/dashboard":
+  get:
+    operationId: reports_dashboard
+    tags:
+    - reports
+    summary: reports dashboard
+    parameters:
+    - name: view
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - household
+        - member
+    - name: memberId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: asset
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: from
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: to
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/Dashboard"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reports/cashflow":
+  get:
+    operationId: reports_cashflow
+    tags:
+    - reports
+    summary: reports cashflow
+    parameters:
+    - name: view
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - household
+        - member
+    - name: memberId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: asset
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: from
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: to
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/Report"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reports/valuation":
+  get:
+    operationId: reports_valuation
+    tags:
+    - reports
+    summary: reports valuation
+    parameters:
+    - name: view
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - household
+        - member
+    - name: memberId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: asset
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: from
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: to
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/Report"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reports/daily-limits":
+  get:
+    operationId: reports_daily_limits
+    tags:
+    - reports
+    summary: reports daily limits
+    parameters:
+    - name: view
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - household
+        - member
+    - name: memberId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: asset
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: from
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: to
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/Report"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reports/credit":
+  get:
+    operationId: reports_credit
+    tags:
+    - reports
+    summary: reports credit
+    parameters:
+    - name: view
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - household
+        - member
+    - name: memberId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: asset
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: from
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: to
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/Report"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reports/savings":
+  get:
+    operationId: reports_savings
+    tags:
+    - reports
+    summary: reports savings
+    parameters:
+    - name: view
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - household
+        - member
+    - name: memberId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: asset
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: from
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: to
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/Report"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reports/returns":
+  get:
+    operationId: reports_returns
+    tags:
+    - reports
+    summary: reports returns
+    parameters:
+    - name: view
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - household
+        - member
+    - name: memberId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: asset
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: from
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: to
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/ReturnsReport"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reports/crypto":
+  get:
+    operationId: reports_crypto
+    tags:
+    - reports
+    summary: reports crypto
+    parameters:
+    - name: view
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - household
+        - member
+    - name: memberId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: asset
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: from
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: to
+      in: query
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/Report"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/rates":
+  get:
+    operationId: rates_list
+    tags:
+    - rates
+    summary: rates list
+    description: Reference observations preserve all source legs. Platform quotes require provider and applicable base amount with known fees/spread; otherwise quote_unavailable. Crypto history older than 365 days is valuation_unavailable; cached observations remain explicitly stale.
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    - name: base
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: quote
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/Asset"
+    - name: date
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: provider
+      in: query
+      schema:
+        "$ref": "../schemas/money.yaml#/Provider"
+    - name: amount
+      in: query
+      schema:
+        "$ref": "../schemas/money.yaml#/PositiveDecimal"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/ValuationObservationPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/insights":
+  get:
+    operationId: insights_list
+    tags:
+    - insights
+    summary: insights list
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/reports.yaml#/InsightPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"

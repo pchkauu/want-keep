@@ -2,9 +2,23 @@
 
 [English](contracts.en.md)
 
-Контракт проекта версии 8, целевой; task-0.10 признала SDD Ready for development 2026-09-07. Реальных финансовых API или полной схемы БД ещё нет. D-37–D-43 закрывают фундаментальные правила; provider-specific разрешения и conformance остаются entry/deployment gates task-4.x/task-8.x. REQ/AC имеют приоритет над предположением адаптера.
+Контракт проекта версии 10; task-0.10 признала SDD Ready for development 2026-09-07. OpenAPI и базовые доменные типы реализованы task-1.2; HTTP-обработчиков и схемы БД ещё нет. D-37–D-43 закрывают фундаментальные правила; provider-specific разрешения и conformance остаются entry/deployment gates task-4.x/task-8.x. REQ/AC имеют приоритет над предположением адаптера.
+
+Уточнение task-1.2 после review: payer — явное known/memberId, unknown или not_applicable; плательщик вводится и исправляется отдельно от actor и долей. Связь существующих движений требует ID/expectedRevision каждого участника и атомарной проверки. Preview плана различает create/update/delete и lineId; expectedRevision относится к Budget aggregate, который меняется при каждом изменении статьи/подтверждении. ReturnsReport передаёт dimensionless XIRR ratio строкой, native/reporting basis, dated cash flows и unavailable reason; solver остаётся в task-6.4. Эти поправки затрагивают ещё не выпущенные DTO; оба клиента регенерируются вместе, действующих данных для миграции нет.
 
 ## Доменные сущности
+
+### Исполняемая основа D-44
+
+Денежная строка имеет длину до 256 символов, не принимает exponent/float и сохраняет дробную точность всех шести активов. RUB не означает автоматически две цифры хранения, BTC — восемь. Округление — отдельное действие с scale и floor/half-even; allocation сохраняет итог точно и распределяет остатки по стабильному ID. Непредставимый в выбранном quantum итог и переполнение отвергаются. Rate — положительная конечная decimal observation quote/base; расчёт кросса принадлежит valuation и сохраняет исходные legs.
+
+Known amount содержит value; unknown/unavailable — reason без value. Coverage complete имеет пустой список причин, partial/unavailable — непустой. Freshness fresh/stale/unknown независима от полноты. UTC timestamp принимает RFC3339 с Z и до 9 знаков дробной секунды; Date/Month не содержат времени, timezone — UTC или проверенная IANA-зона. Revision — целое 1–9007199254740991, точно представимое в JavaScript.
+
+OpenAPI 3.0.3, модели и strict interfaces Go/TypeScript генерируются из одного источника. Schema validation и явные boundary converters не заменяют права, транзакции или бизнес-проверки use cases. В DTO отдельно заданы actorId/User, payer.memberId/Membership, personalOwnerId/User и externalAccountOwnerId/User. При создании команды клиент не назначает actor/household. Списки и result references проверяют актуальную семейную область и права.
+
+Command ID — созданный клиентом UUIDv4 в Idempotency-Key; ключ уникален в household+actor и фиксирует type/hash. До исполнения сохраняется pending; эффект и succeeded/result сохраняются атомарно. Replay проверяется до старой expectedRevision и возвращает исходный результат. Timeout не переводит команду в failed; при not_found допустимо только повторить тот же ключ по протоколу регистрации. Сроки хранения определяет D-41. Auth/recovery/enrollment, приватные upload bytes и push credentials используют свои защищённые потоки и не копируются в financial-command records; preview не сохраняет финансовое изменение.
+
+Изменения относятся к новой основе без действующего product API или БД; миграция данных не нужна. Реализация хранения и серверных прав передаётся task-1.3/task-1.4. [Проверки и ограничения](evidence/task-1.2-domain-api.md).
 
 | Сущность | Минимальный контракт |
 | --- | --- |
@@ -90,11 +104,13 @@ D-42 задаёт XIRR: агрегировать потоки одной кал�
 | Reports | GET dashboard, valuation, daily-limit, credit, savings, returns и insights с filters/date/currency/coverage. Чтение не запускает скрытую мутацию. |
 | Notifications | GET in-app notifications, POST read acknowledgment, POST/DELETE push subscriptions. Delivery receipt не означает прочтение. |
 
-task-1.2 материализует этот контракт в OpenAPI только после Ready; точные поля каждой формы следуют моделям выше и проверенным provider contracts. Клиентские/generated типы не становятся доменными.
+По D-44 task-1.2 материализует общий OpenAPI независимо от остаточного ресерча. Provider-specific формы и обработчики остаются за профильными задачами. Клиентские/generated типы не становятся доменными.
 
 По D-43 server-owned `ProviderDeploymentAdmission` адресуется `provider + environment`. Его aggregate и repository interface принадлежат application boundary `backend/internal/connections/admission/`, persistence adapter — storage layer task-1.3. Binding содержит `adapterBuildDigest`, `collectorImageDigest`, `contractVersion`, `allowlistRevision`, `nonSecretConfigRevision` и `operatorPermissionRevision`; monotonic `admissionRevision` повышается при каждом изменении state/evidence/binding. task-4.x создаёт provider evidence, task-8.x — host/deployment evidence для того же binding; только application admission service атомарно объединяет оба pass и переводит его в `admitted`. Клиент, AI и provider response не меняют admission.
 
 Connection read model показывает `deploymentGate.status = pending|admitted|blocked`, binding, `admissionRevision`, `checkedAt` и безопасные причины отдельно от `connected|reauth_required`. POST `/{id}/sync` требует `admitted`, точное совпадение binding с запущенными artifacts/config/allowlist/permission и действительное авторизованное connection; admission check и создание job происходят в одной storage transaction. Иначе сервер возвращает `provider_not_admitted` до job или provider IO. Job/result несут неизменяемые binding и revision. Любая смена binding, отзыв permission или failed check атомарно возвращает `pending|blocked`, повышает revision и инвалидирует ещё не начатые jobs; collector повторно сверяет выданные значения перед provider IO. Если смена произошла после начала read, cancel выполняется best effort, а обязательная commit-time проверка current admitted binding/revision идёт в одной транзакции с source revision/posting/outbox. Stale result сохраняется только в quarantine, без source record и финансового эффекта. Pre-admission conformance также работает в quarantine.
+
+Ревизия admission в task-1.2 использует диапазон Revision 1..9007199254740991, начинается с 1 и не сбрасывается при rebind. Точный no-op сохраняет её; переполнение отклоняется без изменения snapshot. Отсутствующий admission не публикует binding, revision или checkedAt. RequireResult сравнивает выданные binding/revision с текущим admitted; атомарная транзакция и сохранение счётчика принадлежат task-1.3. API ещё не развёрнут: Go/TypeScript генерируются совместно, миграция данных не требуется.
 
 ### Callback авторизации Raiffeisen
 
@@ -146,7 +162,7 @@ Receipt pipeline: uploaded → validating → processing → clarification / ski
 | Reimbursement | Явные creditor/debtor member IDs, asset/amount, optional expense link, settlements и revision. Внутренние требования не входят в семейный капитал. |
 | SharedThread / Message | Один thread на семью, message actorId, attachments, proposal/clarification revision. Общая видимость не означает полномочия на любую команду. |
 
-Минимальные дополнения `/api/v1`: GET `/me` и `/household`; POST `/household/invitations`, POST `/invitations/accept`; принадлежность в accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` и memberId для отчётов. Эти фильтры не меняют principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached и version_conflict — отдельные безопасные ошибки. Формы материализуются в OpenAPI после Ready.
+Минимальные дополнения `/api/v1`: GET `/me` и `/household`; POST `/household/invitations`, POST `/invitations/accept`; принадлежность в accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` и memberId для отчётов. Эти фильтры не меняют principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached и version_conflict — отдельные безопасные ошибки. Общие формы материализованы в OpenAPI task-1.2 по D-44; runtime-права реализуются отдельно.
 
 Инженерные defaults: первый пользователь создаётся закрытым одноразовым bootstrap; второй принимает созданное вошедшим member одноразовое случайное приглашение со сроком 24 часа, хранимое хешированным. Приглашение связывается с новым отдельным входом; повтор/лимит проверяются атомарно. Оно не даёт сбросить чужие passkey. Система не отправляет приглашение через внешние сообщения сама. Изменение пользовательской цели или личной строки, включая удаление, смену владельца/личного статуса и применение AI-предложения, требует её текущего владельца. Нельзя обойти это переводом чужой цели в общую. Создать личную цель/строку можно для себя; общую — любому. У обоих есть чтение/создание/исправление всех учётных операций. Принадлежность личного счёта меняет его владелец, семейного — любой; это не изменяет подтверждённого внешнего владельца и историю операций.
 
@@ -168,7 +184,7 @@ Receipt pipeline: uploaded → validating → processing → clarification / ski
 
 ## Контракты представления, команд и событий
 
-UI routes SCR-001–SCR-035 не являются API endpoints. [Каталог экранов](screens.md) задаёт поля FORM-01–FORM-15 и сценарии ошибок; task-1.2 уточняет OpenAPI после Ready. Reports возвращают native amounts, reporting amounts с отдельной известностью, asOf/coverage, actual/forecast/reserved тип, входы расчёта и ссылки на объясняющие операции. Клиент форматирует и раскрывает эти данные, не повторяет финансовые формулы.
+UI routes SCR-001–SCR-035 не являются API endpoints. [Каталог экранов](screens.md) задаёт поля FORM-01–FORM-15 и сценарии ошибок; task-1.2 материализует общий OpenAPI по D-44. Reports возвращают native amounts, reporting amounts с отдельной известностью, asOf/coverage, actual/forecast/reserved тип, входы расчёта и ссылки на объясняющие операции. Клиент форматирует и раскрывает эти данные, не повторяет финансовые формулы.
 
 Для mutating command сервер связывает Idempotency-Key с householdId, actorId, типом и payload hash; тот же ключ с другим payload отклоняется. Результат и финансовый эффект атомарны. GET `/api/v1/commands/{id}` и `/api/v1/commands/recent` возвращают только разрешённые команды текущего principal с `pending|succeeded|failed`, ссылкой на результат и безопасной ошибкой. `unknown` — знание клиента, не разрешение создать новую команду.
 
@@ -207,3 +223,5 @@ Route-specific provider IDs живут в отдельных Funding/Earn/P2P na
 Модель, reasoning, разрешённые инструменты и цена задаются серверной конфигурацией, не чатом. У каждой попытки — model/prompt/schema/pricing revision, input count, output cap, reservation, фактический usage и проверенный исход. `cache_write_tokens` не смешивается с cached input; reasoning не оплачивается второй раз поверх output. Период бюджета UTC, незакрытые резервы переживают смену месяца и восстановление. При изменении модели или контракта повторить eval до допуска; автоматический переход на дорогую модель при сетевой ошибке запрещён.
 
 Лимиты загрузки 10 MiB/10 страниц сохранены. Разбиение по страницам не удаляет источник и не создаёт отдельные расходы без сопоставления. Исследование не заменяет серверные regression/authorization/retry проверки. Уточнение относится к целевому AI-контракту; действующего API/хранилища AI ещё нет, миграция данных не требуется.
+
+Основа task-1.2 согласована с контрактом версии 10: D-41 retention/recovery и D-43 admission проверяются на уровне domain/DTO. SDD Ready for development; runtime AC остаются у следующих задач.

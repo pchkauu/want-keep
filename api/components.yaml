@@ -1,0 +1,46 @@
+---
+parameters:
+  IdempotencyKey:
+    name: Idempotency-Key
+    in: header
+    required: true
+    schema:
+      "$ref": "./schemas/money.yaml#/CommandID"
+    description: Client-generated before submission. Unique within household + actor;
+      same ID is used for status lookup. A different operation or payload with the
+      same key is rejected.
+  CSRF:
+    name: X-CSRF-Token
+    in: header
+    required: true
+    schema:
+      type: string
+      minLength: 32
+      maxLength: 1024
+    description: Session-bound token; validate Origin as well. Exceptions use ceremony-bound
+      challenge/state.
+  Cursor:
+    name: cursor
+    in: query
+    required: false
+    schema:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    description: Opaque, bound to family, visibility and filters.
+  Limit:
+    name: limit
+    in: query
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 50
+responses:
+  Problem:
+    description: Safe versioned failure; no provider payload or foreign resource contents.
+    content:
+      application/json:
+        schema:
+          "$ref": "./schemas/quality.yaml#/APIError"

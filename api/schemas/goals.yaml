@@ -1,0 +1,159 @@
+---
+VirtualReservation:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - virtual
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    amount:
+      "$ref": "./money.yaml#/Money"
+  required:
+  - mode
+  - accountId
+  - amount
+DedicatedReservation:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - dedicated
+    accountId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - mode
+  - accountId
+  description: Funds excluded with the dedicated account must not be subtracted again
+    as virtual reservations.
+Reservation:
+  oneOf:
+  - "$ref": "./goals.yaml#/VirtualReservation"
+  - "$ref": "./goals.yaml#/DedicatedReservation"
+Goal:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    ownership:
+      "$ref": "./household.yaml#/Ownership"
+    target:
+      "$ref": "./money.yaml#/Money"
+    deadline:
+      "$ref": "./money.yaml#/Date"
+    reserved:
+      "$ref": "./quality.yaml#/AmountValue"
+    reservations:
+      type: array
+      items:
+        "$ref": "./goals.yaml#/Reservation"
+    state:
+      type: string
+      enum:
+      - active
+      - achieved
+      - archived
+  required:
+  - id
+  - revision
+  - name
+  - ownership
+  - target
+  - deadline
+  - reserved
+  - reservations
+  - state
+  description: Shared goals have no personal halves. Reservations reduce the family
+    pool once.
+GoalInput:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    ownership:
+      "$ref": "./household.yaml#/ScopeInput"
+    target:
+      "$ref": "./money.yaml#/PositiveMoney"
+    deadline:
+      "$ref": "./money.yaml#/Date"
+  required:
+  - name
+  - ownership
+  - target
+  - deadline
+GoalChange:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    goal:
+      "$ref": "./goals.yaml#/GoalInput"
+  required:
+  - expectedRevision
+  - goal
+ReservationChange:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    reservations:
+      type: array
+      items:
+        "$ref": "./goals.yaml#/Reservation"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - expectedRevision
+  - reservations
+  - reason
+GoalPreview:
+  type: object
+  additionalProperties: false
+  properties:
+    goalId:
+      "$ref": "./money.yaml#/ID"
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    reservations:
+      type: array
+      items:
+        "$ref": "./goals.yaml#/Reservation"
+  required:
+  - goalId
+  - expectedRevision
+  - reservations
+GoalPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./goals.yaml#/Goal"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality

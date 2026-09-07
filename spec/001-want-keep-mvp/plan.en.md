@@ -49,7 +49,7 @@ A failed provider gate keeps that source disabled. `backend/internal/connections
 
 ### task-1.2
 
-Entry: task-1.1 in target; contracts version 8. Exit: Money/Asset/Rate/coverage, generated OpenAPI boundary, `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted`; connection `deploymentGate.status` and binding; sync before admission never starts the collector; D-41 recent/detail/tombstone semantics covered by tests.
+Entry: task-1.1 in target; contracts version 10. Exit: Money/Asset/Rate/coverage, generated OpenAPI boundary, `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted`; connection `deploymentGate.status` and binding; domain policy denies sync before admission and user DTOs cannot assign admission; D-41 recent/detail/tombstone semantics covered by tests. Task-3.3/task-4.x/task-8.1 verify actual atomic enforcement before job/IO.
 
 ### task-1.3
 

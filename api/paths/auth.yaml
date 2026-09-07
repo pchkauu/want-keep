@@ -1,0 +1,237 @@
+---
+"/auth/login/options":
+  post:
+    operationId: auth_login_options
+    tags:
+    - auth
+    summary: auth login options
+    parameters: []
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/auth.yaml#/LoginOptions"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    security: []
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/commands.yaml#/EmptyInput"
+"/auth/login/verify":
+  post:
+    operationId: auth_login_verify
+    tags:
+    - auth
+    summary: auth login verify
+    parameters: []
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/household.yaml#/Me"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    security: []
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/auth.yaml#/LoginVerifyInput"
+"/auth/enrollment/options":
+  post:
+    operationId: auth_enrollment_options
+    tags:
+    - auth
+    summary: auth enrollment options
+    parameters: []
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/auth.yaml#/EnrollmentOptions"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    security: []
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/auth.yaml#/EnrollmentInput"
+"/auth/enrollment/verify":
+  post:
+    operationId: auth_enrollment_verify
+    tags:
+    - auth
+    summary: auth enrollment verify
+    parameters: []
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/auth.yaml#/RecoveryCodes"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    security: []
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/auth.yaml#/EnrollmentVerifyInput"
+"/auth/recovery":
+  post:
+    operationId: auth_recovery
+    tags:
+    - auth
+    summary: auth recovery
+    parameters: []
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/auth.yaml#/RecoveryAttempt"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    security: []
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/auth.yaml#/RecoveryInput"
+"/auth/logout":
+  post:
+    operationId: auth_logout
+    tags:
+    - auth
+    summary: auth logout
+    parameters:
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '204':
+        description: Completed
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: 'Ceremony-bound operation: one-use challenge/attempt, verified Origin
+      and authorization purpose; does not use financial-command retention.'

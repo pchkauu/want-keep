@@ -18,7 +18,7 @@ import (
 const modulePath = "github.com/pchkauu/want-keep/backend"
 
 // Inner-layer third-party dependencies stay opt-in so framework and provider types cannot leak in unnoticed.
-var approvedInnerThirdPartyPackages = []string{}
+var approvedInnerThirdPartyPackages = []string{"github.com/cockroachdb/apd/v3"}
 
 type importViolation struct {
 	file       string
@@ -66,6 +66,10 @@ import _ "github.com/jackc/pgx/v5"
 
 import _ "github.com/pchkauu/want-keep/backend/internal/accounts/application"
 `)
+	writeGoFile(t, internalRoot, "accounts/domain/decimal_account.go", `package domain
+
+import _ "github.com/cockroachdb/apd/v3"
+`)
 	writeGoFile(t, internalRoot, "accounts/application/stored_service.go", `package application
 
 import _ "github.com/pchkauu/want-keep/backend/internal/storage"
@@ -96,6 +100,7 @@ import _ "github.com/pchkauu/want-keep/backend/internal/delivery"
 		`accounts/application/http_service.go: application layer must not import "net/http"`,
 		`accounts/application/stored_service.go: application layer must not import "github.com/pchkauu/want-keep/backend/internal/storage"`,
 		`accounts/domain/coordinated_account.go: domain layer must not import "github.com/pchkauu/want-keep/backend/internal/accounts/application"`,
+		`accounts/domain/decimal_account.go: domain layer must not import "github.com/cockroachdb/apd/v3"`,
 		`accounts/domain/http_account.go: domain layer must not import "net/http"`,
 		`accounts/domain/persisted_account.go: domain layer must not import "github.com/jackc/pgx/v5"`,
 		`storage/repository.go: storage layer must not import "github.com/pchkauu/want-keep/backend/internal/delivery"`,
@@ -107,6 +112,10 @@ import _ "github.com/pchkauu/want-keep/backend/internal/delivery"
 
 func TestInspectImportsAllowsInwardDependencies(t *testing.T) {
 	internalRoot := t.TempDir()
+	writeGoFile(t, internalRoot, "money/domain/money.go", `package domain
+
+import _ "github.com/cockroachdb/apd/v3"
+`)
 	writeGoFile(t, internalRoot, "accounts/domain/account.go", `package domain
 
 import "time"
@@ -159,7 +168,7 @@ func inspectImports(internalRoot string) ([]importViolation, error) {
 			if err != nil {
 				return fmt.Errorf("parse import in %s: %w", relative, err)
 			}
-			if forbiddenImport(layer, importPath) {
+			if forbiddenImport(layer, importPath) || (packageOrSubpackage(importPath, "github.com/cockroachdb/apd/v3") && !strings.HasPrefix(filepath.ToSlash(relative), "money/domain/")) {
 				violations = append(violations, importViolation{
 					file:       filepath.ToSlash(relative),
 					layer:      layer,

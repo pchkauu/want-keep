@@ -1,0 +1,624 @@
+---
+"/transactions":
+  get:
+    operationId: transactions_list
+    tags:
+    - transactions
+    summary: transactions list
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    - name: accountId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: from
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: to
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/Date"
+    - name: categoryId
+      in: query
+      required: false
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: search
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 200
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/transactions.yaml#/TransactionPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+  post:
+    operationId: transactions_create
+    tags:
+    - transactions
+    summary: transactions create
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: transactions.create
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/TransactionCreate"
+"/transfers":
+  post:
+    operationId: transactions_transfer
+    tags:
+    - transactions
+    summary: transactions transfer
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: transactions.transfer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/TransferCreate"
+"/refunds":
+  post:
+    operationId: transactions_refund
+    tags:
+    - transactions
+    summary: transactions refund
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: transactions.refund
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/RefundCreate"
+"/transactions/{transactionId}":
+  get:
+    operationId: transactions_read
+    tags:
+    - transactions
+    summary: transactions read
+    parameters:
+    - name: transactionId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/transactions.yaml#/Transaction"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/transactions/{transactionId}/corrections":
+  post:
+    operationId: transactions_corrections
+    tags:
+    - transactions
+    summary: transactions corrections
+    parameters:
+    - name: transactionId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: transactions.corrections
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/TransactionCorrection"
+"/transactions/{transactionId}/links":
+  post:
+    operationId: transactions_links
+    tags:
+    - transactions
+    summary: transactions links
+    parameters:
+    - name: transactionId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: transactions.links
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/TransactionLink"
+"/transactions/{transactionId}/undo":
+  post:
+    operationId: transactions_undo
+    tags:
+    - transactions
+    summary: transactions undo
+    parameters:
+    - name: transactionId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: transactions.undo
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/UndoInput"
+"/transactions/{transactionId}/allocations":
+  post:
+    operationId: transactions_allocations
+    tags:
+    - transactions
+    summary: transactions allocations
+    parameters:
+    - name: transactionId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: transactions.allocations
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/AllocationChange"
+"/reimbursements":
+  get:
+    operationId: reimbursements_list
+    tags:
+    - reimbursements
+    summary: reimbursements list
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/transactions.yaml#/ReimbursementPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+  post:
+    operationId: reimbursements_create
+    tags:
+    - reimbursements
+    summary: reimbursements create
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: reimbursements.create
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/ReimbursementCreate"
+"/reimbursements/{reimbursementId}":
+  get:
+    operationId: reimbursements_read
+    tags:
+    - reimbursements
+    summary: reimbursements read
+    parameters:
+    - name: reimbursementId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/transactions.yaml#/Reimbursement"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reimbursements/{reimbursementId}/settlements":
+  post:
+    operationId: reimbursements_settle
+    tags:
+    - reimbursements
+    summary: reimbursements settle
+    parameters:
+    - name: reimbursementId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: reimbursements.settle
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/SettlementCreate"

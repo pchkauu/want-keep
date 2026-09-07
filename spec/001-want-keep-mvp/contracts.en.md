@@ -2,9 +2,23 @@
 
 [Русский](contracts.md)
 
-Target project contract version 8; task-0.10 declared the SDD Ready for development on 2026-09-07. No financial API or complete database schema exists yet. D-37–D-43 resolve fundamental rules; provider-specific permissions and conformance remain task-4.x/task-8.x entry/deployment gates. REQ/AC take precedence over adapter assumptions.
+Project contract version 10; task-0.10 declared the SDD Ready for development on 2026-09-07. Task-1.2 implements OpenAPI and basic domain types; HTTP handlers and a database schema do not exist yet. D-37–D-43 resolve fundamental rules; provider-specific permissions and conformance remain task-4.x/task-8.x entry/deployment gates. REQ/AC take precedence over adapter assumptions.
+
+Task-1.2 review clarification: payer is explicit known/memberId, unknown or not_applicable, entered/corrected independently from actor and shares. Existing movement links require each ID/expectedRevision and atomic validation. Plan preview distinguishes create/update/delete and lineId; expectedRevision identifies the Budget aggregate, advanced by every line change/approval. ReturnsReport carries decimal-string dimensionless XIRR ratios, native/reporting basis, dated cash flows and unavailable reasons; task-6.4 still owns the solver. These changes affect unreleased DTOs; both clients regenerate together and no deployed data requires migration.
 
 ## Domain entities
+
+### Executable foundation D-44
+
+Decimal strings are limited to 256 characters, reject exponent/float input and retain fractional precision for all six assets. RUB does not imply two stored decimal places, nor BTC eight. Rounding is a separate action with scale and floor/half-even; allocation preserves the exact total and distributes remainders by stable ID. Totals not representable in the chosen quantum and overflow are rejected. Rate is a positive finite decimal quote/base observation; valuation owns cross calculations and retains source legs.
+
+A known amount contains value; unknown/unavailable contains reason without value. Complete coverage has an empty reason list, partial/unavailable a non-empty list. Fresh/stale/unknown freshness is independent of completeness. UTC timestamps accept RFC3339 with Z and up to nine fractional-second digits; Date/Month contain no time, timezone is UTC or a validated IANA zone. Revision is an integer from 1 through 9007199254740991, exactly representable in JavaScript.
+
+OpenAPI 3.0.3 and Go/TypeScript models/strict interfaces derive from one source. Schema validation and explicit boundary converters do not replace permissions, transactions or use-case invariants. DTOs distinguish actorId/User, payer.memberId/Membership, personalOwnerId/User and externalAccountOwnerId/User. Command input cannot assign actor/household. Lists and result references require current household scope and resource authorization.
+
+Command ID is a client-created UUIDv4 Idempotency-Key, unique within household+actor and bound to immutable type/hash. Pending is persisted before execution; effect and succeeded/result commit atomically. Replay precedes old expectedRevision checks and returns the original outcome. Timeout never changes a command to failed; not_found permits only the original key under the registration protocol. D-41 defines retention periods. Auth/recovery/enrollment, private upload bytes and push credentials use separate protected flows and are not copied into financial-command records; preview stores no financial change.
+
+This is a new foundation with no running product API or database, so data migration is unnecessary. Task-1.3/task-1.4 own durable storage and server authorization. [Checks and limitations](evidence/task-1.2-domain-api.en.md).
 
 | Entity | Minimum contract |
 | --- | --- |
@@ -90,11 +104,13 @@ Target prefix `/api/v1`, JSON, money strings, UTC RFC3339 timestamps plus explic
 | Reports | GET dashboard, valuation, daily-limit, credit, savings, returns and insights with filters/date/currency/coverage. Reads do not trigger hidden mutations. |
 | Notifications | GET in-app notifications, POST read acknowledgment, POST/DELETE push subscriptions. Delivery receipt does not mean read. |
 
-task-1.2 materializes OpenAPI only after Ready; exact form fields follow the models above and verified provider contracts. Client/generated types never become domain types.
+Under D-44 task-1.2 materializes shared OpenAPI independently of remaining research. Provider-specific forms and handlers stay with their owning tasks. Client/generated types never become domain types.
 
 Under D-43, server-owned `ProviderDeploymentAdmission` is addressed by `provider + environment`. Its aggregate and repository interface belong to the `backend/internal/connections/admission/` application boundary; task-1.3 owns the storage adapter. The binding contains `adapterBuildDigest`, `collectorImageDigest`, `contractVersion`, `allowlistRevision`, `nonSecretConfigRevision` and `operatorPermissionRevision`; monotonic `admissionRevision` increments on every state/evidence/binding change. task-4.x produces provider evidence and task-8.x produces host/deployment evidence for the same binding; only the application admission service atomically combines both passes and sets it to `admitted`. Clients, AI and provider responses cannot change admission.
 
 The connection read model exposes `deploymentGate.status = pending|admitted|blocked`, binding, `admissionRevision`, `checkedAt` and safe reasons separately from `connected|reauth_required`. POST `/{id}/sync` requires `admitted`, an exact binding match with running artifacts/configuration/allowlist/permission and a valid authenticated connection; the admission check and job creation share one storage transaction. Otherwise the server returns `provider_not_admitted` before a job or provider IO. Jobs/results carry immutable binding and revision. Any binding change, permission revocation or failed check atomically returns the gate to `pending|blocked`, increments the revision and invalidates jobs that have not started; the collector rechecks the issued values before provider IO. When a change occurs after a read starts, cancellation is best effort and mandatory commit-time revalidation of the current admitted binding/revision shares the transaction that persists source revision/posting/outbox. A stale result is retained only in quarantine, with no source record or financial effect. Pre-admission conformance also runs in quarantine.
+
+Task-1.2 admission revision uses the existing Revision range 1..9007199254740991, starts at 1 and never resets on rebind. An exact no-op preserves it; overflow fails without changing the snapshot. An absent admission exposes neither binding, revision nor checkedAt. RequireResult checks the issued binding/revision against current admitted state; the atomic transaction and durable counter belong to task-1.3. This is an unreleased API change: Go/TypeScript regenerate together, with no deployed data migration.
 
 ### Raiffeisen authorization callback
 
@@ -146,7 +162,7 @@ Important failure codes: unauthorized, version_conflict, duplicate_command, inva
 | Reimbursement | Explicit creditor/debtor member IDs, asset/amount, optional expense link, settlements and revision. Internal claims do not enter household wealth. |
 | SharedThread / Message | One household thread, message actorId, attachments, proposal/clarification revision. Shared visibility does not grant authority for every command. |
 
-Minimum `/api/v1` additions: GET `/me` and `/household`; POST `/household/invitations`, POST `/invitations/accept`; ownership in accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` and memberId for reports. These filters do not change principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached and version_conflict are distinct safe errors. Forms materialize in OpenAPI after Ready.
+Minimum `/api/v1` additions: GET `/me` and `/household`; POST `/household/invitations`, POST `/invitations/accept`; ownership in accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` and memberId for reports. These filters do not change principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached and version_conflict are distinct safe errors. Shared forms are materialized in task-1.2 OpenAPI under D-44; runtime permissions are implemented separately.
 
 Engineering defaults: the first user uses restricted single-use bootstrap; the second accepts a signed-in member’s single-use random invitation with a 24-hour expiry, stored hashed. It binds to a separate new sign-in; replay and the limit are checked atomically. It cannot reset another user’s passkeys. The system does not send external invitation messages itself. Editing a personal goal or plan line, including deletion, changing owner/personal scope or applying an AI proposal, requires its current owner. Converting another user’s goal to joint cannot bypass this. Members create personal goals/lines for themselves and joint ones freely. Both can read/create/correct all accounting transactions. Personal account ownership changes require its owner, household account changes either member; these cannot change the verified external owner or transaction history.
 
@@ -168,7 +184,7 @@ In `F(d)`, outstandingPayments is the same unpaid obligation portion not covered
 
 ## Presentation, command and event contracts
 
-SCR-001–SCR-035 UI routes are not API endpoints. The [screen catalog](screens.en.md) defines FORM-01–FORM-15 fields and error flows; task-1.2 refines OpenAPI after Ready. Reports return native amounts, separately known reporting amounts, asOf/coverage, actual/forecast/reserved type, calculation inputs and explanatory transaction links. Client formats and expands these data without repeating financial formulas.
+SCR-001–SCR-035 UI routes are not API endpoints. The [screen catalog](screens.en.md) defines FORM-01–FORM-15 fields and error flows; task-1.2 materializes shared OpenAPI under D-44. Reports return native amounts, separately known reporting amounts, asOf/coverage, actual/forecast/reserved type, calculation inputs and explanatory transaction links. Client formats and expands these data without repeating financial formulas.
 
 For a mutating command, the server binds Idempotency-Key to householdId, actorId, type and payload hash; the same key with a different payload is rejected. Result and financial effect are atomic. GET `/api/v1/commands/{id}` and `/api/v1/commands/recent` return only commands authorized for the current principal with `pending|succeeded|failed`, outcome reference and safe error. `unknown` describes client knowledge, not permission to create another command.
 
@@ -207,3 +223,5 @@ Observed samples never extend published history limits. Gaps and lifetime mismat
 The server configures model, reasoning, permitted tools and pricing, outside chat input. Every attempt records model/prompt/schema/pricing revision, input count, output cap, reservation, actual usage and validated outcome. Do not mix cache_write_tokens with cached input or bill reasoning twice on top of output. Budget months are UTC; unresolved reservations survive rollover and recovery. Model/contract changes require evaluation before qualification; never switch to a more expensive model to fix network failures.
 
 The 10 MiB/10-page upload limits remain. Page splitting preserves source evidence and cannot create separate expenses without matching. Research does not replace server regression/authorization/retry checks. This clarifies the target AI contract; no existing AI API/store requires data migration.
+
+The task-1.2 foundation aligns with contract version 10: D-41 retention/recovery and D-43 admission are checked at domain/DTO level. The SDD is Ready for development; runtime ACs remain with subsequent tasks.

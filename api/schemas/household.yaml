@@ -1,0 +1,248 @@
+---
+PersonalOwnership:
+  type: object
+  additionalProperties: false
+  properties:
+    householdId:
+      "$ref": "./money.yaml#/ID"
+    scope:
+      type: string
+      enum:
+      - personal
+    personalOwnerId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - householdId
+  - scope
+  - personalOwnerId
+SharedOwnership:
+  type: object
+  additionalProperties: false
+  properties:
+    householdId:
+      "$ref": "./money.yaml#/ID"
+    scope:
+      type: string
+      enum:
+      - household
+  required:
+  - householdId
+  - scope
+Ownership:
+  oneOf:
+  - "$ref": "./household.yaml#/PersonalOwnership"
+  - "$ref": "./household.yaml#/SharedOwnership"
+PersonalScopeInput:
+  type: object
+  additionalProperties: false
+  properties:
+    scope:
+      type: string
+      enum:
+      - personal
+    personalOwnerId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - scope
+  - personalOwnerId
+SharedScopeInput:
+  type: object
+  additionalProperties: false
+  properties:
+    scope:
+      type: string
+      enum:
+      - household
+  required:
+  - scope
+ScopeInput:
+  oneOf:
+  - "$ref": "./household.yaml#/PersonalScopeInput"
+  - "$ref": "./household.yaml#/SharedScopeInput"
+  description: Resource ownership only. Household and actor come from trusted session.
+    Creating personal plan lines/goals requires the caller to be the personal owner.
+User:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - id
+  - name
+Membership:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    householdId:
+      "$ref": "./money.yaml#/ID"
+    userId:
+      "$ref": "./money.yaml#/ID"
+    role:
+      type: string
+      enum:
+      - member
+    status:
+      type: string
+      enum:
+      - active
+      - pending
+  required:
+  - id
+  - householdId
+  - userId
+  - role
+  - status
+Household:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    timezone:
+      "$ref": "./money.yaml#/Timezone"
+    members:
+      type: array
+      items:
+        "$ref": "./household.yaml#/Membership"
+    maxActiveMembers:
+      type: integer
+      minimum: 1
+  required:
+  - id
+  - name
+  - timezone
+  - members
+  - maxActiveMembers
+Preferences:
+  type: object
+  additionalProperties: false
+  properties:
+    locale:
+      "$ref": "./money.yaml#/Locale"
+    reportingAsset:
+      "$ref": "./money.yaml#/Asset"
+    pushEnabled:
+      type: boolean
+    decorativeEffectsEnabled:
+      type: boolean
+  required:
+  - locale
+  - reportingAsset
+  - pushEnabled
+  - decorativeEffectsEnabled
+Me:
+  type: object
+  additionalProperties: false
+  properties:
+    user:
+      "$ref": "./household.yaml#/User"
+    membership:
+      "$ref": "./household.yaml#/Membership"
+    preferences:
+      "$ref": "./household.yaml#/Preferences"
+    csrfToken:
+      type: string
+      minLength: 32
+      maxLength: 1024
+  required:
+  - user
+  - membership
+  - preferences
+  - csrfToken
+  description: Private no-store response. The session-bound CSRF token is held in
+    memory, not URL or persistent browser storage.
+SetupInput:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    householdName:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    timezone:
+      "$ref": "./money.yaml#/Timezone"
+    locale:
+      "$ref": "./money.yaml#/Locale"
+    reportingAsset:
+      "$ref": "./money.yaml#/Asset"
+    bootstrapToken:
+      type: string
+      minLength: 32
+      maxLength: 1024
+      writeOnly: true
+  required:
+  - name
+  - householdName
+  - timezone
+  - locale
+  - reportingAsset
+  - bootstrapToken
+Invitation:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    token:
+      type: string
+      writeOnly: true
+    expiresAt:
+      "$ref": "./money.yaml#/Instant"
+  required:
+  - id
+  - expiresAt
+  description: One-use invitation; private token is returned only by InvitationCreated.
+    Stored hashed; 24-hour lifetime.
+InvitationCreated:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    invitationToken:
+      type: string
+      minLength: 32
+      maxLength: 1024
+    expiresAt:
+      "$ref": "./money.yaml#/Instant"
+  required:
+  - id
+  - invitationToken
+  - expiresAt
+InvitationAcceptInput:
+  type: object
+  additionalProperties: false
+  properties:
+    invitationToken:
+      type: string
+      minLength: 32
+      maxLength: 1024
+      writeOnly: true
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    enrollmentAttemptId:
+      "$ref": "./money.yaml#/ID"
+    credential:
+      "$ref": "./auth.yaml#/RegistrationCredential"
+  required:
+  - invitationToken
+  - name
+  - enrollmentAttemptId
+  - credential

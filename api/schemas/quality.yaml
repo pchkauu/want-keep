@@ -1,0 +1,177 @@
+---
+ErrorCode:
+  type: string
+  enum:
+  - unauthorized
+  - forbidden
+  - not_found
+  - scope_mismatch
+  - invalid_request
+  - invalid_money
+  - unsupported_asset
+  - asset_mismatch
+  - invalid_rate
+  - invalid_time
+  - invalid_allocation
+  - invalid_availability
+  - version_conflict
+  - duplicate_command
+  - command_final
+  - source_reauth_required
+  - source_partial
+  - source_ambiguous
+  - quote_unavailable
+  - command_expired
+  - provider_not_admitted
+  - valuation_unavailable
+  - clarification_required
+  - ai_waiting
+  - ai_budget_exhausted
+  - invalid_attachment
+  - backup_stale
+  - invitation_expired
+  - invitation_used
+  - member_limit_reached
+  - internal_error
+FieldViolation:
+  type: object
+  additionalProperties: false
+  properties:
+    field:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    code:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - field
+  - code
+APIError:
+  type: object
+  additionalProperties: false
+  properties:
+    version:
+      type: string
+      enum:
+      - '1'
+    code:
+      "$ref": "./quality.yaml#/ErrorCode"
+    message:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    violations:
+      type: array
+      items:
+        "$ref": "./quality.yaml#/FieldViolation"
+    retryable:
+      type: boolean
+    correlationId:
+      "$ref": "./money.yaml#/ID"
+    currentRevision:
+      "$ref": "./money.yaml#/Revision"
+  required:
+  - version
+  - code
+  - message
+  - violations
+  - retryable
+  - correlationId
+KnownAmount:
+  type: object
+  additionalProperties: false
+  properties:
+    knowledge:
+      type: string
+      enum:
+      - known
+    value:
+      "$ref": "./money.yaml#/Money"
+  required:
+  - knowledge
+  - value
+MissingAmount:
+  type: object
+  additionalProperties: false
+  properties:
+    knowledge:
+      type: string
+      enum:
+      - unknown
+      - unavailable
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - knowledge
+  - reason
+AmountValue:
+  oneOf:
+  - "$ref": "./quality.yaml#/KnownAmount"
+  - "$ref": "./quality.yaml#/MissingAmount"
+  discriminator:
+    propertyName: knowledge
+    mapping:
+      known: "#/components/schemas/KnownAmount"
+      unknown: "#/components/schemas/MissingAmount"
+      unavailable: "#/components/schemas/MissingAmount"
+CompleteCoverage:
+  type: object
+  additionalProperties: false
+  properties:
+    state:
+      type: string
+      enum:
+      - complete
+    reasons:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 2000
+      maxItems: 0
+  required:
+  - state
+  - reasons
+IncompleteCoverage:
+  type: object
+  additionalProperties: false
+  properties:
+    state:
+      type: string
+      enum:
+      - partial
+      - unavailable
+    reasons:
+      type: array
+      items:
+        type: string
+        minLength: 1
+        maxLength: 2000
+      minItems: 1
+      maxItems: 100
+  required:
+  - state
+  - reasons
+Coverage:
+  oneOf:
+  - "$ref": "./quality.yaml#/CompleteCoverage"
+  - "$ref": "./quality.yaml#/IncompleteCoverage"
+DataQuality:
+  type: object
+  additionalProperties: false
+  properties:
+    coverage:
+      "$ref": "./quality.yaml#/Coverage"
+    freshness:
+      "$ref": "./money.yaml#/Freshness"
+    asOf:
+      "$ref": "./money.yaml#/Instant"
+    fetchedAt:
+      "$ref": "./money.yaml#/Instant"
+  required:
+  - coverage
+  - freshness

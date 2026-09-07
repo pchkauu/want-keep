@@ -4,7 +4,7 @@
 
 Want Keep is an early **source-available** family finance project for multi-currency accounting, budgets, savings and AI-assisted analysis.
 
-The agreed MVP targets Go, PostgreSQL, React/TypeScript/Vite and a separate Playwright collector. The repository contains the specification, backlog and a buildable application foundation. Product workflows and public APIs are not implemented yet; external integration contracts remain under investigation.
+The agreed MVP targets Go, PostgreSQL, React/TypeScript/Vite and a separate Playwright collector. The repository contains the specification, backlog, a buildable foundation, exact money primitives and generated API contracts. Product handlers and persistence are not implemented yet; external integration contracts remain under investigation.
 
 ## Project foundation
 

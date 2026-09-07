@@ -1,0 +1,293 @@
+---
+Attachment:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    mediaType:
+      type: string
+      enum:
+      - image/jpeg
+      - image/png
+      - image/webp
+      - application/pdf
+    sizeBytes:
+      type: integer
+      minimum: 1
+      maximum: 10485760
+    state:
+      type: string
+      enum:
+      - uploaded
+      - validating
+      - accepted
+      - rejected
+  required:
+  - id
+  - name
+  - mediaType
+  - sizeBytes
+  - state
+AttachmentUpload:
+  type: object
+  additionalProperties: false
+  properties:
+    file:
+      type: string
+      format: binary
+    accountId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - file
+  - accountId
+  description: Maximum 10 MiB and 10 PDF pages. MIME signature is verified; selected
+    family account is required.
+Receipt:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    attachmentId:
+      "$ref": "./money.yaml#/ID"
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    state:
+      type: string
+      enum:
+      - uploaded
+      - validating
+      - processing
+      - clarification
+      - skipped
+      - linked
+      - recorded
+      - failed
+      - waiting_ai
+    items:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/ReceiptItem"
+    total:
+      "$ref": "./quality.yaml#/AmountValue"
+    transactionId:
+      "$ref": "./money.yaml#/ID"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - id
+  - revision
+  - attachmentId
+  - accountId
+  - state
+  - items
+  - total
+Message:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    threadId:
+      "$ref": "./money.yaml#/ID"
+    actorId:
+      "$ref": "./money.yaml#/ID"
+    createdAt:
+      "$ref": "./money.yaml#/Instant"
+    text:
+      type: string
+      maxLength: 20000
+    attachments:
+      type: array
+      items:
+        "$ref": "./chat.yaml#/Attachment"
+    commandId:
+      "$ref": "./money.yaml#/CommandID"
+  required:
+  - id
+  - threadId
+  - actorId
+  - createdAt
+  - text
+  - attachments
+MessageCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    text:
+      type: string
+      maxLength: 20000
+    attachmentIds:
+      type: array
+      items:
+        "$ref": "./money.yaml#/ID"
+      maxItems: 10
+    accountId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - text
+  - attachmentIds
+  description: At least text or an attachment is required. Attachments require accountId;
+    unknown receipt facts create clarification.
+  allOf:
+  - anyOf:
+    - properties:
+        attachmentIds:
+          maxItems: 0
+    - required:
+      - accountId
+  - anyOf:
+    - properties:
+        text:
+          minLength: 1
+    - properties:
+        attachmentIds:
+          minItems: 1
+      required:
+      - accountId
+Thread:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    householdId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - id
+  - householdId
+  description: One shared thread per family; message authors remain distinct.
+Clarification:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    question:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    subject:
+      "$ref": "./reports.yaml#/ResourceReference"
+    state:
+      type: string
+      enum:
+      - pending
+      - answered
+      - superseded
+  required:
+  - id
+  - revision
+  - question
+  - subject
+  - state
+ClarificationAnswer:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    answer:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    subjectExpectedRevision:
+      "$ref": "./money.yaml#/Revision"
+  required:
+  - expectedRevision
+  - answer
+  - subjectExpectedRevision
+Proposal:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    subject:
+      "$ref": "./reports.yaml#/ResourceReference"
+    summary:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    evidence:
+      type: array
+      items:
+        "$ref": "./reports.yaml#/ResourceReference"
+    state:
+      type: string
+      enum:
+      - pending
+      - applied
+      - rejected
+      - superseded
+  required:
+  - id
+  - revision
+  - subject
+  - summary
+  - evidence
+  - state
+ProposalDecision:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    subjectExpectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    decision:
+      type: string
+      enum:
+      - apply
+      - reject
+  required:
+  - expectedRevision
+  - subjectExpectedRevision
+  - decision
+MessagePage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./chat.yaml#/Message"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+ClarificationPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./chat.yaml#/Clarification"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality

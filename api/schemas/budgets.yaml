@@ -1,0 +1,234 @@
+---
+BudgetLine:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    ownership:
+      "$ref": "./household.yaml#/Ownership"
+    kind:
+      type: string
+      enum:
+      - obligation
+      - flexible
+      - expected_income
+    planned:
+      "$ref": "./money.yaml#/Money"
+    actual:
+      "$ref": "./money.yaml#/Money"
+    categoryId:
+      "$ref": "./money.yaml#/ID"
+    dueDate:
+      "$ref": "./money.yaml#/Date"
+    allocation:
+      "$ref": "./transactions.yaml#/ExpenseAllocation"
+    status:
+      type: string
+      enum:
+      - draft
+      - approved
+  required:
+  - id
+  - revision
+  - ownership
+  - kind
+  - planned
+  - actual
+  - allocation
+  - status
+BudgetLineInput:
+  type: object
+  additionalProperties: false
+  properties:
+    ownership:
+      "$ref": "./household.yaml#/ScopeInput"
+    kind:
+      type: string
+      enum:
+      - obligation
+      - flexible
+      - expected_income
+    planned:
+      "$ref": "./money.yaml#/PositiveMoney"
+    categoryId:
+      "$ref": "./money.yaml#/ID"
+    dueDate:
+      "$ref": "./money.yaml#/Date"
+    allocation:
+      "$ref": "./transactions.yaml#/ExpenseAllocation"
+  required:
+  - ownership
+  - kind
+  - planned
+  - allocation
+Budget:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    householdId:
+      "$ref": "./money.yaml#/ID"
+    month:
+      "$ref": "./money.yaml#/Month"
+    timezone:
+      "$ref": "./money.yaml#/Timezone"
+    lines:
+      type: array
+      items:
+        "$ref": "./budgets.yaml#/BudgetLine"
+  required:
+  - id
+  - revision
+  - householdId
+  - month
+  - timezone
+  - lines
+BudgetCreate:
+  type: object
+  additionalProperties: false
+  properties:
+    month:
+      "$ref": "./money.yaml#/Month"
+    timezone:
+      "$ref": "./money.yaml#/Timezone"
+    copyFromBudgetId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - month
+  - timezone
+  description: Creates a new month; copying does not roll balances or approvals forward.
+BudgetLineChange:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    line:
+      "$ref": "./budgets.yaml#/BudgetLineInput"
+  required:
+  - expectedRevision
+  - line
+  description: expectedRevision is the containing Budget aggregate revision for both
+    add and change routes. Each child creation, edit, deletion or approval atomically
+    advances that aggregate revision; lineId from the URL identifies replacement.
+    All mutations recheck aggregate revision and current authority, including after
+    preview.
+BudgetApproval:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    lineIds:
+      type: array
+      items:
+        "$ref": "./money.yaml#/ID"
+      minItems: 1
+  required:
+  - expectedRevision
+  - lineIds
+  description: Only authorized lines are approved. A shared plan never approves the
+    partner personal drafts implicitly. expectedRevision is the containing Budget
+    aggregate revision; approval advances it atomically.
+BudgetPreview:
+  oneOf:
+  - "$ref": "./budgets.yaml#/BudgetCreatePreview"
+  - "$ref": "./budgets.yaml#/BudgetUpdatePreview"
+  - "$ref": "./budgets.yaml#/BudgetDeletePreview"
+BudgetPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./budgets.yaml#/Budget"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+BudgetCreatePreview:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - create
+    budgetId:
+      "$ref": "./money.yaml#/ID"
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    line:
+      "$ref": "./budgets.yaml#/BudgetLineInput"
+  required:
+  - mode
+  - budgetId
+  - expectedRevision
+  - line
+  description: expectedRevision is the containing Budget aggregate revision. Update
+    replaces only lineId; delete removes only lineId; create adds a new line. Preview
+    uses the same policy/calculation as the corresponding mutation without persistence.
+BudgetUpdatePreview:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - update
+    budgetId:
+      "$ref": "./money.yaml#/ID"
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    lineId:
+      "$ref": "./money.yaml#/ID"
+    line:
+      "$ref": "./budgets.yaml#/BudgetLineInput"
+  required:
+  - mode
+  - budgetId
+  - expectedRevision
+  - lineId
+  - line
+  description: expectedRevision is the containing Budget aggregate revision. Update
+    replaces only lineId; delete removes only lineId; create adds a new line. Preview
+    uses the same policy/calculation as the corresponding mutation without persistence.
+BudgetDeletePreview:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum:
+      - delete
+    budgetId:
+      "$ref": "./money.yaml#/ID"
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    lineId:
+      "$ref": "./money.yaml#/ID"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - mode
+  - budgetId
+  - expectedRevision
+  - lineId
+  - reason
+  description: expectedRevision is the containing Budget aggregate revision. Update
+    replaces only lineId; delete removes only lineId; create adds a new line. Preview
+    uses the same policy/calculation as the corresponding mutation without persistence.

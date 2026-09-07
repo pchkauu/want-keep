@@ -5,7 +5,7 @@
 
 Закрепить точность денег и типы публичных границ до адаптеров и UI.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Основа task-1.2 согласована с контрактом версии 10: D-41 retention/recovery и D-43 admission проверяются на уровне domain/DTO. SDD Ready for development; runtime AC остаются у следующих задач.
 
 **Зависимости:** `task-1.1`.
 
@@ -13,14 +13,21 @@
 
 ### Изменение и контракты
 
-Определить Money/Asset/Rate/Time/coverage и версионированные состояния `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted` по contracts.md. Деньги передавать десятичными строками и валидировать на первой границе; домен не импортирует generated DTO. Добавить explainable read models, command status/recent API и connection `deploymentGate.status=pending|admitted|blocked` и monotonic `admissionRevision`. Публичный контракт server-owned admission связывает environment, adapter/collector build digests, contract, allowlist, non-secret config и operator-permission revisions; sync разрешён только при совпадении текущего binding и `admitted`, иначе collector не запускается. Эта задача владеет transport/read model, а aggregate, repository и application transitions реализует task-1.3. Terminal detail хранится 90 дней после исхода, unresolved — до сверки плюс 90 дней; tombstone с `commandId`, scope, key/hash и outcome живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome. `/commands/recent` отдаёт 30 дней terminal и все unresolved; истёкшая detail возвращает `command_expired`, не разрешая повторный эффект по живому tombstone.
+Реализовать Money/Asset/Rate/календарные типы, отдельные knownness/coverage/freshness, семейную область и command transitions. apd v3.2.3 закрыт внутри money/domain; десятичные строки до 256 символов без float или display truncation. Материализовать OpenAPI 3.0.3 и воспроизводимую генерацию Go/TypeScript, явные boundary converters, безопасные ошибки версии 1, объяснимые read models и command status/recent. Определить Money/Asset/Rate/Time/coverage и версионированные состояния `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted` по contracts.md. Деньги передавать десятичными строками и валидировать на первой границе; домен не импортирует generated DTO. Добавить explainable read models, command status/recent API и connection `deploymentGate.status=pending|admitted|blocked` и monotonic `admissionRevision`. Публичный контракт server-owned admission связывает environment, adapter/collector build digests, contract, allowlist, non-secret config и operator-permission revisions; sync разрешён только при совпадении текущего binding и `admitted`, иначе collector не запускается. Эта задача владеет transport/read model, а aggregate, repository и application transitions реализует task-1.3. Terminal detail хранится 90 дней после исхода, unresolved — до сверки плюс 90 дней; tombstone с `commandId`, scope, key/hash и outcome живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome. `/commands/recent` отдаёт 30 дней terminal и все unresolved; истёкшая detail возвращает `command_expired`, не разрешая повторный эффект по живому tombstone. Ревизия admission в task-1.2 использует диапазон Revision 1..9007199254740991, начинается с 1 и не сбрасывается при rebind. Точный no-op сохраняет её; переполнение отклоняется без изменения snapshot. Отсутствующий admission не публикует binding, revision или checkedAt. RequireResult сравнивает выданные binding/revision с текущим admitted; атомарная транзакция и сохранение счётчика принадлежат task-1.3. API ещё не развёрнут: Go/TypeScript генерируются совместно, миграция данных не требуется.
 
 ### Границы изменений
 
 - `backend/internal/money/`
-- `api/openapi.yaml`
-- `backend/internal/delivery/`
+- `backend/internal/calendar/`
+- `backend/internal/household/`
+- `backend/internal/reporting/`
+- `backend/internal/commands/`
+- `backend/internal/connections/`
+- `backend/internal/delivery/http/`
+- `api/`
+- `scripts/generate-openapi.sh`
 - `web/src/api/`
+- `spec/001-want-keep-mvp/evidence/task-1.2-domain-api.md`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -106,12 +113,12 @@
 ### Проверка результата
 
 ```sh
-make test-go PKG=./internal/money/... && make check-contracts
+make check
 ```
 
-Нулевая потеря точности, некорректные значения отвергаются, generated output воспроизводим.
+Точные synthetic round trips и распределения, отклонение неверных значений, проверяемые семейные/command инварианты; OpenAPI валиден, Go/TypeScript output воспроизводим. Это не доказательство auth/storage/product runtime.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды make реализованы. Проверяются Go 1.26.5 и Node 24.19.0; OpenAPI tooling использует изолированный TS 5.9.3, web — TS 6.0.3. Live banking, БД, deploy и browser E2E вне этой задачи.
 
 ### Передача следующему агенту
 
@@ -123,7 +130,7 @@ make test-go PKG=./internal/money/... && make check-contracts
 
 Establish money precision and public boundary types before adapters and UI.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** The task-1.2 foundation aligns with contract version 10: D-41 retention/recovery and D-43 admission are checked at domain/DTO level. The SDD is Ready for development; runtime ACs remain with subsequent tasks.
 
 **Dependencies:** `task-1.1`.
 
@@ -131,14 +138,21 @@ Establish money precision and public boundary types before adapters and UI.
 
 ### Change and contracts
 
-Define Money/Asset/Rate/Time/coverage and versioned `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired` and `provider_not_admitted` states from contracts.en.md. Transport money as decimal strings and validate at the first boundary; the domain must not import generated DTOs. Add explainable read models, command status/recent APIs and connection `deploymentGate.status=pending|admitted|blocked` and monotonic `admissionRevision`. The public server-owned admission contract binds environment, adapter/collector build digests, contract, allowlist, non-secret configuration and operator-permission revisions; sync is permitted only when the current binding matches `admitted`, otherwise the collector never starts. This task owns the transport/read model; task-1.3 implements the aggregate, repository and application transitions. Terminal detail remains for 90 days after outcome, unresolved commands through reconciliation plus 90 days; a tombstone with `commandId`, scope, key/hash and outcome lives throughout unresolved state and for 400 days after terminal/reconciled outcome. `/commands/recent` returns 30 days of terminal commands and all unresolved commands; expired detail returns `command_expired` without permitting a repeated effect while the tombstone is live.
+Implement Money/Asset/Rate/calendar types, separate knowledge/coverage/freshness, household scope and command transitions. Encapsulate apd v3.2.3 in money/domain; decimal strings up to 256 characters without float or display truncation. Materialize OpenAPI 3.0.3 and reproducible Go/TypeScript generation, explicit boundary converters, safe version-1 errors, explainable read models and command status/recent. Define Money/Asset/Rate/Time/coverage and versioned `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired` and `provider_not_admitted` states from contracts.en.md. Transport money as decimal strings and validate at the first boundary; the domain must not import generated DTOs. Add explainable read models, command status/recent APIs and connection `deploymentGate.status=pending|admitted|blocked` and monotonic `admissionRevision`. The public server-owned admission contract binds environment, adapter/collector build digests, contract, allowlist, non-secret configuration and operator-permission revisions; sync is permitted only when the current binding matches `admitted`, otherwise the collector never starts. This task owns the transport/read model; task-1.3 implements the aggregate, repository and application transitions. Terminal detail remains for 90 days after outcome, unresolved commands through reconciliation plus 90 days; a tombstone with `commandId`, scope, key/hash and outcome lives throughout unresolved state and for 400 days after terminal/reconciled outcome. `/commands/recent` returns 30 days of terminal commands and all unresolved commands; expired detail returns `command_expired` without permitting a repeated effect while the tombstone is live. Task-1.2 admission revision uses the existing Revision range 1..9007199254740991, starts at 1 and never resets on rebind. An exact no-op preserves it; overflow fails without changing the snapshot. An absent admission exposes neither binding, revision nor checkedAt. RequireResult checks the issued binding/revision against current admitted state; the atomic transaction and durable counter belong to task-1.3. This is an unreleased API change: Go/TypeScript regenerate together, with no deployed data migration.
 
 ### Change boundaries
 
 - `backend/internal/money/`
-- `api/openapi.yaml`
-- `backend/internal/delivery/`
+- `backend/internal/calendar/`
+- `backend/internal/household/`
+- `backend/internal/reporting/`
+- `backend/internal/commands/`
+- `backend/internal/connections/`
+- `backend/internal/delivery/http/`
+- `api/`
+- `scripts/generate-openapi.sh`
 - `web/src/api/`
+- `spec/001-want-keep-mvp/evidence/task-1.2-domain-api.md`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -224,12 +238,12 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make test-go PKG=./internal/money/... && make check-contracts
+make check
 ```
 
-No precision loss, invalid values rejected and generated output reproducible.
+Exact synthetic round trips and allocations, invalid inputs rejected, tested household/command invariants; valid OpenAPI and reproducible Go/TypeScript output. This is not auth/storage/product runtime proof.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Make commands are implemented. Checks use Go 1.26.5 and Node 24.19.0; OpenAPI tooling has isolated TS 5.9.3, web uses TS 6.0.3. Live banking, DB, deploy and browser E2E are outside this task.
 
 ### Handoff to the next agent
 

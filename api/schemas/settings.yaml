@@ -1,0 +1,273 @@
+---
+Notification:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    createdAt:
+      "$ref": "./money.yaml#/Instant"
+    title:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    kind:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    subject:
+      "$ref": "./reports.yaml#/ResourceReference"
+    read:
+      type: boolean
+  required:
+  - id
+  - createdAt
+  - title
+  - kind
+  - subject
+  - read
+NotificationRead:
+  type: object
+  additionalProperties: false
+  properties:
+    notificationIds:
+      type: array
+      items:
+        "$ref": "./money.yaml#/ID"
+      minItems: 1
+      maxItems: 100
+  required:
+  - notificationIds
+PushSubscription:
+  type: object
+  additionalProperties: false
+  properties:
+    endpoint:
+      type: string
+      format: uri
+    p256dh:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    auth:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - endpoint
+  - p256dh
+  - auth
+  description: Browser push credentials; stored securely, never passed to AI. Server
+    restricts permitted push destinations.
+Category:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    parentId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - id
+  - revision
+  - name
+CategoryInput:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    parentId:
+      "$ref": "./money.yaml#/ID"
+  required:
+  - name
+CategoryChange:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    category:
+      "$ref": "./settings.yaml#/CategoryInput"
+  required:
+  - expectedRevision
+  - category
+RuleCondition:
+  type: object
+  additionalProperties: false
+  properties:
+    field:
+      type: string
+      enum:
+      - merchant
+      - description
+      - account
+      - asset
+    operator:
+      type: string
+      enum:
+      - equals
+      - contains
+    value:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - field
+  - operator
+  - value
+RuleInput:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    conditions:
+      type: array
+      items:
+        "$ref": "./settings.yaml#/RuleCondition"
+      minItems: 1
+    categoryId:
+      "$ref": "./money.yaml#/ID"
+    allocation:
+      "$ref": "./transactions.yaml#/ExpenseAllocation"
+    applyTo:
+      type: string
+      enum:
+      - future
+  required:
+  - name
+  - conditions
+  - applyTo
+  allOf:
+  - anyOf:
+    - required:
+      - categoryId
+    - required:
+      - allocation
+Rule:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    revision:
+      "$ref": "./money.yaml#/Revision"
+    definition:
+      "$ref": "./settings.yaml#/RuleInput"
+  required:
+  - id
+  - revision
+  - definition
+RuleChange:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    rule:
+      "$ref": "./settings.yaml#/RuleInput"
+  required:
+  - expectedRevision
+  - rule
+SystemStatus:
+  type: object
+  additionalProperties: false
+  properties:
+    ai:
+      type: string
+      enum:
+      - available
+      - waiting
+      - budget_exhausted
+      - unavailable
+    sources:
+      type: array
+      items:
+        "$ref": "./connections.yaml#/Connection"
+    backup:
+      "$ref": "./settings.yaml#/BackupStatus"
+  required:
+  - ai
+  - sources
+  - backup
+BackupStatus:
+  type: object
+  additionalProperties: false
+  properties:
+    lastSucceededAt:
+      "$ref": "./money.yaml#/Instant"
+    freshness:
+      "$ref": "./money.yaml#/Freshness"
+    macAvailable:
+      type: boolean
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required:
+  - freshness
+  - macAvailable
+  description: Missing successful timestamp is unknown. Actual backup age determines
+    potential loss; target recovery is four hours.
+NotificationPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./settings.yaml#/Notification"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+CategoryPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./settings.yaml#/Category"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality
+RulePage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items:
+        "$ref": "./settings.yaml#/Rule"
+    nextCursor:
+      type: string
+      minLength: 1
+      maxLength: 2048
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+  required:
+  - items
+  - quality

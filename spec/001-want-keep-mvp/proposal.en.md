@@ -2,6 +2,8 @@
 
 Execution mode: autonomous
 
+D-44, 2026-09-07: independent task-1.2 implementation before research completion was previously labeled D-37 on its branch. D-37 now retains the Alfa decision from task-0.10. Branch base and PR target are `docs/want-keep-mvp-sdd`. The SDD is Ready for development; application operational readiness is not yet established. The user accepted D-41 instead of the earlier family-lifetime command retention.
+
 Initially agreed on 2026-09-06; family amendment agreed on 2026-09-07. Basis: the detailed interview and the user's explicit request to implement the agreed documentation and GitHub backlog plan.
 
 ## Problem and outcome

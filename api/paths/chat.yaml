@@ -1,0 +1,508 @@
+---
+"/attachments":
+  post:
+    operationId: attachments_upload
+    tags:
+    - attachments
+    summary: attachments upload
+    parameters:
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/chat.yaml#/Attachment"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+    description: Authenticated upload; validates family account, signature, 10 MiB
+      and 10 PDF pages before processing. Upload creates evidence only; receipt/message
+      command determines one financial effect.
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            "$ref": "../schemas/chat.yaml#/AttachmentUpload"
+"/attachments/{attachmentId}":
+  get:
+    operationId: attachments_metadata
+    tags:
+    - attachments
+    summary: attachments metadata
+    parameters:
+    - name: attachmentId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/chat.yaml#/Attachment"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/attachments/{attachmentId}/content":
+  get:
+    operationId: attachments_content
+    tags:
+    - attachments
+    summary: attachments content
+    parameters:
+    - name: attachmentId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    responses:
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '200':
+        description: Authorized private bytes; no-store, nosniff, safe Content-Disposition.
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+"/receipts/{receiptId}":
+  get:
+    operationId: receipts_read
+    tags:
+    - receipts
+    summary: receipts read
+    parameters:
+    - name: receiptId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/chat.yaml#/Receipt"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/receipts/{receiptId}/allocations":
+  post:
+    operationId: receipts_allocate
+    tags:
+    - receipts
+    summary: receipts allocate
+    parameters:
+    - name: receiptId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: receipts.allocate
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/AllocationChange"
+"/threads":
+  get:
+    operationId: chat_thread
+    tags:
+    - chat
+    summary: chat thread
+    parameters: []
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/chat.yaml#/Thread"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/threads/{threadId}/messages":
+  get:
+    operationId: chat_messages
+    tags:
+    - chat
+    summary: chat messages
+    parameters:
+    - name: threadId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/chat.yaml#/MessagePage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+  post:
+    operationId: chat_send
+    tags:
+    - chat
+    summary: chat send
+    parameters:
+    - name: threadId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: chat.send
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/chat.yaml#/MessageCreate"
+"/clarifications":
+  get:
+    operationId: clarifications_list
+    tags:
+    - clarifications
+    summary: clarifications list
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/chat.yaml#/ClarificationPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/clarifications/{clarificationId}/answers":
+  post:
+    operationId: clarifications_answer
+    tags:
+    - clarifications
+    summary: clarifications answer
+    parameters:
+    - name: clarificationId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: clarifications.answer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/chat.yaml#/ClarificationAnswer"
+"/proposals/{proposalId}":
+  get:
+    operationId: proposals_read
+    tags:
+    - proposals
+    summary: proposals read
+    parameters:
+    - name: proposalId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/chat.yaml#/Proposal"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/proposals/{proposalId}/apply":
+  post:
+    operationId: proposals_decide
+    tags:
+    - proposals
+    summary: proposals decide
+    parameters:
+    - name: proposalId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: proposals.decide
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/chat.yaml#/ProposalDecision"

@@ -1,0 +1,125 @@
+---
+"/reconciliations":
+  get:
+    operationId: reconciliations_list
+    tags:
+    - reconciliations
+    summary: reconciliations list
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/accounts.yaml#/ReconciliationPage"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reconciliations/{reconciliationId}":
+  get:
+    operationId: reconciliations_read
+    tags:
+    - reconciliations
+    summary: reconciliations read
+    parameters:
+    - name: reconciliationId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/accounts.yaml#/Reconciliation"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/reconciliations/{reconciliationId}/resolve":
+  post:
+    operationId: reconciliations_resolve
+    tags:
+    - reconciliations
+    summary: reconciliations resolve
+    parameters:
+    - name: reconciliationId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: reconciliations.resolve
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/UndoInput"
