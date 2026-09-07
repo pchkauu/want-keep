@@ -1,0 +1,6 @@
+**
+!backend/
+!backend/**
+!deploy/
+!deploy/document-processor/
+!deploy/document-processor/**

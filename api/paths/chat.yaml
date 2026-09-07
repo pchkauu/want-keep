@@ -32,9 +32,10 @@
         "$ref": "../components.yaml#/responses/Problem"
       '503':
         "$ref": "../components.yaml#/responses/Problem"
-    description: Authenticated upload; validates family account, signature, 10 MiB
-      and 10 PDF pages before processing. Upload creates evidence only; receipt/message
-      command determines one financial effect.
+    description: Authenticated upload reserves uploadId, persists private evidence and queues validation.
+      Repeated identical input recovers its result; conflicting content returns 409.
+      Download, preview and analysis require accepted validation. Bytes never enter command records.
+      A receipt/message command later determines the financial effect.
     requestBody:
       required: true
       content:
@@ -110,12 +111,78 @@
       '503':
         "$ref": "../components.yaml#/responses/Problem"
       '200':
-        description: Authorized private bytes; no-store, nosniff, safe Content-Disposition.
+        description: Accepted original only; family-authorized download with no-store, nosniff and attachment Content-Disposition.
         content:
           application/octet-stream:
             schema:
               type: string
               format: binary
+"/attachments/{attachmentId}/preview/{page}":
+  get:
+    operationId: attachments_preview
+    tags: [attachments]
+    summary: Read a safe raster preview of an accepted attachment
+    parameters:
+    - name: attachmentId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: page
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 10
+    responses:
+      '200':
+        description: Re-encoded PNG; family authorization, no-store, nosniff and restrictive CSP.
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+"/system/privacy":
+  get:
+    operationId: privacy_status
+    tags: [system]
+    summary: Read private storage and processing availability
+    responses:
+      '200':
+        description: Authentication and ordinary accounting remain available when a private subsystem is unavailable.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/chat.yaml#/PrivacyStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
 "/receipts/{receiptId}":
   get:
     operationId: receipts_read

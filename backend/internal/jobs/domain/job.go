@@ -16,6 +16,7 @@ type Job struct {
 	HouseholdID          household.HouseholdID
 	ActorID              household.UserID
 	Kind, ConnectionID   string
+	SecretPurpose        connections.SecretPurpose
 	ConnectionGeneration uint64
 	Binding              connections.Binding
 	AdmissionRevision    int64
@@ -29,7 +30,7 @@ type Job struct {
 }
 
 func (j Job) RequireAttempt(issued Job, now time.Time) error {
-	if j.HouseholdID != issued.HouseholdID || j.ID != issued.ID || j.Kind != issued.Kind || j.Binding != issued.Binding || j.AdmissionRevision != issued.AdmissionRevision || j.ConnectionGeneration != issued.ConnectionGeneration || j.ConnectionID != issued.ConnectionID || j.State != "running" || j.CancelRequested || j.LeaseToken == "" || j.LeaseToken != issued.LeaseToken || j.Attempt != issued.Attempt || !now.Before(j.LeaseUntil) || !now.Before(j.Deadline) {
+	if j.HouseholdID != issued.HouseholdID || j.ID != issued.ID || j.ActorID != issued.ActorID || j.SecretPurpose != issued.SecretPurpose || j.Kind != issued.Kind || j.Binding != issued.Binding || j.AdmissionRevision != issued.AdmissionRevision || j.ConnectionGeneration != issued.ConnectionGeneration || j.ConnectionID != issued.ConnectionID || j.State != "running" || j.CancelRequested || j.LeaseToken == "" || j.LeaseToken != issued.LeaseToken || j.Attempt != issued.Attempt || !now.Before(j.LeaseUntil) || !now.Before(j.Deadline) {
 		return ErrStaleAttempt
 	}
 	return nil

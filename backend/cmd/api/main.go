@@ -14,9 +14,14 @@ import (
 	"syscall"
 	"time"
 
+	attachments "github.com/pchkauu/want-keep/backend/internal/attachments/application"
+	"github.com/pchkauu/want-keep/backend/internal/attachments/files"
+	"github.com/pchkauu/want-keep/backend/internal/attachments/processor"
+	attachmentdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/attachments"
 	delivery "github.com/pchkauu/want-keep/backend/internal/delivery/identity"
 	application "github.com/pchkauu/want-keep/backend/internal/identity/application"
 	"github.com/pchkauu/want-keep/backend/internal/identity/webauthn"
+	"github.com/pchkauu/want-keep/backend/internal/privacy/cryptobox"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 )
 
@@ -68,11 +73,32 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	attachmentKeys, _ := cryptobox.Load(os.Getenv("WANT_KEEP_ATTACHMENT_KEYRING"), "attachments")
+	connectionKeys, _ := cryptobox.Load(os.Getenv("WANT_KEEP_CONNECTION_KEYRING"), "connections")
+	blobs, _ := files.Open(os.Getenv("WANT_KEEP_ATTACHMENT_DIRECTORY"), attachmentKeys)
+	if blobs != nil {
+		defer blobs.Close()
+	}
+	processorClient, _ := processor.NewClient(os.Getenv("WANT_KEEP_DOCUMENT_PROCESSOR_SOCKET"))
+	attachmentService := attachments.NewService(database, blobs, processorClient)
+	attachmentHandler, err := attachmentdelivery.New(attachmentService, service, config, connectionKeys.Available)
+	if err != nil {
+		return err
+	}
+	processing, cancelProcessing := context.WithCancel(ctx)
+	processingStopped := make(chan struct{})
+	go func() { defer close(processingStopped); _ = attachmentService.Run(processing) }()
+	defer func() { cancelProcessing(); <-processingStopped }()
+	mux := http.NewServeMux()
+	mux.Handle("/api/v1/attachments", attachmentHandler)
+	mux.Handle("/api/v1/attachments/", attachmentHandler)
+	mux.Handle("/api/v1/system/privacy", attachmentHandler)
+	mux.Handle("/", handler)
 	address := os.Getenv("WANT_KEEP_LISTEN_ADDR")
 	if address == "" {
 		address = "127.0.0.1:8080"
 	}
-	server := &http.Server{Addr: address, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
+	server := &http.Server{Addr: address, Handler: mux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
 	stopped := make(chan error, 1)
 	go func() { stopped <- server.ListenAndServe() }()
 	select {

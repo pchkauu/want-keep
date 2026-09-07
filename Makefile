@@ -99,11 +99,18 @@ test-collector:
 	fi
 
 test-integration:
+ifeq ($(AREA),privacy)
+	sh scripts/test-privacy.sh
+else ifeq ($(AREA),all)
+	@for directory in backend/test/integration/*; do if [ -d "$$directory" ]; then $(MAKE) test-integration AREA="$${directory##*/}" || exit $$?; fi; done
+else
 	@if [ -z "$(AREA)" ]; then echo "AREA=<suite|all> is required." >&2; exit 2; fi
 	@if [ "$(AREA)" = "all" ]; then suite_path="backend/test/integration"; else suite_path="backend/test/integration/$(AREA)"; fi; \
 		if [ ! -d "$$suite_path" ]; then echo "Integration suite '$(AREA)' is not implemented." >&2; exit 2; fi; \
 		if ! find "$$suite_path" -type f -name '*_test.go' -print -quit | grep -q .; then echo "Integration suite '$(AREA)' has no tests." >&2; exit 2; fi; \
 		cd backend && $(GO) test -count=1 -tags=integration "./$${suite_path#backend/}/..."
+
+endif
 
 test-identity-race:
 	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/identity/...

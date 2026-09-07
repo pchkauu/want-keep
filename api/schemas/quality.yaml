@@ -34,6 +34,9 @@ ErrorCode:
   - ai_waiting
   - ai_budget_exhausted
   - invalid_attachment
+  - upload_conflict
+  - attachment_not_ready
+  - private_storage_unavailable
   - backup_stale
   - invitation_expired
   - invitation_used

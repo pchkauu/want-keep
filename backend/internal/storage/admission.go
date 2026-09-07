@@ -128,12 +128,18 @@ func (s *Store) CreateConnection(ctx context.Context, c admission.Connection) er
 	if c.ID == "" || c.Generation != 1 || c.Owner == "" {
 		return jobs.ErrInvalidJob
 	}
+	if c.SecretPurpose == "" {
+		c.SecretPurpose = connections.APICredentials
+	}
+	if !c.SecretPurpose.Valid() {
+		return jobs.ErrInvalidJob
+	}
 	switch c.Provider {
 	case "alfa", "raiffeisen", "ozon", "bybit", "aifory", "emcd":
 	default:
 		return jobs.ErrInvalidJob
 	}
-	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.connections(household_id,id,provider,external_owner_id,generation,authorized) VALUES($1,$2,$3,$4,$5,$6)`, scope.principal.HouseholdID(), c.ID, c.Provider, c.Owner, c.Generation, c.Authorized)
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.connections(household_id,id,provider,external_owner_id,generation,authorized,secret_purpose) VALUES($1,$2,$3,$4,$5,$6,$7)`, scope.principal.HouseholdID(), c.ID, c.Provider, c.Owner, c.Generation, c.Authorized, c.SecretPurpose)
 	return err
 }
 func (s *Store) Connection(ctx context.Context, p household.Principal, id string) (admission.Connection, error) {
@@ -142,7 +148,7 @@ func (s *Store) Connection(ctx context.Context, p household.Principal, id string
 		return admission.Connection{}, err
 	}
 	c := admission.Connection{ID: id}
-	err = q.QueryRow(ctx, `SELECT provider,external_owner_id,generation,authorized FROM want_keep.connections WHERE household_id=$1 AND id=$2`, p.HouseholdID(), id).Scan(&c.Provider, &c.Owner, &c.Generation, &c.Authorized)
+	err = q.QueryRow(ctx, `SELECT provider,external_owner_id,generation,authorized,secret_purpose FROM want_keep.connections WHERE household_id=$1 AND id=$2`, p.HouseholdID(), id).Scan(&c.Provider, &c.Owner, &c.Generation, &c.Authorized, &c.SecretPurpose)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c, ErrNotFound
 	}
@@ -161,7 +167,10 @@ func (s *Store) Disconnect(ctx context.Context, id string) error {
 		return jobs.ErrInvalidJob
 	}
 	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN state='ready' THEN 'canceled' ELSE state END,cancel_requested=true WHERE household_id=$1 AND connection_id=$2 AND state IN ('ready','running')`, scope.principal.HouseholdID(), id)
-	return err
+	if err != nil {
+		return err
+	}
+	return s.RevokeConnectionSecrets(ctx, id)
 }
 func (s *Store) CreateSyncJob(ctx context.Context, c admission.Connection, a connections.Admission, deadline time.Time) (jobs.Job, error) {
 	scope, err := s.familyScope(ctx)
@@ -186,7 +195,7 @@ func (s *Store) CreateSyncJob(ctx context.Context, c admission.Connection, a con
 	}
 	existing, err := scanJob(scope.tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND connection_id=$2 AND kind='sync' AND state IN ('ready','running') AND NOT cancel_requested`, scope.principal.HouseholdID(), c.ID))
 	if err == nil {
-		if existing.Binding != a.Binding() || existing.AdmissionRevision != a.Revision() || existing.ConnectionGeneration != c.Generation {
+		if existing.Binding != a.Binding() || existing.AdmissionRevision != a.Revision() || existing.ConnectionGeneration != c.Generation || existing.SecretPurpose != c.SecretPurpose {
 			return jobs.Job{}, connections.ErrProviderNotAdmitted
 		}
 		return existing, nil
@@ -199,7 +208,7 @@ func (s *Store) CreateSyncJob(ctx context.Context, c admission.Connection, a con
 		return jobs.Job{}, err
 	}
 	id := newID()
-	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.jobs(household_id,id,actor_id,kind,connection_id,connection_generation,binding,admission_revision,state,max_attempts,available_at,deadline) VALUES($1,$2,$3,'sync',$4,$5,$6,$7,'ready',5,clock_timestamp(),$8)`, scope.principal.HouseholdID(), id, scope.principal.UserID(), c.ID, c.Generation, binding, a.Revision(), deadline)
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.jobs(household_id,id,actor_id,kind,connection_id,connection_generation,binding,admission_revision,state,max_attempts,available_at,deadline,secret_purpose) VALUES($1,$2,$3,'sync',$4,$5,$6,$7,'ready',5,clock_timestamp(),$8,$9)`, scope.principal.HouseholdID(), id, scope.principal.UserID(), c.ID, c.Generation, binding, a.Revision(), deadline, c.SecretPurpose)
 	if err != nil {
 		return jobs.Job{}, err
 	}

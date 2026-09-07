@@ -11,10 +11,11 @@ import (
 )
 
 type Connection struct {
-	ID, Provider string
-	Owner        household.UserID
-	Generation   uint64
-	Authorized   bool
+	ID, Provider  string
+	Owner         household.UserID
+	Generation    uint64
+	Authorized    bool
+	SecretPurpose connections.SecretPurpose
 }
 type Transactions interface {
 	WithinAdmission(context.Context, string, string, func(context.Context) error) error
@@ -129,11 +130,22 @@ func (s *Service) RequestSync(ctx context.Context, p household.Principal, id str
 	return result, err
 }
 func (s *Service) BeforeRead(ctx context.Context, p household.Principal, issued jobs.Job) error {
+	return s.WithReadPermit(ctx, p, issued, func(context.Context) error { return nil })
+}
+
+// WithReadPermit loads private inputs while the deployment and household fences are held.
+// External provider IO belongs after this transaction and requires BeforeRead again.
+func (s *Service) WithReadPermit(ctx context.Context, p household.Principal, issued jobs.Job, read func(context.Context) error) error {
 	if err := issued.Binding.Validate(); err != nil {
 		return connections.ErrProviderNotAdmitted
 	}
 	return s.transactions.WithinAdmission(ctx, issued.Binding.Provider, issued.Binding.Environment, func(ctx context.Context) error {
-		return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error { return s.requireCurrent(ctx, p, issued) })
+		return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
+			if err := s.requireCurrent(ctx, p, issued); err != nil {
+				return err
+			}
+			return read(ctx)
+		})
 	})
 }
 func (s *Service) requireCurrent(ctx context.Context, p household.Principal, issued jobs.Job) error {
@@ -162,7 +174,7 @@ func (s *Service) requireCurrent(ctx context.Context, p household.Principal, iss
 	if err != nil {
 		return err
 	}
-	if !c.Authorized || c.Generation != issued.ConnectionGeneration || c.Provider != issued.Binding.Provider {
+	if !c.Authorized || c.Generation != issued.ConnectionGeneration || c.Provider != issued.Binding.Provider || c.SecretPurpose != issued.SecretPurpose {
 		return connections.ErrProviderNotAdmitted
 	}
 	return nil

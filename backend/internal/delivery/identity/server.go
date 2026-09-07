@@ -1,61 +1,45 @@
 package identity
 
 import (
-	"crypto/hmac"
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 	"net/http"
-	"net/netip"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/contract"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/generated"
+	"github.com/pchkauu/want-keep/backend/internal/delivery/http/security"
 	application "github.com/pchkauu/want-keep/backend/internal/identity/application"
 	identity "github.com/pchkauu/want-keep/backend/internal/identity/domain"
 )
 
-const SessionCookie = "want_keep_session"
+const SessionCookie = security.SessionCookie
 const browserCookie = "want_keep_ceremony"
 
-type Config struct {
-	Environment, Origin string
-	TrustedProxies      []netip.Prefix
-}
+type Config = security.Config
 type Server struct {
 	service  *application.Service
 	boundary *contract.Boundary
 	config   Config
-	host     string
+	guard    *security.Guard
 	mux      *http.ServeMux
 }
 
 func New(service *application.Service, c Config) (*Server, error) {
-	u, err := url.Parse(c.Origin)
-	if service == nil || err != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
-		return nil, identity.ErrAttempt
+	guard, err := security.New(c)
+	if err != nil {
+		return nil, err
 	}
-	switch c.Environment {
-	case "production":
-		if c.Origin != "https://want-keep.tech" {
-			return nil, identity.ErrAttempt
-		}
-	case "test", "development":
-		if u.Hostname() != "localhost" || (u.Scheme != "http" && u.Scheme != "https") {
-			return nil, identity.ErrAttempt
-		}
-	default:
+	if service == nil {
 		return nil, identity.ErrAttempt
 	}
 	b, err := contract.NewBoundary()
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{service: service, boundary: b, config: c, host: u.Host, mux: http.NewServeMux()}
+	s := &Server{service: service, boundary: b, config: c, guard: guard, mux: http.NewServeMux()}
 	s.mux.HandleFunc("POST /api/v1/auth/login/options", s.loginOptions)
 	s.mux.HandleFunc("POST /api/v1/auth/login/verify", s.loginVerify)
 	s.mux.HandleFunc("POST /api/v1/household/bootstrap", s.bootstrap)
@@ -73,42 +57,12 @@ func New(service *application.Service, c Config) (*Server, error) {
 	return s, nil
 }
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Referrer-Policy", "no-referrer")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-	if r.Host != s.host {
-		s.problem(w, identity.ErrAttempt)
+	if err := s.guard.Check(w, r); err != nil {
+		s.problem(w, err)
 		return
-	}
-	if s.config.Environment == "production" && r.TLS == nil && !(s.trustedPeer(r) && r.Header.Get("X-Forwarded-Proto") == "https") {
-		s.problem(w, identity.ErrUnauthorized)
-		return
-	}
-	if r.Method != "GET" && r.Method != "HEAD" {
-		if r.Header.Get("Origin") != s.config.Origin || r.Header.Get("Sec-Fetch-Site") == "cross-site" {
-			s.problem(w, identity.ErrUnauthorized)
-			return
-		}
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 128*1024)
 	s.mux.ServeHTTP(w, r)
-}
-func (s *Server) trustedPeer(r *http.Request) bool {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return false
-	}
-	ip, err := netip.ParseAddr(host)
-	if err != nil {
-		return false
-	}
-	for _, prefix := range s.config.TrustedProxies {
-		if prefix.Contains(ip) {
-			return true
-		}
-	}
-	return false
 }
 func (s *Server) request(w http.ResponseWriter, r *http.Request, begin bool) (application.RequestContext, error) {
 	var result application.RequestContext
@@ -129,37 +83,15 @@ func (s *Server) request(w http.ResponseWriter, r *http.Request, begin bool) (ap
 		// Preserve live bindings, but let every new attempt use its full server-side lifetime.
 		http.SetCookie(w, &http.Cookie{Name: browserCookie, Value: string(result.Browser), Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 1800})
 	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	source, err := s.guard.Source(r)
 	if err != nil {
-		return result, identity.ErrAttempt
+		return result, err
 	}
-	if s.trustedPeer(r) {
-		forwarded := r.Header.Get("X-Forwarded-For")
-		if forwarded != "" {
-			if strings.Contains(forwarded, ",") {
-				return result, identity.ErrAttempt
-			}
-			if _, err = netip.ParseAddr(forwarded); err != nil {
-				return result, identity.ErrAttempt
-			}
-			host = forwarded
-		}
-	}
-	result.Source = host
+	result.Source = source
 	return result, nil
 }
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request, mutation bool) (application.Access, bool) {
-	cookie, err := r.Cookie(SessionCookie)
-	if err != nil {
-		s.problem(w, identity.ErrUnauthorized)
-		return application.Access{}, false
-	}
-	token := identity.Token(cookie.Value)
-	if mutation && (!token.Valid(32) || !hmac.Equal([]byte(token.CSRF()), []byte(r.Header.Get("X-CSRF-Token")))) {
-		s.problem(w, identity.ErrUnauthorized)
-		return application.Access{}, false
-	}
-	access, err := s.service.Me(r.Context(), token)
+	access, err := s.guard.Authorize(r, s.service, mutation)
 	if err != nil {
 		s.problem(w, err)
 		return application.Access{}, false

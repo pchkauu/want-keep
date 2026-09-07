@@ -54,6 +54,18 @@ func (s *Service) Me(ctx context.Context, token identity.Token) (Access, error) 
 	return result, err
 }
 
+// WithinSession serializes a dependent security change with logout and recovery.
+// The callback must contain database-only work and preserve identity-before-household lock order.
+func (s *Service) WithinSession(ctx context.Context, token identity.Token, apply func(context.Context, Access) error) error {
+	return s.repo.WithinIdentity(ctx, func(ctx context.Context) error {
+		access, err := s.access(ctx, token)
+		if err != nil {
+			return err
+		}
+		return apply(ctx, access)
+	})
+}
+
 func (s *Service) Limit(ctx context.Context, r RequestContext) error {
 	if !r.Browser.Valid(32) || r.Source == "" {
 		return identity.ErrAttempt
