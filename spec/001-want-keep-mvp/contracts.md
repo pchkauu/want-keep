@@ -349,3 +349,5 @@ Undo получает decisionId, основание и текущие expectedR
 ## Долговечные фоновые задания (task-3.1)
 
 Очереди sync/outbox/ai, ожидание без расхода попыток, часовые расписания, checkpoint continuity, lease/receipt и trusted reconciliation реализованы. Подробные границы, миграция и команды: [evidence/task-3.1-jobs.md](evidence/task-3.1-jobs.md). Неповторяемое IO требует durable external marker; неизвестный результат не повторяется до сверки. Новых HTTP маршрутов нет.
+
+Подтверждение sync-результата требует `Reconciliation.Page` с текущим курсором и тем же evidence reference. Оно предоставляет существующим импортерам проверенный source scope; страница, checkpoint, reconciliation и terminal receipt фиксируются атомарно. Промежуточная страница продолжает выполнение с новым lease.

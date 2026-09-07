@@ -212,11 +212,8 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 	if issued.HouseholdID != p.HouseholdID() {
 		return false, household.ErrForbidden
 	}
-	if (page.Coverage == "complete") != (len(page.Gaps) == 0) {
-		return false, jobs.ErrInvalidJob
-	}
-	if page.EvidenceRef == "" || len(page.EvidenceRef) > 2000 || (page.Coverage != "complete" && page.Coverage != "partial" && page.Coverage != "unavailable") {
-		return false, jobs.ErrInvalidJob
+	if err := page.Validate(); err != nil {
+		return false, err
 	}
 	if err := issued.Binding.Validate(); err != nil {
 		return false, connections.ErrProviderNotAdmitted

@@ -117,7 +117,7 @@ func (s *Store) InvalidateJobs(ctx context.Context, a connections.Admission) err
 	if err != nil {
 		return err
 	}
-	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN external_started THEN 'unresolved' ELSE 'canceled' END,reason=CASE WHEN external_started THEN 'external_unknown' ELSE 'canceled' END,cancel_requested=true WHERE kind='sync' AND state IN ('ready','running','waiting','unresolved') AND binding->>'provider'=$1 AND binding->>'environment'=$2 AND (binding!=$3::jsonb OR admission_revision!=$4 OR $5!='admitted')`, b.Provider, b.Environment, binding, a.Revision(), a.Status())
+	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN external_started OR state='unresolved' THEN 'unresolved' ELSE 'canceled' END,reason=CASE WHEN external_started OR state='unresolved' THEN 'external_unknown' ELSE 'canceled' END,cancel_requested=true WHERE kind='sync' AND state IN ('ready','running','waiting','unresolved') AND binding->>'provider'=$1 AND binding->>'environment'=$2 AND (binding!=$3::jsonb OR admission_revision!=$4 OR $5!='admitted')`, b.Provider, b.Environment, binding, a.Revision(), a.Status())
 	return err
 }
 func (s *Store) CreateConnection(ctx context.Context, c admission.Connection) error {
@@ -173,7 +173,7 @@ func (s *Store) Disconnect(ctx context.Context, id string) error {
 	if tag.RowsAffected() != 1 {
 		return jobs.ErrInvalidJob
 	}
-	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN external_started THEN 'unresolved' ELSE 'canceled' END,reason=CASE WHEN external_started THEN 'external_unknown' ELSE 'canceled' END,cancel_requested=true WHERE household_id=$1 AND connection_id=$2 AND state IN ('ready','running','waiting','unresolved')`, scope.principal.HouseholdID(), id)
+	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN external_started OR state='unresolved' THEN 'unresolved' ELSE 'canceled' END,reason=CASE WHEN external_started OR state='unresolved' THEN 'external_unknown' ELSE 'canceled' END,cancel_requested=true WHERE household_id=$1 AND connection_id=$2 AND state IN ('ready','running','waiting','unresolved')`, scope.principal.HouseholdID(), id)
 	if err != nil {
 		return err
 	}
@@ -256,6 +256,14 @@ func (s *Store) SaveCheckpoint(ctx context.Context, j jobs.Job, cursor, coverage
 	}
 	if tag.RowsAffected() != 1 {
 		return jobs.ErrStaleAttempt
+	}
+	return s.saveSyncProgress(ctx, j, cursor, coverage, gaps)
+}
+
+func (s *Store) saveSyncProgress(ctx context.Context, j jobs.Job, cursor, coverage string, gaps []string) error {
+	scope, err := s.familyScope(ctx)
+	if err != nil {
+		return err
 	}
 	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.sync_progress(household_id,connection_id,generation,cursor,coverage,gaps,last_job_id,completed) VALUES($1,$2,$3,$4,$5,$6,$7,false) ON CONFLICT(household_id,connection_id) DO UPDATE SET generation=EXCLUDED.generation,cursor=EXCLUDED.cursor,coverage=EXCLUDED.coverage,gaps=EXCLUDED.gaps,last_job_id=EXCLUDED.last_job_id,completed=false`, j.HouseholdID, j.ConnectionID, j.ConnectionGeneration, cursor, coverage, gaps, j.ID)
 	return err

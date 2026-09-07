@@ -5,6 +5,7 @@ package storage_test
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/url"
 	"os"
@@ -86,10 +87,11 @@ func newDatabase(t *testing.T) (*pgxpool.Pool, string) {
 	t.Cleanup(admin.Close)
 	return admin, u.String()
 }
-func newFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T) *fixture { return newFixtureWithMigrations(t, migrations.Files) }
+func newFixtureWithMigrations(t *testing.T, files fs.FS) *fixture {
 	t.Helper()
 	admin, dsn := newDatabase(t)
-	if err := storage.Migrate(testContext, admin, migrations.Files); err != nil {
+	if err := storage.Migrate(testContext, admin, files); err != nil {
 		t.Fatal(err)
 	}
 	u, _ := url.Parse(dsn)

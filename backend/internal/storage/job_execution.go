@@ -78,11 +78,15 @@ func (s *Store) JobReceipt(ctx context.Context, p household.Principal, j jobs.Jo
 	return true, nil
 }
 func (s *Store) RecordJobReceipt(ctx context.Context, p household.Principal, j jobs.Job) error {
-	scope, err := s.familyScope(ctx)
-	if err != nil {
+	if _, err := s.FenceJob(ctx, p, j); err != nil {
 		return err
 	}
-	if _, err = s.FenceJob(ctx, p, j); err != nil {
+	return s.insertJobReceipt(ctx, p, j)
+}
+
+func (s *Store) insertJobReceipt(ctx context.Context, p household.Principal, j jobs.Job) error {
+	scope, err := s.familyScope(ctx)
+	if err != nil {
 		return err
 	}
 	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.job_receipts(household_id,job_id,lease_token,attempt) VALUES($1,$2,$3,$4)`, p.HouseholdID(), j.ID, j.LeaseToken, j.Attempt)

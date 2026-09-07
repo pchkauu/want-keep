@@ -349,3 +349,5 @@ When undo reapplies source data, independent effective review decisions are comp
 ## Durable background jobs (task-3.1)
 
 Implemented sync/outbox/ai queues, waiting without consumed attempts, hourly schedules, checkpoint continuity, leases/receipts and trusted reconciliation. Boundaries, migration and commands: [evidence/task-3.1-jobs.en.md](evidence/task-3.1-jobs.en.md). Non-repeatable IO requires a durable external marker; unknown outcomes are not retried before reconciliation. No new HTTP routes.
+
+A confirmed sync result requires `Reconciliation.Page` with the current cursor and the same evidence reference. It provides existing importers with a verified source scope; page, checkpoint, reconciliation and terminal receipt commit atomically. An intermediate page continues under a new lease.

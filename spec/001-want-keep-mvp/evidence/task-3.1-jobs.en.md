@@ -21,9 +21,13 @@ Implemented PostgreSQL scheduling, sync/outbox/ai queues, workers, leases/heartb
 - Disconnect or admission change cancels the old attempt; unknown external effects stay unresolved. Historical uncertainty does not permit new automatic execution. MFA remains the external-account owner's action.
 - Failure reasons are closed codes; logs contain queue/code, never secrets, DSNs, cursors, payloads or financial messages.
 
+Confirmed sync reconciliation requires a `Page` with the same evidence reference. After validating current admission and generation, the trusted transaction enables existing source/account application contracts and atomically saves the page, omissions, checkpoint and reconciliation. The last page adds a receipt and success timestamp; an intermediate page continues from the new cursor. Normal running-attempt fencing remains intact. Invalidation/disconnect preserve unknown outcomes even for legacy jobs without an external marker.
+
 ## Startup and migration
 
 `010_durable_jobs.sql` follows 009 and retains outbox/history/cursors and existing jobs. Stop old workers before migration; migrate using the operator role, then start the new binary with the application role. Startup neither migrates nor deletes data; there is no automatic schema rollback. `run_deadline` does not weaken SQL protection of the original `deadline`.
+
+Backfill selects the unique active job in the current generation. With no active job and ambiguous terminal history, it never guesses chronology from deadlines: it retains `legacy_checkpoint_ambiguous`, and the next import conservatively replays history from the beginning through existing deduplication. Old job rows and cursors remain available for investigation.
 
 ```sh
 cd backend
