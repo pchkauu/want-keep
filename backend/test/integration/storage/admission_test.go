@@ -238,6 +238,15 @@ func TestAdmissionLockAndIssuedMetadataAreProtected(t *testing.T) {
 }
 
 func TestLeaseExpiresDuringPageCommitQuarantinesAfterRollback(t *testing.T) {
+	for _, nested := range []bool{false, true} {
+		name := "outermost"
+		if nested {
+			name = "nested_admission"
+		}
+		t.Run(name, func(t *testing.T) { testLeaseExpiryRollback(t, nested) })
+	}
+}
+func testLeaseExpiryRollback(t *testing.T, nested bool) {
 	f := newFixture(t)
 	service := f.admit(binding())
 	issued := f.issued(service, f.connection(), binding())
@@ -251,14 +260,25 @@ func TestLeaseExpiresDuringPageCommitQuarantinesAfterRollback(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		applied, err := service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:lease-expired-during-commit", NextCursor: "p2", Coverage: "complete", Complete: true}, func(ctx context.Context) error {
-			if err := f.writer.Append(ctx, f.p, r, 0); err != nil {
-				return err
-			}
-			close(appliedWrites)
-			<-continueCommit
-			return nil
-		})
+		var applied bool
+		commit := func(ctx context.Context) error {
+			var err error
+			applied, err = service.CommitPage(ctx, f.p, issued, admission.Page{EvidenceRef: "synthetic:lease-expired-during-commit", NextCursor: "p2", Coverage: "complete", Complete: true}, func(ctx context.Context) error {
+				if err := f.writer.Append(ctx, f.p, r, 0); err != nil {
+					return err
+				}
+				close(appliedWrites)
+				<-continueCommit
+				return nil
+			})
+			return err
+		}
+		var err error
+		if nested {
+			err = f.store.WithinAdmission(testContext, binding().Provider, binding().Environment, commit)
+		} else {
+			err = commit(testContext)
+		}
 		done <- result{applied, err}
 	}()
 	select {

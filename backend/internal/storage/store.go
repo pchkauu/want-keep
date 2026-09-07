@@ -75,6 +75,8 @@ type transactionScope struct {
 	admissionKey     string
 	syncJobID        string
 	syncConnectionID string
+	root             *transactionScope
+	rollbackFailure  error
 }
 
 func (s *Store) scope(ctx context.Context) (*transactionScope, error) {
@@ -100,7 +102,7 @@ func (s *Store) transact(ctx context.Context, fn func(context.Context, *transact
 		if err != nil {
 			return err
 		}
-		return fn(ctx, scope)
+		return s.nestedTransaction(ctx, scope, fn)
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
@@ -112,12 +114,66 @@ func (s *Store) transact(ctx context.Context, fn func(context.Context, *transact
 		_ = tx.Rollback(cleanup)
 	}()
 	scope := &transactionScope{store: s, tx: tx}
+	scope.root = scope
 	ctx = context.WithValue(ctx, transactionKey{}, scope)
 	if err = fn(ctx, scope); err != nil {
 		return err
 	}
+	if scope.rollbackFailure != nil {
+		return scope.rollbackFailure
+	}
 	return tx.Commit(ctx)
 }
+
+func (s *Store) nestedTransaction(ctx context.Context, parent *transactionScope, fn func(context.Context, *transactionScope) error) error {
+	if parent.root.rollbackFailure != nil {
+		return parent.root.rollbackFailure
+	}
+	tx, err := parent.tx.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if rollbackErr := tx.Rollback(cleanup); rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
+			parent.root.rollbackFailure = rollbackErr
+		}
+	}()
+	child := *parent
+	child.tx = tx
+	nestedContext := context.WithValue(ctx, transactionKey{}, &child)
+	if err = fn(nestedContext, &child); err != nil {
+		cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if rollbackErr := tx.Rollback(cleanup); rollbackErr != nil {
+			parent.root.rollbackFailure = rollbackErr
+			return errors.Join(err, rollbackErr)
+		}
+		return err
+	}
+	if parent.root.rollbackFailure != nil {
+		return parent.root.rollbackFailure
+	}
+	if err = tx.Commit(ctx); err != nil {
+		// Unknown savepoint release must never be converted into a successful outer commit.
+		parent.root.rollbackFailure = err
+		return err
+	}
+	parent.principal, parent.householdLocked = child.principal, child.householdLocked
+	parent.admissionKey = child.admissionKey
+	parent.syncJobID, parent.syncConnectionID = child.syncJobID, child.syncConnectionID
+	return nil
+}
+
+// WithinNewHousehold rejects ambient transactions: command registration must be durable first.
+func (s *Store) WithinNewHousehold(ctx context.Context, p household.Principal, fn func(context.Context) error) error {
+	if ctx.Value(transactionKey{}) != nil {
+		return ErrTransactionRequired
+	}
+	return s.WithinHousehold(ctx, p, fn)
+}
+
 func (s *Store) WithinHousehold(ctx context.Context, p household.Principal, fn func(context.Context) error) error {
 	if err := p.RequireHousehold(p.HouseholdID()); err != nil {
 		return err

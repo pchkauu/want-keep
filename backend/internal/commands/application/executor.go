@@ -10,6 +10,8 @@ import (
 )
 
 type Transactions interface {
+	// Registration requires an independently committed transaction; an enclosing scope is rejected.
+	WithinNewHousehold(context.Context, household.Principal, func(context.Context) error) error
 	WithinHousehold(context.Context, household.Principal, func(context.Context) error) error
 }
 
@@ -41,7 +43,7 @@ func (s *Executor) Register(ctx context.Context, p household.Principal, r Reques
 	if err != nil {
 		return command.Command{}, err
 	}
-	err = s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
+	err = s.transactions.WithinNewHousehold(ctx, p, func(ctx context.Context) error {
 		var e error
 		c, e = s.repository.RegisterCommand(ctx, c)
 		if e != nil {

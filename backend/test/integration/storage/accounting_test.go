@@ -5,6 +5,7 @@ package storage_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -246,5 +247,70 @@ func TestHouseholdMemberCapAndHistoryPrivileges(t *testing.T) {
 		if _, err = tx.Exec(testContext, "ROLLBACK TO SAVEPOINT privilege_probe"); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestNestedRollbackAndIndependentCommandRegistration(t *testing.T) {
+	f := newFixture(t)
+	account := f.account(money.RUB, "100")
+	r := f.revision(uuid.NewString(), account, "-10", money.RUB, 1)
+	err := f.store.WithinAdmission(testContext, binding().Provider, binding().Environment, func(ctx context.Context) error {
+		nestedErr := f.store.WithinHousehold(ctx, f.p, func(ctx context.Context) error {
+			if err := f.writer.Append(ctx, f.p, r, 0); err != nil {
+				return err
+			}
+			return commands.Rejection{Code: "invalid_allocation"}
+		})
+		var rejection commands.Rejection
+		if !errors.As(nestedErr, &rejection) {
+			return fmt.Errorf("nested rejection not propagated: %v", nestedErr)
+		}
+		// Rolling back also restores lock metadata; the household lock no longer exists.
+		return f.store.WithinAdmission(ctx, binding().Provider, binding().Environment, func(context.Context) error { return nil })
+	})
+	if err != nil || f.count("postings") != 0 || f.count("outbox") != 0 || f.available(account) != "100" {
+		t.Fatalf("nested writes escaped rollback: %v", err)
+	}
+	key := request()
+	err = f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
+		_, err := f.executor.Execute(ctx, f.p, key, func(context.Context) (command.Result, error) {
+			t.Error("nested command executed")
+			return command.Result{}, commands.Rejection{Code: "invalid_allocation"}
+		})
+		if err == nil {
+			return fmt.Errorf("registration joined ambient transaction")
+		}
+		return nil
+	})
+	if err != nil || f.count("command_tombstones") != 0 || f.count("postings") != 0 {
+		t.Fatalf("nested registration accepted: %v", err)
+	}
+	if _, err = f.write(r, key); err != nil || f.available(account) != "90" {
+		t.Fatalf("top-level command failed: %v", err)
+	}
+}
+
+func TestRecoveredNestedPanicRollsBackSavepoint(t *testing.T) {
+	f := newFixture(t)
+	account := f.account(money.RUB, "100")
+	r := f.revision(uuid.NewString(), account, "-10", money.RUB, 1)
+	err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Error("expected nested panic")
+				}
+			}()
+			_ = f.store.WithinHousehold(ctx, f.p, func(ctx context.Context) error {
+				if err := f.writer.Append(ctx, f.p, r, 0); err != nil {
+					return err
+				}
+				panic("synthetic nested failure")
+			})
+		}()
+		return nil
+	})
+	if err != nil || f.count("postings") != 0 || f.count("outbox") != 0 || f.available(account) != "100" {
+		t.Fatalf("recovered panic retained nested writes: %v", err)
 	}
 }
