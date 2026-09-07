@@ -97,6 +97,10 @@ Posting:
       "$ref": "./money.yaml#/ID"
     money:
       "$ref": "./money.yaml#/Money"
+    funding:
+      "$ref": "./transactions.yaml#/PostingFunding"
+    treatment:
+      "$ref": "./transactions.yaml#/PostingTreatment"
     role:
       type: string
       enum:
@@ -168,6 +172,42 @@ Transaction:
       - pending
       - posted
       - reversed
+      - cancelled
+    postedAt:
+      "$ref": "./money.yaml#/Instant"
+    timezone:
+      "$ref": "./money.yaml#/Timezone"
+    origin:
+      type: string
+      enum: [manual, source, legacy]
+    feeKnowledge:
+      type: string
+      enum: [known, unknown]
+    pnlBasis:
+      type: string
+      enum: [gross, net]
+    note:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    attachmentId:
+      "$ref": "./money.yaml#/ID"
+    quality:
+      "$ref": "./quality.yaml#/DataQuality"
+    balanceEffects:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/TransactionBalanceEffect"
+    economicComponents:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/EconomicComponent"
+    holds:
+      type: array
+      items:
+        "$ref": "./transactions.yaml#/TransactionHold"
+    exchange:
+      "$ref": "./transactions.yaml#/ExecutedExchange"
     occurredAt:
       "$ref": "./money.yaml#/Instant"
     cashDate:
@@ -217,6 +257,12 @@ Transaction:
   - sources
   - aiState
   - payer
+  - origin
+  - feeKnowledge
+  - quality
+  - balanceEffects
+  - economicComponents
+  - holds
 TransactionCreate:
   type: object
   additionalProperties: false
@@ -226,6 +272,8 @@ TransactionCreate:
       enum:
       - income
       - expense
+    funding:
+      "$ref": "./transactions.yaml#/PostingFunding"
     accountId:
       "$ref": "./money.yaml#/ID"
     occurredAt:
@@ -259,6 +307,8 @@ FeeInput:
   type: object
   additionalProperties: false
   properties:
+    funding:
+      "$ref": "./transactions.yaml#/PostingFunding"
     accountId:
       "$ref": "./money.yaml#/ID"
     amount:
@@ -270,6 +320,10 @@ TransferCreate:
   type: object
   additionalProperties: false
   properties:
+    fromFunding:
+      "$ref": "./transactions.yaml#/PostingFunding"
+    toFunding:
+      "$ref": "./transactions.yaml#/PostingFunding"
     fromAccountId:
       "$ref": "./money.yaml#/ID"
     toAccountId:
@@ -281,10 +335,12 @@ TransferCreate:
     received:
       "$ref": "./money.yaml#/PositiveMoney"
     fees:
+      maxItems: 998
       type: array
       items:
         "$ref": "./transactions.yaml#/FeeInput"
     existingTransactions:
+      maxItems: 1000
       type: array
       items:
         "$ref": "./transactions.yaml#/ExistingTransaction"
@@ -583,3 +639,62 @@ Payer:
   oneOf:
   - "$ref": "./transactions.yaml#/KnownPayer"
   - "$ref": "./transactions.yaml#/UnspecifiedPayer"
+
+PostingFunding:
+  type: string
+  enum: [own, credit, unknown]
+  description: Explicit source/user funding; omitted input uses own for non-credit products and unknown for credit cards. Credit is never spendable own money.
+PostingTreatment:
+  type: string
+  enum: [movement, included, valuation]
+  description: Included fee is already part of net PnL; valuation is not received money.
+TransactionBalanceEffect:
+  type: object
+  additionalProperties: false
+  properties:
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    at:
+      "$ref": "./money.yaml#/Instant"
+    owned:
+      "$ref": "./quality.yaml#/AmountValue"
+    available:
+      "$ref": "./quality.yaml#/AmountValue"
+    locked:
+      "$ref": "./quality.yaml#/AmountValue"
+    debt:
+      "$ref": "./quality.yaml#/AmountValue"
+  required: [accountId, at, owned, available, locked, debt]
+EconomicComponent:
+  type: object
+  additionalProperties: false
+  properties:
+    kind:
+      type: string
+      enum: [income, expense, fee, interest, funding, reward, realized_pnl, unrealized_pnl]
+    money:
+      "$ref": "./money.yaml#/Money"
+    treatment:
+      "$ref": "./transactions.yaml#/PostingTreatment"
+  required: [kind, money, treatment]
+TransactionHold:
+  type: object
+  additionalProperties: false
+  properties:
+    accountId:
+      "$ref": "./money.yaml#/ID"
+    amount:
+      "$ref": "./money.yaml#/PositiveMoney"
+    funding:
+      "$ref": "./transactions.yaml#/PostingFunding"
+  required: [accountId, amount, funding]
+ExecutedExchange:
+  type: object
+  additionalProperties: false
+  description: Exact executed ratio is sent divided by received; retain both native amounts without persisting a rounded rate or including fees in principal.
+  properties:
+    sent:
+      "$ref": "./money.yaml#/PositiveMoney"
+    received:
+      "$ref": "./money.yaml#/PositiveMoney"
+  required: [sent, received]

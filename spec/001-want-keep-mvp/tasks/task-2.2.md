@@ -5,7 +5,7 @@
 
 Создать единый проверяемый учёт движения денег.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализованы журнал, статусы и backend/API новых доходов, расходов, переводов и обменов; полные исправления, сопоставление, распределения и возвраты — в следующих задачах.
 
 **Зависимости:** `task-2.1`, `task-1.2`.
 
@@ -13,11 +13,18 @@
 
 ### Изменение и контракты
 
-Ввести доменные операции дохода/расхода, перевода, обмена, начисления, комиссии, долга и корректировки со связанными проводками. Pending не равен posted; переходы и экономические эффекты атомарны. Переводы, открытия и погашения не создают повторный доход/расход; native amounts и provenance сохраняются.
+Типизированные draft/pending/posted/cancelled/reversed и revisions сохраняют точные native-суммы, время покупки/банковского проведения, автора, плательщика и provenance. Денежные эффекты разделяют own/available/locked/debt и экономические компоненты. Покупка 31 августа с проведением 2 сентября входит в август после posted; неизвестное назначение не скрывает подтверждённый семейный факт. Команды отдельно регистрируются pending, затем сессия/семья перепроверяются; журнал, проекции, audit/outbox и исход атомарны. Новый перевод/обмен хранит обе стороны и комиссии, включая третий актив; existingTransactions и распределения получают явный feature_unavailable. Импорт использует CommitPage и D-39, сохраняет overrides и quarantine. Неподтверждённое покрытие снимка не финансирует резервы.
 
 ### Границы изменений
 
 - `backend/internal/ledger/`
+- `backend/internal/accounts/`
+- `backend/internal/commands/application/authenticated.go`
+- `backend/internal/storage/`
+- `backend/internal/delivery/ledger/`
+- `backend/migrations/008_transaction_ledger.sql`
+- `api/`
+- `backend/test/integration/ledger/`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -127,12 +134,12 @@
 ### Проверка результата
 
 ```sh
-make test-go PKG=./internal/ledger/... && make test-integration AREA=ledger
+make test-go PKG=./internal/ledger/... && make test-integration AREA=ledger && make test-ledger-race
 ```
 
-Проводки и статусы согласованы; отмены/pending, комиссия перевода и кредитное погашение проходят инварианты.
+Точные HTTP/SQL round trips, состояния/удержания, кредитное погашение, PnL, комиссии, даты, replay/rollback/restart, импорт, права, миграция и пагинация проходят без повторного эффекта.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Доказательства и границы: evidence/task-2.2-ledger.md. Зависимости включены в базу; команды существуют. Обязательны make check, ledger/accounts/storage/identity/household integration/race и privacy suite. Это не доказательство live adapters, UI, AI или production.
 
 ### Передача следующему агенту
 
@@ -144,7 +151,7 @@ make test-go PKG=./internal/ledger/... && make test-integration AREA=ledger
 
 Create one verifiable record of money movements.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Ledger, states and backend/API for new income, expenses, transfers and exchanges implemented; full corrections, matching, allocations and refunds remain downstream.
 
 **Dependencies:** `task-2.1`, `task-1.2`.
 
@@ -152,11 +159,18 @@ Create one verifiable record of money movements.
 
 ### Change and contracts
 
-Introduce domain income/expense, transfer, exchange, accrual, fee, debt and adjustment transactions with linked postings. Pending differs from posted; transitions and economic effects are atomic. Transfers, openings and repayments create no duplicate income/expense; retain native amounts and provenance.
+Typed draft/pending/posted/cancelled/reversed revisions retain exact native amounts, purchase/bank posting times, actor, payer and provenance. Effects separate own/available/locked/debt from economic components. An August 31 purchase posted September 2 belongs to August after posting; unresolved allocation does not hide a confirmed household fact. Commands register pending independently, then revalidate session/household; ledger, projections, audit/outbox and outcome are atomic. New transfers/exchanges retain both legs and fees, including a third asset; existingTransactions and allocations receive explicit feature_unavailable. Import uses CommitPage and D-39, retaining overrides and quarantine. Unproven snapshot coverage cannot fund reserves.
 
 ### Change boundaries
 
 - `backend/internal/ledger/`
+- `backend/internal/accounts/`
+- `backend/internal/commands/application/authenticated.go`
+- `backend/internal/storage/`
+- `backend/internal/delivery/ledger/`
+- `backend/migrations/008_transaction_ledger.sql`
+- `api/`
+- `backend/test/integration/ledger/`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -266,12 +280,12 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make test-go PKG=./internal/ledger/... && make test-integration AREA=ledger
+make test-go PKG=./internal/ledger/... && make test-integration AREA=ledger && make test-ledger-race
 ```
 
-Postings and states reconcile; cancellation/pending, transfer fees and credit repayments pass invariants.
+Exact HTTP/SQL round trips, states/holds, credit repayment, PnL, fees, dates, replay/rollback/restart, import, permissions, migration and pagination pass without duplicate effects.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Evidence and boundaries: evidence/task-2.2-ledger.en.md. Dependencies are included in the base; commands exist. Require make check, ledger/accounts/storage/identity/household integration/race and privacy suite. This does not prove live adapters, UI, AI or production.
 
 ### Handoff to the next agent
 

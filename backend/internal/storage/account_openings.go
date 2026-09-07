@@ -140,29 +140,44 @@ func (s *Store) AccountEffects(ctx context.Context, p household.Principal, id st
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.Query(ctx, `SELECT r.operation_id,r.revision,r.occurred_at,r.occurred_ns,p.amount::text,p.asset FROM want_keep.operations o JOIN want_keep.operation_revisions r ON (r.household_id,r.operation_id,r.revision)=(o.household_id,o.id,o.revision) JOIN want_keep.postings p ON (p.household_id,p.operation_id,p.revision)=(r.household_id,r.operation_id,r.revision) WHERE o.household_id=$1 AND p.account_id=$2 AND r.state='posted' AND r.economic_type!='opening' ORDER BY r.operation_id,p.position`, p.HouseholdID(), id)
+	rows, err := q.Query(ctx, `SELECT DISTINCT o.id,o.revision FROM want_keep.operations o JOIN want_keep.postings p ON (p.household_id,p.operation_id,p.revision)=(o.household_id,o.id,o.revision) WHERE o.household_id=$1 AND p.account_id=$2 ORDER BY o.id`, p.HouseholdID(), id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var result []account.Effect
-	for rows.Next() {
-		var e account.Effect
-		var at time.Time
-		var ns int16
-		var amount, asset string
-		if err = rows.Scan(&e.OperationID, &e.Revision, &at, &ns, &amount, &asset); err != nil {
-			return nil, err
-		}
-		e.At, err = restoreInstant(at, ns)
-		if err != nil {
-			return nil, err
-		}
-		e.Amount, err = money.NewMoney(amount, money.Asset(asset))
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, e)
+	type ref struct {
+		id       string
+		revision uint64
 	}
-	return result, rows.Err()
+	refs := []ref{}
+	for rows.Next() {
+		var v ref
+		if err = rows.Scan(&v.id, &v.revision); err != nil {
+			return nil, err
+		}
+		refs = append(refs, v)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	result := []account.Effect{}
+	for _, ref := range refs {
+		r, err := s.LedgerRevision(ctx, p, ref.id, ref.revision)
+		if err != nil {
+			return nil, err
+		}
+		effects, err := r.BalanceEffects()
+		if err != nil {
+			return nil, err
+		}
+		for _, e := range effects {
+			if e.AccountID != id {
+				continue
+			}
+			changes := account.Amounts{Owned: e.Owned, Available: e.Available, Locked: e.Locked, Debt: e.Debt}
+			result = append(result, account.Effect{OperationID: r.OperationID, Revision: r.Revision, At: e.At, Changes: &changes})
+		}
+	}
+	return result, nil
 }

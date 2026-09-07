@@ -7,8 +7,8 @@ import (
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 )
 
-// WithinAccountRead gives a consistent page without taking financial write locks.
-func (s *Store) WithinAccountRead(ctx context.Context, p household.Principal, fn func(context.Context) error) error {
+// WithinFinancialRead gives a consistent page without taking financial write locks.
+func (s *Store) WithinFinancialRead(ctx context.Context, p household.Principal, fn func(context.Context) error) error {
 	if ctx.Value(transactionKey{}) != nil {
 		return ErrTransactionRequired
 	}

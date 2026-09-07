@@ -1483,10 +1483,16 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** transactions list */
+    /**
+     * List current ledger revisions
+     * @description Keyset order occurredAt descending, then ID descending. Cursor is session/household/filter-bound; each page is a consistent read, not a complete household financial report.
+     */
     get: operations["transactions_list"];
     put?: never;
-    /** transactions create */
+    /**
+     * Record a confirmed manual income or expense
+     * @description Household fact is posted even when allocation is unresolved. Category and resolved allocation requests return feature_unavailable until their owning tasks ship; fields are never ignored. Cash date follows the purchase in household timezone. Inputs cannot set actor, household, state or AI status.
+     */
     post: operations["transactions_create"];
     delete?: never;
     options?: never;
@@ -1588,7 +1594,10 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** transactions transfer */
+    /**
+     * Record a new internal transfer or exchange
+     * @description Both native legs and all known fees are explicit. existingTransactions must be empty in task-2.2; linking returns feature_unavailable without an effect.
+     */
     post: operations["transactions_transfer"];
     delete?: never;
     options?: never;
@@ -2043,6 +2052,20 @@ export interface components {
       | components["schemas"]["PendingDeploymentGate"]
       | components["schemas"]["AdmittedDeploymentGate"]
       | components["schemas"]["BlockedDeploymentGate"];
+    EconomicComponent: {
+      /** @enum {string} */
+      kind:
+        | "income"
+        | "expense"
+        | "fee"
+        | "interest"
+        | "funding"
+        | "reward"
+        | "realized_pnl"
+        | "unrealized_pnl";
+      money: components["schemas"]["Money"];
+      treatment: components["schemas"]["PostingTreatment"];
+    };
     EmptyInput: Record<string, never>;
     EnrollmentInput:
       | components["schemas"]["ExistingEnrollmentInput"]
@@ -2086,6 +2109,9 @@ export interface components {
       | "not_found"
       | "scope_mismatch"
       | "invalid_request"
+      | "invalid_transaction"
+      | "invalid_transition"
+      | "feature_unavailable"
       | "invalid_money"
       | "unsupported_asset"
       | "asset_mismatch"
@@ -2118,6 +2144,11 @@ export interface components {
       | "invitation_used"
       | "member_limit_reached"
       | "internal_error";
+    /** @description Exact executed ratio is sent divided by received; retain both native amounts without persisting a rounded rate or including fees in principal. */
+    ExecutedExchange: {
+      received: components["schemas"]["PositiveMoney"];
+      sent: components["schemas"]["PositiveMoney"];
+    };
     ExistingEnrollmentInput: {
       authorizationToken?: string;
       /** @enum {string} */
@@ -2164,6 +2195,7 @@ export interface components {
     FeeInput: {
       accountId: components["schemas"]["ID"];
       amount: components["schemas"]["PositiveMoney"];
+      funding?: components["schemas"]["PostingFunding"];
     };
     FieldViolation: {
       code: string;
@@ -2504,10 +2536,22 @@ export interface components {
     };
     Posting: {
       accountId: components["schemas"]["ID"];
+      funding?: components["schemas"]["PostingFunding"];
       money: components["schemas"]["Money"];
       /** @enum {string} */
       role: "principal" | "fee" | "interest" | "funding" | "pnl" | "reward";
+      treatment?: components["schemas"]["PostingTreatment"];
     };
+    /**
+     * @description Explicit source/user funding; omitted input uses own for non-credit products and unknown for credit cards. Credit is never spendable own money.
+     * @enum {string}
+     */
+    PostingFunding: "own" | "credit" | "unknown";
+    /**
+     * @description Included fee is already part of net PnL; valuation is not received money.
+     * @enum {string}
+     */
+    PostingTreatment: "movement" | "included" | "valuation";
     Preferences: {
       decorativeEffectsEnabled: boolean;
       locale: components["schemas"]["Locale"];
@@ -2843,21 +2887,36 @@ export interface components {
       /** @enum {string} */
       aiState: "waiting" | "reviewed" | "clarification" | "failed";
       allocation: components["schemas"]["ExpenseAllocation"];
+      attachmentId?: components["schemas"]["ID"];
+      balanceEffects: components["schemas"]["TransactionBalanceEffect"][];
       cashDate: components["schemas"]["Date"];
       categoryId?: components["schemas"]["ID"];
+      economicComponents: components["schemas"]["EconomicComponent"][];
+      exchange?: components["schemas"]["ExecutedExchange"];
       expenseMonth?: components["schemas"]["Month"];
+      /** @enum {string} */
+      feeKnowledge: "known" | "unknown";
+      holds: components["schemas"]["TransactionHold"][];
       householdId: components["schemas"]["ID"];
       id: components["schemas"]["ID"];
       merchant?: string;
+      note?: string;
       occurredAt: components["schemas"]["Instant"];
+      /** @enum {string} */
+      origin: "manual" | "source" | "legacy";
       originalTransactionId?: components["schemas"]["ID"];
       payer: components["schemas"]["Payer"];
+      /** @enum {string} */
+      pnlBasis?: "gross" | "net";
+      postedAt?: components["schemas"]["Instant"];
       postings: components["schemas"]["Posting"][];
+      quality: components["schemas"]["DataQuality"];
       receiptId?: components["schemas"]["ID"];
       revision: components["schemas"]["Revision"];
       sources: components["schemas"]["SourceReference"][];
       /** @enum {string} */
-      state: "draft" | "pending" | "posted" | "reversed";
+      state: "draft" | "pending" | "posted" | "reversed" | "cancelled";
+      timezone?: components["schemas"]["Timezone"];
       /** @enum {string} */
       type:
         | "income"
@@ -2869,6 +2928,14 @@ export interface components {
         | "adjustment"
         | "yield"
         | "trade_result";
+    };
+    TransactionBalanceEffect: {
+      accountId: components["schemas"]["ID"];
+      at: components["schemas"]["Instant"];
+      available: components["schemas"]["AmountValue"];
+      debt: components["schemas"]["AmountValue"];
+      locked: components["schemas"]["AmountValue"];
+      owned: components["schemas"]["AmountValue"];
     };
     /** @description At least one changed field required; application validates economic invariants and preserves previous revision. */
     TransactionCorrection: {
@@ -2887,12 +2954,18 @@ export interface components {
       amount: components["schemas"]["PositiveMoney"];
       attachmentId?: components["schemas"]["ID"];
       categoryId?: components["schemas"]["ID"];
+      funding?: components["schemas"]["PostingFunding"];
       merchant?: string;
       note?: string;
       occurredAt: components["schemas"]["Instant"];
       payer: components["schemas"]["Payer"];
       /** @enum {string} */
       type: "income" | "expense";
+    };
+    TransactionHold: {
+      accountId: components["schemas"]["ID"];
+      amount: components["schemas"]["PositiveMoney"];
+      funding: components["schemas"]["PostingFunding"];
     };
     TransactionLink: {
       expectedRevision: components["schemas"]["Revision"];
@@ -2912,10 +2985,12 @@ export interface components {
       existingTransactions: components["schemas"]["ExistingTransaction"][];
       fees: components["schemas"]["FeeInput"][];
       fromAccountId: components["schemas"]["ID"];
+      fromFunding?: components["schemas"]["PostingFunding"];
       occurredAt: components["schemas"]["Instant"];
       received: components["schemas"]["PositiveMoney"];
       sent: components["schemas"]["PositiveMoney"];
       toAccountId: components["schemas"]["ID"];
+      toFunding?: components["schemas"]["PostingFunding"];
     };
     UnavailableRate: {
       base: components["schemas"]["Asset"];
@@ -6697,6 +6772,17 @@ export interface operations {
         from?: components["schemas"]["Date"];
         to?: components["schemas"]["Date"];
         categoryId?: components["schemas"]["ID"];
+        type?:
+          | "income"
+          | "expense"
+          | "transfer"
+          | "exchange"
+          | "refund"
+          | "opening"
+          | "adjustment"
+          | "yield"
+          | "trade_result";
+        state?: "draft" | "pending" | "posted" | "cancelled" | "reversed";
         search?: string;
       };
       header?: never;

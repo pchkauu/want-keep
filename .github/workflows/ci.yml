@@ -69,6 +69,13 @@ jobs:
           make test-integration AREA=identity
           make test-identity-race
 
+      - name: Verify ledger states, native effects and concurrent commands
+        env:
+          WANT_KEEP_TEST_DATABASE_URL: postgres://postgres:synthetic-admin@127.0.0.1:5432/want_keep_test?sslmode=disable
+        run: |
+          make test-integration AREA=ledger
+          make test-ledger-race
+
       - name: Verify accounts, opening balances and concurrent commands
         env:
           WANT_KEEP_TEST_DATABASE_URL: postgres://postgres:synthetic-admin@127.0.0.1:5432/want_keep_test?sslmode=disable

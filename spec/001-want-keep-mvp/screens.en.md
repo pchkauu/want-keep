@@ -948,7 +948,7 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 **Fields:** Type, account, date/time, amount/currency, category/subcategory, merchant, purpose/shares, note/receipt.
 
-**Validation and permissions:** Either member may record on any household account; actor from session. Amount >0, consistent currency/account/shares; missing required facts remain draft.
+**Validation and permissions:** Either member records on any household account; actor comes from session, payer is independent. Amount >0, asset matches account. Confirmed account/amount/date produce posted household facts even with unresolved allocation; unknown monetary facts require clarification. Task-2.2 accepts only unresolved allocation and rejects category/shares as feature_unavailable; task-2.6/2.8 enable categories and shares.
 
 **Outcome:** One transaction, visible allocation and AI status, linked receipt; confirmed outcome and link.
 
@@ -956,7 +956,7 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 **Fields:** From/to accounts, dates, both amounts/currencies, fees/fee account, existing movements.
 
-**Validation and permissions:** Either member; distinct internal accounts in one household; principal excluded from income/expense, fees separate; reconcile existing records before creation.
+**Validation and permissions:** Either member; distinct accounts in one household; principal excluded from income/expenses, fees separate, including a third asset. Task-2.2 creates new movements only; nonempty existingTransactions receives 422 feature_unavailable without a partial effect. Task-2.4 implements existing-record matching.
 
 **Outcome:** Ledger movements linked; no actual transfer or asset purchase.
 

@@ -13,6 +13,9 @@ ErrorCode:
   - not_found
   - scope_mismatch
   - invalid_request
+  - invalid_transaction
+  - invalid_transition
+  - feature_unavailable
   - invalid_money
   - unsupported_asset
   - asset_mismatch

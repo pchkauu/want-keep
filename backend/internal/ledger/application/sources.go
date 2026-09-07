@@ -13,6 +13,7 @@ type SourceRepository interface {
 	SaveSource(context.Context, ledger.SourceRecord, ledger.SourceInput) (ledger.SourceRecord, error)
 	RecordProvenance(context.Context, ledger.SourceRecord, ledger.SourceInput) error
 	RecordSourceAmbiguity(context.Context, ledger.SourceInput) error
+	RecordUnresolvedTransaction(context.Context, ledger.SourceInput) error
 	CurrentLedgerRevision(context.Context, household.Principal, string) (ledger.Revision, bool, error)
 	EmitEvent(context.Context, string, string, uint64, string) error
 }
@@ -30,6 +31,13 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 	}
 	if err := p.RequireHousehold(input.Key.HouseholdID); err != nil {
 		return ledger.SourceOutcome{}, err
+	}
+	if input.Operation != nil && input.Operation.Validate() != nil {
+		input.Operation = nil
+		input.UnresolvedReason = "invalid_transaction"
+	}
+	if input.Operation == nil && input.UnresolvedReason == "" {
+		input.UnresolvedReason = "transaction_not_normalized"
 	}
 	current, exists, err := s.repository.Source(ctx, p, input.Key)
 	if errors.Is(err, ledger.ErrSourceAmbiguous) {
@@ -72,6 +80,12 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		return ledger.SourceOutcome{}, err
 	}
 	result := ledger.SourceOutcome{Record: current, Duplicate: duplicate}
+	if input.UnresolvedReason != "" {
+		if err = s.repository.RecordUnresolvedTransaction(ctx, input); err != nil {
+			return result, err
+		}
+		return result, nil
+	}
 	if duplicate {
 		return result, nil
 	}
@@ -95,7 +109,10 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		if found {
 			expected = previous.Revision
 		}
-		if err = s.writer.Append(ctx, p, *input.Operation, expected); err != nil {
+		r := *input.Operation
+		r.Postings = append([]ledger.Posting(nil), r.Postings...)
+		r.Origin = "source"
+		if err = s.writer.Append(ctx, p, r, expected); err != nil {
 			return result, err
 		}
 	}

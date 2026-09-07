@@ -39,6 +39,12 @@ func (s *Projector) Rebuild(ctx context.Context, p household.Principal, id strin
 	if !o.Confirmed {
 		coverage, _ = reporting.NewCoverage(reporting.Partial, []string{"opening_unconfirmed"})
 	}
+	for _, v := range values.Fields() {
+		if _, ok := v.Value(); !ok {
+			coverage, _ = reporting.NewCoverage(reporting.Partial, []string{"balance_components_incomplete"})
+			break
+		}
+	}
 	for i, field := range []string{"owned", "available", "locked", "debt"} {
 		if err = s.repository.RecordBalance(ctx, account.Balance{AccountID: id, Field: field, Amount: values.Fields()[i], Coverage: coverage, Freshness: reporting.UnknownFreshness, ObservedAt: o.At}); err != nil {
 			return err
@@ -47,11 +53,7 @@ func (s *Projector) Rebuild(ctx context.Context, p household.Principal, id strin
 	return nil
 }
 func (s *Projector) Apply(ctx context.Context, p household.Principal, r ledger.Revision, previous *ledger.Revision) error {
-	deltas, err := r.Deltas(previous)
-	if err != nil {
-		return err
-	}
-	for id, delta := range deltas {
+	for _, id := range r.AffectedAccounts(previous) {
 		_, exists, err := s.repository.Opening(ctx, p, id)
 		if err != nil {
 			return err
@@ -62,20 +64,56 @@ func (s *Projector) Apply(ctx context.Context, p household.Principal, r ledger.R
 			}
 			continue
 		}
-		// Legacy projections have no proven opening or bank provenance. Preserve their arithmetic without inventing either.
-		for _, field := range []string{"owned", "available"} {
-			b, err := s.repository.Balance(ctx, p, id, field)
-			if err != nil {
-				return err
+		if err = s.applyLegacy(ctx, p, id, r, previous); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Historical projections without an opening cannot be reconstructed. Preserve their
+// original basis and update only proven components; an unknown component stays unknown.
+func (s *Projector) applyLegacy(ctx context.Context, p household.Principal, id string, r ledger.Revision, previous *ledger.Revision) error {
+	for _, entry := range []struct {
+		revision *ledger.Revision
+		subtract bool
+	}{{previous, true}, {&r, false}} {
+		if entry.revision == nil {
+			continue
+		}
+		effects, err := entry.revision.BalanceEffects()
+		if err != nil {
+			return err
+		}
+		for _, e := range effects {
+			if e.AccountID != id {
+				continue
 			}
-			if m, known := b.Amount.Value(); known {
-				m, err = m.Add(delta)
+			values := []reporting.Amount{e.Owned, e.Available, e.Locked, e.Debt}
+			for i, field := range []string{"owned", "available", "locked", "debt"} {
+				b, err := s.repository.Balance(ctx, p, id, field)
 				if err != nil {
 					return err
 				}
-				b.Amount, err = reporting.KnownAmount(m)
-				if err != nil {
-					return err
+				delta, known := values[i].Value()
+				if !known {
+					b.Amount = values[i]
+				} else if value, ok := b.Amount.Value(); ok {
+					if entry.subtract {
+						value, err = value.Subtract(delta)
+					} else {
+						value, err = value.Add(delta)
+					}
+					if err != nil {
+						return err
+					}
+					b.Amount, err = reporting.KnownAmount(value)
+					if err != nil {
+						return err
+					}
+				}
+				if _, known := b.Amount.Value(); !known {
+					b.Coverage, _ = reporting.NewCoverage(reporting.Partial, []string{"balance_components_incomplete"})
 				}
 				if err = s.repository.RecordBalance(ctx, b); err != nil {
 					return err

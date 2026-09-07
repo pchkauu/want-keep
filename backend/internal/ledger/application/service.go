@@ -1,0 +1,144 @@
+package application
+
+import (
+	"context"
+	"errors"
+
+	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
+	attachment "github.com/pchkauu/want-keep/backend/internal/attachments/domain"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
+	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
+	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
+	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
+)
+
+type FactsRepository interface {
+	Account(context.Context, household.Principal, string) (account.Account, error)
+	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
+	RequireLedgerPayer(context.Context, household.Principal, household.MembershipID) error
+	Attachment(context.Context, household.Principal, string) (attachment.Attachment, error)
+}
+
+type Service struct {
+	repository FactsRepository
+	writer     *Writer
+	now        func() calendar.Instant
+	newID      func() string
+}
+
+func NewService(r FactsRepository, w *Writer, now func() calendar.Instant, newID func() string) *Service {
+	return &Service{r, w, now, newID}
+}
+
+type CreateInput struct {
+	Type                                           ledger.Type
+	AccountID                                      string
+	At                                             calendar.Instant
+	Amount                                         money.Money
+	Funding                                        ledger.FundingKind
+	PayerState                                     string
+	PayerMemberID                                  household.MembershipID
+	Merchant, Note, AttachmentID, AllocationReason string
+	Unsupported                                    bool
+}
+
+func (s *Service) Create(ctx context.Context, p household.Principal, in CreateInput) (command.Result, error) {
+	if in.Unsupported {
+		return command.Result{}, commands.Rejection{Code: "feature_unavailable"}
+	}
+	if in.Type != ledger.Income && in.Type != ledger.Expense {
+		return command.Result{}, commands.Rejection{Code: "invalid_request"}
+	}
+	if err := in.Amount.Validate(); err != nil {
+		return command.Result{}, s.reject(err)
+	}
+	if in.Amount.Sign() <= 0 {
+		return command.Result{}, commands.Rejection{Code: "invalid_money"}
+	}
+	if in.Type == ledger.Expense && in.PayerState == "not_applicable" || in.PayerState == "known" && in.PayerMemberID == "" {
+		return command.Result{}, commands.Rejection{Code: "invalid_request"}
+	}
+	if in.PayerState == "known" {
+		if err := s.repository.RequireLedgerPayer(ctx, p, in.PayerMemberID); err != nil {
+			return command.Result{}, s.reject(err)
+		}
+	}
+	if _, err := s.repository.Account(ctx, p, in.AccountID); err != nil {
+		return command.Result{}, s.reject(err)
+	}
+	if in.AttachmentID != "" {
+		a, err := s.repository.Attachment(ctx, p, in.AttachmentID)
+		if err != nil {
+			return command.Result{}, s.reject(err)
+		}
+		if a.Upload.AccountID != in.AccountID {
+			return command.Result{}, commands.Rejection{Code: "invalid_attachment"}
+		}
+		if a.State != attachment.Accepted || !a.OriginalReady {
+			return command.Result{}, commands.Rejection{Code: "attachment_not_ready"}
+		}
+	}
+	r, err := s.manual(ctx, p, in.At)
+	if err != nil {
+		return command.Result{}, s.reject(err)
+	}
+	r.Type = in.Type
+	r.PayerState, r.PayerMemberID = in.PayerState, in.PayerMemberID
+	r.Merchant, r.Note, r.AttachmentID, r.AllocationReason = in.Merchant, in.Note, in.AttachmentID, in.AllocationReason
+	amount := in.Amount
+	if in.Type == ledger.Expense {
+		zero, _ := money.NewMoney("0", amount.Asset())
+		amount, err = zero.Subtract(amount)
+		if err != nil {
+			return command.Result{}, s.reject(err)
+		}
+	}
+	r.Postings = []ledger.Posting{{AccountID: in.AccountID, Money: amount, Role: ledger.Principal, Funding: in.Funding, Treatment: ledger.Movement}}
+	return s.append(ctx, p, r)
+}
+
+func (s *Service) manual(ctx context.Context, p household.Principal, at calendar.Instant) (ledger.Revision, error) {
+	if at.String() == "" || at.Time().After(s.now().Time()) {
+		return ledger.Revision{}, calendar.ErrInvalidTime
+	}
+	zone, err := s.repository.AccountTimezone(ctx, p)
+	if err != nil {
+		return ledger.Revision{}, err
+	}
+	date, err := at.DateIn(zone)
+	if err != nil {
+		return ledger.Revision{}, err
+	}
+	month, err := calendar.ParseMonth(date.String()[:7])
+	if err != nil {
+		return ledger.Revision{}, err
+	}
+	return ledger.Revision{OperationID: s.newID(), Revision: 1, ActorID: p.UserID(), Reason: "manual_record", State: ledger.Posted, OccurredAt: at, CashDate: date, ExpenseMonth: month, Timezone: zone, Origin: "manual", FeeKnowledge: ledger.KnownFees, HumanOverride: true, PayerState: "not_applicable", AllocationReason: "allocation_unresolved"}, nil
+}
+
+func (s *Service) append(ctx context.Context, p household.Principal, r ledger.Revision) (command.Result, error) {
+	if err := s.writer.Append(ctx, p, r, 0); err != nil {
+		return command.Result{}, s.reject(err)
+	}
+	return command.Result{ResourceType: "transaction", ResourceID: r.OperationID, Revision: r.Revision}, nil
+}
+
+func (s *Service) reject(err error) error {
+	switch {
+	case errors.Is(err, ledger.ErrInvalidRevision), errors.Is(err, ledger.ErrInvalidTransition):
+		return commands.Rejection{Code: "invalid_transaction"}
+	case errors.Is(err, ledger.ErrNotFound), errors.Is(err, account.ErrNotFound), errors.Is(err, attachment.ErrNotFound):
+		return commands.Rejection{Code: "not_found"}
+	case errors.Is(err, household.ErrForbidden):
+		return commands.Rejection{Code: "forbidden"}
+	case errors.Is(err, money.ErrAssetMismatch):
+		return commands.Rejection{Code: "asset_mismatch"}
+	case errors.Is(err, money.ErrInvalidMoney):
+		return commands.Rejection{Code: "invalid_money"}
+	case errors.Is(err, calendar.ErrInvalidTime):
+		return commands.Rejection{Code: "invalid_time"}
+	}
+	return err
+}

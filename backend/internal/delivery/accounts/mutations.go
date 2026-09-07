@@ -33,24 +33,12 @@ func (s *Server) execute(w http.ResponseWriter, r *http.Request, a identity.Acce
 	}
 	hash := sha256.Sum256(payload)
 	request := commands.Request{ID: r.Header.Get("Idempotency-Key"), Kind: kind, PayloadHash: hex.EncodeToString(hash[:])}
-	if _, err = s.executor.Register(r.Context(), a.Principal, request); err != nil {
-		s.problem(w, err)
-		return
-	}
-	var c command.Command
-	err = s.sessions.WithinSession(r.Context(), a.Token, func(ctx context.Context, current identity.Access) error {
-		if current.Principal != a.Principal {
-			return contract.ErrInvalidRequest
-		}
-		var e error
-		c, e = s.executor.ExecuteRegistered(ctx, a.Principal, request, apply)
-		return e
-	})
+	c, err := commands.NewAuthenticated(s.executor, s.sessions).Execute(r.Context(), a, request, apply)
 	if err != nil {
 		s.problem(w, err)
 		return
 	}
-	err = s.reads.WithinAccountRead(r.Context(), a.Principal, func(ctx context.Context) error {
+	err = s.reads.WithinFinancialRead(r.Context(), a.Principal, func(ctx context.Context) error {
 		var e error
 		c, e = s.queries.Read(ctx, a.Principal, c.ID(), s.now())
 		if errors.Is(e, command.ErrCommandExpired) {

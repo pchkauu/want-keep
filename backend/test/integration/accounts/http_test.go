@@ -147,7 +147,7 @@ func TestHTTPAccountPrecisionPaginationAndCommandRecovery(t *testing.T) {
 	if f.count("accounts") != 7 {
 		t.Fatal("AC-002 account set incomplete")
 	}
-	if err := f.store.WithinAccountRead(testContext, f.p, func(ctx context.Context) error {
+	if err := f.store.WithinFinancialRead(testContext, f.p, func(ctx context.Context) error {
 		totals, err := f.service().NativeTotals(ctx, f.p)
 		if err == nil && (len(totals) != 6 || totals[2].Owned.KnownSubtotal.Amount() != "112.00000000000000000123") {
 			t.Fatal("native family total duplicated or converted accounts", totals)
