@@ -5,7 +5,7 @@
 
 Переживать сбои без потери импортов и повторных финансовых эффектов.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализована инфраструктура долговечных заданий; реальные handlers интеграций/OpenAI и эксплуатационная приёмка остаются профильным задачам.
 
 **Зависимости:** `task-1.3`, `task-2.3`.
 
@@ -18,6 +18,11 @@
 ### Границы изменений
 
 - `backend/internal/jobs/`
+- `backend/internal/storage/`
+- `backend/internal/connections/admission/`
+- `backend/cmd/worker/`
+- `backend/migrations/010_durable_jobs.sql`
+- `backend/test/integration/jobs/`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -103,7 +108,7 @@
 ### Проверка результата
 
 ```sh
-make test-integration AREA=jobs
+make test-integration AREA=jobs && make test-jobs-race
 ```
 
 Crash/restart, два worker, таймаут и отмена соединения проходят без пропусков и дублей.
@@ -120,7 +125,7 @@ Crash/restart, два worker, таймаут и отмена соединени�
 
 Survive failures without lost imports or duplicate financial effects.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Durable job infrastructure is implemented; real integration/OpenAI handlers and operational acceptance remain with their owning tasks.
 
 **Dependencies:** `task-1.3`, `task-2.3`.
 
@@ -133,6 +138,11 @@ Implement PostgreSQL-backed scheduling, lease/heartbeat, bounded retry/backoff, 
 ### Change boundaries
 
 - `backend/internal/jobs/`
+- `backend/internal/storage/`
+- `backend/internal/connections/admission/`
+- `backend/cmd/worker/`
+- `backend/migrations/010_durable_jobs.sql`
+- `backend/test/integration/jobs/`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -218,7 +228,7 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make test-integration AREA=jobs
+make test-integration AREA=jobs && make test-jobs-race
 ```
 
 Crash/restart, two workers, timeout and disconnect pass without gaps or duplicates.

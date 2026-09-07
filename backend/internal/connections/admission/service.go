@@ -35,6 +35,8 @@ type Repository interface {
 	SaveCheckpoint(context.Context, jobs.Job, string, string, []string) error
 	ImportOmissions(context.Context, household.Principal, string) ([]string, error)
 	FinishJob(context.Context, household.Principal, jobs.Job) error
+	SyncDue(context.Context, string) (bool, error)
+	AdvanceSyncSchedule(context.Context, string) error
 }
 
 // Service is the trusted server application boundary. User/AI commands cannot supply gate evidence.
@@ -105,6 +107,12 @@ func (s *Service) Rebind(ctx context.Context, b connections.Binding) (connection
 	return a, err
 }
 func (s *Service) RequestSync(ctx context.Context, p household.Principal, id string, b connections.Binding, deadline time.Time) (jobs.Job, error) {
+	return s.requestSync(ctx, p, id, b, deadline, false)
+}
+func (s *Service) ScheduleSync(ctx context.Context, p household.Principal, id string, b connections.Binding, deadline time.Time) (jobs.Job, error) {
+	return s.requestSync(ctx, p, id, b, deadline, true)
+}
+func (s *Service) requestSync(ctx context.Context, p household.Principal, id string, b connections.Binding, deadline time.Time, scheduled bool) (jobs.Job, error) {
 	var result jobs.Job
 	if err := b.Validate(); err != nil {
 		return result, connections.ErrProviderNotAdmitted
@@ -128,8 +136,17 @@ func (s *Service) RequestSync(ctx context.Context, p household.Principal, id str
 			if !c.Authorized || c.Provider != b.Provider {
 				return connections.ErrProviderNotAdmitted
 			}
+			if scheduled {
+				due, e := s.repository.SyncDue(ctx, id)
+				if e != nil || !due {
+					return e
+				}
+			}
 			result, err = s.repository.CreateSyncJob(ctx, c, a, deadline)
-			return err
+			if err != nil {
+				return err
+			}
+			return s.repository.AdvanceSyncSchedule(ctx, id)
 		})
 	})
 	return result, err
