@@ -17,7 +17,7 @@ func (r Revision) BalanceEffects() ([]BalanceEffect, error) {
 		return nil, err
 	}
 	result := []BalanceEffect{}
-	if r.State != Posted && r.State != Pending || r.Type == Opening {
+	if r.Accounting() == ExcludedFromAccounting || r.State != Posted && r.State != Pending || r.Type == Opening {
 		return result, nil
 	}
 	for _, p := range r.Postings {

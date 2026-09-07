@@ -635,3 +635,103 @@
         application/json:
           schema:
             "$ref": "../schemas/transactions.yaml#/SettlementCreate"
+
+"/transactions/{transactionId}/exclude":
+  post:
+    operationId: transactions_exclude
+    tags:
+    - transactions
+    summary: Exclude a transaction from accounting
+    parameters:
+    - name: transactionId
+      in: path
+      required: true
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    responses:
+      '202':
+        description: Registered command. Inspect its stable ID after timeout; do not
+          create a new key. Financial effect and successful result commit atomically.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/CommandStatus"
+      '400':
+        "$ref": "../components.yaml#/responses/Problem"
+      '401':
+        "$ref": "../components.yaml#/responses/Problem"
+      '403':
+        "$ref": "../components.yaml#/responses/Problem"
+      '404':
+        "$ref": "../components.yaml#/responses/Problem"
+      '409':
+        "$ref": "../components.yaml#/responses/Problem"
+      '422':
+        "$ref": "../components.yaml#/responses/Problem"
+      '429':
+        "$ref": "../components.yaml#/responses/Problem"
+      '500':
+        "$ref": "../components.yaml#/responses/Problem"
+      '503':
+        "$ref": "../components.yaml#/responses/Problem"
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+        content:
+          application/json:
+            schema:
+              "$ref": "../schemas/commands.yaml#/ExpiredCommand"
+    x-command-type: transactions.exclude
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            "$ref": "../schemas/transactions.yaml#/ExcludeInput"
+
+"/transactions/{transactionId}/history":
+  get:
+    operationId: transactions_history
+    tags: [transactions]
+    parameters:
+    - name: transactionId
+      in: path
+      required: true
+      schema: { $ref: '../schemas/money.yaml#/ID' }
+    - $ref: '../components.yaml#/parameters/Cursor'
+    - $ref: '../components.yaml#/parameters/Limit'
+    responses:
+      '200':
+        description: Immutable household transaction history; legacy recording time may be unknown.
+        content:
+          application/json:
+            schema: { $ref: '../schemas/transactions.yaml#/TransactionHistoryPage' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+      '500': { $ref: '../components.yaml#/responses/Problem' }
+
+"/transactions/{transactionId}/revisions/{revision}":
+  get:
+    operationId: transactions_revision
+    tags: [transactions]
+    parameters:
+    - name: transactionId
+      in: path
+      required: true
+      schema: { $ref: '../schemas/money.yaml#/ID' }
+    - name: revision
+      in: path
+      required: true
+      schema: { $ref: '../schemas/money.yaml#/Revision' }
+    responses:
+      '200':
+        description: Immutable household transaction history; legacy recording time may be unknown.
+        content:
+          application/json:
+            schema: { $ref: '../schemas/transactions.yaml#/Transaction' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+      '500': { $ref: '../components.yaml#/responses/Problem' }

@@ -13,7 +13,7 @@ func (r Revision) Holds() ([]Hold, error) {
 		return nil, err
 	}
 	out := []Hold{}
-	if r.State != Pending {
+	if r.State != Pending || r.Accounting() == ExcludedFromAccounting {
 		return out, nil
 	}
 	for _, p := range r.Postings {

@@ -19,6 +19,13 @@ type Posting struct {
 	Treatment Treatment
 }
 type Revision struct {
+	AccountingState                                AccountingState
+	DecisionID                                     string
+	RecordedAt                                     calendar.Instant
+	Protections                                    map[Field]Protection
+	FieldVersions                                  map[Field]uint64
+	ReviewState                                    string
+	SourceConflict                                 bool
 	OperationID                                    string
 	Revision                                       uint64
 	ActorID                                        household.UserID
@@ -41,7 +48,20 @@ type Revision struct {
 }
 
 func (r Revision) Validate() error {
-	if r.OperationID == "" || r.ActorID == "" || len(r.Reason) < 1 || len(r.Reason) > 2000 || r.Revision < 1 || r.Revision > 9007199254740991 || r.OccurredAt.String() == "" || r.CashDate.String() == "" {
+	if r.Accounting() != IncludedInAccounting && r.Accounting() != ExcludedFromAccounting {
+		return ErrInvalidRevision
+	}
+	for f, p := range r.Protections {
+		if !f.Valid() || p.Revision < 1 || p.Revision > r.Revision {
+			return ErrInvalidRevision
+		}
+	}
+	for f, v := range r.FieldVersions {
+		if !f.Valid() || v < 1 || v > r.Revision {
+			return ErrInvalidRevision
+		}
+	}
+	if r.OperationID == "" || r.ActorID == "" || utf8.RuneCountInString(r.Reason) < 1 || utf8.RuneCountInString(r.Reason) > 2000 || r.Revision < 1 || r.Revision > 9007199254740991 || r.OccurredAt.String() == "" || r.CashDate.String() == "" {
 		return ErrInvalidRevision
 	}
 	if !r.Type.Valid() || !r.State.Valid() {
@@ -128,7 +148,7 @@ func (r Revision) Deltas(previous *Revision) (map[string]money.Money, error) {
 		value    *Revision
 		subtract bool
 	}{{previous, true}, {&r, false}} {
-		if entry.value == nil || entry.value.State != "posted" {
+		if entry.value == nil || entry.value.State != "posted" || entry.value.Accounting() == ExcludedFromAccounting {
 			continue
 		}
 		for _, p := range entry.value.Postings {

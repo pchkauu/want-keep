@@ -145,6 +145,16 @@ Transaction:
   type: object
   additionalProperties: false
   properties:
+    accountingState: { type: string, enum: [included, excluded] }
+    decisionId: { $ref: './money.yaml#/ID' }
+    protectedFields:
+      type: array
+      items: { $ref: './transactions.yaml#/FieldProtection' }
+    sourceConflict: { type: boolean }
+    review: { $ref: './transactions.yaml#/TransactionReview' }
+    sourceFacts:
+      type: array
+      items: { $ref: './transactions.yaml#/SourceTransactionFact' }
     id:
       "$ref": "./money.yaml#/ID"
     revision:
@@ -244,6 +254,10 @@ Transaction:
     payer:
       "$ref": "./transactions.yaml#/Payer"
   required:
+  - accountingState
+  - protectedFields
+  - sourceConflict
+  - sourceFacts
   - id
   - revision
   - householdId
@@ -362,45 +376,37 @@ TransactionCorrection:
   type: object
   additionalProperties: false
   properties:
-    expectedRevision:
-      "$ref": "./money.yaml#/Revision"
-    reason:
-      type: string
-      minLength: 1
-      maxLength: 2000
-    amount:
-      "$ref": "./money.yaml#/PositiveMoney"
-    occurredAt:
-      "$ref": "./money.yaml#/Instant"
-    categoryId:
-      "$ref": "./money.yaml#/ID"
-    merchant:
-      type: string
-      minLength: 1
-      maxLength: 2000
-    allocation:
-      "$ref": "./transactions.yaml#/ExpenseAllocation"
-    payer:
-      "$ref": "./transactions.yaml#/Payer"
-  required:
-  - expectedRevision
-  - reason
-  description: At least one changed field required; application validates economic
-    invariants and preserves previous revision.
+    expectedRevision: { $ref: './money.yaml#/Revision' }
+    reason: { type: string, minLength: 1, maxLength: 2000 }
+    principal:
+      type: array
+      minItems: 1
+      maxItems: 1000
+      items: { $ref: './transactions.yaml#/Posting' }
+      description: Complete principal group in existing order. Accounts, assets, funding and treatment stay unchanged; signed exact amounts obey the economic type.
+    fees:
+      type: array
+      maxItems: 1000
+      items: { $ref: './transactions.yaml#/Posting' }
+      description: Complete fee group; an empty list confirms no fee. Only negative movement fees are accepted.
+    occurredAt: { $ref: './money.yaml#/Instant' }
+    payer: { $ref: './transactions.yaml#/Payer' }
+    merchant: { type: string, maxLength: 2000 }
+    note: { type: string, maxLength: 2000 }
+    categoryId: { $ref: './money.yaml#/ID' }
+    allocation: { $ref: './transactions.yaml#/ExpenseAllocation' }
+  required: [expectedRevision, reason]
   allOf:
   - anyOf:
-    - required:
-      - amount
-    - required:
-      - occurredAt
-    - required:
-      - categoryId
-    - required:
-      - merchant
-    - required:
-      - allocation
-    - required:
-      - payer
+    - required: [principal]
+    - required: [fees]
+    - required: [occurredAt]
+    - required: [payer]
+    - required: [merchant]
+    - required: [note]
+    - required: [categoryId]
+    - required: [allocation]
+  description: Omitted fields remain unchanged; empty merchant/note clears the value. No-op requests are rejected. Categories and allocation are explicitly unavailable until their owning tasks.
 TransactionLink:
   type: object
   additionalProperties: false
@@ -432,15 +438,112 @@ UndoInput:
   type: object
   additionalProperties: false
   properties:
-    expectedRevision:
-      "$ref": "./money.yaml#/Revision"
-    reason:
-      type: string
-      minLength: 1
-      maxLength: 2000
-  required:
-  - expectedRevision
-  - reason
+    decisionId: { $ref: './money.yaml#/ID' }
+    reason: { type: string, minLength: 1, maxLength: 2000 }
+    expectedRevisions:
+      type: array
+      minItems: 1
+      maxItems: 100
+      items: { $ref: './transactions.yaml#/DecisionRevision' }
+  required: [decisionId, reason, expectedRevisions]
+ExcludeInput:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision: { $ref: './money.yaml#/Revision' }
+    reason: { type: string, minLength: 1, maxLength: 2000 }
+  required: [expectedRevision, reason]
+DecisionRevision:
+  type: object
+  additionalProperties: false
+  properties:
+    transactionId: { $ref: './money.yaml#/ID' }
+    expectedRevision: { $ref: './money.yaml#/Revision' }
+  required: [transactionId, expectedRevision]
+LedgerField:
+  type: string
+  enum: [principal, fees, occurred_at, payer, merchant, note, accounting, legacy_all]
+FieldProtection:
+  type: object
+  additionalProperties: false
+  properties:
+    field: { $ref: './transactions.yaml#/LedgerField' }
+    decisionId: { $ref: './money.yaml#/ID' }
+    revision: { $ref: './money.yaml#/Revision' }
+  required: [field, revision]
+TransactionHistoryEntry:
+  type: object
+  additionalProperties: false
+  properties:
+    transaction: { $ref: './transactions.yaml#/Transaction' }
+    before: { $ref: './transactions.yaml#/Transaction' }
+    decisionId: { $ref: './money.yaml#/ID' }
+    decisionKind: { type: string, enum: [correction, exclusion, undo, automated] }
+    undoOf: { $ref: './money.yaml#/ID' }
+    evidence:
+      type: array
+      items: { $ref: './transactions.yaml#/DecisionEvidence' }
+    recordedAt: { $ref: './money.yaml#/Instant' }
+    reason: { type: string, minLength: 1, maxLength: 2000 }
+    fields:
+      type: array
+      items: { $ref: './transactions.yaml#/LedgerField' }
+    affected:
+      type: array
+      items: { $ref: './transactions.yaml#/DecisionRevision' }
+    undoAvailable: { type: boolean }
+    undoReason: { type: string, enum: [available, legacy, superseded, already_undone, source_ambiguous, invalid_restore] }
+  required: [transaction, reason, fields, affected, evidence, undoAvailable, undoReason]
+DecisionEvidence:
+  type: object
+  additionalProperties: false
+  properties:
+    kind: { type: string, enum: [source, attachment, review] }
+    id: { $ref: './money.yaml#/ID' }
+    revision: { $ref: './money.yaml#/Revision' }
+  required: [kind, id, revision]
+TransactionReview:
+  type: object
+  additionalProperties: false
+  properties:
+    revision: { $ref: './money.yaml#/Revision' }
+    actorId: { $ref: './money.yaml#/ID' }
+    state: { type: string, enum: [reviewed, clarification, failed] }
+    rationale: { type: string, minLength: 1, maxLength: 2000 }
+    recordedAt: { $ref: './money.yaml#/Instant' }
+    evidence:
+      type: array
+      items: { $ref: './transactions.yaml#/DecisionEvidence' }
+  required: [revision, actorId, state, rationale, recordedAt, evidence]
+SourceTransactionFact:
+  type: object
+  additionalProperties: false
+  description: Latest normalized value of each source known to this financial revision; retained even when protected fields disagree. This is evidence, never an additional accounting effect.
+  properties:
+    sourceId: { $ref: './money.yaml#/ID' }
+    sourceRevision: { $ref: './money.yaml#/Revision' }
+    conflictAtImport: { type: string, enum: [none, protected_fields, invalid_merge, legacy_protection] }
+    type: { type: string, enum: [income, expense, transfer, exchange, refund, opening, adjustment, yield, trade_result] }
+    state: { type: string, enum: [draft, pending, posted, reversed, cancelled] }
+    occurredAt: { $ref: './money.yaml#/Instant' }
+    postedAt: { $ref: './money.yaml#/Instant' }
+    feeKnowledge: { type: string, enum: [known, unknown] }
+    merchant: { type: string, maxLength: 2000 }
+    note: { type: string, maxLength: 2000 }
+    payer: { $ref: './transactions.yaml#/Payer' }
+    postings:
+      type: array
+      items: { $ref: './transactions.yaml#/Posting' }
+  required: [sourceId, sourceRevision, conflictAtImport, type, state, occurredAt, feeKnowledge, merchant, note, payer, postings]
+TransactionHistoryPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items: { $ref: './transactions.yaml#/TransactionHistoryEntry' }
+    nextCursor: { type: string }
+  required: [items]
 AllocationChange:
   type: object
   additionalProperties: false
@@ -511,6 +614,9 @@ Reimbursement:
       minLength: 1
       maxLength: 2000
   required:
+  - accountingState
+  - protectedFields
+  - sourceConflict
   - id
   - revision
   - creditorMemberId
@@ -599,6 +705,12 @@ ExistingTransaction:
   type: object
   additionalProperties: false
   properties:
+    accountingState: { type: string, enum: [included, excluded] }
+    decisionId: { $ref: './money.yaml#/ID' }
+    protectedFields:
+      type: array
+      items: { $ref: './transactions.yaml#/FieldProtection' }
+    sourceConflict: { type: boolean }
     transactionId:
       "$ref": "./money.yaml#/ID"
     expectedRevision:

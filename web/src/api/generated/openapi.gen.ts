@@ -1551,6 +1551,39 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/transactions/{transactionId}/exclude": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Exclude a transaction from accounting */
+    post: operations["transactions_exclude"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/transactions/{transactionId}/history": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["transactions_history"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/transactions/{transactionId}/links": {
     parameters: {
       query?: never;
@@ -1562,6 +1595,22 @@ export interface paths {
     put?: never;
     /** transactions links */
     post: operations["transactions_links"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/transactions/{transactionId}/revisions/{revision}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["transactions_revision"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -2031,6 +2080,16 @@ export interface components {
     Date: string;
     /** @example 12.000000000123 */
     Decimal: string;
+    DecisionEvidence: {
+      id: components["schemas"]["ID"];
+      /** @enum {string} */
+      kind: "source" | "attachment" | "review";
+      revision: components["schemas"]["Revision"];
+    };
+    DecisionRevision: {
+      expectedRevision: components["schemas"]["Revision"];
+      transactionId: components["schemas"]["ID"];
+    };
     /** @description Funds excluded with the dedicated account must not be subtracted again as virtual reservations. */
     DedicatedReservation: {
       accountId: components["schemas"]["ID"];
@@ -2144,6 +2203,10 @@ export interface components {
       | "invitation_used"
       | "member_limit_reached"
       | "internal_error";
+    ExcludeInput: {
+      expectedRevision: components["schemas"]["Revision"];
+      reason: string;
+    };
     /** @description Exact executed ratio is sent divided by received; retain both native amounts without persisting a rounded rate or including fees in principal. */
     ExecutedExchange: {
       received: components["schemas"]["PositiveMoney"];
@@ -2155,7 +2218,12 @@ export interface components {
       purpose: "bootstrap" | "add_passkey" | "recovery";
     };
     ExistingTransaction: {
+      /** @enum {string} */
+      accountingState?: "included" | "excluded";
+      decisionId?: components["schemas"]["ID"];
       expectedRevision: components["schemas"]["Revision"];
+      protectedFields?: components["schemas"]["FieldProtection"][];
+      sourceConflict?: boolean;
       transactionId: components["schemas"]["ID"];
     };
     ExpenseAllocation:
@@ -2196,6 +2264,11 @@ export interface components {
       accountId: components["schemas"]["ID"];
       amount: components["schemas"]["PositiveMoney"];
       funding?: components["schemas"]["PostingFunding"];
+    };
+    FieldProtection: {
+      decisionId?: components["schemas"]["ID"];
+      field: components["schemas"]["LedgerField"];
+      revision: components["schemas"]["Revision"];
     };
     FieldViolation: {
       code: string;
@@ -2339,6 +2412,16 @@ export interface components {
       /** @enum {string} */
       state: "known";
     };
+    /** @enum {string} */
+    LedgerField:
+      | "principal"
+      | "fees"
+      | "occurred_at"
+      | "payer"
+      | "merchant"
+      | "note"
+      | "accounting"
+      | "legacy_all";
     /** @enum {string} */
     Locale: "ru" | "en";
     LoginOptions: {
@@ -2860,6 +2943,35 @@ export interface components {
       revision: string;
       sourceId: string;
     };
+    /** @description Latest normalized value of each source known to this financial revision; retained even when protected fields disagree. This is evidence, never an additional accounting effect. */
+    SourceTransactionFact: {
+      /** @enum {string} */
+      conflictAtImport:
+        "none" | "protected_fields" | "invalid_merge" | "legacy_protection";
+      /** @enum {string} */
+      feeKnowledge: "known" | "unknown";
+      merchant: string;
+      note: string;
+      occurredAt: components["schemas"]["Instant"];
+      payer: components["schemas"]["Payer"];
+      postedAt?: components["schemas"]["Instant"];
+      postings: components["schemas"]["Posting"][];
+      sourceId: components["schemas"]["ID"];
+      sourceRevision: components["schemas"]["Revision"];
+      /** @enum {string} */
+      state: "draft" | "pending" | "posted" | "reversed" | "cancelled";
+      /** @enum {string} */
+      type:
+        | "income"
+        | "expense"
+        | "transfer"
+        | "exchange"
+        | "refund"
+        | "opening"
+        | "adjustment"
+        | "yield"
+        | "trade_result";
+    };
     SucceededOutcome: {
       commandId: components["schemas"]["CommandID"];
       result: components["schemas"]["CommandResult"];
@@ -2883,6 +2995,8 @@ export interface components {
      */
     Timezone: string;
     Transaction: {
+      /** @enum {string} */
+      accountingState: "included" | "excluded";
       actorId: components["schemas"]["ID"];
       /** @enum {string} */
       aiState: "waiting" | "reviewed" | "clarification" | "failed";
@@ -2891,6 +3005,7 @@ export interface components {
       balanceEffects: components["schemas"]["TransactionBalanceEffect"][];
       cashDate: components["schemas"]["Date"];
       categoryId?: components["schemas"]["ID"];
+      decisionId?: components["schemas"]["ID"];
       economicComponents: components["schemas"]["EconomicComponent"][];
       exchange?: components["schemas"]["ExecutedExchange"];
       expenseMonth?: components["schemas"]["Month"];
@@ -2910,9 +3025,13 @@ export interface components {
       pnlBasis?: "gross" | "net";
       postedAt?: components["schemas"]["Instant"];
       postings: components["schemas"]["Posting"][];
+      protectedFields: components["schemas"]["FieldProtection"][];
       quality: components["schemas"]["DataQuality"];
       receiptId?: components["schemas"]["ID"];
+      review?: components["schemas"]["TransactionReview"];
       revision: components["schemas"]["Revision"];
+      sourceConflict: boolean;
+      sourceFacts: components["schemas"]["SourceTransactionFact"][];
       sources: components["schemas"]["SourceReference"][];
       /** @enum {string} */
       state: "draft" | "pending" | "posted" | "reversed" | "cancelled";
@@ -2937,17 +3056,30 @@ export interface components {
       locked: components["schemas"]["AmountValue"];
       owned: components["schemas"]["AmountValue"];
     };
-    /** @description At least one changed field required; application validates economic invariants and preserves previous revision. */
+    /** @description Omitted fields remain unchanged; empty merchant/note clears the value. No-op requests are rejected. Categories and allocation are explicitly unavailable until their owning tasks. */
     TransactionCorrection: {
       allocation?: components["schemas"]["ExpenseAllocation"];
-      amount?: components["schemas"]["PositiveMoney"];
       categoryId?: components["schemas"]["ID"];
       expectedRevision: components["schemas"]["Revision"];
+      /** @description Complete fee group; an empty list confirms no fee. Only negative movement fees are accepted. */
+      fees?: components["schemas"]["Posting"][];
       merchant?: string;
+      note?: string;
       occurredAt?: components["schemas"]["Instant"];
       payer?: components["schemas"]["Payer"];
+      /** @description Complete principal group in existing order. Accounts, assets, funding and treatment stay unchanged; signed exact amounts obey the economic type. */
+      principal?: components["schemas"]["Posting"][];
       reason: string;
-    } & (unknown | unknown | unknown | unknown | unknown | unknown);
+    } & (
+      | unknown
+      | unknown
+      | unknown
+      | unknown
+      | unknown
+      | unknown
+      | unknown
+      | unknown
+    );
     TransactionCreate: {
       accountId: components["schemas"]["ID"];
       allocation: components["schemas"]["ExpenseAllocation"];
@@ -2961,6 +3093,32 @@ export interface components {
       payer: components["schemas"]["Payer"];
       /** @enum {string} */
       type: "income" | "expense";
+    };
+    TransactionHistoryEntry: {
+      affected: components["schemas"]["DecisionRevision"][];
+      before?: components["schemas"]["Transaction"];
+      decisionId?: components["schemas"]["ID"];
+      /** @enum {string} */
+      decisionKind?: "correction" | "exclusion" | "undo" | "automated";
+      evidence: components["schemas"]["DecisionEvidence"][];
+      fields: components["schemas"]["LedgerField"][];
+      reason: string;
+      recordedAt?: components["schemas"]["Instant"];
+      transaction: components["schemas"]["Transaction"];
+      undoAvailable: boolean;
+      undoOf?: components["schemas"]["ID"];
+      /** @enum {string} */
+      undoReason:
+        | "available"
+        | "legacy"
+        | "superseded"
+        | "already_undone"
+        | "source_ambiguous"
+        | "invalid_restore";
+    };
+    TransactionHistoryPage: {
+      items: components["schemas"]["TransactionHistoryEntry"][];
+      nextCursor?: string;
     };
     TransactionHold: {
       accountId: components["schemas"]["ID"];
@@ -2979,6 +3137,15 @@ export interface components {
       items: components["schemas"]["Transaction"][];
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
+    };
+    TransactionReview: {
+      actorId: components["schemas"]["ID"];
+      evidence: components["schemas"]["DecisionEvidence"][];
+      rationale: string;
+      recordedAt: components["schemas"]["Instant"];
+      revision: components["schemas"]["Revision"];
+      /** @enum {string} */
+      state: "reviewed" | "clarification" | "failed";
     };
     /** @description Records internal movement only. Distinct family accounts, equal principal for same-asset transfers; explicit native legs for exchange. All referenced IDs must be distinct and belong to the trusted household. Before linking, validate every expectedRevision atomically with the effect; a stale leg fails with version_conflict and changes no leg. An empty list means new movements. */
     TransferCreate: {
@@ -3023,7 +3190,8 @@ export interface components {
       state: "unavailable";
     };
     UndoInput: {
-      expectedRevision: components["schemas"]["Revision"];
+      decisionId: components["schemas"]["ID"];
+      expectedRevisions: components["schemas"]["DecisionRevision"][];
       reason: string;
     };
     UnresolvedAllocation: {
@@ -6987,6 +7155,85 @@ export interface operations {
       503: components["responses"]["Problem"];
     };
   };
+  transactions_exclude: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Client-generated before submission. Unique within household + actor; same ID is used for status lookup. A different operation or payload with the same key is rejected. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+        /** @description Session-bound token; validate Origin as well. Exceptions use ceremony-bound challenge/state. */
+        "X-CSRF-Token": components["parameters"]["CSRF"];
+      };
+      path: {
+        transactionId: components["schemas"]["ID"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExcludeInput"];
+      };
+    };
+    responses: {
+      /** @description Registered command. Inspect its stable ID after timeout; do not create a new key. Financial effect and successful result commit atomically. */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommandStatus"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  transactions_history: {
+    parameters: {
+      query?: {
+        /** @description Opaque, bound to family, visibility and filters. */
+        cursor?: components["parameters"]["Cursor"];
+        limit?: components["parameters"]["Limit"];
+      };
+      header?: never;
+      path: {
+        transactionId: components["schemas"]["ID"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Immutable household transaction history; legacy recording time may be unknown. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TransactionHistoryPage"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+    };
+  };
   transactions_links: {
     parameters: {
       query?: never;
@@ -7034,6 +7281,33 @@ export interface operations {
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
       503: components["responses"]["Problem"];
+    };
+  };
+  transactions_revision: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        transactionId: components["schemas"]["ID"];
+        revision: components["schemas"]["Revision"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Immutable household transaction history; legacy recording time may be unknown. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Transaction"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
     };
   };
   transactions_undo: {

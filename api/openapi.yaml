@@ -188,6 +188,12 @@ paths:
     "$ref": "./paths/commands.yaml#/~1commands~1recent"
   "/commands/{commandId}":
     "$ref": "./paths/commands.yaml#/~1commands~1{commandId}"
+  /transactions/{transactionId}/exclude:
+    $ref: './paths/transactions.yaml#/~1transactions~1{transactionId}~1exclude'
+  /transactions/{transactionId}/history:
+    $ref: './paths/transactions.yaml#/~1transactions~1{transactionId}~1history'
+  /transactions/{transactionId}/revisions/{revision}:
+    $ref: './paths/transactions.yaml#/~1transactions~1{transactionId}~1revisions~1{revision}'
 components:
   responses:
     Problem:
@@ -209,6 +215,24 @@ components:
     Limit:
       "$ref": "./components.yaml#/parameters/Limit"
   schemas:
+    ExcludeInput:
+      $ref: './schemas/transactions.yaml#/ExcludeInput'
+    DecisionRevision:
+      $ref: './schemas/transactions.yaml#/DecisionRevision'
+    LedgerField:
+      $ref: './schemas/transactions.yaml#/LedgerField'
+    FieldProtection:
+      $ref: './schemas/transactions.yaml#/FieldProtection'
+    TransactionHistoryEntry:
+      $ref: './schemas/transactions.yaml#/TransactionHistoryEntry'
+    DecisionEvidence:
+      $ref: './schemas/transactions.yaml#/DecisionEvidence'
+    TransactionReview:
+      $ref: './schemas/transactions.yaml#/TransactionReview'
+    SourceTransactionFact:
+      $ref: './schemas/transactions.yaml#/SourceTransactionFact'
+    TransactionHistoryPage:
+      $ref: './schemas/transactions.yaml#/TransactionHistoryPage'
     HouseholdMember:
       "$ref": "./schemas/household.yaml#/HouseholdMember"
     InvitationState:

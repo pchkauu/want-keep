@@ -15,6 +15,8 @@ import (
 )
 
 type FactsRepository interface {
+	DecisionRepository
+	ReviewRepository
 	Account(context.Context, household.Principal, string) (account.Account, error)
 	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
 	RequireLedgerPayer(context.Context, household.Principal, household.MembershipID) error
@@ -87,6 +89,12 @@ func (s *Service) Create(ctx context.Context, p household.Principal, in CreateIn
 	r.Type = in.Type
 	r.PayerState, r.PayerMemberID = in.PayerState, in.PayerMemberID
 	r.Merchant, r.Note, r.AttachmentID, r.AllocationReason = in.Merchant, in.Note, in.AttachmentID, in.AllocationReason
+	if in.Merchant != "" {
+		r.Protections[ledger.MerchantField] = ledger.Protection{Revision: 1}
+	}
+	if in.Note != "" {
+		r.Protections[ledger.NoteField] = ledger.Protection{Revision: 1}
+	}
 	amount := in.Amount
 	if in.Type == ledger.Expense {
 		zero, _ := money.NewMoney("0", amount.Asset())
@@ -115,7 +123,7 @@ func (s *Service) manual(ctx context.Context, p household.Principal, at calendar
 	if err != nil {
 		return ledger.Revision{}, err
 	}
-	return ledger.Revision{OperationID: s.newID(), Revision: 1, ActorID: p.UserID(), Reason: "manual_record", State: ledger.Posted, OccurredAt: at, CashDate: date, ExpenseMonth: month, Timezone: zone, Origin: "manual", FeeKnowledge: ledger.KnownFees, HumanOverride: true, PayerState: "not_applicable", AllocationReason: "allocation_unresolved"}, nil
+	return ledger.Revision{OperationID: s.newID(), Revision: 1, ActorID: p.UserID(), Reason: "manual_record", State: ledger.Posted, OccurredAt: at, CashDate: date, ExpenseMonth: month, Timezone: zone, Origin: "manual", FeeKnowledge: ledger.KnownFees, Protections: map[ledger.Field]ledger.Protection{ledger.PrincipalField: {Revision: 1}, ledger.FeesField: {Revision: 1}, ledger.DateField: {Revision: 1}, ledger.PayerField: {Revision: 1}}, RecordedAt: s.now(), HumanOverride: true, PayerState: "not_applicable", AllocationReason: "allocation_unresolved"}, nil
 }
 
 func (s *Service) append(ctx context.Context, p household.Principal, r ledger.Revision) (command.Result, error) {
@@ -127,6 +135,10 @@ func (s *Service) append(ctx context.Context, p household.Principal, r ledger.Re
 
 func (s *Service) reject(err error) error {
 	switch {
+	case errors.Is(err, ledger.ErrFeatureUnavailable):
+		return commands.Rejection{Code: "feature_unavailable"}
+	case errors.Is(err, ledger.ErrSourceAmbiguous):
+		return commands.Rejection{Code: "source_ambiguous"}
 	case errors.Is(err, ledger.ErrInvalidRevision), errors.Is(err, ledger.ErrInvalidTransition):
 		return commands.Rejection{Code: "invalid_transaction"}
 	case errors.Is(err, ledger.ErrNotFound), errors.Is(err, account.ErrNotFound), errors.Is(err, attachment.ErrNotFound):

@@ -38,16 +38,9 @@ func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Rev
 	if r.Timezone.String() != "" && r.Timezone != zone {
 		return ledger.ErrInvalidRevision
 	}
-	r.Timezone = zone
-	r.CashDate, err = r.OccurredAt.DateIn(zone)
+	r, err = r.InTimezone(zone)
 	if err != nil {
 		return err
-	}
-	if r.Type != ledger.Opening {
-		r.ExpenseMonth, err = calendar.ParseMonth(r.CashDate.String()[:7])
-		if err != nil {
-			return err
-		}
 	}
 	if err := r.Validate(); err != nil {
 		return err
@@ -103,5 +96,5 @@ func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Rev
 	if err = accounts.NewProjector(w.accounts).Apply(ctx, p, r, previous); err != nil {
 		return err
 	}
-	return w.journal.EmitEvent(ctx, "transaction", r.OperationID, r.Revision, "transaction.changed")
+	return nil
 }

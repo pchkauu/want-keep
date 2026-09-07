@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"sort"
 	"strconv"
 
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/contract"
@@ -16,6 +17,43 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 		return generated.Transaction{}, err
 	}
 	out := generated.Transaction{Id: r.OperationID, Revision: int64(r.Revision), ActorId: string(r.ActorID), HouseholdId: string(p.HouseholdID()), Type: generated.TransactionType(r.Type), State: generated.TransactionState(r.State), OccurredAt: r.OccurredAt.String(), CashDate: r.CashDate.String(), AiState: "waiting", Origin: "legacy", FeeKnowledge: "unknown", Postings: []generated.Posting{}, Sources: []generated.SourceReference{}, BalanceEffects: []generated.TransactionBalanceEffect{}, EconomicComponents: []generated.EconomicComponent{}, Holds: []generated.TransactionHold{}}
+	out.AccountingState = generated.TransactionAccountingState(r.Accounting())
+	out.ProtectedFields = []generated.FieldProtection{}
+	out.SourceConflict = r.SourceConflict
+	if v.Review != nil {
+		rv := v.Review
+		out.Review = &generated.TransactionReview{Revision: int64(rv.Revision), ActorId: string(rv.ActorID), State: generated.TransactionReviewState(rv.State), Rationale: rv.Rationale, RecordedAt: rv.At.String(), Evidence: []generated.DecisionEvidence{}}
+		for _, e := range rv.Evidence {
+			out.Review.Evidence = append(out.Review.Evidence, generated.DecisionEvidence{Kind: generated.DecisionEvidenceKind(e.Kind), Id: e.ID, Revision: int64(e.Revision)})
+		}
+	}
+	out.SourceFacts = []generated.SourceTransactionFact{}
+	for _, fact := range v.SourceFacts {
+		dto, err := s.sourceFactDTO(fact)
+		if err != nil {
+			return out, err
+		}
+		out.SourceFacts = append(out.SourceFacts, dto)
+	}
+	if r.DecisionID != "" {
+		out.DecisionId = &r.DecisionID
+	}
+	if r.ReviewState != "" {
+		out.AiState = generated.TransactionAiState(r.ReviewState)
+	}
+	fields := []string{}
+	for f := range r.Protections {
+		fields = append(fields, string(f))
+	}
+	sort.Strings(fields)
+	for _, f := range fields {
+		p := r.Protections[ledger.Field(f)]
+		v := generated.FieldProtection{Field: generated.LedgerField(f), Revision: int64(p.Revision)}
+		if p.DecisionID != "" {
+			v.DecisionId = &p.DecisionID
+		}
+		out.ProtectedFields = append(out.ProtectedFields, v)
+	}
 	if r.Origin != "" {
 		out.Origin = generated.TransactionOrigin(r.Origin)
 	}
@@ -69,18 +107,9 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 	}
 	out.Quality.Freshness = "unknown"
 	for _, posting := range r.Postings {
-		amount, err := (contract.MoneyConverter{}).ToDTO(posting.Money)
+		dto, err := s.postingDTO(posting)
 		if err != nil {
 			return out, err
-		}
-		dto := generated.Posting{AccountId: posting.AccountID, Money: amount, Role: generated.PostingRole(posting.Role)}
-		if posting.Funding != "" {
-			f := generated.PostingFunding(posting.Funding)
-			dto.Funding = &f
-		}
-		if posting.Treatment != "" {
-			t := generated.PostingTreatment(posting.Treatment)
-			dto.Treatment = &t
 		}
 		out.Postings = append(out.Postings, dto)
 	}
