@@ -11,7 +11,7 @@ This verdict applies to SDD decision completeness. The application, connectors, 
 | BLK | task-0.10 decision | Evidence | Runtime gate |
 | --- | --- | --- | --- |
 | BLK-01 Alfa | D-37 limits scope to debit/current/savings/deposit/cashback. D-39 forbids UI/time/amount identity; unknown/ambiguous records do not post. | [Alfa](alfa.en.md), signed-in Chrome tab without publishing values | task-4.1: permission, structured fixture, IDs, lifecycle, two accounts, reauthentication, Alfa route |
-| BLK-02 Raiffeisen | CAMT 1:N, scoped IDs, cross-report transaction fingerprint without amount/time, collision policy, revisions/reversals; statement ID is provenance; last confirmed CLBD with date, other balances/fees unknown. | [Raiffeisen](raiffeisen.en.md), synthetic JSON/XML | task-4.2: OAuth lifecycle, full history, corrections, second account, conformance |
+| BLK-02 Raiffeisen | CAMT 1:N, canonical cross-report fingerprint without amount/time, atomic optional-ID aliases, collision policy, revisions/reversals; statement ID is provenance; last confirmed CLBD with date, other balances/fees unknown. | [Raiffeisen](raiffeisen.en.md), synthetic JSON/XML | task-4.2: OAuth lifecycle, full history, corrections, second account, conformance |
 | BLK-03 Ozon | Completed synthetic HAR projection is accepted for design; accountToken/groupID is not identity. | [Ozon](ozon.en.md), sanitized projections | task-4.3: session permission/lifecycle, history end, second account, reauthentication |
 | BLK-04 Bybit | Route namespaces, candidate-only cross-log matches, hourly fallback and collision policy are fixed. | [Bybit](bybit.en.md), [RSA API](bybit-api.en.md) | task-4.4: precision/history, second account, rotation/revocation, conformance |
 | BLK-05 Aifory | D-33 scope and fail-closed boundary close design without invented Flutter fields. | [Aifory](aifory.en.md), signed-in Chrome tab | task-4.5: permission, structured fixtures, identity/history/card lifecycle, reauthentication |
@@ -30,7 +30,7 @@ This verdict applies to SDD decision completeness. The application, connectors, 
 - Terminal command detail: 90 days after outcome; unresolved: through reconciliation + 90 days; a tombstone with `commandId` lives throughout unresolved state and 400 days after terminal/reconciled outcome; recent: 30 days terminal + every unresolved; expired detail → HTTP 410 `command_expired`.
 - FX gap beyond 365 days → `valuation_unavailable`; incomplete platform quote → `quote_unavailable`.
 - XIRR: Actual/365, same-day aggregation, both signs, one sign transition, fractional powers in 50-digit HALF_EVEN decimal with `1e-24` NPV error bound, bisection from `-1 + 1e-12` through `1,000,000`, `1e-12` solver tolerance, 512 iterations.
-- Provider admission: server-owned exact environment/build/contract/allowlist/configuration/permission binding; task-4.x provider evidence + task-8.x host evidence; stale/missing binding → `provider_not_admitted` before collector IO.
+- Provider admission: aggregate/repository in the `backend/internal/connections/admission/` application boundary, storage adapter in task-1.3; server-owned exact environment/build/contract/allowlist/configuration/permission binding; atomic task-4.x provider evidence + task-8.x host evidence; stale/missing binding → `provider_not_admitted` before a job or collector IO.
 
 ## Synthetic contract checks
 
@@ -44,7 +44,8 @@ This verdict applies to SDD decision completeness. The application, connectors, 
 | Bybit hourly tuple repeats with different payload | Both evidence revisions, `source_ambiguous`, no credit |
 | CAMT entry contains two transaction details | One entry, two linked details, postings by proven semantics without duplicating entry amount |
 | CAMT correction/reversal | New revision/correction link; original remains |
-| One CAMT fact without a stable ID arrives in 052 and 053 | Statement IDs are provenance; a proven transaction fingerprint deduplicates across reports, otherwise `source_ambiguous` prevents a second posting |
+| One CAMT fact arrives without an optional ID in 052 and with NtryRef only in 053 | One canonical `camtCrossReportFingerprint`; NtryRef becomes an alias of the original record and no second posting occurs |
+| A CAMT alias points to a different fingerprint or one fingerprint matches different facts | Both evidence items are retained; `source_ambiguous`, no new posting |
 | camt.052 is unavailable | Last CLBD with `asOf`; available/locked/fee unknown |
 | Crypto history is older than 365 days | Native amount retained, `valuation_unavailable` |
 | Platform quote lacks fee/spread coverage | `quote_unavailable`; CBR/CoinGecko never substitute as executable quote |
@@ -54,7 +55,7 @@ This verdict applies to SDD decision completeness. The application, connectors, 
 | No sign transition; `-100,+230,-132`; same-day net zero | Explained `unavailable` |
 | Terminal command older than 90, tombstone younger than 400 days | `command_expired`; same key/hash does not execute again, different hash rejected |
 | Unresolved command older than 90 days | Retained until reconciliation; included in `/commands/recent` |
-| Admission belongs to an old build/allowlist/configuration | `provider_not_admitted`; no job/provider IO/source record/posting occurs before a new combined pass |
+| Admission belongs to an old build/allowlist/configuration or revocation races enqueue | Atomic invalidate/check+enqueue and collector recheck yield `provider_not_admitted`; stale binding creates no job/provider IO/source record/posting |
 
 ## Evidence boundary
 

@@ -37,13 +37,13 @@
 | Provider task | Предпочтительный transport | До реализации mapping | До включения deployment |
 | --- | --- | --- | --- |
 | task-4.1 Alfa | Official structured read, иначе разрешённый Playwright | Synthetic contract D-37/D-39; никаких UI-derived проводок | Permission, fixtures, stable IDs, pagination/revisions/fees/cashback, reauth, два аккаунта, target-host route |
-| task-4.2 Raiffeisen | RBO API/CAMT | CAMT 1:N, scoped ID/fallback, CLBD/unknown semantics | OAuth rotation, corrections/reversals, full history, second account, live conformance |
+| task-4.2 Raiffeisen | RBO API/CAMT | CAMT 1:N, canonical cross-report fingerprint + optional-ID aliases, CLBD/unknown semantics | OAuth rotation, corrections/reversals, full history, second account, live conformance |
 | task-4.3 Ozon | Подтверждённый session read | Sanitized HAR projection, route namespaces, parent fee relation | Session permission/lifecycle, stable account ID, history end, second account, reauth |
 | task-4.4 Bybit | Official RSA read-only API | Route IDs, candidate links, hourly collision policy | Precision/history, two accounts, key rotation/revocation, write-route denial |
 | task-4.5 Aifory | Structured session read; Playwright только при необходимости | D-33 namespace/unknown rules | Permission, structured fixtures, card lifecycle/fees/FX, pagination, reauth, two accounts |
 | task-4.6 EMCD | Structured session read; Playwright только при необходимости | D-34 namespace/unknown rules | Fixtures wallet/Grow/card/P2P, balance/lifecycle/fees, pagination, reauth, two accounts |
 
-Провал provider gate сохраняет источник отключённым. task-4.x provider evidence и task-8.x host evidence объединяет только admission service для точного D-43 binding; любой stale binding снова закрывает sync. Это не блокирует ручной учёт, доменные функции или проверенные другие источники. Write actions не входят ни в один fallback.
+Провал provider gate сохраняет источник отключённым. `backend/internal/connections/admission/` и storage adapter task-1.3 владеют aggregate, атомарным combine/invalidate и admission-check + enqueue. task-4.x provider evidence и task-8.x host evidence объединяет только admission service для точного D-43 binding; любой stale binding снова закрывает sync, а collector проверяет его перед IO. Это не блокирует ручной учёт, доменные функции или проверенные другие источники. Write actions не входят ни в один fallback.
 
 ## Контрактные entry/exit gates
 
@@ -53,7 +53,7 @@ Entry: task-1.1 в target; contracts version 10. Exit: Money/Asset/Rate/coverage
 
 ### task-1.3
 
-Entry: versioned API/value objects task-1.2. Exit: atomic source/posting/revision/outbox; D-39 unique key and collision evidence; D-41 independent cleanup jobs; crash/retry/concurrency tests on isolated PostgreSQL.
+Entry: versioned API/value objects task-1.2. Exit: atomic source/posting/revision/outbox; D-39 unique key and collision evidence; D-41 independent cleanup jobs; persisted D-43 aggregate/repository, atomic provider+host combine/invalidate and admission-check + job enqueue; restart/revoke/binding-race tests on isolated PostgreSQL.
 
 ### task-6.1 и task-6.4
 

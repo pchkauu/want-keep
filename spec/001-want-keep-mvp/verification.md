@@ -19,7 +19,7 @@
 | BLK | Статус SDD | Решение | Что остаётся до runtime/приёмки |
 | --- | --- | --- | --- |
 | BLK-01 Alfa | Закрыт D-37/D-39 | Scope debit/current/savings/deposit/cashback; кредитка Alfa отложена; unknown/ambiguous fail closed | task-4.1 permission/fixture/identity/history/reauth/2 accounts/Alfa route |
-| BLK-02 Raiffeisen | Закрыт D-39 | CAMT 1:N, scoped ID/fallback, revisions/reversals, CLBD/unknown balance rules | task-4.2 OAuth/full history/corrections/2 accounts/conformance |
+| BLK-02 Raiffeisen | Закрыт D-39 | CAMT 1:N, canonical cross-report fingerprint, atomic optional-ID aliases, revisions/reversals, CLBD/unknown balance rules | task-4.2 OAuth/full history/corrections/2 accounts/conformance |
 | BLK-03 Ozon | Закрыт D-38/D-39 | Synthetic HAR projection достаточна для дизайна; rotating token/group не identity | task-4.3 session permission/lifecycle/history end/2 accounts |
 | BLK-04 Bybit | Закрыт D-39 | Route IDs, candidate-only links, hourly tuple collision policy | task-4.4 precision/history/rotation/revocation/2 accounts |
 | BLK-05 Aifory | Закрыт D-38/D-39 | Scope и safe boundary фиксированы без вымышленных Flutter fields | task-4.5 permission/structured fixtures/card lifecycle/reauth/2 accounts |
