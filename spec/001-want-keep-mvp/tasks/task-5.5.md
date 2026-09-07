@@ -5,7 +5,7 @@
 
 Давать проверяемые объяснения расходов, доходов и выполнения плана.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-5.1`, `task-6.8`.
 
@@ -137,7 +137,7 @@ make eval-ai SUITE=insights && make test-integration AREA=insights
 
 Provide verifiable explanations of spending, income and plan progress.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-5.1`, `task-6.8`.
 

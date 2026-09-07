@@ -5,7 +5,7 @@
 
 Закрыть подтверждённые дефекты и передать проверяемый результат.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-9.1`.
 
@@ -48,6 +48,7 @@
 - **REQ-072:** Конкурирующие изменения, ответы на уточнения и отмены проверяют версию и текущие права, сохраняя обоих авторов.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации и окружения.
 
 ### Критерии приёмки
 
@@ -179,6 +180,13 @@
 - **Тогда:** Создаётся один денежный эффект и несколько evidence с авторами; при отсутствии доказанного совпадения требуется уточнение, одинаковые суммы разных счетов не сливаются.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Сервер возвращает `provider_not_admitted`, collector не запускается и проводок нет. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding; любое расхождение снова закрывает sync.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
@@ -199,7 +207,7 @@ make check && python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 Resolve confirmed defects and hand off a verifiable result.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-9.1`.
 
@@ -242,6 +250,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-072:** Competing edits, clarification answers and reversals check revision and current permissions while retaining both authors.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
 
 ### Acceptance criteria
 
@@ -372,6 +381,13 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **When:** Parallel messages, a file replay and import are processed.
 - **Then:** One financial effect and multiple authored evidence records result; an unproven match requires clarification and equal amounts from different accounts are not merged.
 - **Level:** `integration`.
+
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again.
+- **Level:** `integration+security`.
 
 ### Verification
 

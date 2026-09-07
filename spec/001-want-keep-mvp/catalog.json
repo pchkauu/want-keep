@@ -1,6 +1,11 @@
 {
   "schema_version": 1,
   "feature": "001-want-keep-mvp",
+  "readiness": {
+    "status": "ready_for_development",
+    "date": "2026-09-07",
+    "gate_task": "task-0.10"
+  },
   "requirements": [
     {
       "id": "REQ-001",
@@ -988,24 +993,24 @@
     },
     {
       "id": "REQ-042",
-      "decision": "D-13",
+      "decision": "D-37",
       "title": {
-        "ru": "Интеграция Альфа-Банк автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.",
-        "en": "The Alfa-Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract."
+        "ru": "Alfa автоматически читает debit, current/savings, deposits и кэшбэк по проверенному контракту.",
+        "en": "Alfa automatically reads debit, current/savings, deposits and cashback under a verified contract."
       },
       "acceptance": {
         "id": "AC-042",
         "given": {
-          "ru": "Подключён разрешённый личный аккаунт Альфа-Банк с тестируемыми продуктами.",
-          "en": "An authorized personal Alfa-Bank account with the tested products is connected."
+          "ru": "Подключён разрешённый аккаунт Alfa с продуктами D-37.",
+          "en": "An authorized Alfa account with D-37 products is connected."
         },
         "when": {
-          "ru": "Запрошены счета, остатки, операции и необходимые условия продуктов.",
-          "en": "Accounts, balances, transactions and required product terms are requested."
+          "ru": "Запрошены счета, остатки, операции, кэшбэк и условия накоплений.",
+          "en": "Accounts, balances, transactions, cashback and savings terms are requested."
         },
         "then": {
-          "ru": "Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.",
-          "en": "Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage."
+          "ru": "Данные совпадают с source evidence; кредитка Alfa не требуется, unknown блокирует только deployment коннектора.",
+          "en": "Data matches source evidence; an Alfa credit card is not required and unknown blocks only connector deployment."
         },
         "level": "contract+manual"
       }
@@ -2089,6 +2094,30 @@
         },
         "level": "manual+e2e"
       }
+    },
+    {
+      "id": "REQ-088",
+      "decision": "D-43",
+      "title": {
+        "ru": "Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации и окружения.",
+        "en": "Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions."
+      },
+      "acceptance": {
+        "id": "AC-106",
+        "given": {
+          "ru": "Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.",
+          "en": "A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision."
+        },
+        "when": {
+          "ru": "Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.",
+          "en": "A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes."
+        },
+        "then": {
+          "ru": "Сервер возвращает `provider_not_admitted`, collector не запускается и проводок нет. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding; любое расхождение снова закрывает sync.",
+          "en": "The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again."
+        },
+        "level": "integration+security"
+      }
     }
   ],
   "extra_acceptance": [
@@ -2594,8 +2623,8 @@
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/1",
       "status": {
-        "ru": "Исследование завершено 2026-09-07 с блокирующими выводами: live-чтение доступных продуктов и кэшбэка, опубликованные retail API, синтетические примеры и ALFA-B01–ALFA-B06 записаны в [evidence RU](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/alfa.md). ALFA-B02–ALFA-B06 и BLK-01 открыты: автоматический read-доступ, identity/полнота/reauth/второй аккаунт, кредитка, точные условия и FX/cashback lifecycle. task-4.1 и task-0.10 не разблокированы; исследование не означает Ready.",
-        "en": "Research completed on 2026-09-07 with blocking findings: live reading of available products and cashback, published retail APIs, synthetic examples and ALFA-B01–ALFA-B06 are recorded in [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/alfa.en.md). ALFA-B02–ALFA-B06 and BLK-01 remain open: automatic read access, identity/completeness/reauth/second account, credit card, exact terms and FX/cashback lifecycle. task-4.1 and task-0.10 remain blocked; completed research does not mean Ready."
+        "ru": "Исследование завершено 2026-09-07. D-37 фиксирует текущий объём Alfa: дебетовая карта, текущий и накопительные счета, вклады и кэшбэк; кредитка Alfa отложена без блокировки общей ручной поддержки кредиток. Доступная авторизованная вкладка подтвердила продуктовые разделы и историю без публикации финансовых данных. Структурированный fixture, право автоматизации, второй аккаунт и reauth перенесены в entry/runtime gate task-4.1; SDD Ready не заявляет работающий коннектор.",
+        "en": "Research completed on 2026-09-07. D-37 defines the current Alfa scope: debit card, current and savings accounts, deposits and cashback; an Alfa credit card is deferred without blocking shared manual credit-card support. The available signed-in tab confirmed product sections and history without publishing financial data. A structured fixture, automation permission, second account and reauthentication are task-4.1 entry/runtime gates; SDD Ready does not claim a running connector."
       }
     },
     {
@@ -2625,8 +2654,8 @@
         "deploy/raiffeisen-research/"
       ],
       "status": {
-        "ru": "Исследование завершено 2026-09-07 с открытыми контрактными вопросами. D-35 ограничивает Raif расчётным счётом ИП. Refresh grant, GET счетов с Mac и VPS, две исторические CAMT.053-выписки и сверка остатков прошли; семь NtryRef и записей совпали между отчётами. Текущий CAMT.052 вернул 404 no-statements. RAIF-B01 и RAIF-B05 закрыты; RAIF-B02/B03/B04/B06 остаются в BLK-02. task-4.2 и MVP Not Ready. Evidence RU/EN, синтетические JSON/XML и диагностические скрипты подготовлены. Оставшиеся вопросы переданы task-0.10; закрытие исследования не снимает Ready gate.",
-        "en": "Research completed on 2026-09-07 with open contract questions. D-35 limits Raif to the individual entrepreneur current account. Refresh grant, account GETs from Mac and VPS, two historical CAMT.053 statements and balance reconciliation passed; seven NtryRefs and entries matched across reports. Current CAMT.052 returned 404 no-statements. RAIF-B01 and RAIF-B05 closed; RAIF-B02/B03/B04/B06 remain in BLK-02. task-4.2 and MVP Not Ready. RU/EN evidence, synthetic JSON/XML and diagnostic scripts prepared. Remaining questions are assigned to task-0.10; research closure does not remove the Ready gate."
+        "ru": "Исследование Raiffeisen RBO/CAMT завершено; task-0.10 закрепила CAMT 1:N, identity/fallback, revision и unknown-balance правила. SDD Ready; OAuth/history/второй аккаунт/conformance остаются gate task-4.2.",
+        "en": "Raiffeisen RBO/CAMT research is complete; task-0.10 fixed CAMT 1:N, identity/fallback, revision and unknown-balance rules. The SDD is Ready; OAuth/history/second-account/conformance remains the task-4.2 gate."
       },
       "behavior": {
         "ru": "По D-35 исследовать официальный RBO API расчётного счёта ИП: остатки, поступления, списания, комиссии и историю. Личные карты, кредиты, накопления и вклады Raif не входят в MVP. Сохранить исходные JSON/CAMT только приватно; в репозитории — синтетические примеры. Зафиксировать RUR→RUB, accounts.id отдельно от number/accountKeys, CAMT.053.001.08, NtryRef и вложенные TxDtls, фактический completed против OpenAPI COMPLETED и no-statements против NO_STATEMENTS. Подтвердить границы истории, текущие/доступные/заблокированные остатки, точное значение кодов комиссий, ротацию/reauth, внешний аккаунт и независимость участников. Частичное подтверждение или документированный блокер завершает исследование по README, но не снимает Ready gate task-0.10 и не заменяет автоматический импорт ручной выпиской.",
@@ -2682,8 +2711,8 @@
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/3",
       "status": {
-        "ru": "Исследование завершено 2026-09-07 с блокирующими выводами: два HAR, 10 синтетических проекций, пять read-маршрутов, identity и комиссия описаны в [evidence RU](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.md). Семь страниц связаны курсорами, но конец истории не достигнут. Эксплуатация сессии и второй внешний аккаунт не проверены. OZON-B02/B04/B05 остаются в BLK-03 под проверкой task-0.10; task-4.3 заблокирована, Ready не объявлен.",
-        "en": "Research completed on 2026-09-07 with blocking findings: two HARs, 10 synthetic projections, five read routes, identity and a commission are documented in [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.en.md). Seven pages form a cursor chain but do not reach history completion. Session operation and a second external account are unverified. OZON-B02/B04/B05 remain within BLK-03 for task-0.10 verification; task-4.3 is blocked and Ready is not claimed."
+        "ru": "Исследование Ozon и sanitized HAR projections завершены; task-0.10 закрепила D-39 identity и перенесла session/history/второй аккаунт в gate task-4.3. SDD Ready; connector не реализован.",
+        "en": "Ozon research and sanitized HAR projections are complete; task-0.10 fixed D-39 identity and moved session/history/second-account checks into the task-4.3 gate. The SDD is Ready; the connector is not implemented."
       }
     },
     {
@@ -2727,8 +2756,8 @@
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/4",
       "status": {
-        "ru": "Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit-api.md). RSA readOnly API успешно читает Funding USDT/USDC/ETH/BTC, Flexible Easy Earn и P2P. BYBIT-B01/B02/B05 закрыты для проверенного доступа, BYBIT-B03/B04 открыты под task-0.10, BYBIT-B06 отложен без блокировки. 18 наблюдений/источников, 12 синтетических сценариев; продуктовые AC не объявлены пройденными. task-4.4 и BLK-04 Not Ready.",
-        "en": "Research completed on 2026-09-07: [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit-api.en.md). RSA readOnly API successfully reads Funding USDT/USDC/ETH/BTC, Flexible Easy Earn and P2P. BYBIT-B01/B02/B05 closed for verified access, BYBIT-B03/B04 open under task-0.10, BYBIT-B06 non-blocking deferred. 18 observations/sources, 12 synthetic scenarios; product ACs are not declared passed. task-4.4 and BLK-04 remain Not Ready."
+        "ru": "Исследование Bybit и RSA read-only API завершено; task-0.10 закрепила route identity, candidate links, hourly collision и history-gap rules. SDD Ready; executable conformance остаётся gate task-4.4.",
+        "en": "Bybit research and RSA read-only API checks are complete; task-0.10 fixed route identity, candidate links, hourly collision and history-gap rules. The SDD is Ready; executable conformance remains the task-4.4 gate."
       },
       "verification_note": {
         "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
@@ -2772,8 +2801,8 @@
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/5",
       "status": {
-        "ru": "Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.md), [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.en.md). UI-чтение выполнено; AIFORY-B02–B04 / BLK-05 остаются открыты под контролем task-0.10. Другие продукты отложены без блокировки. task-4.5 и MVP — Not Ready.",
-        "en": "Research completed 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.md), [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.en.md). UI reading performed; AIFORY-B02–B04 / BLK-05 remain open under task-0.10. Other products are deferred without blocking. task-4.5 and MVP are Not Ready."
+        "ru": "Исследование Aifory UI завершено; task-0.10 закрепила D-33/D-39 safe boundary. SDD Ready; permission, structured fixtures, lifecycle, reauth и второй аккаунт остаются gate task-4.5.",
+        "en": "Aifory UI research is complete; task-0.10 fixed the D-33/D-39 safe boundary. The SDD is Ready; permission, structured fixtures, lifecycle, reauthentication and a second account remain the task-4.5 gate."
       }
     },
     {
@@ -2802,8 +2831,8 @@
         "spec/001-want-keep-mvp/evidence/emcd.samples.json"
       ],
       "behavior": {
-        "ru": "Объём D-34: кошелёк USDT, существующие Coinhold/Grow, карты Plus/Light и исторические P2P-ордера. Майнинг не использовался никогда; его история, другие продукты и новые mining API-ключи не нужны. Evidence/emcd.md и .en.md содержат датированные UI-наблюдения, официальные источники, продуктовую матрицу, поля/ограничения и EMCD-B01–B05. Опубликованный Mining Pool API 1.3.0 не доказывает чтение выбранных продуктов. Структурированных request/response этих продуктов нет; emcd.samples.json — проектные сценарии, не provider fixtures. Отделить агрегат и дочерние остатки, accrual/capitalization/payout Grow, declined principal и fee карты, точные стороны P2P и его округлённый UI. Сохранить вопросы identity/revisions/history/reauth/второго аккаунта и чтения без внешних мутаций. BLK-06 закрывает task-0.10; исследование завершает evidence, но не разблокирует task-4.6 без закрытия контракта и Ready.",
-        "en": "D-34 scope: USDT wallet, existing Coinhold/Grow, Plus/Light cards and historical P2P orders. Mining has never been used; its history, other products and new mining API keys are unnecessary. Evidence/emcd.md and .en.md contain dated UI observations, official sources, product matrix, fields/limitations and EMCD-B01–B05. Published Mining Pool API 1.3.0 does not establish selected-product reading. Their structured request/response pairs are unavailable; emcd.samples.json contains designed scenarios, not provider fixtures. Separate aggregates/child balances, Grow accrual/capitalization/payout, declined card principal/fees and exact P2P legs/rounded UI. Retain identity/revisions/history/reauth/second-account and read-only questions. task-0.10 resolves BLK-06; completed research does not unblock task-4.6 before contract closure and Ready."
+        "ru": "Объём D-34: кошелёк USDT, существующие Coinhold/Grow, карты Plus/Light и исторические P2P-ордера. Майнинг не использовался никогда; его история, другие продукты и новые mining API-ключи не нужны. Evidence/emcd.md и .en.md содержат датированные UI-наблюдения, официальные источники, продуктовую матрицу, поля/ограничения и EMCD-B01–B05. Опубликованный Mining Pool API 1.3.0 не доказывает чтение выбранных продуктов. Структурированных request/response этих продуктов нет; emcd.samples.json — проектные сценарии, не provider fixtures. Отделить агрегат и дочерние остатки, accrual/capitalization/payout Grow, declined principal и fee карты, точные стороны P2P и его округлённый UI. Сохранить вопросы identity/revisions/history/reauth/второго аккаунта и чтения без внешних мутаций. D-38/D-39 закрывают SDD-часть; исследование завершает evidence, а structured fixtures и conformance остаются entry/deployment gate task-4.6.",
+        "en": "D-34 scope: USDT wallet, existing Coinhold/Grow, Plus/Light cards and historical P2P orders. Mining has never been used; its history, other products and new mining API keys are unnecessary. Evidence/emcd.md and .en.md contain dated UI observations, official sources, product matrix, fields/limitations and EMCD-B01–B05. Published Mining Pool API 1.3.0 does not establish selected-product reading. Their structured request/response pairs are unavailable; emcd.samples.json contains designed scenarios, not provider fixtures. Separate aggregates/child balances, Grow accrual/capitalization/payout, declined card principal/fees and exact P2P legs/rounded UI. Retain identity/revisions/history/reauth/second-account and read-only questions. D-38/D-39 resolve the SDD portion; research completes evidence, while structured fixtures and conformance remain the task-4.6 entry/deployment gate."
       },
       "verification": {
         "command": "make docs-check",
@@ -2814,8 +2843,8 @@
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/6",
       "status": {
-        "ru": "Исследование завершено 2026-09-07 с блокерами автоматизации: UI четырёх областей проверен, EMCD-E01–E26 и шесть синтетических сценариев записаны. EMCD-B02–B04 / BLK-06 переданы task-0.10; task-4.6 и MVP Not Ready.",
-        "en": "Research completed on 2026-09-07 with automation blockers: four UI areas verified, EMCD-E01–E26 and six synthetic scenarios recorded. EMCD-B02–B04 / BLK-06 handed to task-0.10; task-4.6 and MVP Not Ready."
+        "ru": "Исследование EMCD UI завершено; task-0.10 закрепила D-34/D-39 namespaces и unknown/collision behavior. SDD Ready; structured fixtures и conformance остаются gate task-4.6.",
+        "en": "EMCD UI research is complete; task-0.10 fixed D-34/D-39 namespaces and unknown/collision behavior. The SDD is Ready; structured fixtures and conformance remain the task-4.6 gate."
       },
       "verification_note": {
         "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
@@ -2845,8 +2874,8 @@
         "spec/001-want-keep-mvp/evidence/fx.en.md"
       ],
       "behavior": {
-        "ru": "Evidence/fx.md и .en.md содержат датированные официальные источники, live boundary probes, матрицу кандидатов, формулу USD-кроссов, failure/cache/audit правила и FX-B01–FX-B06. Основной USD/RUB — XML Банка России; Frankfurter v2 только с providers=CBR — fallback/cross-check; CoinGecko Demo — отдельные BTC/USD, ETH/USD, USDT/USD и USDC/USD current/history не старше 365 дней. Default blend и peg USD/USDT/USDC=1 запрещены; похожие токены, включая USDC.E, не объединять без проверенной identity mapping. TradingView отвергнут: библиотеки требуют внешний datafeed, terms запрещают non-display price referencing. Reference valuation не заменяет provider executable buy/sell с обеими native amounts, applicable amount, timestamp, spread/fee. DE/NL/BG snapshot подтверждён, но не является SLA/VPS runtime. BLK-07 сохраняет FX-B02–FX-B04 под task-0.10; исследование не разблокирует task-6.1 до Ready.",
-        "en": "Evidence/fx.md and .en.md contain dated official sources, live boundary probes, a candidate matrix, USD-cross formula, failure/cache/audit rules and FX-B01–FX-B06. Primary USD/RUB is Bank of Russia XML; Frankfurter v2 with providers=CBR only is fallback/cross-check; CoinGecko Demo supplies separate BTC/USD, ETH/USD, USDT/USD and USDC/USD current/history no older than 365 days. Default blends and a USD/USDT/USDC=1 peg are forbidden; similar tokens, including USDC.E, are not merged without verified identity mapping. TradingView is rejected: libraries need an external datafeed and terms prohibit non-display price referencing. Reference valuation cannot replace provider-executable buy/sell with both native amounts, applicable amount, timestamp and spread/fee. DE/NL/BG snapshot reachability is established but is not SLA/VPS runtime. BLK-07 retains FX-B02–FX-B04 under task-0.10; research does not unblock task-6.1 before Ready."
+        "ru": "Evidence/fx.md и .en.md содержат датированные официальные источники, live boundary probes, матрицу кандидатов, формулу USD-кроссов, failure/cache/audit правила и FX-B01–FX-B06. Основной USD/RUB — XML Банка России; Frankfurter v2 только с providers=CBR — fallback/cross-check; CoinGecko Demo — отдельные BTC/USD, ETH/USD, USDT/USD и USDC/USD current/history не старше 365 дней. Default blend и peg USD/USDT/USDC=1 запрещены; похожие токены, включая USDC.E, не объединять без проверенной identity mapping. TradingView отвергнут: библиотеки требуют внешний datafeed, terms запрещают non-display price referencing. Reference valuation не заменяет provider executable buy/sell с обеими native amounts, applicable amount, timestamp, spread/fee. DE/NL/BG snapshot подтверждён, но не является SLA/VPS runtime. D-40 закрывает SDD-часть FX-B02/B03; Demo key/quota/attribution и работающий adapter остаются gate task-6.1.",
+        "en": "Evidence/fx.md and .en.md contain dated official sources, live boundary probes, a candidate matrix, USD-cross formula, failure/cache/audit rules and FX-B01–FX-B06. Primary USD/RUB is Bank of Russia XML; Frankfurter v2 with providers=CBR only is fallback/cross-check; CoinGecko Demo supplies separate BTC/USD, ETH/USD, USDT/USD and USDC/USD current/history no older than 365 days. Default blends and a USD/USDT/USDC=1 peg are forbidden; similar tokens, including USDC.E, are not merged without verified identity mapping. TradingView is rejected: libraries need an external datafeed and terms prohibit non-display price referencing. Reference valuation cannot replace provider-executable buy/sell with both native amounts, applicable amount, timestamp and spread/fee. DE/NL/BG snapshot reachability is established but is not SLA/VPS runtime. D-40 resolves the SDD portion of FX-B02/B03; Demo key/quota/attribution and a running adapter remain the task-6.1 gate."
       },
       "verification": {
         "command": "make docs-check",
@@ -2857,8 +2886,8 @@
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/7",
       "status": {
-        "ru": "Исследование завершено 2026-09-07: CBR/CoinGecko/Frankfurter contract, 18 evidence items и шесть blocker decisions записаны; TradingView отвергнут. FX-B02–FX-B04 / BLK-07 переданы task-0.10; task-6.1 и MVP Not Ready.",
-        "en": "Research completed on 2026-09-07: CBR/CoinGecko/Frankfurter contract, 18 evidence items and six blocker decisions recorded; TradingView rejected. FX-B02–FX-B04 / BLK-07 handed to task-0.10; task-6.1 and MVP Not Ready."
+        "ru": "Исследование CBR/CoinGecko/Frankfurter завершено; D-40 закрепляет `valuation_unavailable`/`quote_unavailable`. SDD Ready; Demo key/quota/attribution и runtime adapter остаются task-6.1.",
+        "en": "CBR/CoinGecko/Frankfurter research is complete; D-40 fixes `valuation_unavailable`/`quote_unavailable`. The SDD is Ready; Demo key/quota/attribution and runtime adapter remain task-6.1 work."
       },
       "verification_note": {
         "ru": "make docs-check проверяет SDD. Anonymous current/history/plan-limit и DE/NL/BG probes подтверждают только датированный публичный доступ. Demo key, длительный runtime, crypto history >365d и executable provider quotes не проверены и перечислены как открытые решения.",
@@ -2908,8 +2937,8 @@
         "spec/001-want-keep-mvp/tools/test_dahl_eval.py"
       ],
       "behavior": {
-        "ru": "Владелец выбрал gpt-5.6-terra, reasoning.effort=xhigh для всех AI-задач. OAI-E01–E15, evidence/openai.md/en.md и results/prompts/eval/cost JSON фиксируют цены, retention, Standard foreground Responses, strict proposal, store=false, explicit cache без breakpoints, detail=high и предварительный input count. Финальный отдельный 206+3 eval: 206/206, visual 6/6, function 3/3, 0 критических ошибок; цена $0.445556. 301 OpenAI requests всего: $3.2926944 в общем лимите $7 с сохранением ранних неудач и оплаченного incomplete Luna. Калибровка на известных синтетических случаях, не holdout и не app acceptance. Dahl MiniMax/DeepSeek: отдельные ограниченные screen, high принят без подтверждения применения; unknown расходы остаются резервами, тариф пула не подтверждён. Альтернативы и автоматический downgrade в runtime не включать. Xhigh месячная смета $47.125, стресс $62.96875; при $50 задания ждут, обычный учёт работает. Допущения объёма/налоги/прочий расход сверить перед запуском. Изменение модели/effort/prompt/schema/pricing требует повторного допуска. Разблокированы контракты task-5.1/5.2/5.3/5.5 и BLK-08 в task-0.10; остальные зависимости и общий Not Ready сохраняются. Серверные validators/права/runtime очередей/locale и полный AC — последующие задачи.",
-        "en": "The owner selected gpt-5.6-terra, reasoning.effort=xhigh for all AI tasks. OAI-E01–E15, evidence/openai.md/en.md and results/prompts/eval/cost JSON record pricing, retention, Standard foreground Responses, strict proposals, store=false, explicit cache without breakpoints, detail=high and input pre-counting. Final separate 206+3 evaluation: 206/206, visual 6/6, function 3/3, zero critical errors; cost USD 0.445556. All 301 OpenAI requests cost USD 3.2926944 within the shared USD 7 cap, retaining earlier failures and paid Luna incomplete output. Calibration on known synthetic cases, not holdout or app acceptance. Dahl MiniMax/DeepSeek: separate limited screens, requested high accepted without applied-setting confirmation; unknown costs remain reserved and pool pricing unverified. No runtime alternative or automatic downgrade. Xhigh monthly estimate USD 47.125, stress USD 62.96875; unaffordable work waits at USD 50 while ordinary accounting continues. Reconcile workload assumptions/taxes/other usage before launch. Model/effort/prompt/schema/pricing changes require requalification. Unblocks task-5.1/5.2/5.3/5.5 contracts and BLK-08 in task-0.10; other dependencies and overall Not Ready remain. Server validation/permissions/runtime queues/locale and full acceptance are subsequent tasks."
+        "ru": "Владелец выбрал gpt-5.6-terra, reasoning.effort=xhigh для всех AI-задач. OAI-E01–E15, evidence/openai.md/en.md и results/prompts/eval/cost JSON фиксируют цены, retention, Standard foreground Responses, strict proposal, store=false, explicit cache без breakpoints, detail=high и предварительный input count. Финальный отдельный 206+3 eval: 206/206, visual 6/6, function 3/3, 0 критических ошибок; цена $0.445556. 301 OpenAI requests всего: $3.2926944 в общем лимите $7 с сохранением ранних неудач и оплаченного incomplete Luna. Калибровка на известных синтетических случаях, не holdout и не app acceptance. Dahl MiniMax/DeepSeek: отдельные ограниченные screen, high принят без подтверждения применения; unknown расходы остаются резервами, тариф пула не подтверждён. Альтернативы и автоматический downgrade в runtime не включать. Xhigh месячная смета $47.125, стресс $62.96875; при $50 задания ждут, обычный учёт работает. Допущения объёма/налоги/прочий расход сверить перед запуском. Изменение модели/effort/prompt/schema/pricing требует повторного допуска. Контракты task-5.1/5.2/5.3/5.5 разблокированы; task-0.10 завершила SDD gate. Серверные validators/права/runtime очередей/locale и полный AC остаются последующими задачами.",
+        "en": "The owner selected gpt-5.6-terra, reasoning.effort=xhigh for all AI tasks. OAI-E01–E15, evidence/openai.md/en.md and results/prompts/eval/cost JSON record pricing, retention, Standard foreground Responses, strict proposals, store=false, explicit cache without breakpoints, detail=high and input pre-counting. Final separate 206+3 evaluation: 206/206, visual 6/6, function 3/3, zero critical errors; cost USD 0.445556. All 301 OpenAI requests cost USD 3.2926944 within the shared USD 7 cap, retaining earlier failures and paid Luna incomplete output. Calibration on known synthetic cases, not holdout or app acceptance. Dahl MiniMax/DeepSeek: separate limited screens, requested high accepted without applied-setting confirmation; unknown costs remain reserved and pool pricing unverified. No runtime alternative or automatic downgrade. Xhigh monthly estimate USD 47.125, stress USD 62.96875; unaffordable work waits at USD 50 while ordinary accounting continues. Reconcile workload assumptions/taxes/other usage before launch. Model/effort/prompt/schema/pricing changes require requalification. The task-5.1/5.2/5.3/5.5 contracts are unblocked and task-0.10 completed the SDD gate. Server validation/permissions/runtime queues/locale and full acceptance remain subsequent work."
       },
       "verification": {
         "command": "make docs-check",
@@ -2920,8 +2949,8 @@
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/8",
       "status": {
-        "ru": "Завершено: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, 0 критических ошибок, PNG/PDF 6/6, function 3/3. BLK-08 закрыт; MVP Not Ready.",
-        "en": "Complete: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, zero critical errors, PNG/PDF 6/6, function 3/3. BLK-08 closed; MVP Not Ready."
+        "ru": "Исследование OpenAI завершено: модель, strict schema, качество, стоимость и failure boundary выбраны. SDD Ready; gateway, авторизация и runtime budget остаются task-5.x/task-8.1.",
+        "en": "OpenAI research is complete: model, strict schema, quality, cost and failure boundary are selected. The SDD is Ready; gateway, authorization and runtime budget remain task-5.x/task-8.1 work."
       },
       "verification_note": {
         "ru": "Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.",
@@ -2951,8 +2980,8 @@
         "spec/001-want-keep-mvp/evidence/hosting.en.md"
       ],
       "status": {
-        "ru": "Исследование завершено 2026-09-07 с эксплуатационными блокерами. Владелец выбрал сервер приложения в Германии 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в той же private VPC. Смета: 2 520 ₽/мес. по годовому тарифу; консервативно без скидки и с резервом 10% — 3 055.56 ₽/$35.29 при зафиксированном курсе, ниже $40. Текущий VPS 1 vCPU/<1 ГБ исследован read-only и не допущен как production. HOST-B01–HOST-B06 переданы task-8.1–task-8.3 и task-0.10/task-4.1; безопасная достижимость Alfa, hardening, нагрузка и backup/restore runtime не подтверждены. task-0.9 завершена, но AC приложения и MVP остаются Not Ready.",
-        "en": "Research completed on 2026-09-07 with operational blockers. The owner selected a German 2 vCPU/4 GB/50 GB application server and 1 vCPU/2 GB/20 GB managed PostgreSQL in the same private VPC. Estimate: RUB 2,520/month under annual pricing; conservative no-discount total plus 10% reserve is RUB 3,055.56/$35.29 at the recorded FX rate, below $40. The current 1 vCPU/<1 GB VPS was inspected read-only and is not admitted for production. HOST-B01–HOST-B06 are assigned to task-8.1–task-8.3 and task-0.10/task-4.1; safe Alfa reachability, hardening, load and backup/restore runtime remain unverified. task-0.9 is complete, but application ACs and the MVP remain Not Ready."
+        "ru": "Исследование hosting завершено: target profile и бюджет выбраны. D-38 отделяет SDD Ready от provisioning; HOST-B01–B06 остаются runtime gates task-8.x/provider tasks.",
+        "en": "Hosting research is complete: target profile and budget are selected. D-38 separates SDD Ready from provisioning; HOST-B01–B06 remain task-8.x/provider runtime gates."
       },
       "behavior": {
         "ru": "Evidence/hosting.md и .en.md фиксируют выбранные владельцем VPS 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной немецкой private VPC, датированные цены/НДС/IP/курс и смету с резервом. Текущий VPS проверен read-only по ресурсам, ОС, TLS, listeners, SSH/firewall/update и публичной достижимости OpenAI/rates/платформ без секретов. Safe Alfa DNS/TLS остаётся блокером. Backup contract: Mac-initiated hourly pull, streaming logical dump и immutable attachments, manifest/checksums, отдельный recovery key, retention 48 hourly/30 daily/8 weekly/12 monthly и лимит 20 GiB с безопасным отказом. HOST-B01–HOST-B06 назначают provisioning, hardening, load, Alfa route и backup/restore runtime следующим задачам. Исследование ничего не покупает и не меняет на сервере; его завершение не доказывает AC приложения или Ready.",
@@ -3021,37 +3050,49 @@
         "AC-087",
         "AC-088",
         "AC-089",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
+        "spec/001-want-keep-mvp/catalog.json",
+        "spec/001-want-keep-mvp/README.md",
+        "spec/001-want-keep-mvp/proposal.md",
         "spec/001-want-keep-mvp/constraints.md",
         "spec/001-want-keep-mvp/contracts.md",
+        "spec/001-want-keep-mvp/integrations.md",
+        "spec/001-want-keep-mvp/operations.md",
         "spec/001-want-keep-mvp/verification.md",
-        "spec/001-want-keep-mvp/plan.md"
+        "spec/001-want-keep-mvp/evidence/",
+        "spec/001-want-keep-mvp/plan.md",
+        "spec/001-want-keep-mvp/tools/spec_tool.py"
       ],
       "behavior": {
-        "ru": "Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. Закрыть сроки хранения command status/idempotency для retry/recovery, не смешивая их с бессрочным финансовым audit. Для Aifory действует D-33: закрыть AIFORY-B02–B04 только для RUB, USDT, ETH и используемой карты; AIFORY-B05/остальные продукты не блокируют. Согласовать структурированный read-контракт, право автоматизации, identity/history и card lifecycle; учесть ETH в оценке. Для Bybit по D-36 использовать успешное RSA readOnly чтение evidence/bybit-api: BYBIT-B02/B05 закрыты для владельца, включая P2P. Закрыть BYBIT-B03/B04: детерминированную identity/связь журналов и неоднозначность, precision-aware сверку, границы истории, отсутствующий hourly ID/корректировки и базу прогноза Earn/расхождение lifetime totalPnl USDT. VPS проверяет task-0.9; второй владелец, отзыв и executable conformance — task-4.4. Funding USDT/USDC/ETH/BTC, Flexible Easy Earn и P2P обязательны; Fixed/прочие неиспользуемые BYBIT-B06 не блокируют. USDC остаётся отдельной валютой оценки. Для Raiffeisen по D-35 закрыть RAIF-B02/B03/B04/B06: CAMT mapping и ID при исправлениях, глубину/полноту истории, текущие/доступные/заблокированные остатки и комиссии, auth lifecycle и независимость аккаунтов. Использовать evidence/raiffeisen; RAIF-B01/B05 закрыты только в указанном объёме. Закрытие task-0.2 не разблокирует task-4.2 без Ready.",
-        "en": "Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. Resolve command-status/idempotency retention for retry/recovery, distinct from durable financial audit. Apply Aifory D-33: close AIFORY-B02–B04 only for RUB, USDT, ETH and the existing card; AIFORY-B05/other products do not block. Establish the structured read contract, automation permission, identity/history and card lifecycle; include ETH valuation. For Bybit D-36 use successful RSA readOnly evidence/bybit-api: BYBIT-B02/B05 are closed for this owner, including P2P. Close BYBIT-B03/B04: deterministic identity/cross-log linkage and ambiguity, precision-aware reconciliation, history bounds, missing hourly ID/revisions and Earn forecast basis/USDT lifetime totalPnl difference. task-0.9 checks VPS; task-4.4 checks a second owner, revocation and executable conformance. Funding USDT/USDC/ETH/BTC, Flexible Easy Earn and P2P remain required; Fixed/other unused BYBIT-B06 products do not block. USDC remains a separate valuation asset. For Raiffeisen under D-35 close RAIF-B02/B03/B04/B06: CAMT mapping and revision identity, history depth/completeness, current/available/locked balances and fees, auth lifecycle and independent accounts. Use evidence/raiffeisen; RAIF-B01/B05 are closed only within the stated scope. Closing task-0.2 does not unblock task-4.2 without Ready."
+        "ru": "Закрепить D-37–D-43 и выпуск Ready for development: текущий Alfa scope, смысл SDD/runtime gates, нормализованную source identity и коллизии, FX gaps, command retention и детерминированный XIRR. Свести provider evidence в синтетические allowlist/identity/history/revision/status/fee/reauth контракты. Непроверенные разрешения, fixtures, второй аккаунт, production reachability и conformance становятся entry/deployment gates task-4.x/task-8.x и не подменяются вымышленными полями. Создать парные RU/EN plan и итоговый evidence, проверить REQ → AC → task и провести независимый read-only review. Ready разрешает начать задачи по их зависимостям; не означает реализованный MVP, пройденные продуктовые AC или разрешение коннектора к production.",
+        "en": "Establish D-37–D-43 and issue Ready for development: current Alfa scope, SDD/runtime gate semantics, normalized source identity and collisions, FX gaps, command retention and deterministic XIRR. Consolidate provider evidence into synthetic allowlist/identity/history/revision/status/fee/reauth contracts. Unverified permissions, fixtures, second account, production reachability and conformance become task-4.x/task-8.x entry/deployment gates and are never replaced with invented fields. Create paired RU/EN plans and final evidence, verify REQ → AC → task and run an independent read-only review. Ready allows tasks to start according to dependencies; it does not mean an implemented MVP, passing product acceptance criteria or production connector permission."
       },
       "verification": {
-        "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
+        "command": "make docs-check && make check",
         "expected": {
-          "ru": "Полное покрытие REQ/AC/task; нет скрытого выбора API/прав/формул; независимая проверка плана Ready или явно сохранён Not Ready.",
-          "en": "Complete REQ/AC/task coverage; no hidden API/permission/formula decisions; independent plan review is Ready or Not Ready is explicitly retained."
+          "ru": "Каталог и RU/EN-артефакты согласованы; Ready plan существует; identity, повторы, gaps, unknown, коллизии, CAMT corrections, FX, XIRR и retention имеют синтетические проверки; независимый review не оставляет подтверждённых P0–P3.",
+          "en": "The catalog and RU/EN artifacts agree; the Ready plan exists; identity, replay, gaps, unknown values, collisions, CAMT corrections, FX, XIRR and retention have synthetic checks; the independent review leaves no confirmed P0–P3 findings."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/10",
       "verification_note": {
         "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
         "en": "The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof."
+      },
+      "status": {
+        "ru": "Завершено 2026-09-07: спецификация Ready for development. BLK-01–BLK-10 закрыты как решения SDD или перенесены в явные provider/runtime gates; приложение и продуктовые AC ещё не реализованы.",
+        "en": "Completed on 2026-09-07: the specification is Ready for development. BLK-01–BLK-10 are resolved as SDD decisions or reclassified as explicit provider/runtime gates; the application and product acceptance criteria are not implemented yet."
       }
     },
     {
       "id": "task-1.1",
       "kind": "implementation",
       "status": {
-        "ru": "Техническая основа реализована; общий барьер готовности task-0.10 остаётся открытым.",
-        "en": "The technical foundation is implemented; the overall task-0.10 readiness gate remains open."
+        "ru": "Техническая основа реализована; task-0.10 завершила общий SDD gate. Следующая задача по плану — task-1.2.",
+        "en": "The technical foundation is implemented; task-0.10 completed the shared SDD gate. The next planned task is task-1.2."
       },
       "title": {
         "ru": "Создать структуру проекта и команды проверки",
@@ -3120,7 +3161,8 @@
         "AC-062",
         "AC-077",
         "AC-079",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
         "backend/internal/money/",
@@ -3129,8 +3171,8 @@
         "web/src/api/"
       ],
       "behavior": {
-        "ru": "Определить Money/Asset/Rate/Time/coverage и версионированные ошибки по contracts.md. Деньги передавать десятичными строками, валидировать на первой границе; поддержать явные unknown/partial. Домен не импортирует generated DTO. Генерацию выполнять из OpenAPI, добавить проверки round-trip BTC/USDT и неверных сумм. Включить read models объяснимых сумм и command status/recent API из contracts.md для неизвестного результата UI; command retention согласовать до Ready.",
-        "en": "Define Money/Asset/Rate/Time/coverage and versioned errors from contracts.md. Transport money as decimal strings and validate at the first boundary; support explicit unknown/partial states. Domain must not import generated DTOs. Generate from OpenAPI and test BTC/USDT round trips and invalid amounts. Include explainable-amount read models and command status/recent API from contracts.en.md for unknown UI outcomes; resolve command retention before Ready."
+        "ru": "Определить Money/Asset/Rate/Time/coverage и версионированные состояния `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted` по contracts.md. Деньги передавать десятичными строками и валидировать на первой границе; домен не импортирует generated DTO. Добавить explainable read models, command status/recent API и connection `deploymentGate.status=pending|admitted|blocked`. Server-owned admission связывается с environment, adapter/collector build digests, contract, allowlist, non-secret config и operator-permission revisions; sync разрешён только при совпадении текущего binding и `admitted`, иначе collector не запускается. Terminal detail хранится 90 дней после исхода, unresolved — до сверки плюс 90 дней; tombstone с `commandId`, scope, key/hash и outcome живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome. `/commands/recent` отдаёт 30 дней terminal и все unresolved; истёкшая detail возвращает `command_expired`, не разрешая повторный эффект по живому tombstone.",
+        "en": "Define Money/Asset/Rate/Time/coverage and versioned `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired` and `provider_not_admitted` states from contracts.en.md. Transport money as decimal strings and validate at the first boundary; the domain must not import generated DTOs. Add explainable read models, command status/recent APIs and connection `deploymentGate.status=pending|admitted|blocked`. Server-owned admission binds environment, adapter/collector build digests, contract, allowlist, non-secret configuration and operator-permission revisions; sync is permitted only when the current binding matches `admitted`, otherwise the collector never starts. Terminal detail remains for 90 days after outcome, unresolved commands through reconciliation plus 90 days; a tombstone with `commandId`, scope, key/hash and outcome lives throughout unresolved state and for 400 days after terminal/reconciled outcome. `/commands/recent` returns 30 days of terminal commands and all unresolved commands; expired detail returns `command_expired` without permitting a repeated effect while the tombstone is live."
       },
       "verification": {
         "command": "make test-go PKG=./internal/money/... && make check-contracts",
@@ -3171,8 +3213,8 @@
         "backend/internal/jobs/"
       ],
       "behavior": {
-        "ru": "Добавить миграции для владельца, счетов, неизменяемых исходников, операций/проводок, версий, идемпотентности и outbox/jobs. Использовать NUMERIC с достаточной точностью исходника и явными ограничениями; не связывать внешний ID разных провайдеров без namespace. Уникальность, version-check и резервирование денег обеспечивать транзакционно.",
-        "en": "Add migrations for owner, accounts, immutable source records, transactions/postings, revisions, idempotency and outbox/jobs. Use NUMERIC preserving source precision with explicit constraints; namespace provider IDs. Enforce uniqueness, version checks and money reservation transactionally."
+        "ru": "Добавить миграции для семьи/участников, счетов, неизменяемых source records, операций/проводок, revisions, command records, idempotency tombstones и outbox/jobs. Денежные поля NUMERIC сохраняют точность источника. Source uniqueness следует D-39 и включает household, provider, стабильный внешний счёт, product/log namespace и provider record ID; connection/session ID остаётся provenance. Коллизия сохраняет evidence как `source_ambiguous` без проводки. Транзакционно обеспечить uniqueness, version-check и резервы. Реализовать независимые retention jobs: terminal detail 90 дней после исхода; unresolved до сверки плюс 90 дней; tombstone с `commandId` живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome; финансовый source/audit не удаляется вместе с command detail.",
+        "en": "Add migrations for households/members, accounts, immutable source records, transactions/postings, revisions, command records, idempotency tombstones and outbox/jobs. NUMERIC money fields preserve source precision. Source uniqueness follows D-39 and includes household, provider, stable external account, product/log namespace and provider record ID; connection/session ID remains provenance. A collision retains evidence as `source_ambiguous` without posting. Enforce uniqueness, version checks and reservations transactionally. Implement independent retention jobs: terminal detail for 90 days after outcome; unresolved commands through reconciliation plus 90 days; a tombstone with `commandId` lives throughout unresolved state and for 400 days after terminal/reconciled outcome; financial source/audit data is not removed with command detail."
       },
       "verification": {
         "command": "make test-integration AREA=storage",
@@ -3790,15 +3832,16 @@
         "AC-068",
         "AC-079",
         "AC-087",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
         "collector/src/",
         "backend/internal/connections/"
       ],
       "behavior": {
-        "ru": "Использовать Playwright TypeScript в отдельном процессе/контейнере с ограниченным egress и отдельными профилями источников. Реализовать контролируемый вход владельца, шифрование сохранённых сессий, разрешённые read-сценарии и подтверждённые маршруты. POST заказа выписки допустим только как проверенная операция получения данных. MFA/CAPTCHA требуют пользователя; платёжные/торговые действия отсутствуют, raw browser control не доступен AI.",
-        "en": "Use Playwright TypeScript in a separate process/container with restricted egress and per-source profiles. Implement controlled owner sign-in, encrypted persisted sessions, authorized read workflows and verified routes. Statement-request POST is allowed only as a verified data retrieval action. MFA/CAPTCHA requires the owner; payment/trading actions are absent and AI has no raw browser control."
+        "ru": "Использовать Playwright TypeScript в отдельном процессе/контейнере с ограниченным egress и отдельными профилями источников. Реализовать контролируемый вход владельца, шифрование сохранённых сессий, разрешённые read-сценарии и подтверждённые маршруты. POST заказа выписки допустим только как проверенная операция получения данных. MFA/CAPTCHA требуют пользователя; платёжные/торговые действия отсутствуют, raw browser control не доступен AI. Collector принимает только server-issued job с admission binding и собственным route/action allowlist; stale/missing binding отклоняется до provider IO, а pre-admission conformance работает в quarantine без source record или проводки.",
+        "en": "Use Playwright TypeScript in a separate process/container with restricted egress and per-source profiles. Implement controlled owner sign-in, encrypted persisted sessions, authorized read workflows and verified routes. Statement-request POST is allowed only as a verified data retrieval action. MFA/CAPTCHA requires the owner; payment/trading actions are absent and AI has no raw browser control. The collector accepts only a server-issued job with an admission binding and its own route/action allowlist; a stale or missing binding is rejected before provider IO, while pre-admission conformance runs in quarantine without a source record or posting."
       },
       "verification": {
         "command": "make test-collector FILTER=security && make test-integration AREA=collector",
@@ -3817,8 +3860,8 @@
         "en": "Implement Alfa-Bank connector"
       },
       "goal": {
-        "ru": "Автоматически получать согласованные данные всех обязательных продуктов Альфа-Банк.",
-        "en": "Automatically retrieve consistent data for all mandatory Alfa-Bank products."
+        "ru": "Автоматически получать согласованные данные продуктов Alfa из объёма D-37.",
+        "en": "Automatically retrieve consistent Alfa product data within D-37."
       },
       "depends_on": [
         "task-0.1",
@@ -3836,21 +3879,22 @@
         "AC-071",
         "AC-079",
         "AC-087",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
         "backend/internal/integrations/alfa/",
         "collector/src/providers/alfa/"
       ],
       "behavior": {
-        "ru": "Карты привязать к банковским счетам; читать текущие/накопительные счета, вклады, историю, лимиты/долг, выписки и условия кредиток. Реализовать только доказанный в evidence/alfa способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.",
-        "en": "Map cards to bank accounts; read current/savings accounts, deposits, history, limits/debt, statements and credit-card terms. Implement only the access method established in evidence/alfa, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect."
+        "ru": "Реализовать D-37: дебетовую карту, текущий и накопительные счета, вклады и кэшбэк. Общая ручная модель кредиток сохраняется, но кредитка Alfa не входит в этот коннектор. До включения provider deployment доказать разрешённый структурированный read path, allowlist, стабильную account/source identity D-39, пагинацию/coverage, revisions/statuses/fees/cashback lifecycle, reauth и два независимых аккаунта. Browser collector допустим только для подтверждённого API-пробела. Неполная история даёт `source_partial`; неизвестное обязательное поле остаётся unknown; коллизия даёт `source_ambiguous` без проводки. Повторное подключение связывается с тем же внешним счётом, а stale job после disconnect не применяется. Alfa route/DNS/TLS с целевого хоста проверяются до deployment, а не являются SDD-блокером. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.",
+        "en": "Implement D-37: debit card, current and savings accounts, deposits and cashback. Shared manual credit-card accounting remains, but an Alfa credit card is outside this connector. Before provider deployment, prove an authorized structured read path, allowlist, stable D-39 account/source identity, pagination/coverage, revisions/statuses/fees/cashback lifecycle, reauthentication and two independent accounts. A browser collector is allowed only for a proven API gap. Incomplete history yields `source_partial`; an unknown mandatory field stays unknown; a collision yields `source_ambiguous` without posting. Reconnection links the same external account and a stale job cannot apply after disconnect. Alfa route/DNS/TLS from the target host is checked before deployment and is not an SDD blocker. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again."
       },
       "verification": {
         "command": "make test-contract PROVIDER=alfa && make test-integration AREA=alfa",
         "expected": {
-          "ru": "Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.",
-          "en": "All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result."
+          "ru": "Продукты D-37 проходят синтетические fixtures и отдельный разрешённый live readback; доказаны два аккаунта, reauth, pagination, revisions и deployment gate. Кредитка Alfa не требуется. Неизвестные поля и gaps не проводят деньги.",
+          "en": "D-37 products pass synthetic fixtures and a separate authorized live readback; two accounts, reauthentication, pagination, revisions and the deployment gate are proven. An Alfa credit card is not required. Unknown fields and gaps do not post money."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/29"
@@ -3881,27 +3925,28 @@
         "AC-071",
         "AC-079",
         "AC-087",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
         "backend/internal/integrations/raiffeisen/",
         "collector/src/providers/raiffeisen/"
       ],
       "behavior": {
-        "ru": "Реализовать RBO API-коннектор только расчётного счёта ИП по D-35 после закрытия оставшихся RAIF-B02/B03/B04/B06 в task-0.10. Начальные evidence и синтетические JSON/XML находятся в evidence/raiffeisen*. Обрабатывать lower-camel-case поля accounts, явный алиас RUR→RUB, отдельные UUID id и 20-значный number/accountKeys, Decimal, CAMT.053.001.08 и вложенные записи без двойного учёта. Сохранять source status/code и только подтверждённые преобразования completed/COMPLETED, no-statements/NO_STATEMENTS. no-statements не означает нулевой остаток. NtryRef подтверждён на двух перекрывающихся отчётах, но reconnect/коррекции требуют проверки. Коды FCHG/NTRF не заменяют доказательство типа расхода или внутреннего перевода. Реализовать защищённый Code Flow по contracts, атомарную ротацию, allowlist чтения, почасовой импорт и полноту истории. Два внешних аккаунта участников изолированы; повторное подключение связывается с прежним источником, старое задание после отключения не применяется. Прочие продукты Raif отложены; Playwright возможен только при доказанном API-пробеле.",
-        "en": "Implement the RBO API connector for the individual entrepreneur current account only under D-35, after task-0.10 resolves RAIF-B02/B03/B04/B06. Initial evidence and synthetic JSON/XML are in evidence/raiffeisen*. Handle lower-camel-case account fields, explicit RUR→RUB alias, separate UUID id and 20-digit number/accountKeys, Decimal, CAMT.053.001.08 and nested entries without double posting. Preserve source status/code and only verified mappings for completed/COMPLETED and no-statements/NO_STATEMENTS. no-statements is not a zero balance. NtryRef was verified across two overlapping reports, but reconnect/correction behaviour needs testing. FCHG/NTRF codes do not establish expense or internal-transfer classification. Implement protected Code Flow under contracts, atomic rotation, a read allowlist, hourly imports and history completeness. Isolate members’ external accounts; reconnect links the existing source and stale jobs cannot apply after disconnect. Other Raif products are deferred; Playwright requires a proven API gap."
+        "ru": "Реализовать RBO API для расчётного счёта ИП по D-35. Account UUID и number/accountKeys хранить отдельно; RUR явно переводить в RUB. CAMT.053 допускает 1:N между entry и transaction details без двойной проводки. Identity: NtryRef/AcctSvcrRef/EndToEndId используются только при наличии и в доказанном scope; statement/report identity хранится только как provenance. Fallback — transaction-scoped fingerprint из полей, доказанно неизменных между перекрывающимися camt.052/camt.053: непустых structured references, party/account/remittance и bank-code fields в документированном порядке. Amount/time исключены; если такой fingerprint недостаточен или collision-prone, запись даёт `source_ambiguous` без проводки. Corrections/reversals создают revisions. `no-statements` не означает нулевой остаток. При недоступном camt.052 показывать последний подтверждённый CLBD с `asOf`/coverage; available/locked/balance/fee без evidence остаются unknown. До provider deployment проверить Code Flow/rotation, allowlist, полноту истории, reauth, два аккаунта и stale jobs. Playwright допустим только при доказанном API-пробеле. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.",
+        "en": "Implement the RBO API for the individual entrepreneur current account under D-35. Keep Account UUID and number/accountKeys separate; map RUR explicitly to RUB. CAMT.053 permits a 1:N relation between an entry and transaction details without double posting. Identity uses NtryRef/AcctSvcrRef/EndToEndId only when present and within a proven scope; statement/report identity is provenance only. Fallback is a transaction-scoped fingerprint of fields proven invariant across overlapping camt.052/camt.053: non-empty structured references, party/account/remittance and bank-code fields in documented order. Amount/time are excluded; if that fingerprint is insufficient or collision-prone, the record yields `source_ambiguous` without posting. Corrections/reversals create revisions. `no-statements` is not a zero balance. When camt.052 is unavailable, show the last confirmed CLBD with `asOf`/coverage; available/locked/balance/fee without evidence stay unknown. Before provider deployment verify Code Flow/rotation, allowlist, history completeness, reauthentication, two accounts and stale jobs. Playwright is allowed only for a proven API gap. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again."
       },
       "verification": {
         "command": "make test-contract PROVIDER=raiffeisen && make test-integration AREA=raiffeisen",
         "expected": {
-          "ru": "Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.",
-          "en": "All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result."
+          "ru": "Синтетические CAMT fixtures покрывают 1:N, повтор, fallback identity, correction/reversal, no-statements и unknown balance/fee; отдельный live readback доказывает доступ, историю, reauth и два аккаунта до deployment.",
+          "en": "Synthetic CAMT fixtures cover 1:N, replay, fallback identity, correction/reversal, no-statements and unknown balance/fee; a separate live readback proves access, history, reauthentication and two accounts before deployment."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/30",
       "verification_note": {
-        "ru": "Основа task-1.1 уже содержит make-команды; наличие команды не означает реализацию адаптера или прохождение live-проверок. Исследовательские проверки Raif: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Токены и исходные ответы подключаются только приватно; незакрытые RAIF-B02/B03/B04/B06 остаются барьером реализации.",
-        "en": "The task-1.1 foundation already contains make commands; a command existing does not establish an implemented adapter or passing live checks. Raif research checks: python3 -m unittest discover -s deploy/raiffeisen-research -p 'test_*.py'. Tokens and original responses stay private; unresolved RAIF-B02/B03/B04/B06 remain an implementation gate."
+        "ru": "Основа task-1.1 содержит make-команды; наличие команды не означает реализованный адаптер. Локальные CAMT-контракты отделены от provider deployment gate: разрешения, Code Flow, второй аккаунт и production conformance проверяет task-4.2.",
+        "en": "The task-1.1 foundation provides make commands; command presence does not establish an implemented adapter. Local CAMT contracts are separate from the provider deployment gate: task-4.2 verifies permission, Code Flow, a second account and production conformance."
       }
     },
     {
@@ -3930,15 +3975,16 @@
         "AC-071",
         "AC-079",
         "AC-087",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
         "backend/internal/integrations/ozon/",
         "collector/src/providers/ozon/"
       ],
       "behavior": {
-        "ru": "Реализовать текущий контракт Ozon по D-32: дебетовая карта и связанный основной счёт, их остатки и операции. Кредитки, накопления и вклады — будущее расширение; их отсутствие не блокирует этот коннектор. Не подменять банковские операции заказами маркетплейса, UI-сводку «Доходы» семейным доходом или округлённый агрегат точной суммой. Реализовать только доказанный в evidence/ozon способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется. Поля и синтетические проекции: evidence/ozon.md и evidence/ozon.samples.json. Валюта RUR преобразуется в RUB; cents обрабатываются точно. Не использовать меняющийся accountToken или один groupID как ключ дедупликации: перевод и комиссия могут разделять groupID. lastOperationId — кандидат source ID, parentOperationId связывает комиссию; жизненный цикл сверяется отдельно. Учитывать status вместе с типом и meta, не проводить canceled или неизвестное сочетание. Отсутствие available/locked и исходной покупки возврата остаётся явным. Каждый next обрабатывается с сохранением coverage; конец HAR не означает конец истории.",
-        "en": "Implement the current Ozon contract under D-32: debit card and linked main account, their balances and transactions. Credit cards, savings and deposits are a future extension; their absence does not block this connector. Do not substitute marketplace orders for bank transactions, the UI Income summary for household income, or rounded aggregates for exact amounts. Implement only the access method established in evidence/ozon, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required. Member accounts remain isolated; reconnection of one real account links to the existing source. Stale results cannot apply after disconnect. Field shapes and synthetic projections: evidence/ozon.en.md and evidence/ozon.samples.json. Map RUR to RUB and process cents exactly. Never use rotating accountToken or groupID alone for deduplication: a transfer and its commission may share groupID. lastOperationId is a source-ID candidate and parentOperationId links the commission; reconcile lifecycle separately. Combine status with type/meta; never post canceled or unknown combinations. Missing available/locked fields and original refund purchase remain explicit. Process each next with persisted coverage; HAR completion is not history completion."
+        "ru": "Реализовать текущий контракт Ozon по D-32: дебетовая карта и связанный основной счёт, их остатки и операции. Кредитки, накопления и вклады — будущее расширение; их отсутствие не блокирует этот коннектор. Не подменять банковские операции заказами маркетплейса, UI-сводку «Доходы» семейным доходом или округлённый агрегат точной суммой. Использовать синтетическую проекцию готовых HAR из evidence/ozon и реализовать только доказанный read allowlist, mappers и contract fixtures. Source identity следует D-39: accountToken и connection ID не являются account identity; route-specific record ID живёт в product/log namespace. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. До provider deployment проверить разрешение на session transport, lifecycle сессии, второй аккаунт и полный live readback; collector используется только при подтверждённой необходимости браузера. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется. Поля и синтетические проекции: evidence/ozon.md и evidence/ozon.samples.json. Валюта RUR преобразуется в RUB; cents обрабатываются точно. Не использовать меняющийся accountToken или один groupID как ключ дедупликации: перевод и комиссия могут разделять groupID. lastOperationId — кандидат source ID, parentOperationId связывает комиссию; жизненный цикл сверяется отдельно. Учитывать status вместе с типом и meta, не проводить canceled или неизвестное сочетание. Отсутствие available/locked и исходной покупки возврата остаётся явным. Каждый next обрабатывается с сохранением coverage; конец HAR не означает конец истории. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.",
+        "en": "Implement the current Ozon contract under D-32: debit card and linked main account, their balances and transactions. Credit cards, savings and deposits are a future extension; their absence does not block this connector. Do not substitute marketplace orders for bank transactions, the UI Income summary for household income, or rounded aggregates for exact amounts. Use the synthetic projection of the completed HAR evidence and implement only the proven read allowlist, mappers and contract fixtures. Source identity follows D-39: accountToken and connection ID are not account identity; a route-specific record ID lives in the product/log namespace. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Before provider deployment verify session-transport permission, session lifecycle, a second account and complete live readback; use the collector only when browser access is proven necessary. Member accounts remain isolated; reconnection of one real account links to the existing source. Stale results cannot apply after disconnect. Field shapes and synthetic projections: evidence/ozon.en.md and evidence/ozon.samples.json. Map RUR to RUB and process cents exactly. Never use rotating accountToken or groupID alone for deduplication: a transfer and its commission may share groupID. lastOperationId is a source-ID candidate and parentOperationId links the commission; reconcile lifecycle separately. Combine status with type/meta; never post canceled or unknown combinations. Missing available/locked fields and original refund purchase remain explicit. Process each next with persisted coverage; HAR completion is not history completion. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again."
       },
       "verification": {
         "command": "make test-contract PROVIDER=ozon && make test-integration AREA=ozon",
@@ -3976,15 +4022,16 @@
         "AC-039",
         "AC-079",
         "AC-087",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
         "backend/internal/integrations/bybit/",
         "collector/src/providers/bybit/"
       ],
       "behavior": {
-        "ru": "После закрытия BYBIT-B03/B04 и Ready реализовать официальный read-only API по evidence/bybit и evidence/bybit-api. API-доступ владельца к Funding, Flexible и P2P доказан; read POST list/detail включить в явный allowlist, финансовые create/pay/release/ads/transfer/stake/redeem запрещены. FUND не подменять UTA. Связывать журнал с деталями детерминированно: совпадение суммы/времени лишь кандидат; неоднозначность уточнять. Не классифицировать финансовое состояние по localization labels. Сохранять 18-значные native decimals и расхождения snapshot/ledger, не списывать остаточную сумму автоматически. Учесть yield result.list, P2P ret_code/items, seconds internal-deposit/Funding против ms фильтров/деталей, отсутствие hourly id и политику коллизий. Principal, accrual/distribution/Funding и fee учитывать один раз; нулевая выплата не создаёт credit. Сохранять исходные P2P fiat amount/quantity/quote независимо, связывать банк отдельно; empty fee не ноль. Следовать cursor на коротких страницах, сохранять durable checkpoints/revisions/coverage. Проверить RSA readOnly и изоляцию/ротацию/отзыв двух владельцев. Collector добавлять только при доказанном новом пробеле API. Fixed и остальные неиспользуемые продукты не блокируют; движения включённых кошельков сохраняются.",
-        "en": "After BYBIT-B03/B04 closure and Ready, implement official read-only APIs from evidence/bybit and evidence/bybit-api. Owner access to Funding, Flexible and P2P is proven; explicitly allowlist read POST list/detail, forbid financial create/pay/release/ads/transfer/stake/redeem. Do not substitute UTA for FUND. Link ledger/details deterministically: amount/time equality is only a candidate; clarify ambiguity. Do not classify financial state from localization labels. Preserve 18-place native decimals and snapshot/ledger differences without automatically spending residuals. Handle yield result.list, P2P ret_code/items, seconds for internal-deposit/Funding versus ms filters/details, missing hourly id and collision policy. Account for principal, accrual/distribution/Funding and fee once; zero yield creates no credit. Preserve P2P native fiat amount/quantity/quote independently and match the bank separately; empty fee is not zero. Follow cursors on short pages; retain durable checkpoints/revisions/coverage. Verify RSA readOnly and two-owner isolation/rotation/revocation. Add collector code only for a newly demonstrated API gap. Fixed and other unused products do not block; included-wallet movements remain."
+        "ru": "Реализовать официальный read-only API для Funding USDT/USDC/ETH/BTC, используемого Flexible Easy Earn и P2P по D-36; финансовые create/pay/release/ads/transfer/stake/redeem запрещены allowlist. Route-specific provider IDs живут в отдельных product/log namespaces D-39. Связи Funding/Earn/P2P по amount/time — только кандидаты. Если hourly record ID отсутствует, fallback `(coin, productId, hourlyDate)` допустим только в hourly namespace; различающийся payload создаёт `source_ambiguous`, сохраняет обе evidence revisions и не проводит деньги. Сохранять 18-значные decimals, cursor даже на короткой странице, coverage, seconds/ms semantics, revisions, native P2P fiat/quantity/quote и unknown fee. Principal, yield и funding legs учитываются один раз. До provider deployment проверить RSA readOnly, lifetime/history gaps, precision reconciliation, два аккаунта, rotation/revocation и stale jobs. Collector допускается только при новом доказанном API-пробеле; Fixed/прочие продукты не требуются. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.",
+        "en": "Implement official read-only APIs for Funding USDT/USDC/ETH/BTC, used Flexible Easy Earn and P2P under D-36; the allowlist forbids financial create/pay/release/ads/transfer/stake/redeem operations. Route-specific provider IDs live in separate D-39 product/log namespaces. Amount/time matches across Funding/Earn/P2P are candidates only. When an hourly record ID is absent, fallback `(coin, productId, hourlyDate)` is allowed only in the hourly namespace; a different payload yields `source_ambiguous`, retains both evidence revisions and posts no money. Preserve 18-place decimals, cursors even on short pages, coverage, seconds/ms semantics, revisions, native P2P fiat/quantity/quote and unknown fees. Account for principal, yield and funding legs once. Before provider deployment verify RSA read-only access, lifetime/history gaps, precision reconciliation, two accounts, rotation/revocation and stale jobs. A collector is allowed only for a newly proven API gap; Fixed/other products are not required. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again."
       },
       "verification": {
         "command": "make test-contract PROVIDER=bybit && make test-integration AREA=bybit",
@@ -4025,21 +4072,22 @@
         "AC-039",
         "AC-079",
         "AC-087",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
         "backend/internal/integrations/aifory/",
         "collector/src/providers/aifory/"
       ],
       "behavior": {
-        "ru": "Реализовать только разрешённый и структурированно подтверждённый в evidence/aifory read-контракт после закрытия AIFORY-B02–B04 в task-0.10. D-33 исключает остальные продукты из блокеров. RUB-группы отделены от счетов; ID не строится из имени офиса, адреса или /home/wallet. ETH хранит точные native amounts/network/fee. USD-карта отделена от USDT: нужны funding legs, gross/net, курс/база комиссии и lifecycle authorization/clearing/refund. Похожие pending/confirmed строки не объединять без доказанной связи и не списывать дважды. Сохранять все движения выбранных кошельков, включая операции отложенных сервисов. Проверить повтор, revisions, неполную историю/resume, session expiry, hourly refresh, выбранную дату, два внешних аккаунта и reauth; stale job после disconnect не применяется. Не использовать OCR/человеческие подписи как финансовый контракт. Нет открытия продуктов или платежей.",
-        "en": "Implement only the permitted structured read contract established in evidence/aifory after task-0.10 closes AIFORY-B02–B04. D-33 excludes other products from blockers. Separate RUB groups/accounts; do not derive identity from office names, addresses or /home/wallet. ETH retains exact native amounts/network/fees. Separate USD card from USDT: establish funding legs, gross/net, rate/fee basis and authorization/clearing/refund lifecycle. Do not merge similar pending/confirmed rows without proven linkage or debit them twice. Retain all selected-wallet movements, including deferred-service operations. Verify replay, revisions, incomplete history/resume, session expiry, hourly refresh, selected start date, two external accounts and reauth; reject stale jobs after disconnect. Do not use OCR/human labels as financial contracts. No product opening or payments."
+        "ru": "Реализовать D-33: RUB-счета, USDT, ETH и используемую карту. До provider deployment получить разрешённый структурированный fixture из сессии, read allowlist, стабильную D-39 account/source identity, pagination/coverage, revisions/statuses/fees, card authorization/clearing/refund lifecycle, reauth и два независимых аккаунта. Flutter/UI-текст, имя офиса, адрес и `/home/wallet` не являются финансовым контрактом или identity. USD-карта отделена от USDT; funding legs, gross/net, rate/fee basis сохраняются явно. Похожие pending/confirmed строки без доказанной связи дают `source_ambiguous` и не списываются дважды. Unknown и history gaps остаются явными. Stale job после disconnect не применяется. Остальные продукты D-33 отложены без блокировки. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.",
+        "en": "Implement D-33: RUB accounts, USDT, ETH and the existing card. Before provider deployment obtain an authorized structured fixture from the session, read allowlist, stable D-39 account/source identity, pagination/coverage, revisions/statuses/fees, card authorization/clearing/refund lifecycle, reauthentication and two independent accounts. Flutter/UI text, office name, address and `/home/wallet` are neither a financial contract nor identity. Keep the USD card separate from USDT and retain funding legs, gross/net and rate/fee basis explicitly. Similar pending/confirmed records without proven linkage yield `source_ambiguous` and are not charged twice. Unknown fields and history gaps stay explicit. A stale job cannot apply after disconnect. Other D-33 products are deferred without blocking. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again."
       },
       "verification": {
         "command": "make test-contract PROVIDER=aifory && make test-integration AREA=aifory",
         "expected": {
-          "ru": "RUB, USDT, ETH и используемая карта имеют синтетические contract scenarios и отдельный live readback; пройдены AIFORY-E03/E08–E14 edge cases после подтверждения структурированного контракта. Остальные продукты не требуются. Перед реализацией закрыты AIFORY-B02–B04 и Ready.",
-          "en": "RUB, USDT, ETH and the existing card have synthetic contract scenarios and separate live readback; AIFORY-E03/E08–E14 edge cases pass after structured-contract verification. Other products are not required. AIFORY-B02–B04 and Ready are resolved before implementation."
+          "ru": "RUB, USDT, ETH и используемая карта проходят синтетические fixtures и отдельный разрешённый live readback; доказаны identity, полный обход страниц, revisions, reauth, два аккаунта и deployment gate. Unknown и коллизии не проводят деньги.",
+          "en": "RUB, USDT, ETH and the existing card pass synthetic fixtures and a separate authorized live readback; identity, complete pagination, revisions, reauthentication, two accounts and the deployment gate are proven. Unknown values and collisions do not post money."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/33"
@@ -4070,21 +4118,22 @@
         "AC-070",
         "AC-079",
         "AC-087",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
         "backend/internal/integrations/emcd/",
         "collector/src/providers/emcd/"
       ],
       "behavior": {
-        "ru": "Покрыть только D-34 по подтверждённому evidence/emcd контракту; EMCD-B02–B04 / BLK-06 и SDD Ready закрываются до реализации. Майнинг, включая исторический, и другие неиспользуемые продукты не блокируют. Получить реальные структурированные fixtures: проектные emcd.samples.json не заменяют их. Не парсить UI-текст в финансовые проводки и не переносить mining auth/scopes на кошелёк. Разделить main aggregate, wallet, Grow, card owned/available/reserve без двойного счёта. Связать reward/capitalization/payout; текущая маркетинговая ставка не подменяет договор. Карты Plus/Light имеют разные условия; decline не списывает principal, fee требует подтверждения, authorization/clearing/refund/reversal связываются. USDT-пополнение и USD-карта — разные валюты; приблизительная USD-оценка покупки в EUR не settlement. P2P owner-side и точные legs/fee определяются контрактом, не порядком валют списка; ордер/wallet/bank не дублируют обмен. Проверить ID/revisions, повторы/поздние изменения, все страницы/coverage, hourly refresh, reauth и два независимых аккаунта. Повторное подключение связывается с тем же источником; lease/version запрещает применение старого результата после отключения. Только разрешённое чтение без PAN/CVV/переписки/секретов для AI.",
-        "en": "Implement only D-34 using the verified evidence/emcd contract; resolve EMCD-B02–B04 / BLK-06 and SDD Ready first. Mining, including historical mining, and other unused products do not block readiness. Obtain real structured fixtures: designed emcd.samples.json scenarios are not substitutes. Do not parse UI prose into financial postings or apply mining auth/scopes to wallets. Separate main aggregate, wallet, Grow and card owned/available/reserve without duplication. Link reward/capitalization/payout; current marketing rates cannot replace deposit terms. Plus/Light terms differ; decline does not post principal, fees need evidence, and authorization/clearing/refund/reversal must link. USDT funding and USD card are different currencies; approximate USD valuation of an EUR purchase is not settlement. Contract fields determine P2P owner-side and exact legs/fees, not list currency order; order/wallet/bank do not duplicate an exchange. Verify identity/revisions, replay/late changes, full pagination/coverage, hourly refresh, reauth and two independent accounts. Reconnection links the same source; lease/version rejects stale results after disconnect. Authorized reads only; no PAN/CVV/conversations/secrets for AI."
+        "ru": "Реализовать D-34: кошелёк USDT, Grow, используемые криптокарты и историю P2P. До provider deployment получить разрешённые структурированные fixtures каждого журнала, read allowlist, стабильную D-39 identity, pagination/coverage, revisions/statuses/fees, card/Grow/P2P lifecycle, reauth и два аккаунта. UI-текст не создаёт проводку. Разделить aggregate, wallet, Grow, card owned/available/reserve; reward/capitalization/payout и card authorization/clearing/refund/reversal связывать без двойного эффекта. USDT funding, USD card и приблизительная оценка EUR-покупки — разные факты. Unknown fee/owner side/legs и history gaps остаются явными; коллизия даёт `source_ambiguous` без проводки. Stale job после disconnect не применяется. Майнинг и другие неиспользуемые продукты отложены без блокировки. Provider evidence публикуется admission service для точного D-43 binding; conformance до admission идёт в quarantine без source record/проводки, а смена binding снова закрывает sync.",
+        "en": "Implement D-34: the USDT wallet, Grow, existing crypto cards and P2P history. Before provider deployment obtain authorized structured fixtures for every log, a read allowlist, stable D-39 identity, pagination/coverage, revisions/statuses/fees, card/Grow/P2P lifecycle, reauthentication and two accounts. UI text never creates a posting. Separate aggregate, wallet, Grow and card owned/available/reserve; link reward/capitalization/payout and card authorization/clearing/refund/reversal without duplicate effects. USDT funding, the USD card and an approximate valuation of an EUR purchase are separate facts. Unknown fee/owner side/legs and history gaps stay explicit; a collision yields `source_ambiguous` without posting. A stale job cannot apply after disconnect. Mining and other unused products are deferred without blocking. Provider evidence is supplied to the admission service for the exact D-43 binding; pre-admission conformance runs in quarantine without source records/postings, and any binding change closes sync again."
       },
       "verification": {
         "command": "make test-contract PROVIDER=emcd && make test-integration AREA=emcd",
         "expected": {
-          "ru": "Все продукты D-34 проходят реальные contract fixtures и отдельный live readback. Проверить EMCD-S01–S06 на структурированных данных; неизвестные поля остаются unknown. Доказать отдельный полный проход и повторы журналов wallet/Grow/card/P2P, lifecycle/fee и семейную identity. Mining и неиспользуемые продукты не требуются. Снятие task-0.6 не заменяет закрытие BLK-06 и Ready.",
-          "en": "All D-34 products pass real contract fixtures and separate live readback. Verify EMCD-S01–S06 on structured data; unknown fields stay unknown. Prove complete traversal and replay separately for wallet/Grow/card/P2P logs, lifecycle/fees and household identity. Mining and unused products are unnecessary. Completing task-0.6 does not replace BLK-06 closure and Ready."
+          "ru": "кошелёк USDT, Grow, используемые криптокарты и P2P проходят синтетические fixtures и отдельный разрешённый live readback; доказаны identity, полный обход страниц, revisions, reauth, два аккаунта и deployment gate. Unknown и коллизии не проводят деньги.",
+          "en": "The USDT wallet, Grow, existing crypto cards and P2P pass synthetic fixtures and a separate authorized live readback; identity, complete pagination, revisions, reauthentication, two accounts and the deployment gate are proven. Unknown values and collisions do not post money."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/34",
@@ -4369,8 +4418,8 @@
         "backend/internal/integrations/rates/"
       ],
       "behavior": {
-        "ru": "Реализовать подтверждённые источники исторических/текущих курсов и сервисных bid/ask по контракту. Фиксировать source/time/direction/amount/fee coverage. Историческую оценку не менять при обновлении текущей цены; исправление курса аудировать отдельно. Missing/stale/unsupported не считать нулём или peg; native amount остаётся доступен. Перевод/обмен использует фактические legs.",
-        "en": "Implement verified historical/current rate sources and provider bid/ask contracts. Retain source/time/direction/amount/fee coverage. Current-price refresh does not change historical valuation; audit rate corrections separately. Missing/stale/unsupported is neither zero nor a peg; native amounts remain available. Transfers/exchanges use actual legs."
+        "ru": "Использовать CBR как основной USD/RUB, Frankfurter `providers=CBR` как fallback/cross-check и CoinGecko Demo для текущих и исторических ≤365 дней BTC/ETH/USDT/USDC в USD. Для более старой криптоистории возвращать `valuation_unavailable`, сохраняя native facts. Текущая цена не переписывает историческую оценку. Platform executable quote хранится только с направлением, amount, временем и известными fee/spread; иначе `quote_unavailable`. Reference rate никогда не подменяет platform quote. Missing/stale/unsupported не равны нулю или peg. Free-key quota, attribution и live probe являются task-6.1 configuration/runtime gate.",
+        "en": "Use CBR as the primary USD/RUB source, Frankfurter `providers=CBR` as fallback/cross-check, and CoinGecko Demo for current and ≤365-day historical BTC/ETH/USDT/USDC prices in USD. Older crypto history returns `valuation_unavailable` while preserving native facts. A current price never rewrites historical valuation. Retain a platform executable quote only with direction, amount, time and known fee/spread; otherwise return `quote_unavailable`. A reference rate never substitutes for a platform quote. Missing/stale/unsupported is neither zero nor a peg. Free-key quota, attribution and a live probe are task-6.1 configuration/runtime gates."
       },
       "verification": {
         "command": "make test-go PKG=./internal/valuation/... && make test-contract PROVIDER=rates",
@@ -4488,14 +4537,14 @@
         "backend/internal/returns/"
       ],
       "behavior": {
-        "ru": "Реализовать annualized money-weighted return (XIRR) по dated external contributions/withdrawals и terminal value согласно contracts.md. Показывать исходную/отчётную валюту и фактический доход отдельно. Отдельно обрабатывать отсутствие смены знака, нулевой период, неоднозначные корни и неполную историю; не подставлять 0%. Предположения/метод доступны пользователю.",
-        "en": "Implement annualized money-weighted return (XIRR) from dated external contributions/withdrawals and terminal value per contracts.md. Show native/reporting currency and actual income separately. Handle no sign change, zero period, ambiguous roots and incomplete history explicitly; do not substitute 0%. Expose method/assumptions to the owner."
+        "ru": "Реализовать XIRR Actual/365 по объединённым потокам одной календарной даты. Cash-flow decimal остаются точными; fractional power считать как `exp((days/365) × ln(1+r))` в decimal context минимум 50 значащих цифр, ROUND_HALF_EVEN, с доказанной общей погрешностью NPV `≤ 1e-24 × max(1, Σ|CF|)`. Требуются положительный и отрицательный потоки и ровно одна смена знака. Решать NPV=0 bisection от `rLow=-1+1e-12` до `rHigh=1 000 000`; bracket требует разные знаки boundary NPV либо границу в tolerance. Остановка: `|NPV| ≤ 1e-12 × max(1, Σ|CF|)` или ширина `≤ 1e-12 × max(1, |rMid|)`, максимум 512 итераций; результат — rMid, HALF_EVEN до 12 знаков после запятой. Если error bound/знак не доказан, нет bracket, несколько смен знака, нулевой период, missing valuation или convergence — объяснённый `unavailable`, не 0%. Проверить irregular 182-day и boundary vectors; показывать native/reporting currency, доход и метод отдельно от FX.",
+        "en": "Implement Actual/365 XIRR after aggregating flows on the same calendar date. Cash-flow decimals remain exact; evaluate fractional powers as `exp((days/365) × ln(1+r))` in a decimal context of at least 50 significant digits, ROUND_HALF_EVEN, with a proven total NPV error `≤ 1e-24 × max(1, Σ|CF|)`. Inputs require positive and negative flows and exactly one sign transition. Solve NPV=0 by bisection from `rLow=-1+1e-12` through `rHigh=1,000,000`; a bracket requires opposite boundary NPV signs or a boundary within tolerance. Stop at `|NPV| ≤ 1e-12 × max(1, Σ|CF|)` or interval width `≤ 1e-12 × max(1, |rMid|)`, with at most 512 iterations; return rMid rounded HALF_EVEN to 12 decimal places. If the error bound/sign is not established, no bracket exists, signs change more than once, the period is zero, valuation is missing or convergence fails, return explained `unavailable`, never 0%. Test irregular 182-day and boundary vectors; show native/reporting currency, income and method separately from FX."
       },
       "verification": {
         "command": "make test-go PKG=./internal/returns/...",
         "expected": {
-          "ru": "Эталонные денежные потоки дают ожидаемую доходность; неподходящие данные возвращают объяснимую unavailable-оценку.",
-          "en": "Reference cash flows give expected returns; unsuitable inputs return an explained unavailable result."
+          "ru": "`-1000/+1100` за 365 дней даёт 10%; `-1000/+1050` за 182 дня даёт `0.102795595422`. rLow/root-above-rHigh, отсутствие или несколько смен знака, same-day net zero, missing valuation, недоказанный numeric error и no convergence дают заданный boundary outcome либо `unavailable`.",
+          "en": "`-1000/+1100` over 365 days returns 10%; `-1000/+1050` over 182 days returns `0.102795595422`. rLow/root-above-rHigh, no or multiple sign transitions, same-day net zero, missing valuation, unproven numeric error and non-convergence yield the specified boundary outcome or `unavailable`."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/43"
@@ -5446,7 +5495,8 @@
         "AC-062",
         "AC-077",
         "AC-087",
-        "AC-090"
+        "AC-090",
+        "AC-106"
       ],
       "targets": [
         "deploy/compose.yaml",
@@ -5454,8 +5504,8 @@
         "docs/operations/"
       ],
       "behavior": {
-        "ru": "По evidence task-0.9 подготовить VPS в Германии 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной private VPC без публичного DB IP. Docker Compose запускает Go API/worker, web/reverse proxy и изолированный sequential collector; PostgreSQL входит только в локальные/integration окружения. До данных: key-only non-root SSH, provider+host firewall, закрытый/защищённый Zabbix, TLS/private DB endpoint и разделённые DB roles, секреты вне Git, redacted logs, pinned images, cgroups/pids/network allowlist. Миграции выполняются до consumers. Измерить RAM/CPU/disk/collector, health/degradation, deployment/rollback и прочитать итоговую смету с налогом/IP; provisioning требует отдельной авторизации владельца.",
-        "en": "Using task-0.9 evidence, prepare a German 2 vCPU/4 GB/50 GB VPS and 1 vCPU/2 GB/20 GB managed PostgreSQL in one private VPC with no public DB IP. Docker Compose runs Go API/worker, web/reverse proxy and an isolated sequential collector; PostgreSQL remains containerized only in development/integration environments. Before data: key-only non-root SSH, provider and host firewalls, closed/protected Zabbix, TLS/private DB endpoint with separate DB roles, secrets outside Git, redacted logs, pinned images and cgroup/pid/network allowlists. Run migrations before consumers. Measure RAM/CPU/disk/collector, health/degradation and deployment/rollback, and read back the tax/IP-inclusive cost; provisioning requires separate owner authorization."
+        "ru": "По evidence task-0.9 подготовить VPS в Германии 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной private VPC без публичного DB IP. Docker Compose запускает Go API/worker, web/reverse proxy и изолированный sequential collector; PostgreSQL входит только в локальные/integration окружения. До данных: key-only non-root SSH, provider+host firewall, закрытый/защищённый Zabbix, TLS/private DB endpoint и разделённые DB roles, секреты вне Git, redacted logs, pinned images, cgroups/pids/network allowlist. Миграции выполняются до consumers. Измерить RAM/CPU/disk/collector, health/degradation, deployment/rollback и прочитать итоговую смету с налогом/IP; provisioning требует отдельной авторизации владельца. Каждый provider deployment выключен по умолчанию до успешного read allowlist/permission/structured-fixture/identity/history/reauth conformance gate. Alfa route/DNS/TLS с целевого хоста входит в этот runtime readback. Эти проверки допускают эксплуатацию, но не меняют статус Ready SDD. Host evidence для точного D-43 binding передаётся admission service; только совместный pass provider+host переводит его в `admitted`, а deploy/config/allowlist/permission mismatch атомарно возвращает `pending|blocked` до нового sync.",
+        "en": "Using task-0.9 evidence, prepare a German 2 vCPU/4 GB/50 GB VPS and 1 vCPU/2 GB/20 GB managed PostgreSQL in one private VPC with no public DB IP. Docker Compose runs Go API/worker, web/reverse proxy and an isolated sequential collector; PostgreSQL remains containerized only in development/integration environments. Before data: key-only non-root SSH, provider and host firewalls, closed/protected Zabbix, TLS/private DB endpoint with separate DB roles, secrets outside Git, redacted logs, pinned images and cgroup/pid/network allowlists. Run migrations before consumers. Measure RAM/CPU/disk/collector, health/degradation and deployment/rollback, and read back the tax/IP-inclusive cost; provisioning requires separate owner authorization. Every provider deployment is disabled by default until its read allowlist, permission, structured-fixture, identity, history and reauthentication conformance gate passes. Alfa route/DNS/TLS from the target host belongs to this runtime readback. These checks authorize operation but do not change SDD Ready status. Host evidence for the exact D-43 binding is supplied to the admission service; only a combined provider+host pass sets `admitted`, while a deployment/configuration/allowlist/permission mismatch atomically returns it to `pending|blocked` before another sync."
       },
       "verification": {
         "command": "make check-deploy && make test-integration AREA=health",
@@ -5688,7 +5738,8 @@
         "AC-087",
         "AC-090",
         "AC-092",
-        "AC-093"
+        "AC-093",
+        "AC-106"
       ],
       "targets": [
         "spec/001-want-keep-mvp/verification.md",

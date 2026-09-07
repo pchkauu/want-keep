@@ -2,11 +2,11 @@
 
 [Русский](alfa.md)
 
-Date: 2026-09-07. Task: [task-0.1 / Issue #1](https://github.com/pchkauu/want-keep/issues/1). **Research completed with blocking findings; automatic import is not ready.** Deliverables include the product matrix, portal observations, published API contracts, synthetic examples and continuation conditions. BLK-01 remains open; [task-4.1](../tasks/task-4.1.md) and [task-0.10](../tasks/task-0.10.md) remain blocked. This is a permitted negative research outcome under the [completion rule](../README.en.md), not successful integration acceptance.
+Date: 2026-09-07. Task: [task-0.1 / Issue #1](https://github.com/pchkauu/want-keep/issues/1). Research is complete: the product matrix, portal observations, published API contracts and synthetic examples were collected. Automatic import is not implemented. The original ALFA-B02–B06 were handed to the Ready gate; their final split into SDD decisions and runtime gates is recorded in the task-0.10 section below.
 
 ## Scope and evidence
 
-This research concerns an individual's banking portal. REQ-042 coverage remains mandatory: debit/credit cards, current/savings accounts and deposits. Cashback was also investigated at the owner's request. The owner has no credit card; opening a product for testing is not required.
+This research concerns an individual banking portal. D-37 defines mandatory REQ-042 coverage as debit card, current/savings accounts, deposits and cashback. The owner has no Alfa credit card; opening one for testing is not required, while shared manual credit-card accounting remains.
 
 | ID / source | Observation | Evidence boundary |
 | --- | --- | --- |
@@ -35,7 +35,7 @@ All observations are dated 2026-09-07. Git retains no personal amounts, names, c
 | Savings account | Daily-balance Alfa Account, RUB, zero available balance, lifetime income, rate/welcome uplift, forecast, opening date; history of interest, transfers and cashback payment | Rate/uplift history and eligibility, exact day-count/rounding, full history and structured machine-readable terms |
 | Maximum deposit | Balance, principal, opening/closing dates, term, annual rate, compounding, return/payout account, restrictions, renewal, received/future income; schedule and history | Early-closure rules, day-count/rounding, term updates, structured accrual identity/status |
 | New Money deposit | One of two deposits: the same field groups, with renewal date and automatic renewal enabled | Second instance: overview only. Complete terms/log contract unconfirmed; equal names do not merge deposits |
-| Credit card | Absent according to owner | Debt/own funds/limit, minimum/due, grace, statement cycle, exceptions and repayment order; mandatory scope remains blocked |
+| Credit card | Absent according to owner | Deferred by D-37; does not block Alfa. Shared manual credit-card accounting remains |
 | Cashback | Ruble balance, expected monthly accruals, accrual-type history, displayed purchase linkage and separate bank credit | Accrual→payout→correction, stable IDs, allocation of payouts to purchases, caps/expiry, net/gross and rule history |
 | Currencies and exchange | RUB for observed accounts/deposits; RUR in cashback-filter query | Other currencies, buy/sell quotes, exchange rate and fee not live-tested; REQ-039 requires explicit unavailable |
 
@@ -161,14 +161,20 @@ The navigation is not a bank payout.
 | Blocker | Status / closure evidence | REQ / AC |
 | --- | --- | --- |
 | ALFA-B01: correct browser and viewing access | Closed for this run: ALFA-E03/E06/E07; a future session may need the owner again | REQ-073; observation for AC-087, not a complete test |
-| ALFA-B02: automation method and allowed read contract | Open: retail API found (ALFA-E14–ALFA-E20), but Want Keep eligibility/provisioning is unconfirmed; needs precise read allowlist, limits, MFA handoff and documented inconsistencies resolved. Browser contract remains an alternative with unresolved identity | REQ-042, REQ-048; AC-042, AC-048 |
-| ALFA-B03: source identity and history | Open: account/card/operation IDs and offset/limit are published, but runtime stability, revisions, retention/resume/completeness, time/fee semantics, reauth and independent second-member account need verification | REQ-041, REQ-065, REQ-073; AC-041, AC-079, AC-087 |
-| ALFA-B04: missing credit card | Open: authorised credit-product sample or explicit scope change by owner; do not open a card or reduce scope independently | REQ-031, REQ-032, REQ-042; AC-042, AC-070 |
-| ALFA-B05: exact savings terms | Open: structured rate schedule/day-count/rounding/cash flows, accrual statuses, early closure and updates; both deposit types and savings account | REQ-033; AC-070 |
-| ALFA-B06: FX and cashback lifecycle | Open: quote capabilities; link expected accrual, payout, correction and original purchase; classification and no duplication | REQ-039, REQ-042; AC-042 |
+| ALFA-B02: automation method and allowed read contract | RUNTIME GATE task-4.1 — retail API exists (ALFA-E14–ALFA-E20), while Want Keep eligibility/provisioning is unconfirmed; verify exact read allowlist, limits, MFA handoff and documented inconsistencies. Browser access remains an alternative until structured identity is proven | REQ-042, REQ-048; AC-042, AC-048 |
+| ALFA-B03: source identity and history | RUNTIME GATE task-4.1 — account/card/operation IDs and offset/limit are published; runtime verifies stability, revisions, retention/resume/coverage, time/fee semantics, reauthentication and an independent second-member account | REQ-041, REQ-065, REQ-073; AC-041, AC-079, AC-087 |
+| ALFA-B04: missing credit card | CLOSED D-37 — the Alfa credit card is deferred; shared manual credit-card behavior remains | REQ-031, REQ-032, REQ-042; AC-042, AC-070 |
+| ALFA-B05: exact savings terms | RUNTIME GATE task-4.1 — verify structured rate schedule/day-count/rounding/cash flows, accrual statuses, early closure and updates for selected savings products | REQ-033; AC-070 |
+| ALFA-B06: FX and cashback lifecycle | RUNTIME GATE task-4.1 — verify quote capabilities and cashback accrual/payout/correction/purchase linkage without duplication | REQ-039, REQ-042; AC-042 |
 
-Research enabled further contract clarification, not adapter implementation: BLK-01 remains open. Next, close ALFA-B02/B03 with authorised, sanitised samples while the owner retains control of authentication. Do not export cookies/tokens or use hidden state or undocumented tool commands. Subsequent work updates both languages and task-0.10; a missing mandatory product does not become successful acceptance.
+Research handed ALFA-B02/B03 and remaining runtime questions to task-4.1. Structured samples are obtained only under owner-controlled authentication; cookies/tokens are never exported. D-37 closes scope and D-39 closes safe identity/unknown/collision behavior; see the task-0.10 section below.
 
-Completing task-0.1 hands the listed blockers to task-0.10 and task-4.1 while retaining Not Ready. The catalog/task research status is updated without changing REQ/AC, dependencies or mandatory products. The bank tab was returned to the dashboard. Collector implementation and runtime tests do not yet exist; publication evidence is the commit and Issue #1 readback.
+task-0.1 is complete as research. task-0.10 accepted D-37/D-39 and issued SDD Ready; task-4.1 must still implement and prove collector/API runtime. GitHub Closed for research is not integration acceptance.
 
 Document checks on 2026-09-07: 13 generator tests (unittest discover) — pass; self review clarified the UI/API evidence distinction and BLK-01 closure owner; `python3 spec/001-want-keep-mvp/tools/spec_tool.py check` — pass; `git diff --check` — pass; RU/EN REQ/AC/task/ALFA-ID sets match and local links resolve. The pair was also checked for long numeric identifiers, private paths and tested secret patterns. These checks do not replace live acceptance criteria or future application-security tests.
+
+## task-0.10 decision, 2026-09-07
+
+ALFA-B02–B06 above remain research-evidence boundaries but no longer form a global SDD blocker. D-37 removes the unavailable Alfa credit card from current provider scope while preserving shared manual credit-card support. D-39 defines identity/unknown/collision behavior without invented fields.
+
+The signed-in Chrome tab additionally confirmed debit/current/savings/deposit/cashback/history sections and stable UI category markers without reading or publishing amounts. DOM/UI is not a financial schema. Before deployment enablement, task-4.1 obtains an authorized structured fixture, allowlist, stable IDs, pagination/coverage, revisions/statuses/fees/cashback lifecycle, reauthentication, two accounts and target-host route. A failed gate keeps Alfa disabled; the SDD remains Ready for development.

@@ -5,7 +5,7 @@
 
 Вызывать OpenAI через ограниченный бюджетом доменный контракт.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-0.8`, `task-3.1`, `task-1.5`.
 
@@ -125,7 +125,7 @@ make test-integration AREA=ai-budget
 
 Call OpenAI through a budget-controlled domain contract.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-0.8`, `task-3.1`, `task-1.5`.
 

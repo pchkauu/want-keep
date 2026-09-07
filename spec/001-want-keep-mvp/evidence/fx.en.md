@@ -4,7 +4,7 @@
 
 Date: 2026-09-07, Europe/Moscow. Task: [task-0.7 / Issue #7](https://github.com/pchkauu/want-keep/issues/7). Repository base: `cce4a4b`, branch `docs/want-keep-mvp-sdd`. Public documents and anonymous HTTP responses were inspected; no paid plan, API key or financial account was used.
 
-**Research is complete with precise limitations.** The MVP selection is: Bank of Russia as the primary USD/RUB source; CoinGecko Demo for current and at-most-365-day-old BTC/USD, ETH/USD, USDT/USD and USDC/USD; Frankfurter v2 with `providers=CBR` as a fallback transport/cross-check for CBR, with no blended rates. Older crypto valuation and executable platform quotes remain unavailable pending task-0.10 and provider-specific research. BLK-07 remains open under task-0.10; closing the research Issue does not establish Ready.
+**Research is complete with precise limitations.** The CBR, CoinGecko Demo and Frankfurter contract is selected. The original FX-B02–B04 were handed to task-0.10; D-40 and the task-6.1 runtime gate are recorded in the final section below. The rates adapter is not implemented.
 
 ## Decision
 
@@ -76,13 +76,13 @@ TradingView is **not suitable** as a server-side rate source for Want Keep. Char
 | ID | Status | Required decision and closure owner |
 | --- | --- | --- |
 | FX-B01 | CLOSED | Current and up-to-365-day history for RUB/USD/BTC/ETH/USDT/USDC are covered by the selected reference contract and cross-rate formula; USDC.E needs separate identity/rate mapping |
-| FX-B02 | OPEN | task-0.10: accept `valuation_unavailable` for crypto older than 365 days or separately verify an allowed archive/paid source. Current prices/pegs are forbidden substitutes |
-| FX-B03 | OPEN | task-0.1–task-0.6/task-0.10: obtain provider-specific executable buy/sell, amount, fee/spread and timestamp or approve UI `quote unavailable`; reference price cannot replace them |
-| FX-B04 | OPEN | owner + task-0.10: create a free CoinGecko Demo key, verify keyed endpoints/usage endpoint and record attribution. Never publish the secret |
+| FX-B02 | CLOSED D-40 | task-0.10: accept `valuation_unavailable` for crypto older than 365 days or separately verify an allowed archive/paid source. Current prices/pegs are forbidden substitutes |
+| FX-B03 | CLOSED D-40 | task-0.1–task-0.6/task-0.10: obtain provider-specific executable buy/sell, amount, fee/spread and timestamp or approve UI `quote unavailable`; reference price cannot replace them |
+| FX-B04 | RUNTIME GATE task-6.1 | owner + task-6.1: create a free CoinGecko Demo key, verify keyed endpoints/usage endpoint and record attribution. Never publish the secret |
 | FX-B05 | CLOSED FOR RESEARCH | Dated probes established DE/NL/BG reachability; task-0.9 also confirmed the public rate endpoints from the actual German VPS. The real adapter/soak remains a task-6.1/task-8.1 runtime check |
 | FX-B06 | CLOSED | TradingView hypothesis tested and rejected for non-display valuation |
 
-BLK-07 retains FX-B02–FX-B04 until task-0.10 decides them. task-0.7 completes research and unblocks contract formalization, while task-6.1 and the MVP remain **Not Ready** pending the common Ready gate.
+D-40 resolves the SDD portion of FX-B02/FX-B03 and moves FX-B04 into the task-6.1 configuration/runtime gate. The full MVP still requires a running rates adapter and linked ACs; this is no longer a global SDD blocker.
 
 ## Verification
 
@@ -91,3 +91,7 @@ Performed: official documentation and terms review, anonymous endpoint probes, c
 Documentation commands: `make docs-check`, `python3 -m unittest discover -s spec/001-want-keep-mvp/tools -p 'test_*.py'`, `git diff --check`. They validate SDD artifacts, not financial runtime.
 
 Not performed: CoinGecko Demo key flow/usage readback, long soak/SLA, actual VPS, provider buy/sell/fees, crypto history older than 365 days, application/collector/database or complete AC-037/AC-038/AC-039/AC-074. The application, secrets and provider contracts are absent. FX-B02–FX-B04 record these limits instead of presenting them as implemented success.
+
+## task-0.10 decision, 2026-09-07
+
+D-40 resolves FX-B02/B03 as SDD decisions: crypto history older than 365 days yields `valuation_unavailable`; a platform quote without direction/amount/time/known fee-spread yields `quote_unavailable`, and a reference rate never substitutes for it. FX-B04 becomes a task-6.1 configuration/runtime gate: create a free Demo key, verify quota/usage/attribution and never publish the secret. SDD Ready does not mean a running rates adapter.

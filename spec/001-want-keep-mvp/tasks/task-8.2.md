@@ -5,7 +5,7 @@
 
 Получать согласованные независимые от сервера копии при доступном Mac.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-8.1`, `task-1.5`.
 
@@ -97,7 +97,7 @@ make test-integration AREA=backup && make backup-check MODE=synthetic
 
 Obtain consistent server-independent copies while the Mac is reachable.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-8.1`, `task-1.5`.
 

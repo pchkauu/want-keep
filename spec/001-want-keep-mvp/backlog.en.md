@@ -2,7 +2,7 @@
 
 Rendered from [catalog.json](catalog.json). Edit the catalog, then run `python3 spec/001-want-keep-mvp/tools/spec_tool.py render`.
 
-The full backlog is not a Ready implementation plan. First task-0.1–task-0.9 collect evidence; task-0.10 then resolves blockers and reviews SDD readiness. All later tasks await that gate and their own dependencies. `plan.md` intentionally does not exist before Ready. Task cards are self-contained in RU/EN.
+The specification passed task-0.10 and is ready for development. The decision-complete order, parallelism and entry/exit gates are published in [plan.en.md](plan.en.md). Each task still awaits its own dependencies and runtime gates; SDD Ready does not mean an implemented or accepted MVP. Task cards are self-contained in RU/EN.
 
 | Task | Outcome | Dependencies | GitHub |
 | --- | --- | --- | --- |

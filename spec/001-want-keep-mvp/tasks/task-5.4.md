@@ -5,7 +5,7 @@
 
 Сохранять диалог до однозначного результата учёта.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-5.3`, `task-5.2`.
 
@@ -138,7 +138,7 @@ make test-integration AREA=chat
 
 Retain a conversation until it reaches an unambiguous accounting outcome.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-5.3`, `task-5.2`.
 

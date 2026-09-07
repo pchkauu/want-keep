@@ -5,7 +5,7 @@
 
 Единый визуальный фундамент desktop Want Keep.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-1.1`.
 
@@ -66,7 +66,7 @@ make test-web FILTER=design-tokens
 
 A consistent desktop Want Keep visual foundation.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-1.1`.
 

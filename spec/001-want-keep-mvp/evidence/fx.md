@@ -4,7 +4,7 @@
 
 Дата: 2026-09-07, Europe/Moscow. Задача: [task-0.7 / Issue #7](https://github.com/pchkauu/want-keep/issues/7). База репозитория: `cce4a4b`, ветка `docs/want-keep-mvp-sdd`. Проверены публичные документы и анонимные HTTP-ответы; платные планы, API-ключи и финансовые аккаунты не использовались.
 
-**Исследование завершено с точными ограничениями.** Для MVP выбран состав: Банк России — основной USD/RUB; CoinGecko Demo — текущие и не старше 365 дней BTC/USD, ETH/USD, USDT/USD и USDC/USD; Frankfurter v2 с `providers=CBR` — резервный transport/cross-check для CBR, без blended rates. Более старая crypto-оценка и исполнимые котировки платформ остаются unavailable до решения task-0.10 и provider-specific исследований. BLK-07 остаётся открыт под контролем task-0.10; закрытие research Issue не означает Ready.
+**Исследование завершено с точными ограничениями.** CBR, CoinGecko Demo и Frankfurter contract выбран. Исходные FX-B02–B04 переданы task-0.10; D-40 и runtime gate task-6.1 записаны в итоговом разделе ниже. Rates adapter не реализован.
 
 ## Решение
 
@@ -76,13 +76,13 @@ TradingView **не подходит** как серверный источник
 | ID | Статус | Нужное решение и владелец закрытия |
 | --- | --- | --- |
 | FX-B01 | CLOSED | Current и история до 365 дней для RUB/USD/BTC/ETH/USDT/USDC закрыты выбранным reference contract и формулой cross-rates; USDC.E требует отдельной identity/rate mapping |
-| FX-B02 | OPEN | task-0.10: принять `valuation_unavailable` для crypto старше 365 дней либо отдельно проверить разрешённый archive/платный источник. Текущий курс/peg не допускаются |
-| FX-B03 | OPEN | task-0.1–task-0.6/task-0.10: получить provider-specific executable buy/sell, amount, fee/spread и timestamp или утвердить UI `quote unavailable`; reference price не заменяет их |
-| FX-B04 | OPEN | владелец + task-0.10: создать бесплатный CoinGecko Demo key, проверить keyed endpoints/usage endpoint и зафиксировать атрибуцию. Секрет не публиковать |
+| FX-B02 | CLOSED D-40 | D-40: crypto старше 365 дней даёт `valuation_unavailable`; текущий курс/peg не допускаются |
+| FX-B03 | CLOSED D-40 | D-40: неполные provider buy/sell данные дают `quote_unavailable`; reference price не заменяет их |
+| FX-B04 | RUNTIME GATE task-6.1 | владелец + task-6.1: создать бесплатный CoinGecko Demo key, проверить keyed endpoints/usage endpoint и зафиксировать атрибуцию. Секрет не публиковать |
 | FX-B05 | CLOSED FOR RESEARCH | DE/NL/BG reachability подтверждена датированными probes; task-0.9 также подтвердила публичные rate endpoints с фактического немецкого VPS. Реальный адаптер/soak остаётся runtime-проверкой task-6.1/task-8.1 |
 | FX-B06 | CLOSED | Гипотеза TradingView проверена и отвергнута для non-display valuation |
 
-BLK-07 содержит FX-B02–FX-B04 до решения task-0.10. task-0.7 завершает исследование и разблокирует формализацию контракта, но task-6.1 и MVP остаются **Not Ready** до общего Ready-барьера.
+D-40 закрывает SDD-часть FX-B02/FX-B03 и переносит FX-B04 в configuration/runtime gate task-6.1. Полный MVP по-прежнему требует работающего rates adapter и связанных AC; это не глобальный SDD-блокер.
 
 ## Проверка
 
@@ -91,3 +91,7 @@ BLK-07 содержит FX-B02–FX-B04 до решения task-0.10. task-0.7 
 Команды документации: `make docs-check`, `python3 -m unittest discover -s spec/001-want-keep-mvp/tools -p 'test_*.py'`, `git diff --check`. Они проверяют SDD, а не финансовый runtime.
 
 Не выполнено: CoinGecko Demo key flow/usage readback, длительный soak/SLA, реальный VPS, provider buy/sell/fees, crypto history старше 365 дней, application/collector/DB и полные AC-037/AC-038/AC-039/AC-074. Причина — отсутствующие секреты, provider contracts и приложение. Эти ограничения отражены в FX-B02–FX-B04, а не выданы за успешную реализацию.
+
+## Решение task-0.10, 2026-09-07
+
+D-40 закрывает FX-B02/B03 как SDD-решения: crypto history старше 365 дней даёт `valuation_unavailable`; platform quote без direction/amount/time/known fee-spread даёт `quote_unavailable`, а reference rate его не заменяет. FX-B04 становится configuration/runtime gate task-6.1: создать бесплатный Demo key, проверить quota/usage/attribution и не публиковать секрет. SDD Ready не означает работающий rates adapter.

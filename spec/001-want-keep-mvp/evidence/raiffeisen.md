@@ -2,7 +2,7 @@
 
 [English](raiffeisen.en.md)
 
-Дата: 2026-09-07. Задача: [task-0.2 / Issue #2](https://github.com/pchkauu/want-keep/issues/2). **Исследование завершено с открытыми контрактными вопросами; production-чтение счёта и исторических выписок подтверждено.** BLK-02 открыт; task-4.2 и MVP — Not Ready.
+Дата: 2026-09-07. Задача: [task-0.2 / Issue #2](https://github.com/pchkauu/want-keep/issues/2). **Исследование завершено; production account и historical statement reads подтверждены, connector не реализован.** Исходные RAIF-B02/B03/B04/B06 переданы task-0.10; D-39 и runtime gate task-4.2 записаны в итоговом разделе ниже.
 
 ## Объём и выбранный путь
 
@@ -132,16 +132,22 @@ Content-Type: application/json
 | ID | Состояние | Доказательство / оставшийся вопрос |
 | --- | --- | --- |
 | RAIF-B01 | Закрыт для первичного API-доступа | Refresh и account GET с Mac, account GET с VPS — HTTP 200; это не постоянная интеграция |
-| RAIF-B02 | Частично закрыт: accounts/CAMT mapping | Нужны XSD, 1:N, reversal/pending и ID при исправлениях. Профиль проверен на двух отчётах |
-| RAIF-B03 | Открыт: полнота/история | Архив/retention/квоты, пустые дни, split/resume, поздние изменения и camt.052↔053 replay |
-| RAIF-B04 | Открыт: авторизация/эксплуатация | Refresh 30/180 дней, reauth/revocation, второй внешний аккаунт, постоянное защищённое хранение, hourly import; callback пока 503 |
+| RAIF-B02 | SDD RESOLVED; RUNTIME GATE task-4.2 | Нужны XSD, 1:N, reversal/pending и ID при исправлениях. Профиль проверен на двух отчётах |
+| RAIF-B03 | SDD RESOLVED; RUNTIME GATE task-4.2 | Архив/retention/квоты, пустые дни, split/resume, поздние изменения и camt.052↔053 replay |
+| RAIF-B04 | RUNTIME GATE task-4.2 | Refresh 30/180 дней, reauth/revocation, второй внешний аккаунт, постоянное защищённое хранение, hourly import; callback пока 503 |
 | RAIF-B05 | Закрыт | D-35 заменяет исходный retail scope только расчётным счётом ИП |
-| RAIF-B06 | Открыт в новом scope | Текущий/доступный/заблокированный остаток и точная семантика комиссии. 404 не равен нулю; неиспользуемые продукты не блокируют |
+| RAIF-B06 | SDD RESOLVED; RUNTIME GATE task-4.2 | Текущий/доступный/заблокированный остаток и точная семантика комиссии. 404 не равен нулю; неиспользуемые продукты не блокируют |
 
-Следующие проверки: успешный intraday в доступный банковский день, источник текущего остатка при no-statements, bank semantics комиссий, глубина истории, reauth и второй аккаунт. Деньги ради тестов не перемещать; refresh/генерацию после unknown outcome не повторять без сверки. task-0.10 закрывает оставшиеся вопросы; task-4.2 и весь MVP остаются Not Ready.
+task-4.2 проверяет intraday в доступный банковский день, current balance после no-statements, fee semantics, history depth, reauth и второй аккаунт. Деньги ради тестов не перемещаются; unknown outcome сначала сверяется. D-39 закрывает SDD-правила, не заменяя эти runtime tests.
 
 ## Трассировка и проверка
 
 AC-043/REQ-043: live-чтение счёта и исторических выписок выполнено; полный критерий приложения не пройден. AC-041/REQ-041: перекрытие проверено, полный архив/возобновление нет. AC-048/REQ-048: диагностический allowlist проверен синтетически, финансовые команды не выполнялись. AC-079/REQ-065: один счёт стабилен между запросами/хостами, reconnect и два участника не проверены. AC-087/REQ-073: однократная ротация и unknown-outcome guard подтверждены, семейная авторизация/отзыв jobs ещё не реализованы. AC-070 снят с Raif по D-35; требования кредитов/накоплений других платформ сохранены.
 
 [Verification](../verification.md) разделяет тесты, API и инфраструктуру. Исходники и credentials приватны; в публичных примерах нет реальных сумм, персональных данных, реквизитов, токенов и локальных credential-путей. Code Flow, sandbox и полный runtime приложения не проверялись. Результат commit/push и проверка закрытия исследования фиксируются в [Issue #2](https://github.com/pchkauu/want-keep/issues/2); BLK-02 остаётся за task-0.10.
+
+## Решение task-0.10, 2026-09-07
+
+RAIF-B02/B03/B04/B06 выше перенесены из глобального SDD-блокера в executable gate task-4.2. Целевой контракт допускает CAMT entry 1:N transaction details; NtryRef/AcctSvcrRef/EndToEndId используются только при наличии и доказанном scope. Идентификатор statement/report сохраняется только как provenance и не входит в identity операции. Fallback — transaction-scoped fingerprint в документированном порядке из непустых structured reference/party/account/remittance/bank-code fields, доказанно неизменных между перекрывающимися camt.052/camt.053; amount/time исключены. Недостаточный или collision-prone fingerprint даёт `source_ambiguous` без проводки. Corrections/reversals сохраняются revisions.
+
+`no-statements` не означает нулевой остаток. При недоступном camt.052 используется последний подтверждённый CLBD с `asOf`/coverage; available/locked/balance/fee без evidence остаются unknown. OAuth lifecycle, полный архив, исправления, второй аккаунт и live conformance обязательны до provider deployment, но не блокируют разработку SDD.

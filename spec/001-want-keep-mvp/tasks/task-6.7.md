@@ -5,7 +5,7 @@
 
 Показывать прогресс и доступные деньги без повторных резервов.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-6.6`, `task-2.1`.
 
@@ -127,7 +127,7 @@ make test-go PKG=./internal/goals/... && make test-integration AREA=goals
 
 Show progress and spendable money without repeated reservations.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-6.6`, `task-2.1`.
 

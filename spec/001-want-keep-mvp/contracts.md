@@ -2,7 +2,7 @@
 
 [English](contracts.en.md)
 
-Контракт проекта версии 7, целевой; семейное, desktop, D-36/USDC и FX-уточнения 2026-09-07. Реальных API или схемы БД ещё нет. Здесь закреплены общие правила; provider-specific поля и условия закрываются task-0.1–task-0.10 до реализации. REQ/AC имеют приоритет над предположением адаптера.
+Контракт проекта версии 8, целевой; task-0.10 признала SDD Ready for development 2026-09-07. Реальных финансовых API или полной схемы БД ещё нет. D-37–D-43 закрывают фундаментальные правила; provider-specific разрешения и conformance остаются entry/deployment gates task-4.x/task-8.x. REQ/AC имеют приоритет над предположением адаптера.
 
 ## Доменные сущности
 
@@ -39,13 +39,13 @@ Pending влияет на доступность через hold, а факти�
 
 ## Контракт справочных курсов
 
-[Evidence task-0.7](evidence/fx.md) выбирает Банк России как основной USD/RUB, Frankfurter v2 только с `providers=CBR` как fallback/cross-check и CoinGecko Demo для отдельных BTC/USD, ETH/USD, USDT/USD и USDC/USD observations не старше 365 дней. Default blend запрещён. TradingView не является источником данных. Crypto history старше 365 дней остаётся unavailable до решения task-0.10.
+[Evidence task-0.7](evidence/fx.md) и D-40 выбирают Банк России как основной USD/RUB, Frankfurter v2 только с `providers=CBR` как fallback/cross-check и CoinGecko Demo для отдельных BTC/USD, ETH/USD, USDT/USD и USDC/USD observations current и не старше 365 дней. Default blend и TradingView запрещены.
 
-Для `P_USD(X,D)` — USD за единицу актива — кросс вычисляется как `R(S→T,D) = P_USD(S,D) / P_USD(T,D)`. `P_USD(USD,D)=1`, `P_USD(RUB,D)=1/CBR_USD_RUB(D)`. Каждая leg хранит provider asset ID, requested date, observed/effective time, fetchedAt, granularity, source/transport и revision. Расчёт и обратный курс используют Decimal; округление выполняется только на заданной границе отображения.
+Для `P_USD(X,D)` — USD за единицу актива — кросс равен `R(S→T,D) = P_USD(S,D) / P_USD(T,D)`. `P_USD(USD,D)=1`, `P_USD(RUB,D)=1/CBR_USD_RUB(D)`. Каждая leg хранит provider asset ID, requested date, observed/effective time, fetchedAt, granularity, source/transport и revision. Расчёт выполняется Decimal; округление — только на границе отображения.
 
-Для исторического CBR выбирается последняя effective date `≤ D`; выходной не создаёт новую observation. CoinGecko history — дневная UTC snapshot для даты операции в timezone бюджета. Если leg отсутствует, выходит за доступную глубину или current response не содержит требуемый timestamp, cross и зависимые выводы partial/unavailable. Последний cache можно показать как stale с датами, но нельзя переписать им историю.
+Для CBR берётся последняя effective date `≤ D`; выходной не создаёт observation. CoinGecko history — дневная UTC snapshot для даты операции в timezone бюджета. Crypto history старше 365 дней возвращает `valuation_unavailable`; native amount, source coverage и причина сохраняются. Последний cache можно показать только как stale с датами. Free Demo key, quota/usage и attribution проверяются в task-6.1 перед runtime.
 
-Reference valuation не заменяет фактический обмен. Executed quote требует обе native amounts, direction, applicable amount, provider timestamp и известные spread/fees из source operation. Отсутствие этих полей отображается как unknown/quote unavailable. Mismatch между primary/cross-check сохраняет обе observations и создаёт диагностику, без скрытого усреднения.
+Reference valuation не заменяет фактический обмен или исполнимую котировку. Platform quote существует только при известных direction, applicable amount, provider timestamp и fee/spread coverage; иначе возвращается `quote_unavailable`. Mismatch primary/cross-check сохраняет обе observations и диагностику без скрытого усреднения.
 
 ## Дневные лимиты
 
@@ -65,11 +65,15 @@ Reference valuation не заменяет фактический обмен. Exe
 
 ## Кредитки, накопления и доходность
 
-Грейс, minimum/due и eligibility опираются на structured provider fields либо явно подтверждённую владельцем структурированную модель условий. Не парсить рекламные/свободные формулировки в бизнес-критический автомат. Отсутствие statement cycle, исключений, базы начисления или порядка погашения блокирует точный вывод, а не весь просмотр счёта.
+Грейс, minimum/due и eligibility опираются на structured provider fields либо явно подтверждённую владельцем модель условий. Рекламный текст не управляет расчётом. Отсутствие cycle, исключений, базы начисления или порядка погашения делает точный вывод unavailable, но не скрывает известные операции и долг.
 
-Прогноз накоплений использует effective rate schedule, day-count/basis, compounding/payout schedule, term/lock, top-ups/withdrawals и явно доступные условия досрочного выхода. Доход по обещанной ставке — прогноз; фактическое начисление приходит отдельной операцией. Пополнение не доходность.
+Прогноз накоплений использует effective rate schedule, day-count/basis, compounding/payout schedule, term/lock, top-ups/withdrawals и известные условия досрочного выхода. Обещанная ставка — прогноз; фактическое начисление приходит отдельной операцией. Пополнение не является доходностью.
 
-Сравнение использует XIRR: `Σ CF_i / (1+r)^((date_i−date_0)/365) = 0`, где вложения владельца отрицательны, полученные выплаты и конечная оценка положительны; `r > −1`. Native и reporting-currency результаты отдельны, исторические потоки оцениваются на свои даты, terminal value — на дату сравнения. Нет смены знака, нулевой период, отсутствующая стоимость, неполная история, отсутствие единственного подтверждённого корня — объяснимый unavailable, не 0%. Метод решения и тестовые векторы закрываются task-0.10; не выдавать APR поставщика за XIRR.
+D-42 задаёт XIRR: агрегировать потоки одной календарной даты и использовать Actual/365. Cash-flow amounts остаются точными decimal. Дробную степень считать как `exp((days/365) × ln(1+r))` в decimal context минимум 50 значащих цифр с ROUND_HALF_EVEN; реализация ln/exp и накопления NPV обязана доказать общую численную погрешность `≤ 1e-24 × max(1, Σ|CF_i|)`, иначе результат `unavailable`. После удаления нулевых агрегатов нужны хотя бы один отрицательный и один положительный поток и ровно одна смена знака в хронологическом порядке.
+
+Решать `Σ CF_i / (1+r)^((date_i−date_0)/365) = 0` bracketed bisection между `rLow = -1 + 1e-12` и `rHigh = 1 000 000`. Bracket существует только при разных знаках NPV на границах или попадании границы в tolerance. Остановиться, когда `|NPV| ≤ 1e-12 × max(1, Σ|CF_i|)` либо ширина интервала `≤ 1e-12 × max(1, |rMid|)`; максимум 512 итераций. Вернуть `rMid`, округлённый ROUND_HALF_EVEN до 12 знаков после запятой.
+
+Нет bracket, несколько смен знака, нулевой период, missing valuation, неполная история, недоказанная numeric error bound или отсутствие сходимости возвращают объяснённый `unavailable`, не 0%. Native и reporting-currency результаты раздельны; provider APR не выдаётся за XIRR. Эталоны: `-1000` и `+1100` через 365 дней дают `0.100000000000`; `-1000` и `+1050` через 182 дня дают `0.102795595422`; `-1000/+0.000000001` через 365 дней принимают `rLow`, а `-1/+1000002` требует root выше `rHigh` и даёт `unavailable`. `-100,+230,-132`, один знак и same-day net zero недопустимы.
 
 ## API веб-приложения
 
@@ -88,6 +92,10 @@ Reference valuation не заменяет фактический обмен. Exe
 
 task-1.2 материализует этот контракт в OpenAPI только после Ready; точные поля каждой формы следуют моделям выше и проверенным provider contracts. Клиентские/generated типы не становятся доменными.
 
+По D-43 server-owned `ProviderDeploymentAdmission` адресуется `provider + environment`. Его binding содержит `adapterBuildDigest`, `collectorImageDigest`, `contractVersion`, `allowlistRevision`, `nonSecretConfigRevision` и `operatorPermissionRevision`. task-4.x создаёт provider evidence, task-8.x — host/deployment evidence для того же binding; только application admission service атомарно переводит его в `admitted`. Клиент, AI и provider response не меняют admission.
+
+Connection read model показывает `deploymentGate.status = pending|admitted|blocked`, binding, `checkedAt` и безопасные причины отдельно от `connected|reauth_required`. POST `/{id}/sync` требует `admitted`, точное совпадение binding с запущенными artifacts/config/allowlist/permission и действительное авторизованное connection; иначе возвращает `provider_not_admitted` до создания job или provider IO. Любая смена binding, отзыв permission или failed check возвращает `pending|blocked`. Pre-admission conformance работает в quarantine: разрешённые reads и sanitized evidence допустимы, source records и финансовые проводки — нет.
+
 ### Callback авторизации Raiffeisen
 
 В RAIF-E15 зарегистрирован `https://want-keep.tech/api/v1/connections/raiffeisen/callback`: будущий `GET /connections/raiffeisen/callback` под общим API prefix. Это добавление к защищённому enrollment flow Connections, а не существующий endpoint приложения. Совместимость: путь зафиксирован внешней регистрацией; при его изменении сначала подготовить новый обработчик и обновить регистрацию в банке. RAIF-E16 подтверждает DNS/HTTPS; серверный OAuth-обработчик ещё не реализован, заглушка возвращает 503. Code Flow до проверки обработчика не запускается. Первичный выпуск Refresh-токена в RBO для исследования не заменяет этот контракт. См. [evidence](evidence/raiffeisen.md).
@@ -98,6 +106,25 @@ Callback принимает `state` и `code` либо безопасно обр
 
 task-4.2 проверяет успех, отказ банка, отсутствующий/чужой/истёкший state, повтор callback, чужую или истёкшую пользовательскую сессию, отключение/смену версии connection, ошибочный nonce/ID token, неизвестный исход обмена и отсутствие секретов в логах. Это уточняет REQ-048/REQ-073 и AC-048/AC-087; реализация и runtime-проверки остаются впереди.
 
+## Source identity и provider gates
+
+D-39 задаёт ключ исходной записи: `householdId + provider + stableExternalAccountId + productOrLogNamespace + providerRecordId`. `connectionId`, session/profile, cursor и fetch job — provenance. Сумма, время, merchant, текст и локализованная подпись не являются identity.
+
+Если source не даёт record ID, адаптер может использовать только документированный provider-specific immutable composite внутри одного namespace. Payload hash не заменяет identity: он определяет revision/conflict. Повтор с тем же ключом и payload идемпотентен; изменённый payload сохраняется как новая source revision. Два разных факта с одним ключом или неоднозначный composite дают `source_ambiguous`: сохранить обе evidence revisions, создать clarification/reconciliation и не создавать финансовую проводку до решения.
+
+Каждая страница сохраняется до checkpoint. Coverage содержит requested/observed range, next cursor/end reason и gaps. Gap даёт `source_partial`; отсутствие поля balance/fee/status остаётся typed `unknown`, а не нулём. Reconnect находит stableExternalAccountId; один внешний аккаунт не дублируется между сессиями, а разные аккаунты двух участников не смешиваются.
+
+| Provider | Нормализованный namespace и особое правило |
+| --- | --- |
+| Alfa D-37 | debit/current/savings/deposit/cashback journals раздельны; стабильные account/record IDs должны прийти из structured fixture до deployment. UI selector или название продукта — не identity. |
+| Raiffeisen D-35 | Account UUID и number/accountKeys раздельны. CAMT entry допускает 1:N details. NtryRef/AcctSvcrRef/EndToEndId применяются только при наличии и доказанном scope. Statement/report identity — provenance. Fallback — transaction-scoped fingerprint из полей, доказанно неизменных между перекрывающимися camt.052/camt.053: непустых structured references, party/account/remittance и bank-code fields в документированном порядке. Amount/time исключены. Недостаточный либо collision-prone fingerprint даёт `source_ambiguous` без проводки. Corrections/reversals — revisions. |
+| Ozon D-32 | accountToken/connection и groupID не identity; route-specific record ID живёт в собственном namespace. parent relation связывает fee, но не объединяет эффекты. |
+| Bybit D-36 | Route-specific IDs не переносятся между Funding/Earn/P2P. Amount/time matches — кандидаты. Для hourly без ID разрешён `(coin, productId, hourlyDate)` только в hourly namespace; differing payload создаёт collision. |
+| Aifory D-33 | office/address/UI path не identity. RUB, crypto и card logs разделены; stable IDs и lifecycle подтверждает structured fixture. |
+| EMCD D-34 | aggregate/wallet/Grow/card/P2P namespaces разделены. UI labels, currency list order и approximate valuation не identity. |
+
+Provider deployment выключен по умолчанию. До admission task-4.x доказывает разрешение оператора, read allowlist, structured fixture, identity/revisions/statuses/fees, пагинацию/coverage, reauth, два независимых аккаунта, stale-job rejection и отсутствие write routes. task-8.x доказывает target-host reachability/hardening; Alfa DNS/TLS route дополнительно проверяет task-4.1/task-8.1. D-43 объединяет оба pass только для точного binding. Непройденный или устаревший gate блокирует только этот коннектор.
+
 ## Collector и AI
 
 Collector read-job: job ID, connection reference, разрешённый action/product, range/cursor, deadline и короткоживущая привязка авторизации. Вызовы только во внутренней сети с аутентификацией; credentials доступны из изолированного secret store/profile, не из AI payload. Результат: source records, account refs, balance snapshots, next cursor, coverage и typed status/error. Полный secret/session нельзя вернуть в ответе или логе. Неизвестный продукт/поле сохраняется как unsupported/unknown.
@@ -106,7 +133,7 @@ Collector read-job: job ID, connection reference, разрешённый action/
 
 Receipt pipeline: uploaded → validating → processing → clarification / skipped / linked / recorded; failure и waiting-AI отдельны. Исходный документ сохраняется. Начальные технические ограничения: JPEG/PNG/WebP/PDF, 10 MiB на файл, 10 страниц PDF; превышение/неподдерживаемый формат даёт явную ошибку без потери сообщения. Эти пределы проверяются в task-0.8 по стоимости/нагрузке и меняются только через контракт, не скрыто.
 
-Коды существенных отказов: unauthorized, version_conflict, duplicate_command, invalid_money, unsupported_asset, source_reauth_required, source_partial, valuation_unavailable, clarification_required, ai_waiting, ai_budget_exhausted, invalid_attachment, backup_stale. У каждого заданного статуса есть понятное UI-состояние и сценарий AC.
+Коды существенных отказов: unauthorized, version_conflict, duplicate_command, invalid_money, unsupported_asset, source_reauth_required, source_partial, source_ambiguous, valuation_unavailable, quote_unavailable, command_expired, provider_not_admitted, clarification_required, ai_waiting, ai_budget_exhausted, invalid_attachment, backup_stale. У каждого статуса есть понятное UI-состояние и сценарий AC.
 
 ## Семейные сущности, API и действия
 
@@ -143,7 +170,9 @@ Receipt pipeline: uploaded → validating → processing → clarification / ski
 
 UI routes SCR-001–SCR-035 не являются API endpoints. [Каталог экранов](screens.md) задаёт поля FORM-01–FORM-15 и сценарии ошибок; task-1.2 уточняет OpenAPI после Ready. Reports возвращают native amounts, reporting amounts с отдельной известностью, asOf/coverage, actual/forecast/reserved тип, входы расчёта и ссылки на объясняющие операции. Клиент форматирует и раскрывает эти данные, не повторяет финансовые формулы.
 
-Для mutating command сервер связывает Idempotency-Key с householdId, actorId, типом и hash payload; тот же ключ с другим payload отклоняется. Результат и финансовый эффект атомарны. Целевые GET `/api/v1/commands/{id}` и `/api/v1/commands/recent` возвращают только собственные разрешённые команды текущего участника с `pending|succeeded|failed`, ссылкой на результат и безопасной ошибкой. `unknown` — состояние знания клиента, не повод породить новую команду. После timeout/reload клиент проверяет command status; `not_found` не доказывает отсутствие эффекта без серверного контракта регистрации команды. Сохранять ввод в памяти вкладки, не секреты в URL/localStorage. Сроки доступности command records и идемпотентности должны покрывать retry/recovery window и закрываются task-0.10/task-1.2.
+Для mutating command сервер связывает Idempotency-Key с householdId, actorId, типом и payload hash; тот же ключ с другим payload отклоняется. Результат и финансовый эффект атомарны. GET `/api/v1/commands/{id}` и `/api/v1/commands/recent` возвращают только разрешённые команды текущего principal с `pending|succeeded|failed`, ссылкой на результат и безопасной ошибкой. `unknown` — знание клиента, не разрешение создать новую команду.
+
+По D-41 terminal command detail/status/result хранится 90 дней после terminal outcome. Unresolved command хранится до reconciliation, затем ещё 90 дней. Минимальный tombstone `(commandId, household, actor, type, key, payloadHash, outcomeRef)` живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome. `/commands/recent` возвращает terminal за последние 30 дней и все unresolved. После удаления detail известный command возвращает HTTP 410 `command_expired`; живой tombstone по тому же key/hash возвращает outcome reference и запрещает повторный эффект, а другой hash отклоняется. После истечения tombstone replay recovery не гарантируется: клиент создаёт уникальный key и никогда намеренно не переиспользует старый. Финансовые source records, postings, revisions и audit хранятся независимо от command retention.
 
 UIState выводится из typed errors/coverage/result. `version_conflict` содержит разрешённую актуальную версию для сравнения; сервер снова проверяет права при повторном применении. Session expiry закрывает защищённый экран, другой principal не получает черновик. Личные preferences включают locale, reporting currency, notification options и decorativeEffectsEnabled; изменение предпочтения не меняет семейный факт или права.
 
@@ -153,31 +182,23 @@ Motion — подписчик подтверждённых domain events, не �
 
 ## Aifory и ETH: D-33
 
-RUB, USD, USDT, USDC (D-36), BTC и ETH доступны в Money и валютной оценке. Сеть — отдельный атрибут источника/операции; provider scale проверяется на границе. Не округлять ETH до фиатных сотых и не считать USD/USDT/USDC равными. Неизвестный курс/available/locked не становится нулём или доступными средствами.
+RUB, USD, USDT, USDC, BTC и ETH доступны в Money/valuation как разные активы; network — отдельный source attribute. Aifory scope: RUB-счета, USDT, ETH и используемая карта USD. RUB aggregate не создаёт второй остаток; USD card и USDT funding — разные native facts. Funding legs, gross/net, rate/fee basis и authorization/clearing/refund lifecycle связываются только по structured evidence.
 
-Aifory читает только RUB-счета, USDT, ETH и существующую карту USD с движениями/комиссиями. Итог RUB-группы не создаёт второй остаток; совпадение названий офиса не объединяет счета. Платформенный RUB-кошелёк сохраняет вид продукта и не становится банковским вкладом. Card funding связывает разные native legs по доказанному контракту, fee отдельно. Авторизация/проведение требуют ID и связи; знак UI, маска, общий URL и похожий merchant не identity.
-
-Другие продукты отложены без блокировки. Их движения по включённым кошелькам сохраняются с происхождением и уточнением неизвестной семантики. Структурированный provider mapping, разрешение автоматизации, history/reauth и lifecycle карты закрываются task-0.10 по AIFORY-B02–B04 до task-4.5; никакого OCR-учёта как обхода блокера. [Evidence](evidence/aifory.md).
+Другие продукты отложены без блокировки. До deployment task-4.5 получает разрешённый structured fixture, allowlist, stable identity, history/coverage, revisions/statuses/fees, reauth и второй аккаунт. Flutter/UI-текст и похожие pending/confirmed строки не являются контрактом; неоднозначность даёт `source_ambiguous` без двойного списания. [Evidence](evidence/aifory.md).
 
 ## EMCD: D-34
 
-Текущий контракт включает кошелёк USDT, существующие Coinhold/Grow, используемые карты Plus/Light и исторические P2P-ордера. Майнинг не использовался никогда, его история и другие неиспользуемые продукты не требуются. Криптокарты не получают кредитные признаки без доказанного договора. Идентичность Grow сохраняется при названиях Coinhold/Grow; один продукт не создаёт два счёта.
+Scope D-34: кошелёк USDT, используемые Grow/Coinhold, криптокарты и история P2P. Майнинг и другие неиспользуемые продукты отложены без блокировки. Aggregate, wallet, Grow и card owned/available/reserve не суммируются дважды. Reward/capitalization/payout и authorization/clearing/refund/reversal связываются; неизвестная fee или owner side остаётся unknown. USDT funding, USD card, EUR purchase и approximate valuation — разные факты.
 
-Сводка основного счёта и дочерние wallet/Grow не суммируются дважды. Начисленный, капитализированный и выплаченный доход связываются; капитализация/перемещение уже признанного дохода не создаёт новый. Неизвестный состав баланса или резерв карты не превращается в доступные средства. Отказ по покупке и фактическая комиссия — разные эффекты; legacy Light и Plus используют свои условия. Пополнение карты связывает USDT и USD, исходная EUR-сумма покупки сохраняется отдельно от приблизительной USD-оценки и settlement. P2P связывается по точным owner-side полям с wallet/bank, а не по порядку валют, переписке или округлённой UI-сумме.
-
-[Доказательства и пробелы](evidence/emcd.md), [синтетические сценарии](evidence/emcd.samples.json). Реальный provider request/response не получен; сценарии не являются схемой API. BLK-06 закрывает task-0.10 до реализации task-4.6. Это изменение целевого контракта версии 5; финансовый runtime/БД отсутствуют, миграция не требуется; основа task-1.1 уже реализована.
+До deployment task-4.6 получает разрешённые structured fixtures каждого журнала, allowlist, stable identity, полную пагинацию/coverage, revisions/statuses/fees, reauth и второй аккаунт. UI-текст и порядок валют не создают проводку; collision даёт `source_ambiguous`. [Evidence](evidence/emcd.md), [синтетические сценарии](evidence/emcd.samples.json).
 
 ## Bybit: D-36
 
-Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P обязательны; остальные продукты не блокируют. [Матрица маршрутов](evidence/bybit.md), [авторизованные проверки](evidence/bybit-api.md) и [синтетические проекции](evidence/bybit.samples.json) задают вход task-0.10. RSA readOnly с Wallet/AccountTransfer, Exchange/ExchangeHistory, Earn/Earn и FiatP2P/FiatP2POrder успешно работает у владельца. Read POST `/v5/p2p/order/simplifyList` и `/v5/p2p/order/info` включаются в явный allowlist; финансовые POST запрещены. P2P API подтверждён, Playwright-сборщик для проверенного покрытия не нужен. Возвращаемый query-api `apiKey` фильтруется до логов/AI/evidence; ключи остаются в защищённой инфраструктуре.
+Funding USDT/USDC/ETH/BTC, используемый Flexible Easy Earn и P2P обязательны; остальные продукты не блокируют. Официальный read-only API приоритетен. Разрешённые read POST list/detail включаются в allowlist; create/pay/release/ads/transfer/stake/redeem запрещены. Секреты и отражённые provider key fields фильтруются до логов, AI и evidence.
 
-Identity разделяет household/provider/site/UID, accountType FUND/asset и ID каждого исходного журнала. Ротация не создаёт счёт; разные владельцы изолированы. Funding `currcCursor` и IDs деталей не автоматически обозначают разные финансовые события. Совпадения сумм/времени для 49 Convert-пар, 45 полных списаний вывода, 140 ненулевых yield-зачислений и двух P2P-списаний — кандидаты, не доказанные внешние ключи между журналами. Детерминированное сопоставление и обработка неоднозначности задаются до автоматического проведения; переводные business labels не определяют критическую классификацию. Комиссии, обмен и accrued/distributed/Funding yield влияют на деньги один раз; нулевой yield не требует зачисления, principal не является доходом.
+Route-specific provider IDs живут в отдельных Funding/Earn/P2P namespaces D-39. Совпадение суммы/времени между журналами — кандидат связи. Hourly запись без ID использует `(coin, productId, hourlyDate)` только в hourly namespace; differing payload сохраняет обе revisions как `source_ambiguous` без проводки. Principal, distribution и Funding credit учитываются один раз; zero yield не создаёт credit. Сохраняются exact decimals, seconds/ms semantics, cursor даже на короткой странице, coverage/revisions и независимые P2P fiat/quantity/quote; empty fee — unknown.
 
-Сохранять exact decimal, различать USD/USDT/USDC. Snapshot остатков может скрывать остаточные суммы журнала; ни single-coin, ни all-coin не устранили наблюдаемое расхождение. Не отбрасывать точность и не создавать корректирующий расход. Исходные fiat amount и crypto quantity P2P — самостоятельные суммы сторон обмена; quote не обязательно восстанавливает фиатные сотые. Пустой maker/taker fee неизвестен, не ноль. Банковский расчёт — отдельная связь. Историческая/прогнозная оценка отделена от этих native amounts.
-
-Проверенные границы: время событий Funding и internal-deposit — секунды; большинство деталей/фильтров — ms. Flexible yield использует `result.list`, P2P — `ret_code` и список `items`. Flexible-позиции содержат IDs в выборке; hourly начисления — нет. Кортеж coin/productId/hourlyDate уникален в одном запросе/replay, но политика корректировок/коллизий остаётся открытой. Текущий Flexible principal нулевой при наличии прошлых orders/yield; lifetime totalPnl USDT отличается от доступной суммы yield. Fixed-запросы пусты в своих границах и не становятся блокером неиспользуемого продукта. Единицы APR в процентах и часовые точки сохраняются по live evidence.
-
-Следовать cursor даже на короткой странице. Завершение Convert index и P2P page определяется отдельно. Устойчиво сохранять страницы до checkpoint, повторять перекрытия и хранить версии. Проверенные 89 дней не расширяют опубликованный retention yield (три месяца), P2P максимум 180 дней или Convert web с 2025-09-10. Частичная история требует явного покрытия/начального остатка. Доступ BYBIT-B02/B05 закрыт; BYBIT-B03/B04 закрывает task-0.10 до task-4.4. Дополнение доказательств не меняет общую целевую версию контракта, финансовый runtime или схему БД.
+Ограничения опубликованной истории не расширяются наблюдаемой выборкой. Gaps и lifetime mismatch дают `source_partial`, не корректирующий расход. До deployment task-4.4 проверяет RSA readOnly, precision reconciliation, history/lifecycle, два аккаунта, rotation/revocation и stale jobs. Collector допустим только при новом доказанном API-пробеле. [Матрица](evidence/bybit.md), [API evidence](evidence/bybit-api.md), [проекции](evidence/bybit.samples.json).
 
 ## OpenAI: контракт выбора и граница исполнения
 

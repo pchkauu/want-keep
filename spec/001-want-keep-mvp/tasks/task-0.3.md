@@ -5,7 +5,7 @@
 
 Получить проверяемый контракт чтения дебетовой карты Ozon и связанного основного счёта.
 
-**Состояние:** Исследование завершено 2026-09-07 с блокирующими выводами: два HAR, 10 синтетических проекций, пять read-маршрутов, identity и комиссия описаны в [evidence RU](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.md). Семь страниц связаны курсорами, но конец истории не достигнут. Эксплуатация сессии и второй внешний аккаунт не проверены. OZON-B02/B04/B05 остаются в BLK-03 под проверкой task-0.10; task-4.3 заблокирована, Ready не объявлен.
+**Состояние:** Исследование Ozon и sanitized HAR projections завершены; task-0.10 закрепила D-39 identity и перенесла session/history/второй аккаунт в gate task-4.3. SDD Ready; connector не реализован.
 
 **Зависимости:** нет.
 
@@ -90,7 +90,7 @@ Evidence RU/EN и ozon.samples.json содержат реальные маршр
 
 Produce a verifiable read contract for the Ozon debit card and linked main account.
 
-**Status:** Research completed on 2026-09-07 with blocking findings: two HARs, 10 synthetic projections, five read routes, identity and a commission are documented in [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/ozon.en.md). Seven pages form a cursor chain but do not reach history completion. Session operation and a second external account are unverified. OZON-B02/B04/B05 remain within BLK-03 for task-0.10 verification; task-4.3 is blocked and Ready is not claimed.
+**Status:** Ozon research and sanitized HAR projections are complete; task-0.10 fixed D-39 identity and moved session/history/second-account checks into the task-4.3 gate. The SDD is Ready; the connector is not implemented.
 
 **Dependencies:** none.
 

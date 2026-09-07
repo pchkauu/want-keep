@@ -120,14 +120,14 @@ RPO ≤ 1 часа действует только при доступном Mac
 
 | ID | Статус | Нужное действие и владелец |
 | --- | --- | --- |
-| HOST-B01 | OPEN | task-8.1: заказать/создать выбранные VPS, managed PostgreSQL и private VPC только после отдельной авторизации; проверить итоговый invoice и endpoint readback |
-| HOST-B02 | OPEN | task-8.1: выполнить security gate, включая SSH/firewalls/Zabbix/secrets/TLS/logging, до помещения финансовых данных |
-| HOST-B03 | OPEN | task-8.1: измерить Compose/cgroups, sequential Playwright peak RAM/CPU, disk growth и деградацию; при нехватке пересмотреть профиль внутри $40 |
-| HOST-B04 | OPEN | task-0.10 и task-4.1: установить безопасный Alfa DNS/TLS/route contract из целевого VPS; без этого Alfa adapter заблокирован |
-| HOST-B05 | OPEN | task-8.2/task-8.3: проверить Mac encryption/capacity, реализовать backup и измерить restore/RPO/RTO; исследовательская схема не проходит AC-057/AC-058 сама по себе |
-| HOST-B06 | OPEN | task-8.1/task-8.2: после создания DB проверить private endpoint, CA/hostname, роли, `pg_dump` compatibility и фактическую provider backup policy |
+| HOST-B01 | RUNTIME GATE | task-8.1: заказать/создать выбранные VPS, managed PostgreSQL и private VPC только после отдельной авторизации; проверить итоговый invoice и endpoint readback |
+| HOST-B02 | RUNTIME GATE | task-8.1: выполнить security gate, включая SSH/firewalls/Zabbix/secrets/TLS/logging, до помещения финансовых данных |
+| HOST-B03 | RUNTIME GATE | task-8.1: измерить Compose/cgroups, sequential Playwright peak RAM/CPU, disk growth и деградацию; при нехватке пересмотреть профиль внутри $40 |
+| HOST-B04 | RUNTIME GATE | task-4.1/task-8.1: подтвердить безопасный Alfa DNS/TLS/route с target VPS до включения Alfa |
+| HOST-B05 | RUNTIME GATE | task-8.2/task-8.3: проверить Mac encryption/capacity, реализовать backup и измерить restore/RPO/RTO; исследовательская схема не проходит AC-057/AC-058 сама по себе |
+| HOST-B06 | RUNTIME GATE | task-8.1/task-8.2: после создания DB проверить private endpoint, CA/hostname, роли, `pg_dump` compatibility и фактическую provider backup policy |
 
-task-0.9 завершает выбор и исследование конфигурации и разблокирует инфраструктурную часть task-0.10. Полный MVP остаётся **Not Ready**. AC-048/AC-056/AC-057/AC-058 не объявляются пройденными: для них требуются production load, hardening, наблюдаемость и backup/restore rehearsal.
+task-0.9 завершила выбор и исследование конфигурации. D-38 закрывает глобальный SDD gate; HOST-B01–B06 остаются эксплуатационными gates task-8.x/provider tasks. AC-048/AC-056/AC-057/AC-058 не пройдены до production load, hardening, observability и backup/restore rehearsal.
 
 ## Проверка
 
@@ -136,3 +136,7 @@ task-0.9 завершает выбор и исследование конфиг�
 Команды документации: `make docs-check`, `python3 -m unittest discover -s spec/001-want-keep-mvp/tools -p 'test_*.py'`, `git diff --check`. Они проверяют SDD, но не runtime.
 
 Не выполнены: provisioning целевого профиля/DB/VPC, invoice readback, authenticated platform/OpenAI requests, Alfa safe route, Playwright load/soak, provider firewall readback, hardening, backup implementation и restore rehearsal. Причина — исследовательский объём, отсутствие product runtime и необходимость отдельной авторизации на приобретение/изменение инфраструктуры.
+
+## Решение task-0.10, 2026-09-07
+
+D-38 переносит HOST-B01–B06 из глобального SDD gate в эксплуатационные gates task-8.1–task-8.3 и соответствующих provider tasks. Выбранные профиль/бюджет достаточны для планирования; provisioning, invoice, hardening, load, private DB, Alfa route и backup/restore должны быть доказаны до production. Provider deployment выключен по умолчанию. SDD Ready не является разрешением на покупку ресурсов или размещение финансовых данных.

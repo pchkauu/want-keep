@@ -1,159 +1,58 @@
 # Проверка готовности Want Keep MVP
 
-Verdict: Not Ready
+[English](verification.en.md)
 
-Дата актуализации: 2026-09-07. Объект вердикта — готовность полной спецификации к реализации приложения. Это не запрет на доставку согласованных документов/backlog и не статус выполненного приложения.
+**Verdict SDD: Ready for development.** Дата: 2026-09-07. Gate task: `task-0.10`.
 
-## Состояние артефактов
+Этот verdict разрешает реализацию по [plan.md](plan.md). Он не означает, что приложение реализовано, provider connectors допущены, production развёрнут или продуктовые AC пройдены.
 
-Подготовлены proposal, 87 REQ, 105 AC, архитектура, контракты/формулы, словарь, Mermaid-потоки, матрица интеграций, эксплуатационные ограничения и 67 карточек RU/EN. Каталог и generator обеспечивают одинаковые ID/связи в языках. Требования/AC покрыты задачами; каждый implementation task зависит от барьера task-0.10.
+## Полнота пакета
 
-`plan.md` отсутствует намеренно: SDD требует Ready перед выпуском плана реализации. Исследовательские задачи доступны в полном backlog; завершение исследования с отрицательным результатом не разблокирует отсутствующий продукт.
+- 88 стабильных REQ, 106 AC, 67 task и SCR-001–SCR-035 связаны через [catalog.json](catalog.json).
+- Генератор проверяет DAG, обязательный ancestry `task-0.10`, RU/EN, ссылки, GitHub mappings, размер Issue body и отсутствие private paths/secret-shaped strings.
+- D-37–D-43 закрывают Alfa scope, readiness semantics, source identity, FX gaps/quotes, command retention, numeric XIRR и version-bound provider admission.
+- [Итоговый evidence](evidence/task-0.10-readiness.md) содержит `BLK → решение → evidence → runtime gate` и синтетические сценарии.
+- [Ready plan](plan.md) задаёт порядок, параллелизм, entry/exit gates и команды.
 
-## Блокеры
+## Итог BLK-01–BLK-10
 
-| ID | Что неизвестно | Владелец закрытия | Доказательство закрытия |
+| BLK | Статус SDD | Решение | Что остаётся до runtime/приёмки |
 | --- | --- | --- | --- |
-| BLK-01 | Автоматическое чтение и полное покрытие Alfa retail | task-0.10, evidence task-0.1 | [Исследование завершено с блокерами](evidence/alfa.md): UI прочитан, retail API опубликован; нужны разрешённый автоматический контракт, identity/история/reauth/второй аккаунт, кредитка и точные условия |
-| BLK-02 | Raif: текущие остатки, полный mapping/история и auth lifecycle | task-0.10, evidence task-0.2 | [Evidence](evidence/raiffeisen.md): исследование завершено. RAIF-B01/B05 закрыты; B02/B03/B04/B06 открыты. API-счёт с Mac/VPS и две исторические выписки проверены; D-35 — только счёт ИП. task-4.2 и MVP Not Ready |
-| BLK-03 | Эксплуатационный контракт дебетовой карты и основного счёта Ozon по D-32 | task-0.10, evidence task-0.3 | [Исследование завершено с блокерами](evidence/ozon.md): структуры чтения получены; нужны конец истории, допустимая эксплуатация сессии, второй аккаунт и недоступная семантика. Другие продукты Ozon не требуются |
-| BLK-04 | Bybit Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P по D-36 | task-0.10, evidence task-0.4 | [Авторизованные проверки](evidence/bybit-api.md): BYBIT-B03/B04 — cross-log identity, сверка точности/история, hourly identity/revisions и база прогноза Earn. Доступ BYBIT-B02/B05 закрыт; неиспользуемые продукты не требуются. |
-| BLK-05 | Aifory: RUB, USDT, ETH и используемая карта USD по D-33 | task-0.10, evidence task-0.5 | [Исследование](evidence/aifory.md): AIFORY-B02–B04 — право автоматизации, структурированный read-контракт, identity/history/reauth, card lifecycle/fees/FX. Другие продукты не требуются |
-| BLK-06 | EMCD: кошелёк USDT, используемые Grow/криптокарты и история P2P по D-34 | task-0.10, evidence task-0.6 | [Исследование](evidence/emcd.md): EMCD-B02–B04 — structured read/access, identity/history/reauth, балансы/Grow/card/P2P. Майнинг не использовался никогда; другие продукты не требуются |
-| BLK-07 | Бесплатная текущая/историческая FX-оценка и сервисные котировки | task-0.10, evidence task-0.7 | [Исследование](evidence/fx.md): CBR + CoinGecko Demo закрывают current/≤365d; FX-B02–FX-B04 — crypto history >365d, provider executable quotes и keyed Demo probe/attribution |
-| BLK-08 | **Закрыт:** Terra Extra High (gpt-5.6-terra, xhigh), strict-контракт и live-eval | task-0.8 | [Evidence](evidence/openai.md): 206/206, 0 критических ошибок, PNG/PDF 6/6, function 3/3. Runtime приложения — task-5.* / task-9.1 |
-| BLK-09 | Runtime-допуск выбранных VPS/managed PostgreSQL, hardening, нагрузка, Alfa route и backup/restore | task-8.1–task-8.3, task-0.10/task-4.1; [task-0.9 research](evidence/hosting.md) | Исследование/смета/retention завершены; HOST-B01–HOST-B06 требуют provisioning, security/load readback и rehearsal до application AC |
-| BLK-10 | Полные структурированные условия grace/accrual, точные границы API и solver XIRR | task-0.10 | Подтверждённые input contracts, алгоритмы/векторы, обновлённые RU/EN и независимый Ready review |
+| BLK-01 Alfa | Закрыт D-37/D-39 | Scope debit/current/savings/deposit/cashback; кредитка Alfa отложена; unknown/ambiguous fail closed | task-4.1 permission/fixture/identity/history/reauth/2 accounts/Alfa route |
+| BLK-02 Raiffeisen | Закрыт D-39 | CAMT 1:N, scoped ID/fallback, revisions/reversals, CLBD/unknown balance rules | task-4.2 OAuth/full history/corrections/2 accounts/conformance |
+| BLK-03 Ozon | Закрыт D-38/D-39 | Synthetic HAR projection достаточна для дизайна; rotating token/group не identity | task-4.3 session permission/lifecycle/history end/2 accounts |
+| BLK-04 Bybit | Закрыт D-39 | Route IDs, candidate-only links, hourly tuple collision policy | task-4.4 precision/history/rotation/revocation/2 accounts |
+| BLK-05 Aifory | Закрыт D-38/D-39 | Scope и safe boundary фиксированы без вымышленных Flutter fields | task-4.5 permission/structured fixtures/card lifecycle/reauth/2 accounts |
+| BLK-06 EMCD | Закрыт D-38/D-39 | Scope, namespaces и unknown/collision behavior фиксированы | task-4.6 structured fixtures/balance/Grow/card/P2P/reauth/2 accounts |
+| BLK-07 FX | Закрыт D-40 | >365d `valuation_unavailable`; incomplete provider quote `quote_unavailable` | task-6.1 Demo key/quota/attribution/live adapters |
+| BLK-08 OpenAI | Закрыт research | Model/schema/cost/failure contract выбран | task-5.x/task-8.1 runtime gateway/authz/budget |
+| BLK-09 Hosting | Закрыт D-38 для SDD | Target profile/budget выбраны; operations gates отделены | task-8.1–8.3 provisioning/hardening/load/backup/restore |
+| BLK-10 Формулы/API | Закрыт D-39/D-41/D-42/D-43 | Identity, retention, deterministic XIRR и version-bound admission закреплены | task-1.2/1.3/3.3/4.x/6.4/8.1 executable contracts/tests |
 
-Для закрытия BLK-01–BLK-06 нужны отдельные безопасно предоставленные доступы владельца. На исходном этапе 2026-09-06 они не предоставлялись; последующие исследования отражены отдельно. Нельзя закрыть блокер ссылкой на маркетинговую страницу, mock или наличие API у юридических лиц.
+Отдельные BLK Issues не создаются: фундаментальных SDD-блокеров не осталось. Runtime gates остаются в существующих task-4.x/task-8.x и не скрыты.
 
-## Alfa-Bank: завершение исследования task-0.1, 2026-09-07
+## Проверки task-0.10
 
-[RU evidence](evidence/alfa.md) / [EN evidence](evidence/alfa.en.md): 20 датированных источников/наблюдений, матрица обязательных продуктов и кэшбэка, опубликованные retail-схемы, синтетические примеры, противоречия документации и ALFA-B01–ALFA-B06. ALFA-B01 закрыт для live-сеанса; ALFA-B02–ALFA-B06 открыты и остаются частью BLK-01. Исследовательский результат завершён согласно README; полный AC-042 и AC-041/AC-048/AC-070/AC-079/AC-087 не объявляются пройденными.
-
-Критерии исследования проверяются отдельно от приложения: локальный spec check, тесты генератора, RU/EN IDs/примеры/ссылки и diff review. Обновление карточки из catalog.json требует поддержки статуса RU/EN; тест значения по умолчанию использует копию без status, а не предположение, что task-0.1 навсегда «не начато». REQ/AC и зависимости этой задачи не меняются. Runtime API/сборщик, полная история, reauth и второй аккаунт не проверены по причинам в evidence. Verdict остаётся Not Ready; следующая реализация заблокирована.
-
-## Курсы: завершение исследования task-0.7, 2026-09-07
-
-[RU evidence](evidence/fx.md) / [EN](evidence/fx.en.md): CBR выбран основным USD/RUB; Frankfurter `providers=CBR` — fallback/cross-check; CoinGecko Demo — отдельные BTC/USD, ETH/USD, USDT/USD и USDC/USD current и history ≤365 дней. Формула USD-кроссов, запрет слияния USDC.E, effective-date policy, cache/failure/audit правила, 18 evidence items и FX-B01–FX-B06 записаны попарно.
-
-TradingView проверен и отвергнут: библиотеки требуют внешний datafeed, а terms запрещают automated price referencing/non-display processing. CBR/CoinGecko дали HTTP 200 из DE/NL/BG; Frankfurter подтвердился из DE/BG и повторно из трёх NL networks после единичной probe DNS failure. Это датированный snapshot, не SLA или фактический VPS runtime.
-
-Research завершён по правилу README. BLK-07 сохраняет FX-B02–FX-B04 под task-0.10: решение для crypto history старше 365 дней, provider-specific executable quotes/fees и создание/проверка CoinGecko Demo key с attribution. task-6.1 и MVP остаются Not Ready. AC-037/AC-038/AC-039/AC-074 в приложении не заявлены как пройденные.
-
-## Инфраструктура: завершение исследования task-0.9, 2026-09-07
-
-[RU evidence](evidence/hosting.md) / [EN](evidence/hosting.en.md): выбран немецкий сервер приложения 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной private VPC без публичного DB IP. Снимок цены: 2 520 ₽/месяц по годовому тарифу; консервативно без скидки и с 10% резервом — 3 055.56 ₽/$35.29 при CBR 86.5857 RUB/USD, ниже $40. Текущий сервер владельца стоит 800 ₽/месяц, но read-only аудит показал 1 vCPU, менее 1 ГБ RAM и отсутствие product runtime; он остаётся исследовательским стендом.
-
-HOST-E01–HOST-E15 фиксируют server/OS/TLS/services, официальные price/VPC/DB contracts, публичную достижимость из Германии, security gap и Mac capacity. Safe Alfa DNS/TLS route не подтверждён. Backup design задаёт Mac-initiated logical dump + immutable attachments, manifest/checksums, отдельный recovery key, retention 48 hourly/30 daily/8 weekly/12 monthly и cap 20 GiB.
-
-task-0.9 завершена по правилу исследования и разблокирует инфраструктурную часть task-0.10. HOST-B01–HOST-B06 сохраняют provisioning/invoice, hardening, load/cgroups, Alfa route, private DB/TLS/roles и backup/restore rehearsal за task-8.1–task-8.3 и task-0.10/task-4.1. AC-048/AC-056/AC-057/AC-058 и MVP остаются Not Ready; сервер не изменялся.
-
-## Проверки этого этапа
-
-Воспроизводимые команды:
+Обязательный локальный набор:
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py render
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
-python3 -m unittest discover -s spec/001-want-keep-mvp/tools -p 'test_*.py'
+make docs-check
+make check
 git diff --check
 ```
 
-Скрипт проверяет ID, ссылки, coverage, DAG, RU/EN presence, совпадение generated output и уникальность GitHub mapping. Смысловая проверка RU/EN, финансовых правил и будущих задач выполняется отдельно независимым review. Фактический результат последнего запуска и публикации фиксируется в итоговом сообщении; этот документ не выдаёт будущие AC за пройденные тесты.
+Проверяются также:
 
-Публикация Issues: по одному marker `want-keep-task: task-X.Y`, свежий GET перед созданием, сверка title/body после записи, остановка и чтение состояния при неоднозначном outcome. Backlog содержит URL только после подтверждённого readback. Самодостаточный body RU/EN не зависит от ещё не опубликованного Git commit документов.
+- RU/EN semantic parity для D-37–D-43, provider matrices, contracts, operations, evidence и plan;
+- полная трассировка REQ → AC → implementation/verification task;
+- отсутствие credentials, raw response bodies, реальных реквизитов и local paths;
+- synthetic identity/replay/gap/unknown/collision/CAMT/FX/XIRR/retention outcomes из evidence;
+- diff против свежего `origin/docs/want-keep-mvp-sdd` и независимый Avida review frozen candidate.
 
-## Не выполнено и почему
+Фактические команды фиксируются в PR/Issue. Неизменяемый review outcome с fingerprint/commit SHA публикуется для точного committed head во внешнем PR check/comment и Issue #10; [task-0.10 evidence](evidence/task-0.10-readiness.md) остаётся частью проверенного кандидата и не делает fingerprint самоссылочным.
 
-Application build/unit/integration/E2E, provider live-сессии, платные OpenAI eval, физическое устройство, provisioning и backup/restore runtime не запускались: текущая задача — документация и Issues, runtime отсутствует, финансовые доступы/ключи не подключались.
+## Граница доказательств
 
-Документарная готовность не заменяет CI или runtime; условный RPO Mac не гарантирует часовую копию при выключенном устройстве. Все обязательные продукты остаются в scope и backlog.
+Документационно подтверждены решения и ожидаемые безопасные результаты. Авторизованные Chrome-наблюдения Alfa/Aifory/EMCD подтверждают доступность выбранных областей, но не заменяют structured response fixtures. Ozon HAR, Bybit API и Raiffeisen API/CAMT используются только через опубликованные sanitized/synthetic projections.
 
-## Семейное уточнение 2026-09-07
-
-Сохранены REQ-001–REQ-062, AC-001–AC-076 и все прежние task IDs с обновлённым смыслом семейного доступа. Добавлены REQ-063–REQ-076, AC-077–AC-093, task-1.6, task-2.8, task-2.9 и task-7.9; зависимости остальных задач учитывают семейную основу. Проверка текущего этапа относится к документам; новые AC ещё не выполнены в приложении. BLK-01–BLK-06 также требуют identity двух аккаунтов и безопасной повторной авторизации.
-
-## Desktop-уточнение и анимации 2026-09-07
-
-REQ-055, AC-055/AC-075 и прежние UI-задачи обновлены без смены ID. Добавлены REQ-077–REQ-087, AC-094–AC-104 и task-7.10–task-7.15; сохранены SCR-001–SCR-035. Пакет включает 15 форм, 17 состояний, дизайн/навигацию и MOT-01–MOT-05. Мобильные требования заменены laptop Chrome/Arc; шрифт интерфейса — Manrope. Все runtime/визуальные/анимационные и пользовательские сценарии ещё предстоят; наличие контракта не доказывает их прохождение.
-
-Self review исправил противоречие AC-015 общему доступу к чекам и уточнил FORM-03 по существующему правилу смены принадлежности счёта. AC-105 проверяет владельца, семейный счёт, API и сохранение истории. Полная повторная проверка пакета выполняется перед публикацией.
-
-## Доставка этого этапа
-
-Подготовлен полный SDD-пакет RU/EN: продукт, 87 требований, 105 критериев, архитектура/API/формулы, словарь и потоки, шесть интеграций, эксплуатация, дизайн/MOT-01–MOT-05, 35 экранов/15 форм/17 состояний, навигация и 67 задач.
-
-[67 GitHub Issues](https://github.com/pchkauu/want-keep/issues) созданы и прочитаны обратно: уникальные task IDs, точные title/body RU/EN и повторный полный поиск дубликатов. Все ссылки сохранены в [backlog](backlog.md); последнее чтение отдельной записи: `2026-09-06T22:29:07.841238+00:00`. Тела задач после добавления ссылок совпадают с проверенными байт-в-байт.
-
-Self review Avida: завершён, pass, 0 оставшихся findings/questions, полный охват 106 изменённых путей. Использовано 4 из 5 раундов: первый прерван уточнением scope; далее исправлены доступ к чеку, права формы счёта и английская формулировка AI. Fingerprint содержания до публикации: `sha256:b20d4f9fca9b5eb6e16a38a261e50d181aa5d1a3c9cd335eceb4cda206185c11`. После review менялись только GitHub mapping, сгенерированные ссылки backlog и этот отчёт доставки; они проверены отдельно, без изменения карточек.
-
-Проверки: spec_tool check — pass; 10 regression-тестов документационного инструмента — pass; граф REQ/AC/task/SCR, RU/EN presence, generated consistency, ссылки и whitespace — pass. Смысловая RU/EN проверка выполнена независимыми review-ролями. Коммитов, push и реализации приложения нет.
-
-Вердикт приложения остаётся Not Ready: BLK-01–BLK-10 выше содержат открытые контрактные или runtime gates. Внешние контракты, live-проверки шести сервисов, AI eval и Ready-план предстоят. task-0.9 закрыла выбор инфраструктуры, смету и retention; provisioning, hardening, нагрузка, safe Alfa route и backup/restore rehearsal переданы HOST-B01–HOST-B06. Chrome/Arc и пользовательская/анимационная приёмка не запускались: приложения ещё нет. Следующий исполнимый этап — оставшиеся исследования и проверка task-0.10.
-
-## Raiffeisen: завершение исследования task-0.2, 2026-09-07
-
-[Evidence RU](evidence/raiffeisen.md) / [EN](evidence/raiffeisen.en.md), [JSON](evidence/raiffeisen.samples.json), [XML](evidence/raiffeisen.camt053.sample.xml): RAIF-E01–E24 и RAIF-B01–B06. D-35 ограничивает интеграцию расчётным счётом ИП; REQ-043/AC-043 и task-0.2/task-4.2 уточнены с сохранением ID. AC-070 о кредитных/накопительных условиях снят только с Raif.
-
-Владелец завершил регистрацию и первичный выпуск Refresh-токена. Прямой refresh grant с Mac вернул HTTP 200 и изменил Refresh-токен; комплект сохранён атомарно локально с 0600 в каталоге 0700. Два GET счетов с Mac — HTTP 200, один стабильный UUID id и отдельный number. После отдельного разрешения владельца один GET с VPS — HTTP 200, тот же счёт; access/id токены переданы в память по SSH без установки credentials на сервер. Токены и исходные ответы не выводятся и не включены в Git.
-
-Историческая цепочка за август: dryRun 200 → generation 202 → status completed → XML 200. Независимая выписка за 1–30 августа дала те же семь NtryRef и Ntry. В camt.053.001.08 два CRDT/пять DBIT, все BOOK; Decimal-сверка OPBD + движения = CLBD прошла. JSON RUR явно сопоставляется с XML RUB. Фактические completed/no-statements расходятся с OpenAPI COMPLETED/NO_STATEMENTS; исходные значения сохраняются. Первоначальная строгая проверка статуса остановила скачивание до фиксации реального значения; после исправления выполнен GET существующего отчёта без новой генерации.
-
-Intraday за 2026-09-07 вернул HTTP 404 с code=no-statements. Текущий/available/locked остаток, точная семантика FCHG, полный архив, поздние изменения, reauth/второй аккаунт и lifecycle refresh 30/180 дней остаются открытыми. RAIF-B01/B05 закрыты, структурная часть B02 подтверждена; B02/B03/B04/B06 переданы task-0.10. Исследование завершено по README, task-4.2 и MVP остаются Not Ready.
-
-Инфраструктура предыдущего шага: DNS/TLS, nginx -t, HTTPS 204/503, HTTP 308 без query, unknown-path 404, unknown-SNI rejection и тест продления Certbot прошли. Callback приложения пока 503. Диагностические Python-скрипты — инструменты исследования, не Go-коннектор; полный Code Flow/семейная авторизация и банковские платежи не реализовывались.
-
-Проверки: 18 синтетических тестов диагностического клиента, 14 тестов spec_tool, render/check (87 REQ, 105 AC, 67 задач, 35 экранов, 67 GitHub mappings), RU/EN-ID/примеры/ссылки, JSON/XML и Decimal-сверка синтетического примера — pass. Сканирование артефактов на реальные credentials/реквизиты/имя владельца и git diff --check — pass. Сокращение REQ-043/AC-043 сохранило условия и вернуло task-9.1 в лимит длины Issue: 59 811 символов; лимит генератора не менялся. Проверки API выше — live, guard/allowlist — синтетические. XSD, sandbox и полный end-to-end приложения не запускались; выполнен локальный review. Commit/push и readback GitHub фиксируются результатом доставки в [Issue #2](https://github.com/pchkauu/want-keep/issues/2). Связанные task-0.10/task-4.2/task-9.1 обновляются с сохранением Not Ready; параллельные изменения других задач не входят в этот результат.
-
-## Ozon: завершение исследования task-0.3, 2026-09-07
-
-[Evidence RU](evidence/ozon.md) / [EN](evidence/ozon.en.md): сохранены OZON-E01–E18, матрица текущего дебетового продукта, пять наблюдаемых JSON read-маршрутов и [10 проекций с синтетическими значениями](evidence/ozon.samples.json). Два HAR владельца разобраны локально; исходники исключены из Git. История содержит семь связанных страниц, 210 разных lastOperationId, 206 подтверждённых и четыре отменённые строки. Перевод и комиссия имеют общий groupID и разные lastOperationId: дедупликация только по groupID теряет комиссию. accountToken меняется и не является устойчивым ID; номер счёта связывает карту и детали.
-
-Номер счёта и одна покупка повторно прочитаны после входа владельца. Все семь страниц имеют продолжение: завершение истории и retention не доказаны. Эксплуатация авторизованной сессии, автономное почасовое чтение и второй внешний аккаунт не проверены. Раздельные available/locked и исходная покупка возврата в наблюдаемых ответах отсутствуют; это unknown, не ноль и не выдуманная связь.
-
-Исследовательский результат завершён по правилу README; OZON-B01 закрыт, структурная часть OZON-B02 закрыта, OZON-B03 снят решением D-32. OZON-B02/B04/B05 остаются в BLK-03, закрытие проверяет task-0.10 по этому evidence. task-4.3 и весь MVP остаются Not Ready. Завершение GitHub Issue не снимает этот барьер и не объявляет AC приложения пройденными.
-
-REQ-044/AC-044, task-0.3/task-4.3, интеграции и трассировка отражают D-32; ID сохранены. Связь AC-070 с Ozon снята: кредитные условия остаются для других провайдеров, но не входят в текущий контракт Ozon. Другие исследования в общем checkout не входят в публикацию этой задачи.
-
-Проверки: spec_tool check — pass (87 REQ, 105 AC, 67 задач, 35 экранов, 67 GitHub mappings); 13 тестов документационного инструмента — pass; JSON, RU/EN-ID/смысл, связи курсоров и комиссии, обезличивание проекций и git diff --check — pass. Выполнен локальный self review; прежний Avida pass относится к прежнему пакету. HTTP replay, allowlist/импортер, полный AC и runtime приложения не проверялись: сборщик и приложение ещё не реализованы. Commit/push и readback GitHub фиксируются отдельным результатом доставки в Issue #3.
-
-## Aifory: завершение исследования task-0.5, 2026-09-07
-
-[RU evidence](evidence/aifory.md) / [EN evidence](evidence/aifory.en.md): 19 наблюдений/источников, D-33, выбранные RUB/USDT/ETH/карта USD, синтетические сценарии и AIFORY-B01–B05. B01 закрыт, B02–B04 остаются в BLK-05 под task-0.10, B05 отложен без блокировки. Кредитные/накопительные и другие неиспользуемые продукты Aifory не требуются. ETH включён в REQ-002/REQ-003, оценку и задачу источников курсов; REQ-046/AC-046 и задачи обновлены без смены ID.
-
-UI-прогон не доказывает structured API, автоматический импорт, полноту, identity после reauth/второго аккаунта или lifecycle карты. Согласие оператора на автоматизацию ещё не подтверждено. Исследование завершено по правилу README; task-4.5 и Ready не разблокированы. Полные AC-046/AC-041/AC-048/AC-079/AC-087 не объявлены пройденными. Локальные проверки спецификации, RU/EN/JSON и diff фиксируются отдельно от runtime.
-
-Self review текущих изменений выполнен локально. Из Aifory сняты связи AC-070/AC-071 с кредитными, накопительными, торговыми и майнинговыми продуктами; AC-039 сохраняет проверку неизвестных курсов. Ранее записанный Avida pass относится к прежнему пакету.
-
-## EMCD: завершение исследования task-0.6, 2026-09-07
-
-[Evidence RU](evidence/emcd.md) / [EN](evidence/emcd.en.md): D-34, EMCD-E01–E26, четыре включённые области UI и [шесть синтетических сценариев](evidence/emcd.samples.json). Проверены кошелёк USDT, действующие Grow, Plus/Light и архив P2P. Майнинг не использовался ни сейчас, ни ранее; его история и остальные неиспользуемые продукты не блокируют.
-
-Сводки могут включать дочерние остатки; Grow показывает разные начислено/заработано и режимы капитализации/выплаты. Отрицательная карточная строка может быть отказом с отдельной комиссией. P2P-список округляет суммы; направление подтверждается деталями, а не порядком валют. Mining Pool API 1.3.0 не доказывает чтение этих продуктов. Последняя UI-страница одного Grow достигнута, но полный API-проход и история остальных журналов не доказаны.
-
-EMCD-B01 закрыт; EMCD-B02–B04 остаются в BLK-06 под task-0.10. Исследование завершено по README; task-4.6 и MVP Not Ready. REQ-047/AC-047 и задачи обновлены без смены ID; AC-071 снят с EMCD, AC-070 сохранён для Grow. Общие кредитные, торговые и майнинговые функции остаются.
-
-Текущий self review проверяет документацию, ID/смысл RU/EN и синтетические Decimal-сценарии; прежний Avida pass к этому исследованию не относится. Spec check, тесты генератора и diff выполняются для итогового состава перед публикацией; результаты и GitHub readback записываются в Issue #6. API replay, приложение/сборщик, reauth/второй аккаунт, hourly/allowlist и полные AC не запускались: структурированного контракта выбранных продуктов и финансового runtime нет; основа task-1.1 уже есть.
-
-Проверки итогового состава на базе `f12f215`: `make docs-check` — pass, 87 REQ / 105 AC / 67 задач / 35 экранов / 67 GitHub mappings; 14 тестов генератора — pass. Шесть Decimal-сценариев, соответствие 26 наблюдений/ID/ссылок RU/EN, JSON, ограничение diff каталогом EMCD и отсутствие приватных ID — pass. Проверен отдельный состав публикации; незавершённые изменения другого исследования сохранены.
-
-## Bybit: завершение исследования task-0.4, 2026-09-07
-
-[RU evidence](evidence/bybit.md) / [EN](evidence/bybit.en.md), [авторизованное дополнение](evidence/bybit-api.md): D-36, BYBIT-E01–E18 и двенадцать [синтетических сценариев](evidence/bybit.samples.json). Разрешённый RSA readOnly ключ, Funding-остатки и 357 записей за 89 дней, Flexible positions/orders/yield, P2P-список и обе детали успешно прочитаны. Цепочки/replay проверены в границах выборки; production-коннектора нет.
-
-BYBIT-B01/B02/B05 закрыты для проверенного доступа. BYBIT-B03/B04 остаются у task-0.10; VPS — task-0.9, второй владелец/отзыв и production-проверки — task-4.4. BYBIT-B06 и неиспользуемые продукты не блокируют. Исследование завершено по README; task-4.4 и MVP Not Ready. Стабильные REQ/AC/task ID и объём активов/продуктов D-36 этим дополнением не меняются.
-
-Локальный self review охватывает итоговый Bybit diff, RU/EN смысл/ID, полномочия read-only, exact decimal, разделение источника/детализации, частичную историю и исключение личных данных. Исправлены устаревшие утверждения об отсутствии ключа/P2P/Fixed, предположение об hourly ID и сценарий квантования P2P. Прежний Avida pass не покрывает это исследование. Приватные Funding/Earn/P2P и выбранные replay/арифметика проверены; полная lifetime-история, все смены статусов, второй владелец/отзыв, часовой collector, связь с банком, выбранный VPS и production E2E не выполнялись.
-
-Кандидат авторизованных доказательств на базе `2412b77`: `make docs-check` — pass, 14 тестов генератора — pass; 87 REQ / 105 AC / 67 задач / 35 экранов / 67 GitHub mappings. Двенадцать синтетических Decimal/identity/coverage-сценариев, RU/EN ID/маршруты, неизменность требований/AC, ровно три обновлённые задачи и исключение секретов/личных идентификаторов — pass. Локальный self review завершён. Изменены только Bybit evidence/контракты и связанная документация/задачи; работа Raif и FX сохранена. Публикация и чтение Issues проверяются при поставке.
-
-## OpenAI: task-0.8, 2026-09-07
-
-[RU](evidence/openai.md) / [EN](evidence/openai.en.md), JSON и инструменты фиксируют выбранную владельцем Terra Extra High: gpt-5.6-terra, reasoning.effort=xhigh. Финальный отдельный прогон — 206/206, PNG/PDF 6/6, function 3/3, 0 критических ошибок; cost $0.445556. Все 301 OpenAI requests стоили $3.2926944 в расширенном лимите $7, включая один incomplete Luna. История неудач и расходы не сброшены. [Dahl](evidence/dahl.md): отдельные неполные screen, unknown reserves сохранены; в runtime не включается. BLK-08 закрыт, MVP Not Ready по другим блокерам.
-
-Self review: RU/EN/ID, модельный score, 35 объяснений xhigh, usage/cache/атомарные резервы, неизвестный результат, платный incomplete и точное продолжение high. make docs-check и diff проверяются для финального состава перед публикацией. Месячная xhigh-смета $47.125, стресс $62.96875; при лимите $50 задания ждут без downgrade. Это предположения объёма, не production bill.
-
-Не проверены production gateway/исполнение/семейные права, очереди/rollover/сбои, 10 страниц, реальные фото, нагрузка/UI/Chrome/Arc и пользовательский день: финансовые AI-функции ещё не реализованы. Это task-5.* / task-9.1; полный AC не объявлен выполненным. Прежний Avida pass не относится к данному исследованию.
-
-Проверка итогового кандидата: make docs-check — PASS, 51 локальный тест; 87 REQ, 105 AC, 67 задач, 35 экранов и 67 GitHub mappings. Проверены эквивалентность RU/EN, полный журнал стоимости, SHA-256 выбранных generation payloads и отсутствие приватных данных в публикуемых артефактах. Commit/push и GitHub readback фиксируются отдельным результатом доставки в Issue #8.
+Не запускались как часть task-0.10: финансовый runtime, provider connector suites, второй аккаунт, reauth/revocation, product E2E, production deployment, real Chrome/Arc application UI и backup/restore. Основание: задача меняет SDD, а владельцы этих проверок — task-1.x–task-9.x. Их отсутствие не выдано за pass.

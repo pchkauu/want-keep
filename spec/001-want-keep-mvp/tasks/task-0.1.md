@@ -5,7 +5,7 @@
 
 Получить проверяемую матрицу доступа к обязательным продуктам Альфа-Банк.
 
-**Состояние:** Исследование завершено 2026-09-07 с блокирующими выводами: live-чтение доступных продуктов и кэшбэка, опубликованные retail API, синтетические примеры и ALFA-B01–ALFA-B06 записаны в [evidence RU](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/alfa.md). ALFA-B02–ALFA-B06 и BLK-01 открыты: автоматический read-доступ, identity/полнота/reauth/второй аккаунт, кредитка, точные условия и FX/cashback lifecycle. task-4.1 и task-0.10 не разблокированы; исследование не означает Ready.
+**Состояние:** Исследование завершено 2026-09-07. D-37 фиксирует текущий объём Alfa: дебетовая карта, текущий и накопительные счета, вклады и кэшбэк; кредитка Alfa отложена без блокировки общей ручной поддержки кредиток. Доступная авторизованная вкладка подтвердила продуктовые разделы и историю без публикации финансовых данных. Структурированный fixture, право автоматизации, второй аккаунт и reauth перенесены в entry/runtime gate task-4.1; SDD Ready не заявляет работающий коннектор.
 
 **Зависимости:** нет.
 
@@ -29,7 +29,7 @@
 - **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
 - **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-042:** Интеграция Альфа-Банк автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
+- **REQ-042:** Alfa автоматически читает debit, current/savings, deposits и кэшбэк по проверенному контракту.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
@@ -40,9 +40,9 @@
 
 #### AC-042
 
-- **Дано:** Подключён разрешённый личный аккаунт Альфа-Банк с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый аккаунт Alfa с продуктами D-37.
+- **Когда:** Запрошены счета, остатки, операции, кэшбэк и условия накоплений.
+- **Тогда:** Данные совпадают с source evidence; кредитка Alfa не требуется, unknown блокирует только deployment коннектора.
 - **Уровень:** `contract+manual`.
 
 #### AC-041
@@ -100,7 +100,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 Produce a verifiable access matrix for mandatory Alfa-Bank products.
 
-**Status:** Research completed on 2026-09-07 with blocking findings: live reading of available products and cashback, published retail APIs, synthetic examples and ALFA-B01–ALFA-B06 are recorded in [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/alfa.en.md). ALFA-B02–ALFA-B06 and BLK-01 remain open: automatic read access, identity/completeness/reauth/second account, credit card, exact terms and FX/cashback lifecycle. task-4.1 and task-0.10 remain blocked; completed research does not mean Ready.
+**Status:** Research completed on 2026-09-07. D-37 defines the current Alfa scope: debit card, current and savings accounts, deposits and cashback; an Alfa credit card is deferred without blocking shared manual credit-card support. The available signed-in tab confirmed product sections and history without publishing financial data. A structured fixture, automation permission, second account and reauthentication are task-4.1 entry/runtime gates; SDD Ready does not claim a running connector.
 
 **Dependencies:** none.
 
@@ -124,7 +124,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
 - **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-042:** The Alfa-Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+- **REQ-042:** Alfa automatically reads debit, current/savings, deposits and cashback under a verified contract.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
@@ -135,9 +135,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-042
 
-- **Given:** An authorized personal Alfa-Bank account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized Alfa account with D-37 products is connected.
+- **When:** Accounts, balances, transactions, cashback and savings terms are requested.
+- **Then:** Data matches source evidence; an Alfa credit card is not required and unknown blocks only connector deployment.
 - **Level:** `contract+manual`.
 
 #### AC-041

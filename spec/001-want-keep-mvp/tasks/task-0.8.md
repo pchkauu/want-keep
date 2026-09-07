@@ -5,7 +5,7 @@
 
 Выбрать конфигурацию моделей по финансовым сценариям и лимиту $50.
 
-**Состояние:** Завершено: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, 0 критических ошибок, PNG/PDF 6/6, function 3/3. BLK-08 закрыт; MVP Not Ready.
+**Состояние:** Исследование OpenAI завершено: модель, strict schema, качество, стоимость и failure boundary выбраны. SDD Ready; gateway, авторизация и runtime budget остаются task-5.x/task-8.1.
 
 **Зависимости:** нет.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Владелец выбрал gpt-5.6-terra, reasoning.effort=xhigh для всех AI-задач. OAI-E01–E15, evidence/openai.md/en.md и results/prompts/eval/cost JSON фиксируют цены, retention, Standard foreground Responses, strict proposal, store=false, explicit cache без breakpoints, detail=high и предварительный input count. Финальный отдельный 206+3 eval: 206/206, visual 6/6, function 3/3, 0 критических ошибок; цена $0.445556. 301 OpenAI requests всего: $3.2926944 в общем лимите $7 с сохранением ранних неудач и оплаченного incomplete Luna. Калибровка на известных синтетических случаях, не holdout и не app acceptance. Dahl MiniMax/DeepSeek: отдельные ограниченные screen, high принят без подтверждения применения; unknown расходы остаются резервами, тариф пула не подтверждён. Альтернативы и автоматический downgrade в runtime не включать. Xhigh месячная смета $47.125, стресс $62.96875; при $50 задания ждут, обычный учёт работает. Допущения объёма/налоги/прочий расход сверить перед запуском. Изменение модели/effort/prompt/schema/pricing требует повторного допуска. Разблокированы контракты task-5.1/5.2/5.3/5.5 и BLK-08 в task-0.10; остальные зависимости и общий Not Ready сохраняются. Серверные validators/права/runtime очередей/locale и полный AC — последующие задачи.
+Владелец выбрал gpt-5.6-terra, reasoning.effort=xhigh для всех AI-задач. OAI-E01–E15, evidence/openai.md/en.md и results/prompts/eval/cost JSON фиксируют цены, retention, Standard foreground Responses, strict proposal, store=false, explicit cache без breakpoints, detail=high и предварительный input count. Финальный отдельный 206+3 eval: 206/206, visual 6/6, function 3/3, 0 критических ошибок; цена $0.445556. 301 OpenAI requests всего: $3.2926944 в общем лимите $7 с сохранением ранних неудач и оплаченного incomplete Luna. Калибровка на известных синтетических случаях, не holdout и не app acceptance. Dahl MiniMax/DeepSeek: отдельные ограниченные screen, high принят без подтверждения применения; unknown расходы остаются резервами, тариф пула не подтверждён. Альтернативы и автоматический downgrade в runtime не включать. Xhigh месячная смета $47.125, стресс $62.96875; при $50 задания ждут, обычный учёт работает. Допущения объёма/налоги/прочий расход сверить перед запуском. Изменение модели/effort/prompt/schema/pricing требует повторного допуска. Контракты task-5.1/5.2/5.3/5.5 разблокированы; task-0.10 завершила SDD gate. Серверные validators/права/runtime очередей/locale и полный AC остаются последующими задачами.
 
 ### Границы изменений
 
@@ -130,7 +130,7 @@ make docs-check
 
 Choose model configuration using financial cases and the $50 cap.
 
-**Status:** Complete: Terra Extra High (gpt-5.6-terra, xhigh), 206/206, zero critical errors, PNG/PDF 6/6, function 3/3. BLK-08 closed; MVP Not Ready.
+**Status:** OpenAI research is complete: model, strict schema, quality, cost and failure boundary are selected. The SDD is Ready; gateway, authorization and runtime budget remain task-5.x/task-8.1 work.
 
 **Dependencies:** none.
 
@@ -138,7 +138,7 @@ Choose model configuration using financial cases and the $50 cap.
 
 ### Change and contracts
 
-The owner selected gpt-5.6-terra, reasoning.effort=xhigh for all AI tasks. OAI-E01–E15, evidence/openai.md/en.md and results/prompts/eval/cost JSON record pricing, retention, Standard foreground Responses, strict proposals, store=false, explicit cache without breakpoints, detail=high and input pre-counting. Final separate 206+3 evaluation: 206/206, visual 6/6, function 3/3, zero critical errors; cost USD 0.445556. All 301 OpenAI requests cost USD 3.2926944 within the shared USD 7 cap, retaining earlier failures and paid Luna incomplete output. Calibration on known synthetic cases, not holdout or app acceptance. Dahl MiniMax/DeepSeek: separate limited screens, requested high accepted without applied-setting confirmation; unknown costs remain reserved and pool pricing unverified. No runtime alternative or automatic downgrade. Xhigh monthly estimate USD 47.125, stress USD 62.96875; unaffordable work waits at USD 50 while ordinary accounting continues. Reconcile workload assumptions/taxes/other usage before launch. Model/effort/prompt/schema/pricing changes require requalification. Unblocks task-5.1/5.2/5.3/5.5 contracts and BLK-08 in task-0.10; other dependencies and overall Not Ready remain. Server validation/permissions/runtime queues/locale and full acceptance are subsequent tasks.
+The owner selected gpt-5.6-terra, reasoning.effort=xhigh for all AI tasks. OAI-E01–E15, evidence/openai.md/en.md and results/prompts/eval/cost JSON record pricing, retention, Standard foreground Responses, strict proposals, store=false, explicit cache without breakpoints, detail=high and input pre-counting. Final separate 206+3 evaluation: 206/206, visual 6/6, function 3/3, zero critical errors; cost USD 0.445556. All 301 OpenAI requests cost USD 3.2926944 within the shared USD 7 cap, retaining earlier failures and paid Luna incomplete output. Calibration on known synthetic cases, not holdout or app acceptance. Dahl MiniMax/DeepSeek: separate limited screens, requested high accepted without applied-setting confirmation; unknown costs remain reserved and pool pricing unverified. No runtime alternative or automatic downgrade. Xhigh monthly estimate USD 47.125, stress USD 62.96875; unaffordable work waits at USD 50 while ordinary accounting continues. Reconcile workload assumptions/taxes/other usage before launch. Model/effort/prompt/schema/pricing changes require requalification. The task-5.1/5.2/5.3/5.5 contracts are unblocked and task-0.10 completed the SDD gate. Server validation/permissions/runtime queues/locale and full acceptance remain subsequent work.
 
 ### Change boundaries
 

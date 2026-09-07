@@ -6,7 +6,7 @@ Sources checked: 2026-09-07. REQ-018–REQ-020, REQ-022, REQ-051, REQ-060–REQ-
 
 ## Status and selection rule
 
-Research is complete. The MVP selects **`gpt-5.6-terra`, `reasoning.effort=xhigh`**, Standard foreground Responses and a strict proposal schema. **BLK-08 is closed** for model selection/contract; other blockers keep the full MVP Not Ready. Final live evaluation: 206/206 exact cases (100%), no unnecessary clarifications, zero critical errors, 6/6 PNG/PDF and 3/3 function-calling cases. This is bounded synthetic evidence, not a guarantee of perfect real-data accuracy.
+Research is complete. The MVP selects **`gpt-5.6-terra`, `reasoning.effort=xhigh`**, Standard foreground Responses and a strict proposal schema. The model-selection contract is closed and task-0.10 issued SDD Ready. The full MVP still requires task-5.x/task-8.x runtime and product ACs. Final live evaluation: 206/206 exact cases (100%), no unnecessary clarifications, zero critical errors, 6/6 PNG/PDF and 3/3 function-calling cases. This is bounded synthetic evidence, not a guarantee of perfect real-data accuracy.
 
 Initial comparison used exact API IDs `gpt-5.6-luna` and `gpt-5.6-terra` with `reasoning.effort=low`; subsequent phases evaluated Terra high, Luna xhigh and the owner’s final Terra xhigh selection separately. Current pages offer no separate dated snapshot for these models: do not invent a date suffix or call an ID an immutable snapshot. Record requested/returned model, prompt/schema version, pricing and run date; a model/alias change requires renewed qualification.
 

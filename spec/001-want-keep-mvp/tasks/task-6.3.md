@@ -5,7 +5,7 @@
 
 Показывать доход накопительных продуктов на проверенных условиях.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-4.1`, `task-4.2`, `task-4.3`, `task-4.4`, `task-4.6`, `task-6.1`.
 
@@ -97,7 +97,7 @@ make test-go PKG=./internal/savings/... && make test-contract PROVIDER=savings
 
 Show savings-product income under verified terms.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-4.1`, `task-4.2`, `task-4.3`, `task-4.4`, `task-4.6`, `task-6.1`.
 

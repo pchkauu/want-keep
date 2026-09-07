@@ -33,9 +33,52 @@ class SpecCatalogTest(unittest.TestCase):
     self.assertIn("The technical foundation is implemented", body)
     self.assertIn("Интерфейс `make` создан task-1.1", body)
 
+  def test_ready_default_task_status_and_backlog_are_rendered(self):
+    catalog = SpecCatalog(self.source)
+    self.assertTrue(catalog.is_ready_for_development())
+    task = copy.deepcopy(catalog.tasks["task-1.2"])
+    task.pop("status", None)
+    body = catalog.task_body(task)
+    self.assertIn("задача ожидает собственные зависимости", body)
+    self.assertIn("the task awaits its own dependencies", body)
+    generated = catalog.generated()
+    self.assertIn("готова к разработке", generated["backlog.md"])
+    self.assertIn("ready for development", generated["backlog.en.md"])
+    self.assertIn("[plan.md](plan.md)", generated["backlog.md"])
+
   def test_unknown_acceptance_is_rejected_before_render(self):
     errors = self.errors_for(lambda data: data["tasks"][0]["acceptance"].append("AC-999"))
     self.assertTrue(any("Unresolved AC" in error for error in errors))
+
+  def test_invalid_readiness_status_is_rejected(self):
+    errors = self.errors_for(lambda data: data["readiness"].update(status="implemented"))
+    self.assertIn("Invalid readiness status", errors)
+
+  def test_readiness_gate_is_task_zero_ten(self):
+    errors = self.errors_for(lambda data: data["readiness"].update(gate_task="task-0.9"))
+    self.assertIn("Invalid readiness gate task", errors)
+
+  def test_ready_catalog_requires_bilingual_plan_files(self):
+    with tempfile.TemporaryDirectory() as directory:
+      root = Path(directory)
+      (root / "catalog.json").write_text(json.dumps(self.data))
+      catalog = SpecCatalog(root)
+      errors = catalog.check_files(catalog.generated())
+      self.assertIn("Missing Ready plan: plan.md", errors)
+      self.assertIn("Missing Ready plan: plan.en.md", errors)
+
+  def test_not_ready_catalog_rejects_plan_files(self):
+    data = copy.deepcopy(self.data)
+    data["readiness"]["status"] = "not_ready"
+    with tempfile.TemporaryDirectory() as directory:
+      root = Path(directory)
+      (root / "catalog.json").write_text(json.dumps(data))
+      (root / "plan.md").write_text("draft")
+      (root / "plan.en.md").write_text("draft")
+      catalog = SpecCatalog(root)
+      errors = catalog.check_files(catalog.generated())
+      self.assertIn("Plan exists before Ready: plan.md", errors)
+      self.assertIn("Plan exists before Ready: plan.en.md", errors)
 
   def test_indirect_dependency_cycle_is_rejected(self):
     def mutate(data):

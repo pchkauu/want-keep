@@ -5,7 +5,7 @@
 
 Поднять воспроизводимую основу Go, React и сборщика без продуктовых заглушек, выдаваемых за функции.
 
-**Состояние:** Техническая основа реализована; общий барьер готовности task-0.10 остаётся открытым.
+**Состояние:** Техническая основа реализована; task-0.10 завершила общий SDD gate. Следующая задача по плану — task-1.2.
 
 **Зависимости:** `task-0.10`.
 
@@ -81,7 +81,7 @@ make check
 
 Establish reproducible Go, React and collector foundations without presenting stubs as features.
 
-**Status:** The technical foundation is implemented; the overall task-0.10 readiness gate remains open.
+**Status:** The technical foundation is implemented; task-0.10 completed the shared SDD gate. The next planned task is task-1.2.
 
 **Dependencies:** `task-0.10`.
 

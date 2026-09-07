@@ -5,7 +5,7 @@
 
 Запускать сервисы в согласованном бюджете с наблюдаемыми отказами.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-0.9`, `task-3.3`, `task-5.1`, `task-7.8`.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-По evidence task-0.9 подготовить VPS в Германии 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной private VPC без публичного DB IP. Docker Compose запускает Go API/worker, web/reverse proxy и изолированный sequential collector; PostgreSQL входит только в локальные/integration окружения. До данных: key-only non-root SSH, provider+host firewall, закрытый/защищённый Zabbix, TLS/private DB endpoint и разделённые DB roles, секреты вне Git, redacted logs, pinned images, cgroups/pids/network allowlist. Миграции выполняются до consumers. Измерить RAM/CPU/disk/collector, health/degradation, deployment/rollback и прочитать итоговую смету с налогом/IP; provisioning требует отдельной авторизации владельца.
+По evidence task-0.9 подготовить VPS в Германии 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в одной private VPC без публичного DB IP. Docker Compose запускает Go API/worker, web/reverse proxy и изолированный sequential collector; PostgreSQL входит только в локальные/integration окружения. До данных: key-only non-root SSH, provider+host firewall, закрытый/защищённый Zabbix, TLS/private DB endpoint и разделённые DB roles, секреты вне Git, redacted logs, pinned images, cgroups/pids/network allowlist. Миграции выполняются до consumers. Измерить RAM/CPU/disk/collector, health/degradation, deployment/rollback и прочитать итоговую смету с налогом/IP; provisioning требует отдельной авторизации владельца. Каждый provider deployment выключен по умолчанию до успешного read allowlist/permission/structured-fixture/identity/history/reauth conformance gate. Alfa route/DNS/TLS с целевого хоста входит в этот runtime readback. Эти проверки допускают эксплуатацию, но не меняют статус Ready SDD. Host evidence для точного D-43 binding передаётся admission service; только совместный pass provider+host переводит его в `admitted`, а deploy/config/allowlist/permission mismatch атомарно возвращает `pending|blocked` до нового sync.
 
 ### Границы изменений
 
@@ -36,6 +36,7 @@
 - **REQ-063:** Пользователь, семья и членство моделируются отдельно; ограничение двух участников задаётся конфигурацией.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации и окружения.
 
 ### Критерии приёмки
 
@@ -118,6 +119,13 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Сервер возвращает `provider_not_admitted`, collector не запускается и проводок нет. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding; любое расхождение снова закрывает sync.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
@@ -138,7 +146,7 @@ make check-deploy && make test-integration AREA=health
 
 Run services within the agreed budget with observable failures.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-0.9`, `task-3.3`, `task-5.1`, `task-7.8`.
 
@@ -146,7 +154,7 @@ Run services within the agreed budget with observable failures.
 
 ### Change and contracts
 
-Using task-0.9 evidence, prepare a German 2 vCPU/4 GB/50 GB VPS and 1 vCPU/2 GB/20 GB managed PostgreSQL in one private VPC with no public DB IP. Docker Compose runs Go API/worker, web/reverse proxy and an isolated sequential collector; PostgreSQL remains containerized only in development/integration environments. Before data: key-only non-root SSH, provider and host firewalls, closed/protected Zabbix, TLS/private DB endpoint with separate DB roles, secrets outside Git, redacted logs, pinned images and cgroup/pid/network allowlists. Run migrations before consumers. Measure RAM/CPU/disk/collector, health/degradation and deployment/rollback, and read back the tax/IP-inclusive cost; provisioning requires separate owner authorization.
+Using task-0.9 evidence, prepare a German 2 vCPU/4 GB/50 GB VPS and 1 vCPU/2 GB/20 GB managed PostgreSQL in one private VPC with no public DB IP. Docker Compose runs Go API/worker, web/reverse proxy and an isolated sequential collector; PostgreSQL remains containerized only in development/integration environments. Before data: key-only non-root SSH, provider and host firewalls, closed/protected Zabbix, TLS/private DB endpoint with separate DB roles, secrets outside Git, redacted logs, pinned images and cgroup/pid/network allowlists. Run migrations before consumers. Measure RAM/CPU/disk/collector, health/degradation and deployment/rollback, and read back the tax/IP-inclusive cost; provisioning requires separate owner authorization. Every provider deployment is disabled by default until its read allowlist, permission, structured-fixture, identity, history and reauthentication conformance gate passes. Alfa route/DNS/TLS from the target host belongs to this runtime readback. These checks authorize operation but do not change SDD Ready status. Host evidence for the exact D-43 binding is supplied to the admission service; only a combined provider+host pass sets `admitted`, while a deployment/configuration/allowlist/permission mismatch atomically returns it to `pending|blocked` before another sync.
 
 ### Change boundaries
 
@@ -169,6 +177,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-063:** User, household and membership are separate models; the two-member limit is configured.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
 
 ### Acceptance criteria
 
@@ -250,6 +259,13 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **When:** File reads, import, correction, AI retrieval and deduplication are exercised.
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
+
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again.
+- **Level:** `integration+security`.
 
 ### Verification
 

@@ -5,7 +5,7 @@
 
 Связывать доказательства одной операции без слияния разных покупок.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-2.3`.
 
@@ -124,7 +124,7 @@ make test-integration AREA=matching
 
 Link evidence of one transaction without merging different purchases.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-2.3`.
 

@@ -2,7 +2,7 @@
 
 [Русский](ozon.md)
 
-Research date: 2026-09-07. Task: [task-0.3 / Issue #3](https://github.com/pchkauu/want-keep/issues/3). Status: **research completed with blocking findings; structured responses obtained**. BLK-03 remains open for task-0.10 verification; task-4.3 and the shared Ready gate remain blocked. The HAR section below is current; subsequent UI observations describe the preceding stage.
+Research date: 2026-09-07. Task: [task-0.3 / Issue #3](https://github.com/pchkauu/want-keep/issues/3). Status: **research complete; structured responses obtained and automatic connector not implemented**. The original OZON-B02/B04/B05 were handed to task-0.10; D-38/D-39 and the task-4.3 runtime gate are recorded in the final section below.
 
 ## Structured contract from HAR
 
@@ -61,7 +61,7 @@ The UI requested sign-in (OZON-E15), and the owner restored access (OZON-E16). H
 
 Direct HTTP replay by a separate collector, server frequency limits, authentication errors, two external accounts and late revisions were not tested. This HAR has no original authorization headers; it establishes read shapes without providing a portable bank session.
 
-**Current outcome:** task-0.3 research output is prepared: actual routes/fields, 10 synthetic projections and an RU/EN matrix of established facts and limitations. The [README](../README.en.md) allows research to finish with a documented blocker. Issue #3 completion means this report is complete, not that the automatic integration is ready. OZON-B02/B04/B05 remain within BLK-03 for task-0.10; the complete MVP remains Not Ready.
+**Research outcome:** actual routes/fields, 10 synthetic projections and the RU/EN matrix are prepared. Issue #3 means the report is complete, not the automatic integration. task-0.10 converted OZON-B02/B04/B05 into task-4.3 runtime gates; SDD Ready and provider acceptance differ.
 
 ## Scope and preceding observations
 
@@ -101,14 +101,14 @@ Public OZON-S01–S10 retain selected source field names/types and relationships
 | ID | Status and evidence | Remaining work |
 | --- | --- | --- |
 | OZON-B01 | Closed: OZON-E03/E09, access to the named profile and live reading | None |
-| OZON-B02 | Structural gap resolved: OZON-E17/E18, five read routes, OZON-S01–S10 | Verify an acceptable operational automation method and authenticated-browser operation; HAR does not establish server session portability |
+| OZON-B02 | SDD RESOLVED; RUNTIME GATE task-4.3 | Verify an acceptable operational automation method and authenticated-browser operation; HAR does not establish server session portability |
 | OZON-B03 | Removed by D-32 | Other Ozon products are future extensions, not blockers |
-| OZON-B04 | Account number across logins, card mapping, repeated records and seven-page chain verified | Terminal page of the selected interval, retention and ID lifecycle; no independent second external account supplied |
-| OZON-B05 | Integer kopecks/RUR, two statuses, purchase/refund types and a separate commission verified; sign-in redirect and owner recovery observed | Separate owned/available/locked and date semantics unestablished. Full TTL, supported refresh, frequency limits and autonomous hourly operation untested; uncertainty must not become an assumption |
+| OZON-B04 | RUNTIME GATE task-4.3 | Terminal page of the selected interval, retention and ID lifecycle; no independent second external account supplied |
+| OZON-B05 | SDD RESOLVED; RUNTIME GATE task-4.3 | Separate owned/available/locked and date semantics unestablished. Full TTL, supported refresh, frequency limits and autonomous hourly operation untested; uncertainty must not become an assumption |
 
 The next external-contract step is a completed page chain for a selected interval, followed by an acceptable session-maintenance method. A second account is checked only with separately supplied access. Never create transactions or open products to manufacture test data.
 
-Collection infrastructure and task-4.3 test allowlist enforcement, importer idempotency, conflicts/lease/version, retry after failure and process isolation. These runtime tests are not required from a nonexistent application in a research task; external-contract gaps remain within BLK-03. task-4.3 and task-0.10 remain blocked.
+task-4.3 verifies allowlist enforcement, importer idempotency, conflicts/lease/version, retry, process isolation, session lifecycle and two accounts. These runtime tests are not required from research. D-38/D-39 close the SDD without replacing that acceptance.
 
 ## Traceability and verification
 
@@ -121,3 +121,9 @@ Collection infrastructure and task-4.3 test allowlist enforcement, importer idem
 | AC-087 | REQ-073 | OZON-E15/E16: sign-in redirect and owner recovery | Lease/version, stale results and application MFA routing |
 
 Checks: `spec_tool.py check`, 13 documentation-tool tests, JSON/links, semantic RU/EN review, synthetic-value and cursor/commission relationship checks, `git diff --check`. No complete application AC is claimed as passed. Exact results and publication are recorded in the [readiness report](../verification.en.md) and Issue #3.
+
+## task-0.10 decision, 2026-09-07
+
+OZON-B02/B04/B05 above remain task-4.3 runtime-evidence boundaries. The completed sanitized HAR projections are sufficient for mapping design. D-39 forbids rotating accountToken/connection or groupID alone as identity; a route-specific record ID lives in its namespace and a parent relation links a fee without merging effects.
+
+Session-transport permission, stable account identity, history end, lifecycle/revisions, reauthentication and a second account are verified before provider deployment. A gap yields `source_partial`; missing fields remain unknown. These gates do not block SDD Ready.

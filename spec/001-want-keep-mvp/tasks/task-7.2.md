@@ -5,7 +5,7 @@
 
 Дать владельцу проверяемую ленту и управление ошибками учёта.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-7.1`, `task-2.5`, `task-2.6`, `task-2.7`, `task-5.2`, `task-7.9`, `task-2.9`.
 
@@ -423,7 +423,7 @@ make test-web FILTER=transactions && make e2e SCENARIO=accounting
 
 Give the owner a verifiable activity feed and accounting corrections.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-7.1`, `task-2.5`, `task-2.6`, `task-2.7`, `task-5.2`, `task-7.9`, `task-2.9`.
 

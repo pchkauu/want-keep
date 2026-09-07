@@ -5,7 +5,7 @@
 
 Создать границу хранения, не отдающую ключи и файлы посторонним или AI.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-1.4`, `task-1.6`.
 
@@ -123,7 +123,7 @@ make test-integration AREA=privacy
 
 Create storage boundaries that withhold keys and files from unauthorized users and AI.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-1.4`, `task-1.6`.
 

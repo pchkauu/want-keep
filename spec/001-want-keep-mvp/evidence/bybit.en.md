@@ -8,7 +8,7 @@ Research completed and extended with authenticated API evidence on 2026-09-07. T
 
 Initial UI reference: `f12f21597a9570846e78238b28d6bfc917ba0f4e`; authenticated-document update based on `2412b773ad449d87fa846126907daeb237f39bd1`, branch `docs/want-keep-mvp-sdd`. The foundation exists; the Bybit connector does not. Google Chrome was used for UI and authorized key provisioning; signed requests used the official API. Credentials were read locally for signing, never printed or placed in public evidence. No trade, withdrawal, subscription, redemption, advertiser application or support message was submitted. Samples replace personal balances, UID, order IDs and counterparties with synthetic data.
 
-**task-0.4 is complete as research; BLK-04 and task-4.4 remain Not Ready.** BYBIT-B01/B02/B05 are closed for observed read access. task-0.10 owns BYBIT-B03/B04 contract closure; task-0.9 owns deployment access checks. BYBIT-B06 remains non-blocking deferred. This report does not pass product ACs.
+**task-0.4 is complete as research; the automatic connector is not implemented.** BYBIT-B01/B02/B05 are closed for observed read access. The original BYBIT-B03/B04 were handed to task-0.10; their D-39 decision and task-4.4 runtime gates are recorded in the final section below. Product ACs are not claimed as passed.
 
 ## Current scope: D-36
 
@@ -85,15 +85,21 @@ These are requirements for task-0.10/task-4.4, **not implemented behavior**:
 | --- | --- | --- |
 | BYBIT-B01 | CLOSED for research access | Chrome, public and private official reads observed |
 | BYBIT-B02 | CLOSED for this owner/key | RSA readOnly, UID, allowlist and required route permissions verified. task-0.9 still checks authorized VPS reachability; task-4.4 tests expired/revoked keys and second-owner isolation |
-| BYBIT-B03 | OPEN; task-0.10 | Specify deterministic cross-log identity/ambiguity rules, source status revisions, precision-aware reconciliation and requested-history coverage. E12/E13/E16/E17 provide concrete samples; full history and every lifecycle are not established |
-| BYBIT-B04 | OPEN; task-0.10 | Finalize hourly identity/revision policy, USDT lifetime totalPnl versus available yield history, and forecast principal/rate/time basis. Flexible usage is confirmed. Fixed/other unused products do not block |
+| BYBIT-B03 | SDD RESOLVED; RUNTIME GATE task-4.4 | Specify deterministic cross-log identity/ambiguity rules, source status revisions, precision-aware reconciliation and requested-history coverage. E12/E13/E16/E17 provide concrete samples; full history and every lifecycle are not established |
+| BYBIT-B04 | SDD RESOLVED; RUNTIME GATE task-4.4 | Finalize hourly identity/revision policy, USDT lifetime totalPnl versus available yield history, and forecast principal/rate/time basis. Flexible usage is confirmed. Fixed/other unused products do not block |
 | BYBIT-B05 | CLOSED for P2P read access | List and both details succeed with read-only API. No advertiser application or Playwright required for observed coverage. Fee/quantization, status transitions and bank matching remain B03/implementation acceptance |
 | BYBIT-B06 | DEFERRED, NON-BLOCKING | Other products excluded by D-36; explicit future extension only; included-wallet movements remain required |
 
-Research supplies task-0.7 with USDC coverage needs, task-0.9 with access/limit checks, task-0.10 with the contract matrix and task-4.4 with bounded implementation inputs. It does **not** release the shared Ready gate. REQ-002/REQ-003/REQ-039/REQ-045 and ACs/tasks retain IDs; initial D-36 introduced target version 6; this private-evidence supplement does not increment the shared version. No financial API schema, migration or application behavior changes in this task.
+Research handed task-0.7 USDC, task-0.9 access/limits, task-0.10 contract decisions and task-4.4 bounded implementation inputs. task-0.10 completed the shared SDD gate; task-4.4 remains the executable-conformance owner. REQ/AC/task IDs remain; this research changed no financial runtime or database schema.
 
 ## Verification
 
 Performed: primary-document/UI research, six public GETs, authorized RSA provisioning and signed official read calls documented in E11–E18, decimal/replay checks, twelve synthetic scenarios, RU/EN and diff review, `make docs-check` at delivery.
 
 Not performed: complete lifetime history, full status/revision lifecycle, second-owner/revocation runtime, hourly collector, chosen-VPS tests, bank settlement matching, production connector or application E2E. No financial mutations. Private API success is research evidence, not implementation acceptance.
+
+## task-0.10 decision, 2026-09-07
+
+BYBIT-B03/B04 above are closed as D-39 SDD decisions. Provider IDs remain route-specific; amount/time cross-log matches are candidates only. Hourly data without ID may use `(coin, productId, hourlyDate)` within the hourly namespace. A differing payload retains both evidence revisions as `source_ambiguous` without financial credit. Gaps and lifetime mismatch yield `source_partial`.
+
+Precision/history, principal/yield reconciliation, a second account, rotation/revocation and live conformance remain the task-4.4 deployment gate. Official RSA read-only APIs retain priority; Playwright is allowed only for a newly proven API gap. The SDD is Ready; no running connector is claimed.

@@ -5,7 +5,7 @@
 
 Корректно пересчитывать исходные расходы без искажения движения денег.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-2.2`, `task-2.6`, `task-2.8`.
 
@@ -112,7 +112,7 @@ make test-go PKG=./internal/expenses/... && make test-integration AREA=refunds
 
 Recalculate original expenses without distorting cash movements.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-2.2`, `task-2.6`, `task-2.8`.
 

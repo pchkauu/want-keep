@@ -5,7 +5,7 @@
 
 Переживать сбои без потери импортов и повторных финансовых эффектов.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-1.3`, `task-2.3`.
 
@@ -120,7 +120,7 @@ Crash/restart, два worker, таймаут и отмена соединени�
 
 Survive failures without lost imports or duplicate financial effects.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-1.3`, `task-2.3`.
 

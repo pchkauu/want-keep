@@ -1,60 +1,43 @@
-# Want Keep MVP — спецификация
+# Want Keep MVP
 
 [English](README.en.md)
 
-Пакет фиксирует согласованный MVP и полный backlog для последующего выполнения AI-агентом. Реализована только воспроизводимая основа task-1.1; продуктовые сценарии и публичный API отсутствуют. Все 15 исходных возможностей и все шесть интеграций обязательны; работа над частью функций не означает готовность полного MVP.
+**Статус SDD:** **Ready for development** с 2026-09-07. [Итог task-0.10](evidence/task-0.10-readiness.md) закрывает фундаментальные решения D-37–D-43; [plan.md](plan.md) задаёт порядок реализации.
 
-**Состояние:** требования и декомпозиция подготовлены; готовность реализации — **Not Ready** до проверки внешних контрактов. Подробности в [verification.md](verification.md).
+Ready относится к спецификации. Приложение ещё не реализовано, обязательные продуктовые AC не пройдены, а каждый коннектор выключен до собственного provider/runtime gate.
 
-## Чтение
+## Порядок чтения
 
-1. [Продукт и решения интервью](proposal.md).
-2. [87 требований](requirements.md), [105 критериев приёмки](acceptance_criteria.md), [трассировка](traceability.md).
-3. [Архитектура](constraints.md), [контракты и расчёты](contracts.md), [словарь](glossary.md), [потоки данных](flows.md).
-4. [Интеграции и источники](integrations.md), [эксплуатация и стоимость](operations.md).
-5. [67 задач и GitHub-ссылки](backlog.md).
+1. [proposal.md](proposal.md) — продукт, scope и решения D-01–D-43.
+2. [requirements.md](requirements.md) и [acceptance_criteria.md](acceptance_criteria.md) — REQ/AC.
+3. [contracts.md](contracts.md), [constraints.md](constraints.md), [flows.md](flows.md) — домен, API, безопасность и потоки.
+4. [integrations.md](integrations.md) и [operations.md](operations.md) — provider и runtime gates.
+5. [design.md](design.md), [navigation.md](navigation.md), [screens.md](screens.md) — desktop UX.
+6. [plan.md](plan.md), [backlog.md](backlog.md), [traceability.md](traceability.md) — реализация и связи.
+7. [verification.md](verification.md) — verdict и границы доказательств.
 
-## Для следующего агента
+## Текущее исполнение
 
-Завершить незакрытые исследования из task-0.1–task-0.8 и записать evidence. [task-0.9 завершена](evidence/hosting.md): выбран немецкий VPS 2 vCPU/4 ГБ/50 ГБ и managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в private VPC; смета ниже $40, а provisioning, hardening, Alfa route и backup/restore runtime переданы следующим задачам. При отсутствии безопасно предоставленного доступа нельзя заявлять live-проверку. task-1.1 выполнена досрочно по решению владельца только как независимая техническая основа. task-0.10 по-прежнему закрывает контракты, обновляет RU/EN и проверяет SDD Ready; до этого продуктовая реализация заблокирована, а `plan.md` намеренно отсутствует.
+- task-0.1–task-0.10: исследования и Ready-gate завершены как документационные результаты.
+- task-1.1: техническая основа реализована и влита в эту ветку документации.
+- Следующая задача: task-1.2, затем task-1.3 и остальные задачи по зависимостям.
+- GitHub Closed не заменяет evidence задачи и не означает прохождение связанного продуктового AC.
 
-Одна карточка в `tasks/` содержит полный RU/EN-текст для одного GitHub Issue. ID остаются постоянными. Сам факт закрытия Issue не заменяет evidence. Исследование может завершиться документированным блокером; это не делает зависимую интеграцию готовой.
+## Provider gates
+
+D-38 разрешает разработку по нормализованным контрактам и safe states. По D-43 конкретный provider включается только server-owned admission для точного binding build/contract/allowlist/config/permission/environment: task-4.x подтверждает provider evidence, task-8.x — target-host/deployment evidence. Несовпадение возвращает `provider_not_admitted` до collector IO.
+
+При пробеле используются typed states `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable` или `command_expired`. Неизвестное значение не становится нулём, а неоднозначный source record не создаёт проводку.
 
 ## Обновление документации
 
-Каталог [catalog.json](catalog.json) — редактируемый источник требований, критериев и карточек задач. Документы requirements, acceptance_criteria, backlog, traceability и tasks генерируются из него. Остальные документы поддерживаются вручную попарно RU/EN.
-
-Из корня репозитория:
+Источник REQ, AC, задач, экранов, форм и состояний — [catalog.json](catalog.json). После изменения:
 
 ```sh
 python3 spec/001-want-keep-mvp/tools/spec_tool.py render
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
-python3 -m unittest discover -s spec/001-want-keep-mvp/tools -p 'test_*.py'
+make docs-check
+make check
 git diff --check
 ```
 
-Проверка контролирует ссылки, идентификаторы, покрытие, отсутствие циклов, наличие обеих языковых версий, соответствие генерации и mapping GitHub. Смысловое равенство переводов проверяется человеком/независимым reviewer; успешный скрипт сам по себе этого не доказывает.
-
-Публичные примеры синтетические. API-ключи, реальные выписки, файлы чеков, банковские сессии и персональные данные в этот пакет и Issues не включаются.
-
-## Семейный режим
-
-Согласован 2026-09-07: отдельные входы пары, полная общая видимость, личные/семейные счета и цели, общий чат, один план с распределением расходов. Правила прав, долей и общего денежного пула — в [contracts.md](contracts.md); решения D-18–D-29 — в [proposal.md](proposal.md).
-
-## Desktop UI/UX
-
-[Дизайн и анимации](design.md), [35 экранов, формы и состояния](screens.md), [навигация и сценарии](navigation.md). Только ноутбук macOS Chrome/Arc; реальная браузерная приёмка отдельно от Chromium CI.
-
-Уточнение D-32: текущий контракт Ozon — дебетовая карта и связанный основной счёт; другие продукты этого провайдера отложены и не блокируют MVP. [Результат исследования](evidence/ozon.md).
-
-Уточнение D-33: Aifory — RUB-счета, USDT, ETH и используемая карта USD; остальные продукты отложены без блокировки. ETH добавлен в учёт и оценку. [Исследование](evidence/aifory.md), открытые контрактные вопросы — в BLK-05.
-
-Уточнение D-34: EMCD — кошелёк USDT, используемые Grow/криптокарты и история P2P. Майнинг никогда не использовался; его данные и другие неиспользуемые продукты отложены без блокировки. [Исследование](evidence/emcd.md), вопросы автоматизации — BLK-06.
-
-D-36: Bybit — Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; авторизованное чтение официального API успешно, включая P2P. Остальные продукты отложены без блокировки. USDC включён в учёт/оценку. [Исследование](evidence/bybit.md), [приватный API](evidence/bybit-api.md); BYBIT-B03/B04 остаются в BLK-04.
-
-Исследование курсов task-0.7: CBR выбран основным USD/RUB, CoinGecko Demo — отдельные BTC/ETH/USDT/USDC в USD для current и history ≤365 дней, Frankfurter `providers=CBR` — fallback/cross-check. TradingView отвергнут как серверный источник. [Evidence и открытые FX-B02–FX-B04](evidence/fx.md); BLK-07 и Ready закрывает task-0.10.
-
-Уточнение D-35: Raiffeisen — только расчётный счёт ИП через RBO API; личные карты, кредиты, накопления и вклады исключены без блокировки. [Исследование](evidence/raiffeisen.md): исторические данные прочитаны, оставшиеся вопросы — BLK-02.
-
-[Исследование OpenAI и воспроизводимый eval](evidence/openai.md): модель, стоимость, retention и границы доказательства.
+Парные ручные документы RU/EN обновляются вместе. Публичные артефакты используют только синтетические примеры; credentials, response bodies, реквизиты и локальные пути не публикуются.

@@ -5,7 +5,7 @@
 
 Учитывать явные долги и возмещения внутри семьи.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-2.4`, `task-2.8`.
 
@@ -75,7 +75,7 @@ make test-integration AREA=family-reimbursements
 
 Track explicit inter-member debts and reimbursements.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-2.4`, `task-2.8`.
 

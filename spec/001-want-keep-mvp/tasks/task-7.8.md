@@ -5,7 +5,7 @@
 
 Доставлять напоминания и сводки с контролем приватности.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-7.1`, `task-6.8`, `task-5.5`, `task-1.4`, `task-3.1`, `task-7.9`.
 
@@ -177,7 +177,7 @@ make test-integration AREA=notifications && make e2e SCENARIO=notifications
 
 Deliver reminders and summaries with privacy control.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-7.1`, `task-6.8`, `task-5.5`, `task-1.4`, `task-3.1`, `task-7.9`.
 

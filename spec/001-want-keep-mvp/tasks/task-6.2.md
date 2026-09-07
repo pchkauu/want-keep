@@ -5,7 +5,7 @@
 
 Показывать долг и условия сохранения льготы по подтверждённым данным.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-4.1`, `task-4.2`, `task-4.3`, `task-2.2`.
 
@@ -89,7 +89,7 @@ make test-go PKG=./internal/credit/... && make test-contract PROVIDER=credit
 
 Show debt and grace eligibility from confirmed data.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-4.1`, `task-4.2`, `task-4.3`, `task-2.2`.
 

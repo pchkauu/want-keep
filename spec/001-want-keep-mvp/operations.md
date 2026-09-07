@@ -2,17 +2,21 @@
 
 [English](operations.en.md)
 
+SDD Ready for development не является эксплуатационным допуском. До production task-8.x подтверждает инфраструктуру, а каждый task-4.x — отдельный provider deployment gate.
+
 ## Лимиты и размещение
 
 D-15: сервер не дороже $40/месяц в Германии, Нидерландах или Болгарии; OpenAI отдельно до $50/месяц. Платные внешние источники не согласованы. Исходная нагрузка — сотни операций/месяц; количество страниц чеков, длина чатов и backfill измеряются отдельно.
 
 task-0.9 завершила [исследование инфраструктуры](evidence/hosting.md) на 2026-09-07. Владелец выбрал немецкий VPS 2 vCPU/4 ГБ/50 ГБ для web/reverse proxy, Go API/worker и одного последовательного collector, а также managed PostgreSQL 1 vCPU/2 ГБ/20 ГБ в той же private VPC без публичного DB IP. Годовая цена с одним VPS IPv4 — 2 520 ₽/месяц; консервативная цена без скидки и с резервом 10% — 3 055.56 ₽/$35.29 при CBR 86.5857 RUB/USD, ниже $40. Цены, налог, IP и курс перечитываются перед заказом.
 
-Текущий исследовательский VPS стоит 800 ₽/месяц со слов владельца. Read-only аудит показал Ubuntu 26.04.1 LTS, 1 vCPU, около 889 MiB RAM, отсутствие swap и файловую систему около 14 GiB; приложение, БД и backup не развёрнуты. Он не допущен для production. До финансовых данных task-8.1 выполняет hardening SSH/firewall/monitoring/secrets, создаёт private DB connection, проверяет invoice и измеряет peak CPU/RAM/disk/collector. С текущего VPS публичные OpenAI/rate endpoints и часть платформ достижимы с оговорёнными статусами; безопасный DNS/TLS route к Альфа-Банку не подтверждён и остаётся HOST-B04 для task-0.10/task-4.1.
+Текущий исследовательский VPS стоит 800 ₽/месяц со слов владельца. Read-only аудит показал Ubuntu 26.04.1 LTS, 1 vCPU, около 889 MiB RAM, отсутствие swap и файловую систему около 14 GiB; приложение, БД и backup не развёрнуты. Он не допущен для production. До финансовых данных task-8.1 выполняет hardening SSH/firewall/monitoring/secrets, создаёт private DB connection, проверяет invoice и измеряет peak CPU/RAM/disk/collector. С текущего VPS публичные OpenAI/rate endpoints и часть платформ достижимы с оговорёнными статусами; безопасный DNS/TLS route к Альфа-Банку проверяется как runtime gate task-4.1/task-8.1.
+
+Provider deployment выключен по умолчанию. Для D-43 admission нужны provider evidence task-4.x и host/deployment evidence task-8.x на одном binding environment/build/contract/allowlist/config/permission. Только admission service меняет server-owned state; stale/missing binding возвращает `provider_not_admitted` до collector IO. Pre-admission conformance работает в quarantine без source records/проводок. Непройденный gate оставляет конкретный источник отключённым; обычный и ручной учёт продолжают работать. Unknown/partial/ambiguous отражаются в health раздельно.
 
 ## OpenAI
 
-Выбор модели и лимиты принадлежат [исследованию task-0.8](evidence/openai.md); [смета](evidence/openai.cost.json) отделена от фактического usage и банковского списания. Срез цен — 2026-09-07. Выбрана gpt-5.6-terra xhigh для всех AI-задач; финальный eval — 206/206 без лишних уточнений, 6/6 PNG/PDF, 3/3 function calling. BLK-08 закрыт; runtime приложения предстоит.
+Выбор модели и лимиты принадлежат [исследованию task-0.8](evidence/openai.md); [смета](evidence/openai.cost.json) отделена от фактического usage и банковского списания. Срез цен — 2026-09-07. Выбрана gpt-5.6-terra xhigh для всех AI-задач; финальный eval — 206/206 без лишних уточнений, 6/6 PNG/PDF, 3/3 function calling. Контракт SDD закрыт; runtime приложения предстоит.
 
 Foreground Responses, `store=false`, собственная история чата, `prompt_cache_options.mode=explicit` без breakpoints, `detail=high` для страниц. Разрешены только проверяемые предложения application; credentials, SQL, браузер, shell, платежи и hosted tools недоступны модели. Правила OpenAI retention и отсутствие подтверждённых ZDR/EU residency раскрыты в evidence; европейский VPS не обеспечивает европейскую обработку OpenAI.
 
@@ -37,13 +41,13 @@ Foreground Responses, `store=false`, собственная история ча�
 
 ## Наблюдение и уведомления
 
-Состояния источников: connected/reauth_required/syncing/stale/partial/failed/disconnected. AI: pending/running/reviewed/clarification/waiting_budget/failed/superseded. Backup: pending/complete/stale/failed. Объединение этих статусов в один зелёный индикатор недопустимо.
+Состояния источников: connected/reauth_required/syncing/stale/partial/failed/disconnected. Provider admission: pending/admitted/blocked с binding/reasons. AI: pending/running/reviewed/clarification/waiting_budget/failed/superseded. Backup: pending/complete/stale/failed. Объединение этих статусов в один зелёный индикатор недопустимо.
 
 Сводки и напоминания имеют source event ID, время/таймзону и dedup key. Push-подписка привязана к устройству/owner, при recovery или отзыве устройства инвалидируется. Payload по умолчанию не показывает суммы/названия продавцов на экране блокировки. In-app канал работает при отсутствии разрешения на push. Реальное разрешение/запрет, доставка и отзыв push проверяются в Chrome и Arc на macOS. Установка приложения не требуется контрактом; неподдерживаемая доставка оставляет in-app канал и явный статус.
 
 ## Доказательства запуска
 
-Для допуска полного MVP нужны: все AC; полный readback каждого продукта шести платформ; измеренный AI quality/cost; отсутствие двойных финансовых эффектов при retries; приватность/авторизация; RU/EN/desktop; push в реальных Chrome и Arc на macOS; backup/restore rehearsal и фактическая смета. CI и mocks не заменяют эти проверки. Развёртывание и любое приобретение ресурсов требуют действующей авторизации отдельного этапа.
+Для допуска полного MVP нужны: все AC; полный readback каждого продукта шести платформ после provider gates; измеренный AI quality/cost; отсутствие двойных финансовых эффектов при retries; приватность/авторизация; RU/EN/desktop; push в реальных Chrome и Arc на macOS; backup/restore rehearsal и фактическая смета. CI и mocks не заменяют эти проверки. SDD Ready разрешает разработку, но не пропускает ни один из этих runtime gates. Развёртывание и любое приобретение ресурсов требуют действующей авторизации отдельного этапа.
 
 ## Семейная эксплуатация
 
