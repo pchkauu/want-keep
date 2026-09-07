@@ -31,7 +31,7 @@
 - **REQ-029:** Одни средства нельзя одновременно зарезервировать на несколько целей или повторно учесть через выделенный счёт.
 - **REQ-030:** Дневные лимиты показывают семейный и индивидуальный доступный/прогнозный остаток, по категориям и с отдельным обеспечением каждой валютой.
 - **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-064:** Оба участника видят все финансовые данные и изменяют операции; личные цели и части плана изменяет только их владелец.
 - **REQ-066:** Все доходы и доступные средства входят в семейный пул; общий бюджет и личные разрезы используют один финансовый факт.
 - **REQ-069:** Резервы личных и совместных целей задаются явно; совместные цели отображаются отдельным общим блоком без персональных долей.
@@ -86,9 +86,9 @@
 
 #### AC-039
 
-- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
 - **Когда:** Строится общая оценка.
-- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
 - **Уровень:** `integration`.
 
 #### AC-066
@@ -179,7 +179,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-029:** The same money cannot be reserved for multiple goals or counted again through a dedicated account.
 - **REQ-030:** Daily limits show household and individual available/forecast allowances, by category and with separate funding in each currency.
 - **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-064:** Both members see all financial data and edit transactions; only the owner edits personal goals and plan portions.
 - **REQ-066:** All income and available funds enter the household pool; household and individual budget views share one financial fact.
 - **REQ-069:** Personal and joint goal reservations are explicit; joint goals appear in a separate shared block without personal shares.
@@ -234,9 +234,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-039
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 #### AC-066

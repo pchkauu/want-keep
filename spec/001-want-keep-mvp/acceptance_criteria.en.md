@@ -50,7 +50,7 @@ Scenarios are future product criteria, not a report of passing tests. `contract+
 | [REQ-042](requirements.en.md#req-042) | [AC-042](#ac-042) |
 | [REQ-043](requirements.en.md#req-043) | [AC-043](#ac-043) |
 | [REQ-044](requirements.en.md#req-044) | [AC-044](#ac-044) |
-| [REQ-045](requirements.en.md#req-045) | [AC-045](#ac-045), [AC-071](#ac-071) |
+| [REQ-045](requirements.en.md#req-045) | [AC-045](#ac-045) |
 | [REQ-046](requirements.en.md#req-046) | [AC-046](#ac-046) |
 | [REQ-047](requirements.en.md#req-047) | [AC-047](#ac-047) |
 | [REQ-048](requirements.en.md#req-048) | [AC-048](#ac-048) |
@@ -107,23 +107,23 @@ REQ: `REQ-001`.
 
 ## AC-002
 
-Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+Accounting supports RUB, USD, USDT, USDC, BTC and ETH; cash, bank money and platform wallets are separate accounts.
 
 REQ: `REQ-002`.
 
-- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, BTC 0.001 and ETH 0.00123456.
+- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, USDC 12.000000000123, BTC 0.001 and ETH 0.001234567891.
 - **When:** The owner opens accounts.
-- **Then:** Six distinct accounts show original assets and exact balances, including ETH without rounding to fiat cents; RUB is combined only in the relevant aggregate.
+- **Then:** Seven distinct accounts show original assets and exact balances; residuals are not truncated to UI or provider order precision. RUB is combined only in the relevant aggregate.
 - **Level:** `integration`.
 
 ## AC-003
 
-The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
+The reporting currency can switch among RUB, USD, USDT, USDC, BTC and ETH.
 
 REQ: `REQ-003`.
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
+- **When:** The member switches RUB to USD, USDT, USDC, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 
@@ -514,13 +514,13 @@ REQ: `REQ-038`.
 
 ## AC-039
 
-Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 
 REQ: `REQ-039`.
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 ## AC-040
@@ -580,13 +580,13 @@ REQ: `REQ-044`.
 
 ## AC-045
 
-The Bybit integration automatically reads Funding, Spot, Earn, P2P and futures under a verified contract.
+Bybit automatically reads Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; the official API is preferred. Other products are deferred without blocking under D-36.
 
 REQ: `REQ-045`.
 
-- **Given:** An authorized personal Bybit account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** A read-only Bybit account is securely connected with verified Funding, used Easy Earn and P2P contracts.
+- **When:** Balances, history from the selected date, replayed pages, Convert, Earn accrual/payout and P2P are read; a selected-product permission failure is simulated.
+- **Then:** Exact native amounts, IDs, statuses, fees and coverage match the source; Funding and details do not duplicate an exchange, fee or income. P2P links crypto/fiat with the bank or requires clarification. Access failure/incomplete history explicitly blocks the corresponding coverage; absent Spot/UTA trading, futures, card, On-Chain/Advanced Earn and other unused products do not block.
 - **Level:** `contract+manual`.
 
 ## AC-046
@@ -1143,7 +1143,7 @@ REQ: `REQ-031`, `REQ-032`, `REQ-033`, `REQ-039`.
 
 Net results and already-included fees
 
-REQ: `REQ-035`, `REQ-036`, `REQ-045`.
+REQ: `REQ-035`, `REQ-036`.
 
 - **Given:** A source distinguishes gross P&L, net P&L, fee, funding and reward/transfer.
 - **When:** One economic event appears in several logs.

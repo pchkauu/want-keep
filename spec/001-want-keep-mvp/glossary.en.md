@@ -12,7 +12,7 @@
 | Connection | A platform-account connection, read method, capability and session state. Not a financial account. |
 | Account | An owned account for one asset/purpose; may be cash, bank, credit or crypto. |
 | Card | Access to an account; a separate card does not necessarily imply a separate balance. |
-| Asset | RUB, USD, USDT, BTC or ETH (D-33). A USDT network is a transaction/address attribute, not another currency. |
+| Asset | RUB, USD, USDT, USDC (D-36), BTC or ETH (D-33). Network is a transaction/address attribute; a similar symbol USDC.E does not mean USDC. |
 | Money | An exact decimal amount plus asset. Formatting/conversion does not alter the original value. |
 | SourceRecord | Immutable retrieved evidence with source, namespaced ID and revision/time; not a finished business decision. |
 | Transaction | One economic event with type, state, monetary legs and evidence. |
@@ -39,3 +39,4 @@
 | REQ / AC / task | A testable requirement / observable criterion / task with dependencies and outcome evidence. |
 | Ready | A verdict on specification/plan sufficiency. Neither successful runtime proof nor deployment authority. |
 | Coinhold / Grow | Names of the EMCD savings product; brand aliases do not create separate accounts. Deposit terms/identity and accrual/capitalization/payout events are verified under D-34. |
+| Bybit Funding | Funding account (`accountType=FUND`); not a derivatives funding payment. Balances and ledger differ from UTA. |

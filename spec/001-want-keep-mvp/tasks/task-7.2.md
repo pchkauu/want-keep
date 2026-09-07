@@ -221,8 +221,8 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
-- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, USDC, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, USDC, BTC и ETH.
 - **REQ-004:** Начало учёта задаётся датой; начальные остатки отделены от доходов и расходов.
 - **REQ-005:** Счета показывают собственные, доступные, заблокированные и заёмные средства в пределах данных источника.
 - **REQ-006:** Перевод между счетами семьи, включая счета разных участников, меняет остатки без дохода или расхода по основной сумме.
@@ -235,7 +235,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 - **REQ-017:** Чат создаёт установленную операцию, уточняет недостающие данные и явно объясняет пропуск неподходящего документа.
 - **REQ-018:** Каждая новая или содержательно изменённая операция получает AI-проверку своей версии.
 - **REQ-019:** AI автоматизирует внутренний учёт через проверяемые команды; неопределённость остаётся явной.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-040:** Каждый источник обновляется раз в час и по запросу с видимым временем успешного обновления.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
@@ -251,15 +251,15 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### AC-002
 
-- **Дано:** Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, BTC 0.001 и ETH 0.00123456.
+- **Дано:** Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, USDC 12.000000000123, BTC 0.001 и ETH 0.001234567891.
 - **Когда:** Владелец открывает счета.
-- **Тогда:** Показаны шесть отдельных счетов с исходными активами и точными остатками, включая ETH без округления до фиатных сотых; RUB суммируется только в соответствующем срезе.
+- **Тогда:** Показаны семь отдельных счетов с исходными активами и точными остатками; дробные остатки не обрезаются до точности UI или заказа провайдера. RUB суммируется только в соответствующем срезе.
 - **Уровень:** `integration`.
 
 #### AC-003
 
 - **Дано:** Для всех необходимых пар есть актуальная оценка.
-- **Когда:** Владелец переключает RUB на USD, USDT, BTC и ETH.
+- **Когда:** Участник переключает RUB на USD, USDT, USDC, BTC и ETH.
 - **Тогда:** Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.
 - **Уровень:** `end-to-end`.
 
@@ -321,9 +321,9 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### AC-039
 
-- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
 - **Когда:** Строится общая оценка.
-- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
 - **Уровень:** `integration`.
 
 #### AC-040
@@ -639,8 +639,8 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
-- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
+- **REQ-002:** Accounting supports RUB, USD, USDT, USDC, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, USDC, BTC and ETH.
 - **REQ-004:** Accounting starts on a selected date; opening balances are separate from income and expenses.
 - **REQ-005:** Accounts distinguish owned, available, locked and borrowed amounts where the source provides them.
 - **REQ-006:** Transfers between household accounts, including different members’ accounts, change balances without principal income or expense.
@@ -653,7 +653,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-017:** Chat records an established transaction, clarifies missing data and explicitly explains skipped irrelevant documents.
 - **REQ-018:** Every new or materially changed transaction receives AI review of its version.
 - **REQ-019:** AI automates internal accounting through validated commands; uncertainty remains explicit.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-040:** Each source refreshes hourly and on demand with a visible last-success timestamp.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
@@ -669,15 +669,15 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-002
 
-- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, BTC 0.001 and ETH 0.00123456.
+- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, USDC 12.000000000123, BTC 0.001 and ETH 0.001234567891.
 - **When:** The owner opens accounts.
-- **Then:** Six distinct accounts show original assets and exact balances, including ETH without rounding to fiat cents; RUB is combined only in the relevant aggregate.
+- **Then:** Seven distinct accounts show original assets and exact balances; residuals are not truncated to UI or provider order precision. RUB is combined only in the relevant aggregate.
 - **Level:** `integration`.
 
 #### AC-003
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
+- **When:** The member switches RUB to USD, USDT, USDC, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 
@@ -739,9 +739,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-039
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 #### AC-040

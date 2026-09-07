@@ -24,7 +24,7 @@
 
 ### Связанные требования
 
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
 - **REQ-046:** Aifory Pro автоматически читает RUB-счета, USDT, ETH и используемую криптокарту, включая движения и комиссии этих продуктов. Остальные продукты отложены и не блокируют MVP.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
@@ -58,9 +58,9 @@
 
 #### AC-039
 
-- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
 - **Когда:** Строится общая оценка.
-- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
 - **Уровень:** `integration`.
 
 #### AC-079
@@ -116,7 +116,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
 - **REQ-046:** Aifory Pro automatically reads RUB accounts, USDT, ETH and the existing crypto card, including these products’ movements and fees. Other products are deferred and do not block the MVP.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
@@ -150,9 +150,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-039
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 #### AC-079

@@ -3,7 +3,7 @@
 
 ## RU
 
-Автоматически получать согласованные данные всех обязательных продуктов Bybit.
+Автоматически получать Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P по D-36 без повторного финансового эффекта.
 
 **Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Покрыть Funding/Spot/Earn/P2P/futures раздельными подтверждёнными журналами; UTA balance/transaction log не считать покрытием всех продуктов. Исключить двойные fee/P&L и внутренние трансферы. Реализовать только доказанный в evidence/bybit способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.
+После закрытия BYBIT-B02–B05 и Ready реализовать официальный read-only V5 для подтверждённых маршрутов evidence/bybit. FUND — нужный accountType; UTA не подменяет Funding. Связывать денежный журнал с deposit/withdraw/transfer/Convert/Earn/P2P деталями по доказанному контракту, без классификации по переводным UI-строкам. Различать principal, accrued/paid yield и Funding credit; fees/обмен/доход проводить один раз. Сохранять исходную точность, UID/log identity, revisions, durable checkpoints и неполный retention. Проверить фактически используемые Flexible/Fixed, границы истории, статусы и неизвестный gross/net. P2P требует допустимого read-only API или подтверждённого структурированного browser-контракта; read POST allowlist не разрешает create/pay/release/ads. Collector создаётся только для доказанного пробела API. Два владельца изолированы, ротация не создаёт счёт; stale job после отключения отклоняется. Spot/UTA trading, futures, карта, On-Chain/Advanced Earn и другие неиспользуемые продукты не требуются; их движения через включённые кошельки сохраняются.
 
 ### Границы изменений
 
@@ -27,15 +27,11 @@
 - **REQ-006:** Перевод между счетами семьи, включая счета разных участников, меняет остатки без дохода или расхода по основной сумме.
 - **REQ-007:** Обмен и P2P-конвертация собственных денег сохраняют обе валютные суммы, фактический курс и комиссии.
 - **REQ-008:** Повторные импорты, чек и запись чата объединяют доказательства одной операции без повторного учёта.
-- **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
-- **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
 - **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
-- **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
-- **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-040:** Каждый источник обновляется раз в час и по запросу с видимым временем успешного обновления.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-045:** Интеграция Bybit автоматически читает Funding, Spot, Earn, P2P и фьючерсы в пределах подтверждённого контракта.
+- **REQ-045:** Bybit автоматически читает Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен. Остальные продукты отложены без блокировки по D-36.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-061:** Повторные задания, перезапуски и параллельные изменения не создают двойных финансовых эффектов.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
@@ -48,9 +44,9 @@
 
 #### AC-045
 
-- **Дано:** Подключён разрешённый личный аккаунт Bybit с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Безопасно подключён read-only аккаунт Bybit с подтверждёнными контрактами Funding, используемого Easy Earn и P2P.
+- **Когда:** Читаются остатки, история с выбранной даты, повторные страницы, Convert, начисление/выплата Earn и P2P; моделируется отказ прав выбранного продукта.
+- **Тогда:** Точные native amounts, ID, статусы, комиссии и coverage сопоставимы с источником; Funding и детали не удваивают обмен, комиссию или доход. P2P связывает crypto/fiat с банком либо требует уточнения. Отказ доступа/неполная история явно блокируют соответствующее покрытие; отсутствие Spot/UTA trading, futures, карты, On-Chain/Advanced Earn и иных неиспользуемых продуктов не блокирует.
 - **Уровень:** `contract+manual`.
 
 #### AC-040
@@ -81,19 +77,19 @@
 - **Тогда:** Состояние ожидания связи сменяется проверенным обменом; доход/расход основной суммы не удваивается, устаревшая комиссия не восстанавливается.
 - **Уровень:** `integration`.
 
-#### AC-070
+#### AC-033
 
-- **Дано:** Банк передаёт баланс, но не условия грейса; ставка Earn имеет неизвестную базу начисления.
-- **Когда:** Открываются прогнозы.
-- **Тогда:** Баланс отображается; льгота и точный прогноз имеют причину недоступности; AI не извлекает гарантированную бизнес-логику из рекламной формулировки.
-- **Уровень:** `contract+end-to-end`.
+- **Дано:** Есть вклад или Earn с подтверждёнными условиями, пополнением и выводом.
+- **Когда:** Рассчитывается доход за период и прогноз.
+- **Тогда:** Факт отделён от прогноза и переоценки; смена ставки и капитализация учитываются по условиям; неизвестные условия блокируют точный прогноз.
+- **Уровень:** `integration`.
 
-#### AC-071
+#### AC-039
 
-- **Дано:** Источник различает gross P&L, net P&L, fee, funding и reward/transfer.
-- **Когда:** Одна экономическая операция встречается в нескольких журналах.
-- **Тогда:** Происхождение показателей сохранено; комиссия и доход не удваиваются; выбор net/gross подтверждён контрактом.
-- **Уровень:** `contract+integration`.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
+- **Когда:** Строится общая оценка.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
+- **Уровень:** `integration`.
 
 #### AC-079
 
@@ -122,9 +118,9 @@
 make test-contract PROVIDER=bybit && make test-integration AREA=bybit
 ```
 
-Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.
+Восемь сценариев evidence/bybit.samples.json расширены приватными контрактными fixtures; exact decimals, replay, обмен/fee/yield один раз, P2P/bank linkage, partial/expired/forbidden и два владельца проходят. Отдельный read-only live readback покрывает каждый выбранный продукт; публичный каталог и синтетика не подменяют этот результат.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.
 
 ### Передача следующему агенту
 
@@ -134,7 +130,7 @@ make test-contract PROVIDER=bybit && make test-integration AREA=bybit
 
 ## EN
 
-Automatically retrieve consistent data for all mandatory Bybit products.
+Automatically read Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P under D-36 without duplicate financial effects.
 
 **Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
 
@@ -144,7 +140,7 @@ Automatically retrieve consistent data for all mandatory Bybit products.
 
 ### Change and contracts
 
-Cover Funding/Spot/Earn/P2P/futures using separate verified logs; UTA balance/transaction log does not establish full coverage. Prevent duplicate fees/P&L and internal transfers. Implement only the access method established in evidence/bybit, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect.
+After BYBIT-B02–B05 closure and Ready, implement official read-only V5 for verified evidence/bybit routes. FUND is the required accountType; UTA does not substitute for Funding. Link the monetary ledger to deposit/withdraw/transfer/Convert/Earn/P2P details under a proven contract, without classifying from localized UI strings. Distinguish principal, accrued/paid yield and Funding credit; post fees/exchange/income once. Preserve native precision, UID/log identity, revisions, durable checkpoints and partial retention. Verify actually used Flexible/Fixed, history bounds, states and unknown gross/net. P2P needs an eligible read-only API or verified structured browser contract; read POST allowlisting does not authorize create/pay/release/ads. Create collector code only for a demonstrated API gap. Isolate two owners; rotation does not create an account and stale jobs after disconnect are rejected. Spot/UTA trading, futures, card, On-Chain/Advanced Earn and other unused products are unnecessary; their movements through included wallets remain.
 
 ### Change boundaries
 
@@ -158,15 +154,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-006:** Transfers between household accounts, including different members’ accounts, change balances without principal income or expense.
 - **REQ-007:** Exchange and P2P conversion of owned money preserve both currency amounts, the actual rate and fees.
 - **REQ-008:** Repeated imports, receipts and chat entries combine evidence of one transaction without double counting.
-- **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
-- **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
 - **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
-- **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
-- **REQ-036:** Mining rewards are separate from transfers between owned wallets.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-040:** Each source refreshes hourly and on demand with a visible last-success timestamp.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-045:** The Bybit integration automatically reads Funding, Spot, Earn, P2P and futures under a verified contract.
+- **REQ-045:** Bybit automatically reads Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; the official API is preferred. Other products are deferred without blocking under D-36.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-061:** Repeated jobs, restarts and concurrent changes cannot create duplicate financial effects.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
@@ -179,9 +171,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-045
 
-- **Given:** An authorized personal Bybit account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** A read-only Bybit account is securely connected with verified Funding, used Easy Earn and P2P contracts.
+- **When:** Balances, history from the selected date, replayed pages, Convert, Earn accrual/payout and P2P are read; a selected-product permission failure is simulated.
+- **Then:** Exact native amounts, IDs, statuses, fees and coverage match the source; Funding and details do not duplicate an exchange, fee or income. P2P links crypto/fiat with the bank or requires clarification. Access failure/incomplete history explicitly blocks the corresponding coverage; absent Spot/UTA trading, futures, card, On-Chain/Advanced Earn and other unused products do not block.
 - **Level:** `contract+manual`.
 
 #### AC-040
@@ -212,19 +204,19 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Pending matching becomes a verified exchange; principal is not double-counted and the stale fee is not restored.
 - **Level:** `integration`.
 
-#### AC-070
+#### AC-033
 
-- **Given:** A bank exposes balance but no grace terms; an Earn rate has an unknown accrual basis.
-- **When:** Forecasts are opened.
-- **Then:** Balance is shown; grace eligibility and exact forecasts explain unavailability; AI does not turn marketing wording into guaranteed business rules.
-- **Level:** `contract+end-to-end`.
+- **Given:** A deposit or Earn product has confirmed terms, a top-up and a withdrawal.
+- **When:** Period income and forecast are calculated.
+- **Then:** Actual income is separate from forecast and revaluation; rate changes and compounding follow the terms; unknown terms prevent an exact forecast.
+- **Level:** `integration`.
 
-#### AC-071
+#### AC-039
 
-- **Given:** A source distinguishes gross P&L, net P&L, fee, funding and reward/transfer.
-- **When:** One economic event appears in several logs.
-- **Then:** Metric provenance is preserved; fees and income are not doubled; net/gross semantics are contract-verified.
-- **Level:** `contract+integration`.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
+- **When:** A total valuation is built.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
+- **Level:** `integration`.
 
 #### AC-079
 
@@ -253,9 +245,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 make test-contract PROVIDER=bybit && make test-integration AREA=bybit
 ```
 
-All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result.
+The eight evidence/bybit.samples.json scenarios are extended with private contract fixtures; exact decimals, replay, exchange/fee/yield once, P2P/bank linkage, partial/expired/forbidden and two owners pass. Separate read-only live readback covers every selected product; a public catalog and synthetic data do not replace that outcome.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof.
 
 ### Handoff to the next agent
 

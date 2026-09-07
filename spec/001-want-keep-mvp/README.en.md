@@ -50,3 +50,5 @@ D-32 refinement: the current Ozon contract covers a debit card and linked main a
 D-33 refinement: Aifory — RUB accounts, USDT, ETH and the existing USD card; other products deferred without blocking. ETH added to accounting and valuation. [Research](evidence/aifory.en.md); unresolved contract questions remain in BLK-05.
 
 D-34 refinement: EMCD covers the USDT wallet, used Grow/crypto cards and P2P history. Mining has never been used; its data and other unused products are deferred without blocking readiness. [Research](evidence/emcd.en.md), automation questions in BLK-06.
+
+D-36: Bybit — Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; official APIs preferred, other products deferred without blocking. USDC joins accounting/valuation. [Research](evidence/bybit.en.md); private access, history and P2P eligibility remain in BLK-04.

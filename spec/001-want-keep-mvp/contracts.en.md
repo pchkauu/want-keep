@@ -2,7 +2,7 @@
 
 [Русский](contracts.md)
 
-Target project contract version 5; family and desktop amendment 2026-09-07. No actual API or database schema exists yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
+Target project contract version 6; family and desktop amendment 2026-09-07. No actual API or database schema exists yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
 
 ## Domain entities
 
@@ -35,7 +35,7 @@ Purchases have actual cash dates and expense-budget months. Refunds have their o
 
 Refunding USD 4 of a USD 10 purchase originally valued at RUB 900 reduces historical expense by RUB 360. Actual receipt/conversion amounts and FX differences remain separate. Item/discount allocations exactly equal payment; allocate rounding remainders deterministically by largest fractional remainder, breaking ties by stable item ID.
 
-Historical rate snapshots are fixed to transaction dates. Current quote updates do not alter them; correcting an erroneous historical price creates an audited valuation revision. Missing prices produce unavailable/partial, never zero, a current price substituted for history or USDT/USD=1. Native amounts stay accessible.
+Historical rate snapshots are fixed to transaction dates. Current quote updates do not alter them; correcting an erroneous historical price creates an audited valuation revision. Missing prices produce unavailable/partial, never zero, a current price substituted for history or USD/USDT/USDC=1. Native amounts stay accessible.
 
 ## Daily allowances
 
@@ -133,7 +133,7 @@ Synthetic overview response example: “Available today RUB 400; USD 100 expecte
 
 ## Aifory and ETH: D-33
 
-RUB, USD, USDT, BTC and ETH are available in Money and valuation. Network is a separate source/operation attribute; verify provider scale at the boundary. Do not round ETH to fiat cents or equate USDT with USD. Unknown rate/available/locked does not become zero or spendable money.
+RUB, USD, USDT, USDC (D-36), BTC and ETH are available in Money and valuation. Network is a separate source/operation attribute; verify provider scale at the boundary. Do not round ETH to fiat cents or equate USD/USDT/USDC. Unknown rate/available/locked does not become zero or spendable money.
 
 Aifory reads only RUB accounts, USDT, ETH and the existing USD card with their movements/fees. A RUB-group total does not create another balance; matching office names do not merge accounts. A platform RUB wallet preserves product kind and is not a bank deposit. Card funding links distinct native legs under an established contract, with fees separate. Authorization/clearing need IDs/linkage; UI sign, mask, shared URL and similar merchant are not identity.
 
@@ -146,3 +146,13 @@ The current contract covers the USDT wallet, existing Coinhold/Grow, used Plus/L
 The main aggregate and child wallet/Grow balances are not added twice. Link accrued, capitalized and paid rewards; capitalization/movement of already recognized income creates no additional income. Unknown balance composition or card reserves cannot become spendable funds. Purchase decline and a posted fee are separate effects; legacy Light and Plus use their own terms. Card funding links USDT and USD; original EUR purchase amounts remain separate from approximate USD valuation and settlement. Exact owner-side fields link P2P to wallet/bank facts, not currency order, conversations or rounded UI amounts.
 
 [Evidence and gaps](evidence/emcd.en.md), [synthetic scenarios](evidence/emcd.samples.json). Real provider request/response pairs were not obtained; scenarios are not an API schema. task-0.10 closes BLK-06 before task-4.6 implementation. This updates target-contract version 5; financial runtime/database are absent and no migration is needed; the task-1.1 foundation is already implemented.
+
+## Bybit: D-36
+
+Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P are mandatory. Other products do not block; official APIs are preferred. The [read-route and limits matrix](evidence/bybit.en.md) and [synthetic projections](evidence/bybit.samples.json) are task-0.10 inputs, not a ready provider schema. Read POST `/v5/p2p/order/simplifyList` and `/v5/p2p/order/info` are allowlisted separately from financial write POST; readOnly and actual account eligibility are required. Without a key or verified P2P API eligibility, affected coverage remains partial/blocked, not an empty successful import. The `apiKey` secret returned by query-api is excluded before logs/AI/evidence.
+
+Identity separates household/provider/site/UID, FUND accountType/asset and each log record ID. Key rotation does not create an account; member UIDs do not merge. Funding `currcCursor` and detail IDs are source records, not automatically separate financial events. Structured contracts establish linkage/status/gross/net; localized business labels do not determine critical classification. Withdrawal fees, two Convert legs, Earn accrual/payout/Funding and P2P/bank do not duplicate effects. Principal is not income; unknown linkage prompts clarification.
+
+USDC differs from USD/USDT; similar USDC.E/USDCX are not merged. Native decimals are not capped by UI rounding or subscription precision; missing/bonus/hold do not become spendable zero. Funding time filters use seconds, many details use ms; individual envelopes/units are established at boundaries. Yield list/yield, internal-deposit timestamp and documented APR with percent/hourly points need explicit verification. Check used Flexible/Fixed; an empty list does not establish absent history.
+
+Durable checkpoints, overlapping windows, revisions and retention boundaries are mandatory; API yield describes three months, P2P at most 180 days, Convert web from 2025-09-10. Requests before available history give partial coverage and an opening balance/coverage evidence, not invented completeness. task-0.10 closes BYBIT-B02–B05 before task-4.4; a browser fallback needs a proven permitted structured read contract. This is target version 6 without financial runtime/database changes.

@@ -17,7 +17,7 @@ This stage delivers bilingual specifications, criteria, architecture, integratio
 | ID | Decision |
 | --- | --- |
 | D-01 | One household, two members with separate sign-in, desktop web on macOS laptops in Chrome and Arc. All 15 capabilities and six integrations are required for the complete MVP. Hundreds of transactions/month; up to 45 minutes/day usage target. |
-| D-02 | RUB, USD, USDT, BTC, ETH (D-33); cash and bank money are different accounts. Reporting currency switches. Owned money, availability, debt and credit limits are distinct. |
+| D-02 | RUB, USD, USDT, USDC (D-36), BTC, ETH (D-33); cash and bank money are different accounts. Reporting currency switches. Owned money, availability, debt and credit limits are distinct. |
 | D-03 | Hourly and on-demand automatic sync. History starts on a selected date; opening balances and coverage boundaries are explicit. |
 | D-04 | Owned transfers/exchanges are linked without repeated income/expense; fees remain separate. Duplicates are handled in accounting. Originals and correction history remain; discrepancies are investigated. |
 | D-05 | Full expense in the payment month, including annual subscriptions. Refunds recalculate the original purchase month; cash movement retains the refund date. |
@@ -27,8 +27,8 @@ This stage delivers bilingual specifications, criteria, architecture, integratio
 | D-09 | Calendar month; dated expenses, flexible categories and forecast income. Copy plans without remaining/overspend rollover. AI applies approved-plan changes only on an authorized member decision. |
 | D-10 | Goals have amount, currency, deadline and virtual-reservation or dedicated-account mode. No double reservation. Daily allowances are overall/per-category and available/forecast with separate funding by currency. |
 | D-11 | Credit cards with debt, payments and grace; savings with actual/forecast and comparable dated-cash-flow returns; realized/unrealized trading P&L, fees, funding and mining. No trading terminal. |
-| D-12 | Transaction-date expense valuation, current wealth valuation and separate FX effects. Reference rates and available provider buy/sell quotes with fees. USDT is not automatically USD. |
-| D-13 | Alfa-Bank, Raif Russia: cards, current/savings accounts, deposits; Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding/Spot/Earn/P2P/futures; Aifory: RUB accounts, USDT, ETH and existing card with their movements (D-33); EMCD: used cards, Coinhold/Grow, USDT wallet and P2P history (D-34). Read-only; browser automation allowed. |
+| D-12 | Transaction-date expense valuation, current wealth valuation and separate FX effects. Reference rates and available provider buy/sell quotes with fees. USD, USDT and USDC are not automatically equal. |
+| D-13 | Alfa-Bank, Raif Russia: cards, current/savings accounts, deposits; Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding USDT/USDC/ETH/BTC, Easy Earn, P2P (D-36); Aifory: RUB accounts, USDT, ETH and existing card with their movements (D-33); EMCD: used cards, Coinhold/Grow, USDT wallet and P2P history (D-34). Read-only; browser automation allowed. |
 | D-14 | Separate passkeys and personal one-time recovery codes for each member; partner-assisted reset is unavailable. Protected secrets, attachments and sessions; AI has no payment authority. |
 | D-15 | For the whole household: server up to $40/month in DE/NL/BG, OpenAI up to $50/month; separately sourced data must be free. Hourly MacBook backups while reachable; visible backup age, conditional RPO and recovery target within four hours. |
 | D-16 | UI, AI interaction and documentation in RU/EN. Dashboard covers plan/actuals, income/expenses, goals and daily allowances. In-app and web-push notifications. |
@@ -93,3 +93,11 @@ REQ-002/REQ-003/REQ-046, their ACs and downstream tasks were updated with IDs pr
 | ID | Decision |
 | --- | --- |
 | D-34 | Current EMCD scope: used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders. Mining has never been used; neither its current data nor history is required. Mining and other unused products/wallets are deferred without blocking the MVP; expansion requires a new decision and verified contracts. Retain all included-wallet movements. Automation and quality for selected products, shared features and other providers are not reduced. |
+
+## Bybit refinement, 2026-09-07
+
+| ID | Decision |
+| --- | --- |
+| D-36 | Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P. Official APIs take priority over Playwright. Spot/UTA trading, futures, options, card, On-Chain/Advanced Earn and other unused products are deferred without blocking; retain included-wallet movements. USDC is a distinct accounting and selectable valuation asset without assumed USD/USDT/USDC parity. Expansion requires a new decision and verified contracts. |
+
+REQ-002/REQ-003/REQ-039/REQ-045 and task IDs remain; AC-071 and task-6.5 no longer require unused Bybit products. Shared financial functions remain. Target-contract version 6; task-1.1 foundation exists, financial API/database do not and no migration is needed. [Research](evidence/bybit.en.md); BYBIT-B02–B05 and BLK-04 remain open.

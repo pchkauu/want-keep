@@ -3,9 +3,9 @@
 
 ## RU
 
-Получить проверяемую матрицу доступа к обязательным продуктам Bybit.
+Зафиксировать проверяемый read-контракт Bybit для Funding USDT/USDC/ETH/BTC, Easy Earn и P2P и ограничения доступа.
 
-**Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
+**Состояние:** Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit.md), десять наблюдений/источников и восемь синтетических сценариев. Chrome и публичный Earn API прочитаны; API-ключей нет, P2P advertiser eligibility не выполнена. BYBIT-B01 закрыт, BYBIT-B02–B05 открыты под task-0.10, BYBIT-B06 отложен без блокировки. task-4.4 и BLK-04 остаются Not Ready; исследование не доказывает полные AC.
 
 **Зависимости:** нет.
 
@@ -13,23 +13,22 @@
 
 ### Изменение и контракты
 
-Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.
+По D-36 предпочесть официальный API браузеру. Разделить опубликованный контракт, Chrome-наблюдение, успешный публичный GET и непроверенный приватный запрос. Описать Funding balances/history, Convert и deposit/withdraw/transfer enrichment, Easy Earn Flexible/Fixed по фактически используемому продукту, P2P read POST и advertiser eligibility. Зафиксировать UID/identity, decimals, status/gross/net/fee, связи журналов, окна/cursors/retention, scopes/reauth/revocation и противоречия документации. Не создавать ключи, заявки рекламодателя или финансовые операции. Другие продукты не исследуются и не блокируют. task-0.7 получает USDC, task-0.9 — доступ/лимиты; task-0.10 закрывает BYBIT-B02–B05 перед task-4.4. Отсутствие приватного доступа — явный результат, а не успешное покрытие.
 
 ### Границы изменений
 
 - `spec/001-want-keep-mvp/evidence/bybit.md`
 - `spec/001-want-keep-mvp/evidence/bybit.en.md`
+- `spec/001-want-keep-mvp/evidence/bybit.samples.json`
 
 Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
 
 ### Связанные требования
 
-- **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
-- **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
 - **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
-- **REQ-045:** Интеграция Bybit автоматически читает Funding, Spot, Earn, P2P и фьючерсы в пределах подтверждённого контракта.
+- **REQ-045:** Bybit автоматически читает Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен. Остальные продукты отложены без блокировки по D-36.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-073:** Оба управляют подключениями; банковскую авторизацию выполняет владелец внешнего аккаунта без раскрытия секретов партнёру или AI.
@@ -40,9 +39,9 @@
 
 #### AC-045
 
-- **Дано:** Подключён разрешённый личный аккаунт Bybit с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Безопасно подключён read-only аккаунт Bybit с подтверждёнными контрактами Funding, используемого Easy Earn и P2P.
+- **Когда:** Читаются остатки, история с выбранной даты, повторные страницы, Convert, начисление/выплата Earn и P2P; моделируется отказ прав выбранного продукта.
+- **Тогда:** Точные native amounts, ID, статусы, комиссии и coverage сопоставимы с источником; Funding и детали не удваивают обмен, комиссию или доход. P2P связывает crypto/fiat с банком либо требует уточнения. Отказ доступа/неполная история явно блокируют соответствующее покрытие; отсутствие Spot/UTA trading, futures, карты, On-Chain/Advanced Earn и иных неиспользуемых продуктов не блокирует.
 - **Уровень:** `contract+manual`.
 
 #### AC-041
@@ -59,12 +58,19 @@
 - **Тогда:** Платёж и неизвестный маршрут блокируются; MFA/CAPTCHA передаётся владельцу, источник приостанавливается; остальные источники продолжают работать.
 - **Уровень:** `integration`.
 
-#### AC-070
+#### AC-033
 
-- **Дано:** Банк передаёт баланс, но не условия грейса; ставка Earn имеет неизвестную базу начисления.
-- **Когда:** Открываются прогнозы.
-- **Тогда:** Баланс отображается; льгота и точный прогноз имеют причину недоступности; AI не извлекает гарантированную бизнес-логику из рекламной формулировки.
-- **Уровень:** `contract+end-to-end`.
+- **Дано:** Есть вклад или Earn с подтверждёнными условиями, пополнением и выводом.
+- **Когда:** Рассчитывается доход за период и прогноз.
+- **Тогда:** Факт отделён от прогноза и переоценки; смена ставки и капитализация учитываются по условиям; неизвестные условия блокируют точный прогноз.
+- **Уровень:** `integration`.
+
+#### AC-039
+
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
+- **Когда:** Строится общая оценка.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
+- **Уровень:** `integration`.
 
 #### AC-079
 
@@ -83,12 +89,12 @@
 ### Проверка результата
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-Документ на двух языках содержит источник и дату, проверенные и непроверенные поля, примеры запросов/ответов без секретов и итог по каждому продукту. Реальный read-only прогон выполняется только после безопасного предоставления доступа владельцем; его отсутствие явно записано.
+RU/EN содержат источники/даты, точную матрицу read-маршрутов, восемь синтетических сценариев и открытые блокеры. Публичные HTTP 200/retCode=0 отделены от отсутствующих private API/полной истории/второго владельца. Исследование может завершиться с блокерами по README.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.
 
 ### Передача следующему агенту
 
@@ -98,9 +104,9 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 ## EN
 
-Produce a verifiable access matrix for mandatory Bybit products.
+Record a verifiable Bybit read contract for Funding USDT/USDC/ETH/BTC, Easy Earn and P2P and its access limits.
 
-**Status:** Research — not started; live access and paid runs require securely supplied owner access.
+**Status:** Research completed on 2026-09-07: [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit.en.md), ten observations/sources and eight synthetic scenarios. Chrome and public Earn APIs were read; no API keys, P2P advertiser prerequisites unmet. BYBIT-B01 closed, BYBIT-B02–B05 open under task-0.10, BYBIT-B06 deferred without blocking. task-4.4 and BLK-04 remain Not Ready; research does not prove complete ACs.
 
 **Dependencies:** none.
 
@@ -108,23 +114,22 @@ Produce a verifiable access matrix for mandatory Bybit products.
 
 ### Change and contracts
 
-Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity.
+Under D-36 prefer official APIs to browser access. Separate published contracts, Chrome observations, successful public GETs and unverified private requests. Describe Funding balances/history, Convert and deposit/withdraw/transfer enrichment, Easy Earn Flexible/Fixed according to actual usage, P2P read POST and advertiser eligibility. Record UID/identity, decimals, status/gross/net/fees, cross-log links, windows/cursors/retention, scopes/reauth/revocation and documentation contradictions. Do not create keys, advertiser applications or financial operations. Other products are not researched and do not block. task-0.7 receives USDC, task-0.9 access/limits; task-0.10 closes BYBIT-B02–B05 before task-4.4. Missing private access is an explicit result, not successful coverage.
 
 ### Change boundaries
 
 - `spec/001-want-keep-mvp/evidence/bybit.md`
 - `spec/001-want-keep-mvp/evidence/bybit.en.md`
+- `spec/001-want-keep-mvp/evidence/bybit.samples.json`
 
 These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
 
 ### Linked requirements
 
-- **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
-- **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
 - **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
-- **REQ-045:** The Bybit integration automatically reads Funding, Spot, Earn, P2P and futures under a verified contract.
+- **REQ-045:** Bybit automatically reads Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; the official API is preferred. Other products are deferred without blocking under D-36.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-073:** Both manage connections; the external-account owner performs bank authentication without exposing secrets to the partner or AI.
@@ -135,9 +140,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-045
 
-- **Given:** An authorized personal Bybit account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** A read-only Bybit account is securely connected with verified Funding, used Easy Earn and P2P contracts.
+- **When:** Balances, history from the selected date, replayed pages, Convert, Earn accrual/payout and P2P are read; a selected-product permission failure is simulated.
+- **Then:** Exact native amounts, IDs, statuses, fees and coverage match the source; Funding and details do not duplicate an exchange, fee or income. P2P links crypto/fiat with the bank or requires clarification. Access failure/incomplete history explicitly blocks the corresponding coverage; absent Spot/UTA trading, futures, card, On-Chain/Advanced Earn and other unused products do not block.
 - **Level:** `contract+manual`.
 
 #### AC-041
@@ -154,12 +159,19 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Payments and unknown routes are blocked; MFA/CAPTCHA is handed to the owner and that source pauses; other sources continue.
 - **Level:** `integration`.
 
-#### AC-070
+#### AC-033
 
-- **Given:** A bank exposes balance but no grace terms; an Earn rate has an unknown accrual basis.
-- **When:** Forecasts are opened.
-- **Then:** Balance is shown; grace eligibility and exact forecasts explain unavailability; AI does not turn marketing wording into guaranteed business rules.
-- **Level:** `contract+end-to-end`.
+- **Given:** A deposit or Earn product has confirmed terms, a top-up and a withdrawal.
+- **When:** Period income and forecast are calculated.
+- **Then:** Actual income is separate from forecast and revaluation; rate changes and compounding follow the terms; unknown terms prevent an exact forecast.
+- **Level:** `integration`.
+
+#### AC-039
+
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
+- **When:** A total valuation is built.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
+- **Level:** `integration`.
 
 #### AC-079
 
@@ -178,12 +190,12 @@ A criterion link establishes coverage; research or a partial task does not prove
 ### Verification
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check
 ```
 
-The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit.
+RU/EN include dated sources, an exact read-route matrix, eight synthetic scenarios and open blockers. Public HTTP 200/retCode=0 is separate from missing private API/full-history/second-owner evidence. Research can complete with blockers under README.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof.
 
 ### Handoff to the next agent
 

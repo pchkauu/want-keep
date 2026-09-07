@@ -28,7 +28,7 @@
 - **REQ-031:** Кредитные карты показывают задолженность, собственные средства, лимит, минимальный платёж и дату по данным источника.
 - **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
 - **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
 - **REQ-047:** Интеграция EMCD автоматически читает используемые криптокарты, Coinhold/Grow, кошелёк USDT и исторические P2P-ордера по D-34; майнинг никогда не использовался и вместе с другими неиспользуемыми продуктами отложен без блокировки.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
@@ -124,7 +124,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-031:** Credit cards show debt, own funds, credit limit, minimum payment and due date from source data.
 - **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
 - **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
 - **REQ-047:** The EMCD integration automatically reads used crypto cards, Coinhold/Grow, the USDT wallet and historical P2P orders under D-34; mining has never been used and is deferred with other unused products without blocking readiness.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.

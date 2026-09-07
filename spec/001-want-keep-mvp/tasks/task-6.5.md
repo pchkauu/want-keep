@@ -7,13 +7,13 @@
 
 **Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
 
-**Зависимости:** `task-4.4`, `task-6.1`, `task-2.4`.
+**Зависимости:** `task-6.1`, `task-2.4`.
 
 **Тип:** `implementation`.
 
 ### Изменение и контракты
 
-Через доменные контракты разделить gross/net realized P&L, unrealized P&L, fees, funding и rewards. Учитывать общие IDs нескольких журналов, transfers Funding/Spot/Earn/mining и капитализацию; нереализованный результат не считать наличным доходом. Не добавлять торговый терминал или управление майнингом. EMCD по D-34 не является источником торговли/майнинга и не блокирует эту задачу; его Grow обрабатывается в накоплениях.
+Через доменные контракты разделить gross/net realized P&L, unrealized P&L, fees, funding и rewards. Учитывать общие IDs нескольких журналов, transfers Funding/Spot/Earn/mining и капитализацию; нереализованный результат не считать наличным доходом. Не добавлять торговый терминал или управление майнингом. EMCD по D-34 не является источником торговли/майнинга и не блокирует эту задачу; его Grow обрабатывается в накоплениях. Bybit по D-36 также не является источником торговли/майнинга для текущего MVP и не блокирует эту задачу. Общие функции остаются; проверяются синтетическими доменными сценариями, а новое платформенное покрытие требует отдельного решения и контрактов. Funding и Easy Earn обслуживают task-4.4 и накопления.
 
 ### Границы изменений
 
@@ -27,7 +27,6 @@
 - **REQ-007:** Обмен и P2P-конвертация собственных денег сохраняют обе валютные суммы, фактический курс и комиссии.
 - **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
 - **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
-- **REQ-045:** Интеграция Bybit автоматически читает Funding, Spot, Earn, P2P и фьючерсы в пределах подтверждённого контракта.
 
 ### Критерии приёмки
 
@@ -53,13 +52,6 @@
 - **Когда:** Обе записи импортируются.
 - **Тогда:** Доход учитывается при подтверждённом начислении один раз; последующий перевод дохода не создаёт.
 - **Уровень:** `integration`.
-
-#### AC-045
-
-- **Дано:** Подключён разрешённый личный аккаунт Bybit с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
-- **Уровень:** `contract+manual`.
 
 #### AC-071
 
@@ -90,13 +82,13 @@ Produce consistent crypto-product results without double accruals.
 
 **Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
 
-**Dependencies:** `task-4.4`, `task-6.1`, `task-2.4`.
+**Dependencies:** `task-6.1`, `task-2.4`.
 
 **Kind:** `implementation`.
 
 ### Change and contracts
 
-Use domain contracts to separate gross/net realized P&L, unrealized P&L, fees, funding and rewards. Account for shared IDs across logs, transfers among Funding/Spot/Earn/mining and compounding; unrealized P&L is not cash income. Do not add a trading terminal or mining control. EMCD under D-34 is not a trading/mining source and does not block this task; its Grow is handled by savings.
+Use domain contracts to separate gross/net realized P&L, unrealized P&L, fees, funding and rewards. Account for shared IDs across logs, transfers among Funding/Spot/Earn/mining and compounding; unrealized P&L is not cash income. Do not add a trading terminal or mining control. EMCD under D-34 is not a trading/mining source and does not block this task; its Grow is handled by savings. Bybit under D-36 is also not a trading/mining source for the current MVP and does not block this task. Shared functions remain and use synthetic domain scenarios; new platform coverage requires a separate decision and contracts. Funding and Easy Earn belong to task-4.4 and savings.
 
 ### Change boundaries
 
@@ -110,7 +102,6 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-007:** Exchange and P2P conversion of owned money preserve both currency amounts, the actual rate and fees.
 - **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
 - **REQ-036:** Mining rewards are separate from transfers between owned wallets.
-- **REQ-045:** The Bybit integration automatically reads Funding, Spot, Earn, P2P and futures under a verified contract.
 
 ### Acceptance criteria
 
@@ -136,13 +127,6 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **When:** Both records are imported.
 - **Then:** Income is recognized once on confirmed credit; the subsequent transfer creates no additional income.
 - **Level:** `integration`.
-
-#### AC-045
-
-- **Given:** An authorized personal Bybit account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
-- **Level:** `contract+manual`.
 
 #### AC-071
 

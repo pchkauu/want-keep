@@ -28,7 +28,7 @@
 - **REQ-032:** Грейс-период опирается на условия конкретной карты и показывает сумму и срок сохранения льготы.
 - **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
 - **REQ-037:** Исторические расходы используют зафиксированную оценку на дату операции, текущий капитал — актуальную оценку.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-059:** Денежные расчёты используют точную арифметику и явные правила округления на границах.
 
 ### Критерии приёмки
@@ -58,9 +58,9 @@
 
 #### AC-039
 
-- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
 - **Когда:** Строится общая оценка.
-- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
 - **Уровень:** `integration`.
 
 #### AC-059
@@ -120,7 +120,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-032:** Grace-period tracking uses the specific card's terms and shows the amount and deadline needed to preserve the benefit.
 - **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
 - **REQ-037:** Historical expenses use a fixed transaction-date valuation; current wealth uses a current valuation.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-059:** Money calculations use exact arithmetic and explicit boundary rounding rules.
 
 ### Acceptance criteria
@@ -150,9 +150,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-039
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 #### AC-059

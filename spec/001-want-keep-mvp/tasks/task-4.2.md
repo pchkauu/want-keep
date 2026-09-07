@@ -32,11 +32,10 @@
 - **REQ-033:** Накопления показывают фактические начисления и прогноз по ставкам, срокам, капитализации и денежным потокам.
 - **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
 - **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-040:** Каждый источник обновляется раз в час и по запросу с видимым временем успешного обновления.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
 - **REQ-043:** Интеграция Райффайзенбанк РФ автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
-- **REQ-045:** Интеграция Bybit автоматически читает Funding, Spot, Earn, P2P и фьючерсы в пределах подтверждённого контракта.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-061:** Повторные задания, перезапуски и параллельные изменения не создают двойных финансовых эффектов.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
@@ -164,11 +163,10 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-033:** Savings show actual accruals and forecasts using rates, terms, compounding and cash flows.
 - **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
 - **REQ-036:** Mining rewards are separate from transfers between owned wallets.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-040:** Each source refreshes hourly and on demand with a visible last-success timestamp.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
 - **REQ-043:** The Raiffeisenbank Russia integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
-- **REQ-045:** The Bybit integration automatically reads Funding, Spot, Earn, P2P and futures under a verified contract.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-061:** Repeated jobs, restarts and concurrent changes cannot create duplicate financial effects.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.

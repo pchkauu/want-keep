@@ -29,7 +29,7 @@
 - **REQ-008:** Повторные импорты, чек и запись чата объединяют доказательства одной операции без повторного учёта.
 - **REQ-009:** Статусы ожидающей, проведённой, отменённой и возвращённой операции учитываются явно.
 - **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-041:** История сохраняет границы покрытия, курсоры, пробелы и статусы источника.
 - **REQ-048:** Интеграции и браузерный сборщик выполняют только разрешённые операции чтения.
 - **REQ-062:** Архитектура использует Go/PostgreSQL, React/TypeScript/Vite и отдельный Playwright-сборщик с зависимостями к домену.
@@ -78,9 +78,9 @@
 
 #### AC-039
 
-- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
 - **Когда:** Строится общая оценка.
-- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
 - **Уровень:** `integration`.
 
 #### AC-041
@@ -169,7 +169,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-008:** Repeated imports, receipts and chat entries combine evidence of one transaction without double counting.
 - **REQ-009:** Pending, posted, cancelled and refunded transaction states are explicit.
 - **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-041:** History retains coverage boundaries, cursors, gaps and source status.
 - **REQ-048:** Integrations and the browser collector perform authorized read operations only.
 - **REQ-062:** Architecture uses Go/PostgreSQL, React/TypeScript/Vite and a separate Playwright collector with dependencies pointing toward the domain.
@@ -218,9 +218,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-039
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 #### AC-041

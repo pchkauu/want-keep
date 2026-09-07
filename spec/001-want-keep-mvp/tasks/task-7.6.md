@@ -151,8 +151,8 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
-- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, USDC, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, USDC, BTC и ETH.
 - **REQ-010:** Возврат уменьшает расходы исходного месяца покупки, сохраняя дату реального поступления денег.
 - **REQ-014:** Категория, подкатегория, продавец и позиция чека являются отдельными аналитическими признаками.
 - **REQ-020:** AI-инсайты по доходам и расходам ссылаются на проверяемые данные и отделяют прогноз от факта.
@@ -160,7 +160,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 - **REQ-030:** Дневные лимиты показывают семейный и индивидуальный доступный/прогнозный остаток, по категориям и с отдельным обеспечением каждой валютой.
 - **REQ-037:** Исторические расходы используют зафиксированную оценку на дату операции, текущий капитал — актуальную оценку.
 - **REQ-038:** Курсы обмена учитывают направление, сервис, время, сумму применимости и известные комиссии.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-051:** AI ограничен бюджетом $50/месяц и деградирует в очередь ожидания без остановки обычного учёта.
 - **REQ-052:** Дашборд объединяет счета, план/факт, доходы, расходы, цели и дневные лимиты с детализацией.
 - **REQ-054:** Интерфейс, чат и документация поддерживают RU/EN без изменения финансовой семантики.
@@ -178,7 +178,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 #### AC-003
 
 - **Дано:** Для всех необходимых пар есть актуальная оценка.
-- **Когда:** Владелец переключает RUB на USD, USDT, BTC и ETH.
+- **Когда:** Участник переключает RUB на USD, USDT, USDC, BTC и ETH.
 - **Тогда:** Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.
 - **Уровень:** `end-to-end`.
 
@@ -219,9 +219,9 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### AC-039
 
-- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
 - **Когда:** Строится общая оценка.
-- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
 - **Уровень:** `integration`.
 
 #### AC-052
@@ -474,8 +474,8 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
-- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
+- **REQ-002:** Accounting supports RUB, USD, USDT, USDC, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, USDC, BTC and ETH.
 - **REQ-010:** A refund reduces expenses in the purchase month while preserving the actual cash receipt date.
 - **REQ-014:** Category, subcategory, merchant and receipt item are separate analytical dimensions.
 - **REQ-020:** AI income/expense insights reference verifiable data and separate forecasts from facts.
@@ -483,7 +483,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-030:** Daily limits show household and individual available/forecast allowances, by category and with separate funding in each currency.
 - **REQ-037:** Historical expenses use a fixed transaction-date valuation; current wealth uses a current valuation.
 - **REQ-038:** Exchange quotes include direction, provider, timestamp, applicable amount and known fees.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-051:** AI is limited to $50/month and degrades to a waiting queue without stopping ordinary accounting.
 - **REQ-052:** The dashboard combines accounts, plan/actuals, income, expenses, goals and daily limits with drill-down.
 - **REQ-054:** UI, chat and documentation support RU/EN without changing financial semantics.
@@ -501,7 +501,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 #### AC-003
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
+- **When:** The member switches RUB to USD, USDT, USDC, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 
@@ -542,9 +542,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-039
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 #### AC-052

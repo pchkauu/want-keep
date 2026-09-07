@@ -3,7 +3,7 @@
 
 ## RU
 
-Подтвердить историческую и текущую оценку RUB, USD, USDT, BTC и ETH и покрытие обменных котировок.
+Подтвердить историческую и текущую оценку RUB, USD, USDT, USDC, BTC и ETH и покрытие обменных котировок.
 
 **Состояние:** Исследование — не начато; live-доступ и платные прогоны требуют безопасно предоставленного доступа владельца.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Проверить бесплатность, условия использования, USD/RUB, BTC, ETH и USDT-кроссы, историческую глубину, точность timestamp и rate limits. Отдельно описать справочную оценку и котировки покупки/продажи сервисов, включая комиссии и доступность из DE/NL/BG. Не считать USDT равным USD.
+Проверить бесплатность, условия использования, USD/RUB, BTC, ETH, USDT и USDC-кроссы, историческую глубину, точность timestamp и rate limits. Отдельно описать справочную оценку и котировки покупки/продажи сервисов, включая комиссии и доступность из DE/NL/BG. USD, USDT и USDC не равны автоматически; похожие токены не объединять. D-36 добавляет USDC, не меняя исходные суммы.
 
 ### Границы изменений
 
@@ -24,11 +24,11 @@
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
-- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, USDC, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, USDC, BTC и ETH.
 - **REQ-037:** Исторические расходы используют зафиксированную оценку на дату операции, текущий капитал — актуальную оценку.
 - **REQ-038:** Курсы обмена учитывают направление, сервис, время, сумму применимости и известные комиссии.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-059:** Денежные расчёты используют точную арифметику и явные правила округления на границах.
 
 ### Критерии приёмки
@@ -51,9 +51,9 @@
 
 #### AC-039
 
-- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
 - **Когда:** Строится общая оценка.
-- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
 - **Уровень:** `integration`.
 
 #### AC-074
@@ -81,7 +81,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 ## EN
 
-Verify historical/current RUB, USD, USDT, BTC and ETH valuation and exchange-quote coverage.
+Verify historical/current RUB, USD, USDT, USDC, BTC and ETH valuation and exchange-quote coverage.
 
 **Status:** Research — not started; live access and paid runs require securely supplied owner access.
 
@@ -91,7 +91,7 @@ Verify historical/current RUB, USD, USDT, BTC and ETH valuation and exchange-quo
 
 ### Change and contracts
 
-Verify free access, usage terms, USD/RUB, BTC, ETH and USDT crosses, history depth, timestamp precision and rate limits. Distinguish reference valuation from provider buy/sell quotes, including fees and DE/NL/BG reachability. Do not equate USDT with USD.
+Verify free access, usage terms, USD/RUB, BTC, ETH, USDT and USDC crosses, history depth, timestamp precision and rate limits. Distinguish reference valuation from provider buy/sell quotes, including fees and DE/NL/BG reachability. USD, USDT and USDC are not automatically equal; do not merge similar tokens. D-36 adds USDC without changing native amounts.
 
 ### Change boundaries
 
@@ -102,11 +102,11 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
-- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
+- **REQ-002:** Accounting supports RUB, USD, USDT, USDC, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, USDC, BTC and ETH.
 - **REQ-037:** Historical expenses use a fixed transaction-date valuation; current wealth uses a current valuation.
 - **REQ-038:** Exchange quotes include direction, provider, timestamp, applicable amount and known fees.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-059:** Money calculations use exact arithmetic and explicit boundary rounding rules.
 
 ### Acceptance criteria
@@ -129,9 +129,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-039
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 #### AC-074

@@ -24,14 +24,14 @@
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
-- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, USDC, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, USDC, BTC и ETH.
 - **REQ-007:** Обмен и P2P-конвертация собственных денег сохраняют обе валютные суммы, фактический курс и комиссии.
 - **REQ-010:** Возврат уменьшает расходы исходного месяца покупки, сохраняя дату реального поступления денег.
 - **REQ-016:** Позиции чека распределяют одну оплаченную сумму по категориям без дублирования итога.
 - **REQ-037:** Исторические расходы используют зафиксированную оценку на дату операции, текущий капитал — актуальную оценку.
 - **REQ-038:** Курсы обмена учитывают направление, сервис, время, сумму применимости и известные комиссии.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-059:** Денежные расчёты используют точную арифметику и явные правила округления на границах.
 
 ### Критерии приёмки
@@ -41,7 +41,7 @@
 #### AC-003
 
 - **Дано:** Для всех необходимых пар есть актуальная оценка.
-- **Когда:** Владелец переключает RUB на USD, USDT, BTC и ETH.
+- **Когда:** Участник переключает RUB на USD, USDT, USDC, BTC и ETH.
 - **Тогда:** Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.
 - **Уровень:** `end-to-end`.
 
@@ -75,9 +75,9 @@
 
 #### AC-039
 
-- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
 - **Когда:** Строится общая оценка.
-- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
 - **Уровень:** `integration`.
 
 #### AC-059
@@ -107,7 +107,7 @@
 make test-go PKG=./internal/valuation/... && make test-contract PROVIDER=rates
 ```
 
-RUB, USD, USDT, BTC и ETH, cross-rates, partial refund и отсутствие исторической цены проверены без изменения native ledger.
+RUB, USD, USDT, USDC, BTC и ETH, cross-rates без условного паритета, partial refund, остатки точнее UI и отсутствие исторической цены проверены без изменения native ledger.
 
 Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
 
@@ -140,14 +140,14 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
-- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
+- **REQ-002:** Accounting supports RUB, USD, USDT, USDC, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, USDC, BTC and ETH.
 - **REQ-007:** Exchange and P2P conversion of owned money preserve both currency amounts, the actual rate and fees.
 - **REQ-010:** A refund reduces expenses in the purchase month while preserving the actual cash receipt date.
 - **REQ-016:** Receipt items allocate one paid amount across categories without duplicating the total.
 - **REQ-037:** Historical expenses use a fixed transaction-date valuation; current wealth uses a current valuation.
 - **REQ-038:** Exchange quotes include direction, provider, timestamp, applicable amount and known fees.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-059:** Money calculations use exact arithmetic and explicit boundary rounding rules.
 
 ### Acceptance criteria
@@ -157,7 +157,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 #### AC-003
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
+- **When:** The member switches RUB to USD, USDT, USDC, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 
@@ -191,9 +191,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-039
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 #### AC-059
@@ -223,7 +223,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 make test-go PKG=./internal/valuation/... && make test-contract PROVIDER=rates
 ```
 
-RUB, USD, USDT, BTC and ETH, cross-rates, partial refund and missing historical price pass without changing the native ledger.
+RUB, USD, USDT, USDC, BTC and ETH, cross-rates without assumed parity, partial refund, residuals beyond UI precision and missing historical prices pass without changing the native ledger.
 
 The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
 

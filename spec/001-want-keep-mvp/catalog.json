@@ -28,34 +28,34 @@
     },
     {
       "id": "REQ-002",
-      "decision": "D-33",
+      "decision": "D-36",
       "title": {
-        "ru": "Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.",
-        "en": "Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts."
+        "ru": "Учёт поддерживает RUB, USD, USDT, USDC, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.",
+        "en": "Accounting supports RUB, USD, USDT, USDC, BTC and ETH; cash, bank money and platform wallets are separate accounts."
       },
       "acceptance": {
         "id": "AC-002",
         "given": {
-          "ru": "Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, BTC 0.001 и ETH 0.00123456.",
-          "en": "Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, BTC 0.001 and ETH 0.00123456."
+          "ru": "Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, USDC 12.000000000123, BTC 0.001 и ETH 0.001234567891.",
+          "en": "Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, USDC 12.000000000123, BTC 0.001 and ETH 0.001234567891."
         },
         "when": {
           "ru": "Владелец открывает счета.",
           "en": "The owner opens accounts."
         },
         "then": {
-          "ru": "Показаны шесть отдельных счетов с исходными активами и точными остатками, включая ETH без округления до фиатных сотых; RUB суммируется только в соответствующем срезе.",
-          "en": "Six distinct accounts show original assets and exact balances, including ETH without rounding to fiat cents; RUB is combined only in the relevant aggregate."
+          "ru": "Показаны семь отдельных счетов с исходными активами и точными остатками; дробные остатки не обрезаются до точности UI или заказа провайдера. RUB суммируется только в соответствующем срезе.",
+          "en": "Seven distinct accounts show original assets and exact balances; residuals are not truncated to UI or provider order precision. RUB is combined only in the relevant aggregate."
         },
         "level": "integration"
       }
     },
     {
       "id": "REQ-003",
-      "decision": "D-33",
+      "decision": "D-36",
       "title": {
-        "ru": "Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.",
-        "en": "The reporting currency can switch among RUB, USD, USDT, BTC and ETH."
+        "ru": "Общую валюту отображения можно переключать между RUB, USD, USDT, USDC, BTC и ETH.",
+        "en": "The reporting currency can switch among RUB, USD, USDT, USDC, BTC and ETH."
       },
       "acceptance": {
         "id": "AC-003",
@@ -64,8 +64,8 @@
           "en": "A current valuation exists for every required pair."
         },
         "when": {
-          "ru": "Владелец переключает RUB на USD, USDT, BTC и ETH.",
-          "en": "The owner switches RUB to USD, USDT, BTC and ETH."
+          "ru": "Участник переключает RUB на USD, USDT, USDC, BTC и ETH.",
+          "en": "The member switches RUB to USD, USDT, USDC, BTC and ETH."
         },
         "then": {
           "ru": "Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.",
@@ -916,24 +916,24 @@
     },
     {
       "id": "REQ-039",
-      "decision": "D-12",
+      "decision": "D-36",
       "title": {
-        "ru": "Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.",
-        "en": "Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg."
+        "ru": "Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.",
+        "en": "Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity."
       },
       "acceptance": {
         "id": "AC-039",
         "given": {
-          "ru": "В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.",
-          "en": "A source contains an unsupported asset and no USDT/USD rate is available."
+          "ru": "В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.",
+          "en": "A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable."
         },
         "when": {
           "ru": "Строится общая оценка.",
           "en": "A total valuation is built."
         },
         "then": {
-          "ru": "Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.",
-          "en": "Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used."
+          "ru": "Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.",
+          "en": "Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity."
         },
         "level": "integration"
       }
@@ -1060,24 +1060,24 @@
     },
     {
       "id": "REQ-045",
-      "decision": "D-13",
+      "decision": "D-36",
       "title": {
-        "ru": "Интеграция Bybit автоматически читает Funding, Spot, Earn, P2P и фьючерсы в пределах подтверждённого контракта.",
-        "en": "The Bybit integration automatically reads Funding, Spot, Earn, P2P and futures under a verified contract."
+        "ru": "Bybit автоматически читает Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен. Остальные продукты отложены без блокировки по D-36.",
+        "en": "Bybit automatically reads Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; the official API is preferred. Other products are deferred without blocking under D-36."
       },
       "acceptance": {
         "id": "AC-045",
         "given": {
-          "ru": "Подключён разрешённый личный аккаунт Bybit с тестируемыми продуктами.",
-          "en": "An authorized personal Bybit account with the tested products is connected."
+          "ru": "Безопасно подключён read-only аккаунт Bybit с подтверждёнными контрактами Funding, используемого Easy Earn и P2P.",
+          "en": "A read-only Bybit account is securely connected with verified Funding, used Easy Earn and P2P contracts."
         },
         "when": {
-          "ru": "Запрошены счета, остатки, операции и необходимые условия продуктов.",
-          "en": "Accounts, balances, transactions and required product terms are requested."
+          "ru": "Читаются остатки, история с выбранной даты, повторные страницы, Convert, начисление/выплата Earn и P2P; моделируется отказ прав выбранного продукта.",
+          "en": "Balances, history from the selected date, replayed pages, Convert, Earn accrual/payout and P2P are read; a selected-product permission failure is simulated."
         },
         "then": {
-          "ru": "Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.",
-          "en": "Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage."
+          "ru": "Точные native amounts, ID, статусы, комиссии и coverage сопоставимы с источником; Funding и детали не удваивают обмен, комиссию или доход. P2P связывает crypto/fiat с банком либо требует уточнения. Отказ доступа/неполная история явно блокируют соответствующее покрытие; отсутствие Spot/UTA trading, futures, карты, On-Chain/Advanced Earn и иных неиспользуемых продуктов не блокирует.",
+          "en": "Exact native amounts, IDs, statuses, fees and coverage match the source; Funding and details do not duplicate an exchange, fee or income. P2P links crypto/fiat with the bank or requires clarification. Access failure/incomplete history explicitly blocks the corresponding coverage; absent Spot/UTA trading, futures, card, On-Chain/Advanced Earn and other unused products do not block."
         },
         "level": "contract+manual"
       }
@@ -2304,8 +2304,7 @@
       "id": "AC-071",
       "requirements": [
         "REQ-035",
-        "REQ-036",
-        "REQ-045"
+        "REQ-036"
       ],
       "title": {
         "ru": "Чистые результаты и уже учтённые комиссии",
@@ -2685,34 +2684,44 @@
         "en": "Verify Bybit read contract"
       },
       "goal": {
-        "ru": "Получить проверяемую матрицу доступа к обязательным продуктам Bybit.",
-        "en": "Produce a verifiable access matrix for mandatory Bybit products."
+        "ru": "Зафиксировать проверяемый read-контракт Bybit для Funding USDT/USDC/ETH/BTC, Easy Earn и P2P и ограничения доступа.",
+        "en": "Record a verifiable Bybit read contract for Funding USDT/USDC/ETH/BTC, Easy Earn and P2P and its access limits."
       },
       "depends_on": [],
       "acceptance": [
         "AC-045",
         "AC-041",
         "AC-048",
-        "AC-070",
+        "AC-033",
+        "AC-039",
         "AC-079",
         "AC-087"
       ],
       "targets": [
         "spec/001-want-keep-mvp/evidence/bybit.md",
-        "spec/001-want-keep-mvp/evidence/bybit.en.md"
+        "spec/001-want-keep-mvp/evidence/bybit.en.md",
+        "spec/001-want-keep-mvp/evidence/bybit.samples.json"
       ],
       "behavior": {
-        "ru": "Проверить официальный API и доступ к личным счетам; при его отсутствии исследовать разрешённое чтение авторизованного кабинета. Для каждого продукта зафиксировать счета, остатки, операции, устойчивые ID, статусы, комиссии, пагинацию, глубину истории, условия/сроки, котировки, требования MFA и границы прав. Хранить только синтетические или обезличенные контракты; секреты подключает владелец вне репозитория. Недоступность продукта или платный обязательный доступ оформить блокером конкретного адаптера; не подменять автоматизацию ручной выпиской. Проверить независимые внешние аккаунты участников одной платформы и устойчивую идентичность при повторной авторизации; не считать connectionId идентификатором реального счёта.",
-        "en": "Verify the official API and personal-account eligibility; otherwise investigate authorized reading of the signed-in portal. For each product record accounts, balances, transactions, stable IDs, statuses, fees, pagination, history depth, terms/deadlines, quotes, MFA and permission boundaries. Retain only synthetic or sanitized contracts; the owner supplies secrets outside the repository. An inaccessible product or mandatory paid access blocks its adapter; manual statements do not substitute for automation. Verify independent member accounts at the same provider and stable identity across reauthorization; do not treat connectionId as real-account identity."
+        "ru": "По D-36 предпочесть официальный API браузеру. Разделить опубликованный контракт, Chrome-наблюдение, успешный публичный GET и непроверенный приватный запрос. Описать Funding balances/history, Convert и deposit/withdraw/transfer enrichment, Easy Earn Flexible/Fixed по фактически используемому продукту, P2P read POST и advertiser eligibility. Зафиксировать UID/identity, decimals, status/gross/net/fee, связи журналов, окна/cursors/retention, scopes/reauth/revocation и противоречия документации. Не создавать ключи, заявки рекламодателя или финансовые операции. Другие продукты не исследуются и не блокируют. task-0.7 получает USDC, task-0.9 — доступ/лимиты; task-0.10 закрывает BYBIT-B02–B05 перед task-4.4. Отсутствие приватного доступа — явный результат, а не успешное покрытие.",
+        "en": "Under D-36 prefer official APIs to browser access. Separate published contracts, Chrome observations, successful public GETs and unverified private requests. Describe Funding balances/history, Convert and deposit/withdraw/transfer enrichment, Easy Earn Flexible/Fixed according to actual usage, P2P read POST and advertiser eligibility. Record UID/identity, decimals, status/gross/net/fees, cross-log links, windows/cursors/retention, scopes/reauth/revocation and documentation contradictions. Do not create keys, advertiser applications or financial operations. Other products are not researched and do not block. task-0.7 receives USDC, task-0.9 access/limits; task-0.10 closes BYBIT-B02–B05 before task-4.4. Missing private access is an explicit result, not successful coverage."
       },
       "verification": {
-        "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
+        "command": "make docs-check",
         "expected": {
-          "ru": "Документ на двух языках содержит источник и дату, проверенные и непроверенные поля, примеры запросов/ответов без секретов и итог по каждому продукту. Реальный read-only прогон выполняется только после безопасного предоставления доступа владельцем; его отсутствие явно записано.",
-          "en": "The bilingual document includes dated sources, verified/unverified fields, secret-free request/response examples and per-product outcomes. A live read-only check runs only after the owner securely supplies access; absence of access is explicit."
+          "ru": "RU/EN содержат источники/даты, точную матрицу read-маршрутов, восемь синтетических сценариев и открытые блокеры. Публичные HTTP 200/retCode=0 отделены от отсутствующих private API/полной истории/второго владельца. Исследование может завершиться с блокерами по README.",
+          "en": "RU/EN include dated sources, an exact read-route matrix, eight synthetic scenarios and open blockers. Public HTTP 200/retCode=0 is separate from missing private API/full-history/second-owner evidence. Research can complete with blockers under README."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/4"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/4",
+      "status": {
+        "ru": "Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit.md), десять наблюдений/источников и восемь синтетических сценариев. Chrome и публичный Earn API прочитаны; API-ключей нет, P2P advertiser eligibility не выполнена. BYBIT-B01 закрыт, BYBIT-B02–B05 открыты под task-0.10, BYBIT-B06 отложен без блокировки. task-4.4 и BLK-04 остаются Not Ready; исследование не доказывает полные AC.",
+        "en": "Research completed on 2026-09-07: [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit.en.md), ten observations/sources and eight synthetic scenarios. Chrome and public Earn APIs were read; no API keys, P2P advertiser prerequisites unmet. BYBIT-B01 closed, BYBIT-B02–B05 open under task-0.10, BYBIT-B06 deferred without blocking. task-4.4 and BLK-04 remain Not Ready; research does not prove complete ACs."
+      },
+      "verification_note": {
+        "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
+        "en": "The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof."
+      }
     },
     {
       "id": "task-0.5",
@@ -2809,8 +2818,8 @@
         "en": "Verify free FX and quote sources"
       },
       "goal": {
-        "ru": "Подтвердить историческую и текущую оценку RUB, USD, USDT, BTC и ETH и покрытие обменных котировок.",
-        "en": "Verify historical/current RUB, USD, USDT, BTC and ETH valuation and exchange-quote coverage."
+        "ru": "Подтвердить историческую и текущую оценку RUB, USD, USDT, USDC, BTC и ETH и покрытие обменных котировок.",
+        "en": "Verify historical/current RUB, USD, USDT, USDC, BTC and ETH valuation and exchange-quote coverage."
       },
       "depends_on": [],
       "acceptance": [
@@ -2824,8 +2833,8 @@
         "spec/001-want-keep-mvp/evidence/fx.en.md"
       ],
       "behavior": {
-        "ru": "Проверить бесплатность, условия использования, USD/RUB, BTC, ETH и USDT-кроссы, историческую глубину, точность timestamp и rate limits. Отдельно описать справочную оценку и котировки покупки/продажи сервисов, включая комиссии и доступность из DE/NL/BG. Не считать USDT равным USD.",
-        "en": "Verify free access, usage terms, USD/RUB, BTC, ETH and USDT crosses, history depth, timestamp precision and rate limits. Distinguish reference valuation from provider buy/sell quotes, including fees and DE/NL/BG reachability. Do not equate USDT with USD."
+        "ru": "Проверить бесплатность, условия использования, USD/RUB, BTC, ETH, USDT и USDC-кроссы, историческую глубину, точность timestamp и rate limits. Отдельно описать справочную оценку и котировки покупки/продажи сервисов, включая комиссии и доступность из DE/NL/BG. USD, USDT и USDC не равны автоматически; похожие токены не объединять. D-36 добавляет USDC, не меняя исходные суммы.",
+        "en": "Verify free access, usage terms, USD/RUB, BTC, ETH, USDT and USDC crosses, history depth, timestamp precision and rate limits. Distinguish reference valuation from provider buy/sell quotes, including fees and DE/NL/BG reachability. USD, USDT and USDC are not automatically equal; do not merge similar tokens. D-36 adds USDC without changing native amounts."
       },
       "verification": {
         "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
@@ -2969,8 +2978,8 @@
         "spec/001-want-keep-mvp/plan.md"
       ],
       "behavior": {
-        "ru": "Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. Закрыть сроки хранения command status/idempotency для retry/recovery, не смешивая их с бессрочным финансовым audit. Для Aifory действует D-33: закрыть AIFORY-B02–B04 только для RUB, USDT, ETH и используемой карты; AIFORY-B05/остальные продукты не блокируют. Согласовать структурированный read-контракт, право автоматизации, identity/history и card lifecycle; учесть ETH в оценке.",
-        "en": "Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. Resolve command-status/idempotency retention for retry/recovery, distinct from durable financial audit. Apply Aifory D-33: close AIFORY-B02–B04 only for RUB, USDT, ETH and the existing card; AIFORY-B05/other products do not block. Establish the structured read contract, automation permission, identity/history and card lifecycle; include ETH valuation."
+        "ru": "Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. Закрыть сроки хранения command status/idempotency для retry/recovery, не смешивая их с бессрочным финансовым audit. Для Aifory действует D-33: закрыть AIFORY-B02–B04 только для RUB, USDT, ETH и используемой карты; AIFORY-B05/остальные продукты не блокируют. Согласовать структурированный read-контракт, право автоматизации, identity/history и card lifecycle; учесть ETH в оценке. Для Bybit действует D-36: закрыть BYBIT-B02–B05 для Funding USDT/USDC/ETH/BTC, используемого Easy Earn и P2P; прочие продукты BYBIT-B06 не блокируют. Проверить read-only scopes/UID, приватные формы/units/связи/историю и eligibility либо разрешённый browser-read P2P; дополнить валютную оценку USDC.",
+        "en": "Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. Resolve command-status/idempotency retention for retry/recovery, distinct from durable financial audit. Apply Aifory D-33: close AIFORY-B02–B04 only for RUB, USDT, ETH and the existing card; AIFORY-B05/other products do not block. Establish the structured read contract, automation permission, identity/history and card lifecycle; include ETH valuation. Apply Bybit D-36: close BYBIT-B02–B05 for Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; other products BYBIT-B06 do not block. Verify read-only scopes/UID, private shapes/units/linkage/history and eligibility or permitted P2P browser reads; include USDC valuation."
       },
       "verification": {
         "command": "python3 spec/001-want-keep-mvp/tools/spec_tool.py check",
@@ -3893,8 +3902,8 @@
         "en": "Implement Bybit connector"
       },
       "goal": {
-        "ru": "Автоматически получать согласованные данные всех обязательных продуктов Bybit.",
-        "en": "Automatically retrieve consistent data for all mandatory Bybit products."
+        "ru": "Автоматически получать Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P по D-36 без повторного финансового эффекта.",
+        "en": "Automatically read Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P under D-36 without duplicate financial effects."
       },
       "depends_on": [
         "task-0.4",
@@ -3908,8 +3917,8 @@
         "AC-041",
         "AC-048",
         "AC-063",
-        "AC-070",
-        "AC-071",
+        "AC-033",
+        "AC-039",
         "AC-079",
         "AC-087",
         "AC-090"
@@ -3919,17 +3928,21 @@
         "collector/src/providers/bybit/"
       ],
       "behavior": {
-        "ru": "Покрыть Funding/Spot/Earn/P2P/futures раздельными подтверждёнными журналами; UTA balance/transaction log не считать покрытием всех продуктов. Исключить двойные fee/P&L и внутренние трансферы. Реализовать только доказанный в evidence/bybit способ доступа, mappers и contract fixtures. Проверить повторы, поздние изменения, истечение сессии, часовой refresh и историю с выбранной даты. Путь collector используется только если подтверждена необходимость браузера; отсутствие обязательного продукта блокирует готовность коннектора. Два аккаунта участников изолированы; повторное подключение одного реального аккаунта связывается с существующим источником. Старый результат после отключения не применяется.",
-        "en": "Cover Funding/Spot/Earn/P2P/futures using separate verified logs; UTA balance/transaction log does not establish full coverage. Prevent duplicate fees/P&L and internal transfers. Implement only the access method established in evidence/bybit, mappers and contract fixtures. Verify replay, late revisions, session expiry, hourly refresh and history from the selected date. Use the collector path only if browser access is required; a missing mandatory product blocks connector readiness. The two members’ accounts are isolated; reconnection of one real account links to the existing source. A stale result cannot apply after disconnect."
+        "ru": "После закрытия BYBIT-B02–B05 и Ready реализовать официальный read-only V5 для подтверждённых маршрутов evidence/bybit. FUND — нужный accountType; UTA не подменяет Funding. Связывать денежный журнал с deposit/withdraw/transfer/Convert/Earn/P2P деталями по доказанному контракту, без классификации по переводным UI-строкам. Различать principal, accrued/paid yield и Funding credit; fees/обмен/доход проводить один раз. Сохранять исходную точность, UID/log identity, revisions, durable checkpoints и неполный retention. Проверить фактически используемые Flexible/Fixed, границы истории, статусы и неизвестный gross/net. P2P требует допустимого read-only API или подтверждённого структурированного browser-контракта; read POST allowlist не разрешает create/pay/release/ads. Collector создаётся только для доказанного пробела API. Два владельца изолированы, ротация не создаёт счёт; stale job после отключения отклоняется. Spot/UTA trading, futures, карта, On-Chain/Advanced Earn и другие неиспользуемые продукты не требуются; их движения через включённые кошельки сохраняются.",
+        "en": "After BYBIT-B02–B05 closure and Ready, implement official read-only V5 for verified evidence/bybit routes. FUND is the required accountType; UTA does not substitute for Funding. Link the monetary ledger to deposit/withdraw/transfer/Convert/Earn/P2P details under a proven contract, without classifying from localized UI strings. Distinguish principal, accrued/paid yield and Funding credit; post fees/exchange/income once. Preserve native precision, UID/log identity, revisions, durable checkpoints and partial retention. Verify actually used Flexible/Fixed, history bounds, states and unknown gross/net. P2P needs an eligible read-only API or verified structured browser contract; read POST allowlisting does not authorize create/pay/release/ads. Create collector code only for a demonstrated API gap. Isolate two owners; rotation does not create an account and stale jobs after disconnect are rejected. Spot/UTA trading, futures, card, On-Chain/Advanced Earn and other unused products are unnecessary; their movements through included wallets remain."
       },
       "verification": {
         "command": "make test-contract PROVIDER=bybit && make test-integration AREA=bybit",
         "expected": {
-          "ru": "Все продукты имеют пройденные синтетические контрактные сценарии и отдельный read-only live readback с безопасно подключённым аккаунтом; доступность только части продуктов не считается полным результатом.",
-          "en": "All products have passing synthetic contract scenarios and separate read-only live readback using a securely connected account; partial product access is not a complete result."
+          "ru": "Восемь сценариев evidence/bybit.samples.json расширены приватными контрактными fixtures; exact decimals, replay, обмен/fee/yield один раз, P2P/bank linkage, partial/expired/forbidden и два владельца проходят. Отдельный read-only live readback покрывает каждый выбранный продукт; публичный каталог и синтетика не подменяют этот результат.",
+          "en": "The eight evidence/bybit.samples.json scenarios are extended with private contract fixtures; exact decimals, replay, exchange/fee/yield once, P2P/bank linkage, partial/expired/forbidden and two owners pass. Separate read-only live readback covers every selected product; a public catalog and synthetic data do not replace that outcome."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/32"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/32",
+      "verification_note": {
+        "ru": "Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.",
+        "en": "The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof."
+      }
     },
     {
       "id": "task-4.5",
@@ -4291,8 +4304,8 @@
       "verification": {
         "command": "make test-go PKG=./internal/valuation/... && make test-contract PROVIDER=rates",
         "expected": {
-          "ru": "RUB, USD, USDT, BTC и ETH, cross-rates, partial refund и отсутствие исторической цены проверены без изменения native ledger.",
-          "en": "RUB, USD, USDT, BTC and ETH, cross-rates, partial refund and missing historical price pass without changing the native ledger."
+          "ru": "RUB, USD, USDT, USDC, BTC и ETH, cross-rates без условного паритета, partial refund, остатки точнее UI и отсутствие исторической цены проверены без изменения native ledger.",
+          "en": "RUB, USD, USDT, USDC, BTC and ETH, cross-rates without assumed parity, partial refund, residuals beyond UI precision and missing historical prices pass without changing the native ledger."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/40"
@@ -4428,7 +4441,6 @@
         "en": "Produce consistent crypto-product results without double accruals."
       },
       "depends_on": [
-        "task-4.4",
         "task-6.1",
         "task-2.4"
       ],
@@ -4436,7 +4448,6 @@
         "AC-007",
         "AC-035",
         "AC-036",
-        "AC-045",
         "AC-071"
       ],
       "targets": [
@@ -4444,8 +4455,8 @@
         "backend/internal/mining/"
       ],
       "behavior": {
-        "ru": "Через доменные контракты разделить gross/net realized P&L, unrealized P&L, fees, funding и rewards. Учитывать общие IDs нескольких журналов, transfers Funding/Spot/Earn/mining и капитализацию; нереализованный результат не считать наличным доходом. Не добавлять торговый терминал или управление майнингом. EMCD по D-34 не является источником торговли/майнинга и не блокирует эту задачу; его Grow обрабатывается в накоплениях.",
-        "en": "Use domain contracts to separate gross/net realized P&L, unrealized P&L, fees, funding and rewards. Account for shared IDs across logs, transfers among Funding/Spot/Earn/mining and compounding; unrealized P&L is not cash income. Do not add a trading terminal or mining control. EMCD under D-34 is not a trading/mining source and does not block this task; its Grow is handled by savings."
+        "ru": "Через доменные контракты разделить gross/net realized P&L, unrealized P&L, fees, funding и rewards. Учитывать общие IDs нескольких журналов, transfers Funding/Spot/Earn/mining и капитализацию; нереализованный результат не считать наличным доходом. Не добавлять торговый терминал или управление майнингом. EMCD по D-34 не является источником торговли/майнинга и не блокирует эту задачу; его Grow обрабатывается в накоплениях. Bybit по D-36 также не является источником торговли/майнинга для текущего MVP и не блокирует эту задачу. Общие функции остаются; проверяются синтетическими доменными сценариями, а новое платформенное покрытие требует отдельного решения и контрактов. Funding и Easy Earn обслуживают task-4.4 и накопления.",
+        "en": "Use domain contracts to separate gross/net realized P&L, unrealized P&L, fees, funding and rewards. Account for shared IDs across logs, transfers among Funding/Spot/Earn/mining and compounding; unrealized P&L is not cash income. Do not add a trading terminal or mining control. EMCD under D-34 is not a trading/mining source and does not block this task; its Grow is handled by savings. Bybit under D-36 is also not a trading/mining source for the current MVP and does not block this task. Shared functions remain and use synthetic domain scenarios; new platform coverage requires a separate decision and contracts. Funding and Easy Earn belong to task-4.4 and savings."
       },
       "verification": {
         "command": "make test-integration AREA=crypto-results",

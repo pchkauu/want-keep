@@ -26,9 +26,9 @@
 
 ### Связанные требования
 
-- **REQ-002:** Учёт поддерживает RUB, USD, USDT, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
-- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, BTC и ETH.
-- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USDT/USD.
+- **REQ-002:** Учёт поддерживает RUB, USD, USDT, USDC, BTC и ETH; наличные, банковские деньги и платформенные кошельки различаются счетами.
+- **REQ-003:** Общую валюту отображения можно переключать между RUB, USD, USDT, USDC, BTC и ETH.
+- **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
 - **REQ-059:** Денежные расчёты используют точную арифметику и явные правила округления на границах.
 - **REQ-062:** Архитектура использует Go/PostgreSQL, React/TypeScript/Vite и отдельный Playwright-сборщик с зависимостями к домену.
 - **REQ-063:** Пользователь, семья и членство моделируются отдельно; ограничение двух участников задаётся конфигурацией.
@@ -41,23 +41,23 @@
 
 #### AC-002
 
-- **Дано:** Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, BTC 0.001 и ETH 0.00123456.
+- **Дано:** Созданы RUB наличные 1 000, RUB банк 2 000, USD наличные 10, USDT 20, USDC 12.000000000123, BTC 0.001 и ETH 0.001234567891.
 - **Когда:** Владелец открывает счета.
-- **Тогда:** Показаны шесть отдельных счетов с исходными активами и точными остатками, включая ETH без округления до фиатных сотых; RUB суммируется только в соответствующем срезе.
+- **Тогда:** Показаны семь отдельных счетов с исходными активами и точными остатками; дробные остатки не обрезаются до точности UI или заказа провайдера. RUB суммируется только в соответствующем срезе.
 - **Уровень:** `integration`.
 
 #### AC-003
 
 - **Дано:** Для всех необходимых пар есть актуальная оценка.
-- **Когда:** Владелец переключает RUB на USD, USDT, BTC и ETH.
+- **Когда:** Участник переключает RUB на USD, USDT, USDC, BTC и ETH.
 - **Тогда:** Меняется эквивалент итогов, исходные суммы операций и счетов сохраняются.
 - **Уровень:** `end-to-end`.
 
 #### AC-039
 
-- **Дано:** В источнике есть неподдерживаемый актив, для USDT/USD отсутствует курс.
+- **Дано:** В источнике есть неподдерживаемый USDC.E; для USDT/USD и USDC/USD отсутствуют курсы.
 - **Когда:** Строится общая оценка.
-- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1.
+- **Тогда:** Исходные данные сохранены, покрытие оценки обозначено неполным; нет скрытого нуля или автоматического курса 1:1. USDC.E не объединён с USDC по похожему символу.
 - **Уровень:** `integration`.
 
 #### AC-059
@@ -136,9 +136,9 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 
 ### Linked requirements
 
-- **REQ-002:** Accounting supports RUB, USD, USDT, BTC and ETH; cash, bank money and platform wallets are separate accounts.
-- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, BTC and ETH.
-- **REQ-039:** Missing rates and unsupported assets never become zero amounts or an assumed USDT/USD peg.
+- **REQ-002:** Accounting supports RUB, USD, USDT, USDC, BTC and ETH; cash, bank money and platform wallets are separate accounts.
+- **REQ-003:** The reporting currency can switch among RUB, USD, USDT, USDC, BTC and ETH.
+- **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
 - **REQ-059:** Money calculations use exact arithmetic and explicit boundary rounding rules.
 - **REQ-062:** Architecture uses Go/PostgreSQL, React/TypeScript/Vite and a separate Playwright collector with dependencies pointing toward the domain.
 - **REQ-063:** User, household and membership are separate models; the two-member limit is configured.
@@ -151,23 +151,23 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-002
 
-- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, BTC 0.001 and ETH 0.00123456.
+- **Given:** Accounts contain RUB cash 1,000, RUB bank 2,000, USD cash 10, USDT 20, USDC 12.000000000123, BTC 0.001 and ETH 0.001234567891.
 - **When:** The owner opens accounts.
-- **Then:** Six distinct accounts show original assets and exact balances, including ETH without rounding to fiat cents; RUB is combined only in the relevant aggregate.
+- **Then:** Seven distinct accounts show original assets and exact balances; residuals are not truncated to UI or provider order precision. RUB is combined only in the relevant aggregate.
 - **Level:** `integration`.
 
 #### AC-003
 
 - **Given:** A current valuation exists for every required pair.
-- **When:** The owner switches RUB to USD, USDT, BTC and ETH.
+- **When:** The member switches RUB to USD, USDT, USDC, BTC and ETH.
 - **Then:** Equivalent totals change while original account and transaction amounts remain unchanged.
 - **Level:** `end-to-end`.
 
 #### AC-039
 
-- **Given:** A source contains an unsupported asset and no USDT/USD rate is available.
+- **Given:** A source contains unsupported USDC.E; USDT/USD and USDC/USD rates are unavailable.
 - **When:** A total valuation is built.
-- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used.
+- **Then:** Raw data is retained and valuation coverage is incomplete; no hidden zero or automatic 1:1 rate is used. USDC.E is not merged into USDC by symbol similarity.
 - **Level:** `integration`.
 
 #### AC-059

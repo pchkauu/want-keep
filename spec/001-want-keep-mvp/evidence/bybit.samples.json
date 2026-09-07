@@ -1,0 +1,297 @@
+{
+  "synthetic": true,
+  "provenance": {
+    "ru": "Синтетические проекции опубликованных полей и целевые сценарии, не приватные ответы Bybit. Связи и правила требуют BYBIT-B02–B05.",
+    "en": "Synthetic published-field projections and target scenarios, not private Bybit responses. Linkage and rules require BYBIT-B02–B05."
+  },
+  "scenarios": [
+    {
+      "id": "BYBIT-S01",
+      "purpose": {
+        "ru": "FUND и точные исходные суммы",
+        "en": "FUND and exact native amounts"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v5/asset/transfer/query-account-coins-balance",
+        "query": {
+          "accountType": "FUND",
+          "coin": "USDT,USDC,ETH,BTC"
+        }
+      },
+      "projection": {
+        "memberId": "synthetic-owner-a",
+        "accountType": "FUND",
+        "balance": [
+          {
+            "coin": "USDT",
+            "walletBalance": "125.00123456789",
+            "transferBalance": "120.00123456789"
+          },
+          {
+            "coin": "USDC",
+            "walletBalance": "12.000000000123",
+            "transferBalance": "12.000000000123"
+          },
+          {
+            "coin": "ETH",
+            "walletBalance": "0.000000000012345678",
+            "transferBalance": "0.000000000012345678"
+          },
+          {
+            "coin": "BTC",
+            "walletBalance": "0.001234567891",
+            "transferBalance": "0.001234567891"
+          }
+        ]
+      },
+      "expected": {
+        "account_count": 4,
+        "missing_bonus": "unknown",
+        "native_rounding": false
+      }
+    },
+    {
+      "id": "BYBIT-S02",
+      "purpose": {
+        "ru": "Повтор журнала и обогащение Convert без повторного эффекта",
+        "en": "Ledger replay and Convert enrichment without another effect"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v5/asset/fundinghistory",
+        "query": {
+          "createTimeFrom": "1767225600",
+          "createTimeTo": "1767744000",
+          "limit": "100"
+        }
+      },
+      "ledger": [
+        {
+          "memberId": "synthetic-owner-a",
+          "currcCursor": "synthetic-log-convert-out",
+          "currency": "USDT",
+          "ioDirection": "O",
+          "txnAmt": "100.00",
+          "afterAmt": "25.00123456789",
+          "createTime": "1767312000"
+        },
+        {
+          "memberId": "synthetic-owner-a",
+          "currcCursor": "synthetic-log-convert-in",
+          "currency": "BTC",
+          "ioDirection": "I",
+          "txnAmt": "0.001",
+          "afterAmt": "0.002234567891",
+          "createTime": "1767312000"
+        }
+      ],
+      "convert_projection": {
+        "exchangeTxId": "synthetic-convert-1",
+        "fromCoin": "USDT",
+        "toCoin": "BTC",
+        "fromAmount": "100.00",
+        "toAmount": "0.001",
+        "exchangeStatus": "success"
+      },
+      "assumed_verified_links": [
+        "synthetic-log-convert-out",
+        "synthetic-log-convert-in"
+      ],
+      "expected": {
+        "financial_events_after_replay": 1,
+        "income": "0",
+        "expense": "0",
+        "fee": "unknown",
+        "usdt_delta": "-100.00",
+        "btc_delta": "0.001"
+      }
+    },
+    {
+      "id": "BYBIT-S03",
+      "purpose": {
+        "ru": "Комиссия вывода один раз при доказанной семантике gross/net",
+        "en": "Withdrawal fee once under proven gross/net semantics"
+      },
+      "assumption": {
+        "ru": "В этом вымышленном контракте amount — полученная основная сумма, fee — отдельная часть полного списания. Реальный контракт ещё не доказан.",
+        "en": "This fictional contract defines amount as delivered principal and fee as a separate part of the gross debit. The actual contract is unverified."
+      },
+      "ledger_debit": "10.20",
+      "withdrawal_projection": {
+        "withdrawId": "synthetic-withdraw-1",
+        "coin": "USDT",
+        "amount": "10.00",
+        "withdrawFee": "0.20",
+        "status": "success"
+      },
+      "owned_destination_credit": "10.00",
+      "expected": {
+        "funding_delta": "-10.20",
+        "fee_expense": "0.20",
+        "principal_expense": "0",
+        "effect_count_after_replay": 1
+      }
+    },
+    {
+      "id": "BYBIT-S04",
+      "purpose": {
+        "ru": "Начисление, выплата и Funding не утраивают доход",
+        "en": "Accrual, distribution and Funding do not triple income"
+      },
+      "principal": "200.00",
+      "hourly_accruals": [
+        {
+          "id": "synthetic-hour-1",
+          "amount": "0.01"
+        },
+        {
+          "id": "synthetic-hour-2",
+          "amount": "0.02"
+        }
+      ],
+      "distribution": {
+        "id": "synthetic-yield-1",
+        "amount": "0.03",
+        "distributionMode": "Auto"
+      },
+      "funding_credit": {
+        "currcCursor": "synthetic-log-yield",
+        "currency": "USDT",
+        "ioDirection": "I",
+        "txnAmt": "0.03"
+      },
+      "assumed_verified_link": true,
+      "expected": {
+        "earned_income": "0.03",
+        "paid_income": "0.03",
+        "additional_income_on_credit": "0",
+        "principal_redemption_income": "0"
+      }
+    },
+    {
+      "id": "BYBIT-S05",
+      "purpose": {
+        "ru": "P2P обмен с банковским движением и неполным подтверждением",
+        "en": "P2P exchange with bank movement and incomplete evidence"
+      },
+      "read_request": {
+        "method": "POST",
+        "path": "/v5/p2p/order/info",
+        "body": {
+          "orderId": "synthetic-p2p-1"
+        }
+      },
+      "order_projection": {
+        "id": "synthetic-p2p-1",
+        "side": 1,
+        "status": 50,
+        "tokenId": "USDT",
+        "quantity": "10.00",
+        "currencyId": "RUB",
+        "amount": "850.00",
+        "price": "85.00"
+      },
+      "bank_projection": {
+        "source_id": "synthetic-bank-1",
+        "asset": "RUB",
+        "credit": "850.00"
+      },
+      "expected": {
+        "when_link_verified": {
+          "exchange_count": 1,
+          "income": "0",
+          "expense": "0",
+          "fee": "unknown"
+        },
+        "without_bank_evidence": "clarification_required",
+        "status_40": "cancelled_no_settled_exchange",
+        "status_10": "pending_no_settled_exchange"
+      }
+    },
+    {
+      "id": "BYBIT-S06",
+      "purpose": {
+        "ru": "Ротация не создаёт счёт; второй UID не объединяется",
+        "en": "Rotation does not create an account; another UID stays separate"
+      },
+      "source_dimensions": [
+        "household",
+        "provider",
+        "site",
+        "external_uid",
+        "account_type",
+        "asset"
+      ],
+      "observations": [
+        {
+          "external_uid": "synthetic-owner-a",
+          "connection": "synthetic-connection-old",
+          "account_type": "FUND",
+          "asset": "USDC"
+        },
+        {
+          "external_uid": "synthetic-owner-a",
+          "connection": "synthetic-connection-new",
+          "account_type": "FUND",
+          "asset": "USDC"
+        },
+        {
+          "external_uid": "synthetic-owner-b",
+          "connection": "synthetic-connection-other",
+          "account_type": "FUND",
+          "asset": "USDC"
+        }
+      ],
+      "expected": {
+        "source_accounts": 2,
+        "stale_result_after_disconnect": "rejected"
+      }
+    },
+    {
+      "id": "BYBIT-S07",
+      "purpose": {
+        "ru": "APR: формат процента и часовые точки; USDC без паритета",
+        "en": "APR: percentage format and hourly points; USDC without a peg"
+      },
+      "public_shape_projection": {
+        "list": [
+          {
+            "apr": "2.50%",
+            "timestamp": "1767225600000"
+          },
+          {
+            "apr": "2.60%",
+            "timestamp": "1767229200000"
+          }
+        ]
+      },
+      "expected": {
+        "first_apr_fraction": "0.025",
+        "interval_ms": "3600000",
+        "missing_usdc_usd": "valuation_unavailable",
+        "USDC.E": "unsupported_not_usdc"
+      }
+    },
+    {
+      "id": "BYBIT-S08",
+      "purpose": {
+        "ru": "Граница истории не равна полному нулю",
+        "en": "A history boundary is not a complete zero"
+      },
+      "requested_from": "2025-01-01",
+      "documented_limits": {
+        "flexible_distributed_yield_months": 3,
+        "p2p_max_days": 180,
+        "funding_query_max_days": 7
+      },
+      "last_page_durable": false,
+      "next_page_cursor": "synthetic-cursor-2",
+      "expected": {
+        "coverage": "partial",
+        "advance_checkpoint": false,
+        "empty_outside_retention": "unknown_not_zero"
+      }
+    }
+  ]
+}
