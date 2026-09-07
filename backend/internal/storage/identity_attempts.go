@@ -106,7 +106,7 @@ func (s *Store) CleanupIdentity(ctx context.Context, now time.Time, limit int) e
 	if err != nil {
 		return s.identityError(err)
 	}
-	_, err = s.pool.Exec(ctx, `DELETE FROM want_keep.identity_rate_limits WHERE scope_hash IN
+	_, err = s.pool.Exec(ctx, `DELETE FROM want_keep.identity_rate_limits WHERE window_start<$1 AND scope_hash IN
  (SELECT scope_hash FROM want_keep.identity_rate_limits WHERE window_start<$1 ORDER BY window_start,scope_hash LIMIT $2)`, now.Add(-15*time.Minute), limit)
 	return s.identityError(err)
 }

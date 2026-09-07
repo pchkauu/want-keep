@@ -125,9 +125,12 @@ type browser struct {
 	f       *fixture
 	cookies map[string]*http.Cookie
 	csrf    string
+	expires map[string]time.Time
 }
 
-func (f *fixture) browser() *browser { return &browser{f: f, cookies: map[string]*http.Cookie{}} }
+func (f *fixture) browser() *browser {
+	return &browser{f: f, cookies: map[string]*http.Cookie{}, expires: map[string]time.Time{}}
+}
 func (b *browser) call(method, path string, input any, expected int) *httptest.ResponseRecorder {
 	b.f.t.Helper()
 	data, err := json.Marshal(input)
@@ -138,7 +141,12 @@ func (b *browser) call(method, path string, input any, expected int) *httptest.R
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://localhost")
 	req.Header.Set("X-CSRF-Token", b.csrf)
-	for _, cookie := range b.cookies {
+	for name, cookie := range b.cookies {
+		if expiry, ok := b.expires[name]; ok && !b.f.clock().Before(expiry) {
+			delete(b.cookies, name)
+			delete(b.expires, name)
+			continue
+		}
 		req.AddCookie(cookie)
 	}
 	rr := httptest.NewRecorder()
@@ -149,8 +157,12 @@ func (b *browser) call(method, path string, input any, expected int) *httptest.R
 	for _, cookie := range rr.Result().Cookies() {
 		if cookie.MaxAge < 0 {
 			delete(b.cookies, cookie.Name)
+			delete(b.expires, cookie.Name)
 		} else {
 			b.cookies[cookie.Name] = cookie
+			if cookie.MaxAge > 0 {
+				b.expires[cookie.Name] = b.f.clock().Add(time.Duration(cookie.MaxAge) * time.Second)
+			}
 		}
 	}
 	if rr.Header().Get("Cache-Control") != "no-store" {

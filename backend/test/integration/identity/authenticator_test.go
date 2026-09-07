@@ -18,10 +18,11 @@ import (
 )
 
 type authenticator struct {
-	key    crypto.Signer
-	id     []byte
-	handle string
-	count  uint32
+	key        crypto.Signer
+	id         []byte
+	handle     string
+	count      uint32
+	extensions map[string]any
 }
 
 func newAuthenticator(t *testing.T, handle string, useRSA bool) *authenticator {
@@ -70,11 +71,21 @@ func (a *authenticator) registration(t *testing.T, challenge, origin, rp string,
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(a.extensions) > 0 {
+		flags |= 128
+	}
 	data := a.authData(rp, flags|64)
 	data = append(data, make([]byte, 16)...)
 	data = binary.BigEndian.AppendUint16(data, uint16(len(a.id)))
 	data = append(data, a.id...)
 	data = append(data, pub...)
+	if len(a.extensions) > 0 {
+		encoded, err := cbor.Marshal(a.extensions)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data = append(data, encoded...)
+	}
 	object, err := cbor.Marshal(map[string]any{"fmt": "none", "authData": data, "attStmt": map[string]any{}})
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +96,17 @@ func (a *authenticator) assertion(t *testing.T, challenge, origin, rp string, fl
 	t.Helper()
 	a.count++
 	client := a.clientData(t, "webauthn.get", challenge, origin)
+	if len(a.extensions) > 0 {
+		flags |= 128
+	}
 	data := a.authData(rp, flags)
+	if len(a.extensions) > 0 {
+		encoded, err := cbor.Marshal(a.extensions)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data = append(data, encoded...)
+	}
 	hash := sha256.Sum256(client)
 	signed := append(append([]byte{}, data...), hash[:]...)
 	digest := sha256.Sum256(signed)

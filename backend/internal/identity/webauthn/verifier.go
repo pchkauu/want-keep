@@ -75,6 +75,9 @@ func (v *Verifier) Register(p identity.Profile, a identity.Attempt, input applic
 	if err != nil {
 		return identity.Credential{}, identity.ErrAttempt
 	}
+	if parsed.Response.AttestationObject.AuthData.Flags.HasExtensions() {
+		return identity.Credential{}, identity.ErrAttempt
+	}
 	// Application checks the persisted expiry with its injected clock; the library owns cryptographic verification.
 	session := library.SessionData{Challenge: a.Challenge, RelyingPartyID: a.RPID, Origin: a.Origin, UserID: p.Handle, UserVerification: protocol.VerificationRequired, CredParams: []protocol.CredentialParameter{{Type: protocol.PublicKeyCredentialType, Algorithm: webauthncose.AlgES256}, {Type: protocol.PublicKeyCredentialType, Algorithm: webauthncose.AlgRS256}}}
 	c, err := v.client.CreateCredential(user{profile: p}, session, parsed)
@@ -93,6 +96,9 @@ func (v *Verifier) Authenticate(p identity.Profile, a identity.Attempt, c identi
 	}
 	parsed, err := protocol.ParseCredentialRequestResponseBytes(data)
 	if err != nil {
+		return identity.Credential{}, identity.ErrAttempt
+	}
+	if parsed.Response.AuthenticatorData.Flags.HasExtensions() {
 		return identity.Credential{}, identity.ErrAttempt
 	}
 	session := library.SessionData{Challenge: a.Challenge, RelyingPartyID: a.RPID, Origin: a.Origin, UserVerification: protocol.VerificationRequired}

@@ -118,13 +118,16 @@ func (s *Server) request(w http.ResponseWriter, r *http.Request, begin bool) (ap
 	if cookie, err := r.Cookie(browserCookie); err == nil {
 		result.Browser = identity.Token(cookie.Value)
 	}
-	if !result.Browser.Valid(32) && begin {
-		token, err := identity.NewToken(32)
-		if err != nil {
-			return result, err
+	if begin {
+		if !result.Browser.Valid(32) {
+			token, err := identity.NewToken(32)
+			if err != nil {
+				return result, err
+			}
+			result.Browser = token
 		}
-		result.Browser = token
-		http.SetCookie(w, &http.Cookie{Name: browserCookie, Value: string(token), Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 1800})
+		// Preserve live bindings, but let every new attempt use its full server-side lifetime.
+		http.SetCookie(w, &http.Cookie{Name: browserCookie, Value: string(result.Browser), Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 1800})
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
