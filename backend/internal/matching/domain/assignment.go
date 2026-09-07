@@ -41,6 +41,13 @@ func (a *effectAssignment) assign(facts []ledger.Revision, allowPartial bool) (G
 		}
 		seen[r.OperationID] = true
 		primary = primary || r.OperationID == a.group.PrimaryID
+		if a.group.Kind == Payment && r.Correspondence != nil {
+			for _, other := range facts {
+				if other.Correspondence != nil && r.Correspondence.DistinctPayment(*other.Correspondence) {
+					return a.group, nil, ErrConflict
+				}
+			}
+		}
 	}
 	if !primary {
 		return a.group, nil, ErrInvalid
@@ -65,6 +72,23 @@ func (a *effectAssignment) assign(facts []ledger.Revision, allowPartial bool) (G
 	a.components = map[string]*assignedComponent{}
 	a.buckets = map[componentKey][]string{}
 	a.result = []ledger.Revision{}
+	// Seed each retained component independently: owning the incoming component
+	// does not let a record displace the existing outgoing carrier.
+	for _, r := range facts {
+		for _, part := range r.Participation.Parts {
+			if part.CarrierID != r.OperationID || part.Position >= len(r.Postings) {
+				continue
+			}
+			p := r.Postings[part.Position]
+			if (part.Role == "fee") != (p.Role == ledger.Fee) {
+				continue
+			}
+			id := r.OperationID + ":" + strconv.Itoa(part.Position)
+			a.components[id] = &assignedComponent{posting: p, carrier: r, position: part.Position, state: r.State}
+			key := componentKey{p.AccountID, p.Role, p.Money.Asset()}
+			a.buckets[key] = append(a.buckets[key], id)
+		}
+	}
 	for _, r := range facts {
 		if err := a.observe(r); err != nil {
 			return a.group, nil, err
@@ -116,7 +140,7 @@ func (a *effectAssignment) observe(r ledger.Revision) error {
 		matches := []string{}
 		for _, id := range a.buckets[key] {
 			c := a.components[id]
-			if p.Role == ledger.Fee && c.carrier.OperationID == r.OperationID {
+			if p.Role == ledger.Fee && c.carrier.OperationID == r.OperationID && c.position != i {
 				continue
 			}
 			if p.Role == ledger.Fee && c.posting.FeeID != "" && p.FeeID != "" && c.posting.FeeID != p.FeeID {
@@ -131,7 +155,7 @@ func (a *effectAssignment) observe(r ledger.Revision) error {
 		if len(matches) == 1 {
 			id = matches[0]
 			c := a.components[id]
-			if !c.posting.SameMoney(p) || c.posting.Funding != p.Funding || c.carrier.OperationID == r.OperationID {
+			if !c.posting.SameMoney(p) || c.posting.Funding != p.Funding || c.carrier.OperationID == r.OperationID && c.position != i {
 				return ErrConflict
 			}
 			for _, f := range []ledger.Field{ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField} {

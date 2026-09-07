@@ -186,7 +186,7 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 			}
 			return result, s.repository.SaveSourceFact(ctx, current, raw, "invalid_merge")
 		}
-		if found && previous.SameFacts(r) {
+		if found && previous.Participation.GroupID == "" && previous.SameFacts(r) {
 			return result, s.repository.SaveSourceFact(ctx, current, raw, conflict)
 		}
 		if err = s.writer.AppendSource(ctx, p, r, expected, ledger.Evidence{Kind: "source", ID: current.ID, Revision: current.Revision}); err != nil {

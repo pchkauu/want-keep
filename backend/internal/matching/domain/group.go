@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"slices"
+	"unicode/utf8"
 
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -60,7 +61,7 @@ type Group struct {
 }
 
 func (g Group) Validate() error {
-	if g.ID == "" || g.PrimaryID == "" || g.Revision < 1 || g.Revision > 9007199254740991 || g.ActorID == "" || g.At.String() == "" || len(g.Reason) < 1 || len(g.Reason) > 2000 || len(g.Members) < 1 || len(g.Members) > 100 || len(g.Candidates) > 100 {
+	if g.ID == "" || g.PrimaryID == "" || g.Revision < 1 || g.Revision > 9007199254740991 || g.ActorID == "" || g.At.String() == "" || !utf8.ValidString(g.Reason) || utf8.RuneCountInString(g.Reason) < 1 || utf8.RuneCountInString(g.Reason) > 2000 || len(g.Members) < 1 || len(g.Members) > 100 || len(g.Candidates) > 100 {
 		return ErrInvalid
 	}
 	if !slices.Contains([]Kind{Payment, Transfer, Exchange}, g.Kind) || !slices.Contains([]State{Clarification, WaitingSide, Linked, Separate, Unlinked, Conflict}, g.State) {

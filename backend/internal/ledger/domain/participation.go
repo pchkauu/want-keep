@@ -30,6 +30,19 @@ type Contribution struct {
 	Role            ContributionRole
 }
 
+func (p Participation) SameCarriers(other Participation) bool {
+	if p.GroupID != other.GroupID || p.Kind != other.Kind || p.State != other.State || len(p.Parts) != len(other.Parts) {
+		return false
+	}
+	for i, part := range p.Parts {
+		q := other.Parts[i]
+		if part.ComponentID != q.ComponentID || part.Position != q.Position || part.CarrierID != q.CarrierID || part.CarrierPosition != q.CarrierPosition || part.Role != q.Role {
+			return false
+		}
+	}
+	return true
+}
+
 func (p Participation) Validate(r Revision) error {
 	if p.GroupID == "" {
 		if p.Kind != "" || p.State != "" || len(p.Parts) != 0 {

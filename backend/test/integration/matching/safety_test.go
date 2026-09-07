@@ -78,8 +78,8 @@ func TestLinkedSourceConflictKeepsLastGoodEffectsAndEvidence(t *testing.T) {
 	if _, err := f.importSource(gate, connection, in); err != nil {
 		t.Fatal(err)
 	}
-	if f.current(a.OperationID).Revision != before.Revision {
-		t.Fatal("incompatible financial revision created")
+	if f.current(a.OperationID).Revision != before.Revision+1 || !f.current(a.OperationID).FieldEqual(before, ledger.PrincipalField) {
+		t.Fatal("conflict must create a material review version without changing money")
 	}
 	f.balance(from, "owned", "4000")
 	f.balance(to, "owned", "1000")

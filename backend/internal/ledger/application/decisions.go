@@ -73,11 +73,18 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 				return command.Result{}, commands.Rejection{Code: "feature_unavailable"}
 			}
 			if r.Accounting() == ledger.ExcludedFromAccounting {
-				return command.Result{}, commands.Rejection{Code: "no_change"}
+				if len(changes) == 1 || r.Participation.GroupID == "" {
+					return command.Result{}, commands.Rejection{Code: "no_change"}
+				}
+				unchanged[r.OperationID] = r.Participation.GroupID
+				updated = r.Clone()
+				fields = []ledger.Field{ledger.MatchingField}
+			} else {
+				updated = r.Clone()
+				updated.AccountingState = ledger.ExcludedFromAccounting
+				fields = []ledger.Field{ledger.AccountingField}
+				changedGroups[r.Participation.GroupID] = true
 			}
-			updated = r.Clone()
-			updated.AccountingState = ledger.ExcludedFromAccounting
-			fields = []ledger.Field{ledger.AccountingField}
 			d.Kind = "exclusion"
 		} else {
 			updated, fields, err = r.Correct(in.Correction)

@@ -38,6 +38,19 @@ func (s *Service) AppendDecision(ctx context.Context, p household.Principal, d l
 		}
 	}
 	next = slices.Clone(next)
+	zone, err := s.repository.AccountTimezone(ctx, p)
+	if err != nil {
+		return err
+	}
+	for i, r := range next {
+		if r.Timezone.String() != "" && r.Timezone != zone {
+			return ledger.ErrInvalidRevision
+		}
+		next[i], err = r.InTimezone(zone)
+		if err != nil {
+			return err
+		}
+	}
 	ids := []string{}
 	for id := range groups {
 		ids = append(ids, id)
@@ -53,7 +66,7 @@ func (s *Service) AppendDecision(ctx context.Context, p household.Principal, d l
 		for i, r := range facts {
 			for _, v := range next {
 				if r.OperationID == v.OperationID {
-					financial = financial || !r.FieldEqual(v, ledger.PrincipalField) || !r.FieldEqual(v, ledger.FeesField) || !r.FieldEqual(v, ledger.AccountingField) || !r.FieldEqual(v, ledger.MatchingField)
+					financial = financial || !r.FieldEqual(v, ledger.PrincipalField) || !r.FieldEqual(v, ledger.FeesField) || !r.FieldEqual(v, ledger.AccountingField) || !r.Participation.SameCarriers(v.Participation)
 					facts[i] = v
 				}
 			}
@@ -66,11 +79,20 @@ func (s *Service) AppendDecision(ctx context.Context, p household.Principal, d l
 			}
 		}
 		if g.State == matching.Linked || g.State == matching.WaitingSide || g.State == matching.Conflict {
+			conflicted := g.State == matching.Conflict
+			if conflicted && financial {
+				if err := s.requireAcceptedSources(ctx, p, facts); err != nil {
+					return err
+				}
+			}
 			updated, assigned, err := g.Assign(facts, true)
 			if err != nil {
 				return err
 			}
 			g = updated
+			if conflicted && !financial {
+				g.State = matching.Conflict
+			}
 			for _, r := range assigned {
 				index := slices.IndexFunc(next, func(v ledger.Revision) bool { return v.OperationID == r.OperationID })
 				if index >= 0 {

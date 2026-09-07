@@ -95,6 +95,11 @@ func (s *Service) Link(ctx context.Context, p household.Principal, in LinkInput)
 	if !slices.ContainsFunc(in.Members, func(v matching.Member) bool { return v.OperationID == in.PrimaryID }) {
 		return result, matching.ErrInvalid
 	}
+	if g.State == matching.Conflict {
+		if err = s.requireAcceptedSources(ctx, p, facts); err != nil {
+			return result, err
+		}
+	}
 	if _, _, err = g.Assign(facts, false); err != nil {
 		return result, err
 	}

@@ -30,3 +30,8 @@ func (c Correspondence) Digest() [32]byte {
 	data, _ := json.Marshal([]string{c.Kind, c.Namespace, c.Reference, c.Network, c.Movement, c.FromAccountID, c.ToAccountID})
 	return sha256.Sum256(data)
 }
+
+func (c Correspondence) DistinctPayment(other Correspondence) bool {
+	return c.Kind == "payment" && other.Kind == "payment" && c.Namespace == other.Namespace &&
+		(c.Reference != other.Reference || c.Network != other.Network || c.Movement != other.Movement)
+}
