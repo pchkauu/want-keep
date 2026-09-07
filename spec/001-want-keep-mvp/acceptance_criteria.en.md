@@ -631,7 +631,7 @@ REQ: `REQ-049`.
 
 - **Given:** Both members enrolled their own passkeys and personal recovery codes.
 - **When:** A member recovers their sign-in, reuses a code, tries an alien origin and attempts to reset their partner’s sign-in.
-- **Then:** Own access is restored with own old sessions/subscriptions revoked; the partner’s sessions remain; code reuse, alien origins and resetting the partner’s sign-in fail.
+- **Then:** Own access is restored after a new passkey with atomic revocation of own old keys, recovery codes, sessions and subscriptions; the partner’s access remains. Code reuse, alien origin and resetting the partner’s sign-in fail.
 - **Level:** `end-to-end`.
 
 ## AC-050

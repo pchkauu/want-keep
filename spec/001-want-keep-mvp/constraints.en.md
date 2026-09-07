@@ -96,3 +96,7 @@ Design, screens and navigation are UI contracts supplementing the API: [design](
 ## PostgreSQL task-1.3
 
 pgx v5.10.0 stays in storage; domain/application never import the driver or pgx.Tx. Architecture tests recognize connections/admission as an application boundary. Test PostgreSQL 17.11 is digest-pinned; task-8.1 confirms the production major. READ COMMITTED uses admission-before-household lock order; maintenance is separate from application. [Storage contract and execution](evidence/task-1.3-storage.en.md).
+
+## Identity task-1.4
+
+Auth uses domain/application, a WebAuthn adapter, delivery/identity and storage. D-45 and verification boundaries: [contract](contracts.en.md#task-14-sign-in-and-recovery-d-45), [evidence](evidence/task-1.4-identity.en.md).

@@ -3,9 +3,9 @@
 
 ## RU
 
-Обеспечить единственный безопасный вход владельца.
+Обеспечить раздельный безопасный вход участников семьи и личное восстановление доступа.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализована backend/API-основа; продуктовые экраны, приглашения и browser/manual AC остаются профильным задачам.
 
 **Зависимости:** `task-1.3`.
 
@@ -13,12 +13,17 @@
 
 ### Изменение и контракты
 
-Реализовать одноразовую первичную регистрацию владельца через операторский bootstrap, WebAuthn challenge/origin/RP проверки, защищённые cookie-сессии, logout и одноразовые хешированные recovery-коды. Восстановление отзывает старые сессии и подписки устройств. Исключить публичную регистрацию и повтор bootstrap после инициализации.
+Операторский bootstrap однократен. WebAuthn v0.18.0 проверяет origin/RP/challenge/purpose/UV и подпись. Cookie-сессия живёт 12 часов и 30 минут простоя; фоновые запросы не продлевают её. Изменения ключей/кодов требуют собственной auth не старше 5 минут. Recovery выдаёт 10 одноразовых хешированных кодов; после нового passkey атомарно отзывает прежние ключи, сессии, коды и подписки этого пользователя, сохраняя доступ партнёра. PostgreSQL хранит попытки, generation, rate limits и audit. Приглашения — task-1.6, UI — task-7.1.
 
 ### Границы изменений
 
 - `backend/internal/identity/`
 - `backend/internal/delivery/identity/`
+- `backend/internal/storage/`
+- `backend/migrations/004_identity.sql`
+- `backend/cmd/`
+- `api/`
+- `backend/test/integration/identity/`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -45,7 +50,7 @@
 
 - **Дано:** Оба участника зарегистрировали собственные passkey и личные коды восстановления.
 - **Когда:** Участник восстанавливает свой вход, повторяет код, пробует чужой origin и сброс входа партнёра.
-- **Тогда:** Свой вход восстановлен с отзывом своих старых сессий/подписок; сессии партнёра сохранены; повтор кода, чужой origin и сброс чужого входа отклонены.
+- **Тогда:** Свой вход восстановлен после нового passkey с атомарным отзывом своих старых ключей, recovery-кодов, сессий и подписок; доступ партнёра сохранён. Повтор кода, чужой origin и сброс чужого входа отклонены.
 - **Уровень:** `end-to-end`.
 
 #### AC-050
@@ -72,12 +77,16 @@
 ### Проверка результата
 
 ```sh
+make check
 make test-integration AREA=identity
+make test-integration AREA=storage
+make test-identity-race
+make test-storage-race
 ```
 
 Вход и восстановление проходят; чужой origin, повтор challenge/recovery-кода и неавторизованный доступ отклонены.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+HTTP/PostgreSQL и криптографические fixtures проверяются в изоляции; отсутствие БД — ошибка. Доказательства и ограничения: evidence/task-1.4-identity.md. Реальные Chrome/Arc, Touch ID, push delivery, приглашения, banking и production не заявляются пройденными.
 
 ### Передача следующему агенту
 
@@ -87,9 +96,9 @@ make test-integration AREA=identity
 
 ## EN
 
-Provide a secure single-owner entry point.
+Provide independent secure sign-in and personal access recovery for household members.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Backend/API foundation implemented; product screens, invitations and browser/manual AC remain with their owning tasks.
 
 **Dependencies:** `task-1.3`.
 
@@ -97,12 +106,17 @@ Provide a secure single-owner entry point.
 
 ### Change and contracts
 
-Implement one-time owner enrollment through operator bootstrap, WebAuthn challenge/origin/RP checks, secure cookie sessions, logout and one-time hashed recovery codes. Recovery revokes old sessions and device subscriptions. Prevent public registration and repeated bootstrap after initialization.
+Operator bootstrap is one-time. WebAuthn v0.18.0 verifies origin/RP/challenge/purpose/UV and signatures. Cookie sessions expire after 12 hours or 30 idle minutes; background requests do not extend them. Key/code changes require own authentication within 5 minutes. Recovery issues 10 hashed one-use codes; after a new passkey it atomically revokes that user’s old keys, sessions, codes and subscriptions while preserving the partner’s access. PostgreSQL persists attempts, generation, rate limits and audit. Invitations belong to task-1.6; UI belongs to task-7.1.
 
 ### Change boundaries
 
 - `backend/internal/identity/`
 - `backend/internal/delivery/identity/`
+- `backend/internal/storage/`
+- `backend/migrations/004_identity.sql`
+- `backend/cmd/`
+- `api/`
+- `backend/test/integration/identity/`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -129,7 +143,7 @@ A link establishes coverage but does not prove the whole criterion; verification
 
 - **Given:** Both members enrolled their own passkeys and personal recovery codes.
 - **When:** A member recovers their sign-in, reuses a code, tries an alien origin and attempts to reset their partner’s sign-in.
-- **Then:** Own access is restored with own old sessions/subscriptions revoked; the partner’s sessions remain; code reuse, alien origins and resetting the partner’s sign-in fail.
+- **Then:** Own access is restored after a new passkey with atomic revocation of own old keys, recovery codes, sessions and subscriptions; the partner’s access remains. Code reuse, alien origin and resetting the partner’s sign-in fail.
 - **Level:** `end-to-end`.
 
 #### AC-050
@@ -156,12 +170,16 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
+make check
 make test-integration AREA=identity
+make test-integration AREA=storage
+make test-identity-race
+make test-storage-race
 ```
 
 Sign-in and recovery pass; alien origin, challenge/recovery-code replay and unauthorized access fail.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+HTTP/PostgreSQL and cryptographic fixtures run in isolation; missing DB fails. Evidence and limits: evidence/task-1.4-identity.en.md. Real Chrome/Arc, Touch ID, push delivery, invitations, banking and production are not claimed as passed.
 
 ### Handoff to the next agent
 

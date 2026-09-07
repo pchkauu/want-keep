@@ -2,7 +2,7 @@
 
 [English](contracts.en.md)
 
-Контракт проекта версии 10; task-0.10 признала SDD Ready for development 2026-09-07. OpenAPI и базовые доменные типы реализованы task-1.2; HTTP-обработчиков и схемы БД ещё нет. D-37–D-43 закрывают фундаментальные правила; provider-specific разрешения и conformance остаются entry/deployment gates task-4.x/task-8.x. REQ/AC имеют приоритет над предположением адаптера.
+Контракт проекта версии 10; task-0.10 признала SDD Ready for development 2026-09-07. OpenAPI и базовые доменные типы реализованы task-1.2; task-1.3 реализует хранилище, task-1.4 — HTTP-обработчики identity. D-37–D-43 закрывают фундаментальные правила; provider-specific разрешения и conformance остаются entry/deployment gates task-4.x/task-8.x. REQ/AC имеют приоритет над предположением адаптера.
 
 Уточнение task-1.2 после review: payer — явное known/memberId, unknown или not_applicable; плательщик вводится и исправляется отдельно от actor и долей. Связь существующих движений требует ID/expectedRevision каждого участника и атомарной проверки. Preview плана различает create/update/delete и lineId; expectedRevision относится к Budget aggregate, который меняется при каждом изменении статьи/подтверждении. ReturnsReport передаёт dimensionless XIRR ratio строкой, native/reporting basis, dated cash flows и unavailable reason; solver остаётся в task-6.4. Эти поправки затрагивают ещё не выпущенные DTO; оба клиента регенерируются вместе, действующих данных для миграции нет.
 
@@ -229,3 +229,21 @@ Route-specific provider IDs живут в отдельных Funding/Earn/P2P na
 ## Storage task-1.3 — contract 10
 
 Внутренние application/repository границы, транзакционные сценарии D-39/D-41/D-43, точность, миграции, роли и передача следующим задачам описаны в [отчёте реализации](evidence/task-1.3-storage.md). Публичный OpenAPI не меняется. Source/page и checkpoint атомарны; регистрация команды предшествует исполнению; financial effect и terminal outcome сохраняются вместе. Внешний IO запрещён внутри callback транзакции.
+
+## Task-1.4: вход и восстановление (D-45)
+
+Backend/API task-1.4 реализует auth-часть контракта 10. Результат не означает готовность интерфейса или production. User/Household/Membership остаются раздельными; операторский bootstrap создаёт первую семью только после проверенной регистрации passkey. Приглашение второго участника реализует task-1.6 через собственную application-границу; произвольный purpose/token не разрешает enrollment.
+
+Session — opaque 256-bit token в Secure HttpOnly SameSite=Lax host-only cookie, Path=/. В БД только hash. Максимум 12 часов, простой 30 минут; GET и polling не продлевают вход. POST /auth/session/activity с Origin/CSRF отмечает пользовательскую активность и не оживляет истёкшую сессию. Task-7.1 вызывает его только при явной foreground-активности, не чаще раза в минуту. Me содержит session.id, authenticatedAt, expiresAt и idleExpiresAt. CSRF выводится из токена сессии; хранится в памяти клиента.
+
+LoginOptionsInput.purpose: login (default) или reauthentication. Второй вариант связан с текущими user/session и требует CSRF. Изменение ключей и перевыпуск кодов требуют собственной auth не старше 5 минут. Logout/отзыв session отзывает связанные push bindings; отзыв passkey отзывает сессии этого ключа. Последний действующий ключ удалить нельзя. Списки содержат только собственные ресурсы, cursor связан с пользователем, сессией и видом списка.
+
+WebAuthn: ES256/RS256, discoverable credential, UV required, attestation none. Server challenge действует 5 минут и привязан к browser/purpose/RP/origin. Одноразовое завершение и отклонение пишутся атомарно. Cross-origin/iframe запрещены, незаказанные extensions отклоняются. Нарушение ненулевого signCount запрещает вход; нулевой счётчик допустим. Библиотека и её модели находятся во внешнем адаптере.
+
+Recovery-код: 128 случайных бит, 10 кодов, hash-only storage, однократный показ. Проверка расходует один код и выдаёт browser-bound grant на 10 минут без финансового доступа. Только успешный новый passkey атомарно меняет generation, отзывает все прежние ключи/сессии/коды/подписки пользователя и выдаёт новую сессию/коды. Отмена оставляет старый доступ; израсходованный код не возвращается. Смена generation отклоняет старые grants и enrollment; отозванный ключ не завершит login. Добавление запасного ключа не меняет recovery-коды. EnrollmentResult разделяет bootstrap/recovery с recoveryCodes и add_passkey без них.
+
+При потере ответа после commit секретный результат не повторяется: вход новым passkey, затем при необходимости свежая auth и перевыпуск кодов. Email/partner/operator reset после bootstrap отсутствуют. Операторский токен — 256 бит, срок 30 минут, приватный файл, hash в БД. Перевыпуск до инициализации отзывает предыдущий token; после инициализации запрещён.
+
+В auth-таблицах нет финансовых документов/сообщений. PostgreSQL сериализует небольшую auth-нагрузку через bootstrap row; профиль пользователя дополнительно блокируется. Финансовые транзакции этот lock не берут. Инфраструктурная ошибка откатывает эффект; отказ церемонии сохраняет consumed/audit через savepoint. Rate limits: фиксированное окно 15 минут, deployment 600, source 120, browser 60, известный пользователь 30; retries используют новую церемонию после явного отказа. Истёкшие attempts/rate windows удаляет bounded maintenance. Financial command retention D-41 к auth-секретам не применяется.
+
+Новая миграция 004 расширяет схему; 001–003 не меняются. OpenAPI и generated Go/TypeScript обновляются совместно, развёрнутых auth-клиентов пока нет. Task-7.1 реализует экраны/хранение CSRF только в памяти/активность/unknown response; task-1.6 — приглашения и семейные политики; notification task проверяет binding при регистрации и непосредственно перед отправкой; task-8.1 — TLS/proxy/операторские секреты/maintenance schedule. Зарегистрированный Raiffeisen callback не изменяется.

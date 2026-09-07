@@ -1177,8 +1177,8 @@
           "en": "A member recovers their sign-in, reuses a code, tries an alien origin and attempts to reset their partner’s sign-in."
         },
         "then": {
-          "ru": "Свой вход восстановлен с отзывом своих старых сессий/подписок; сессии партнёра сохранены; повтор кода, чужой origin и сброс чужого входа отклонены.",
-          "en": "Own access is restored with own old sessions/subscriptions revoked; the partner’s sessions remain; code reuse, alien origins and resetting the partner’s sign-in fail."
+          "ru": "Свой вход восстановлен после нового passkey с атомарным отзывом своих старых ключей, recovery-кодов, сессий и подписок; доступ партнёра сохранён. Повтор кода, чужой origin и сброс чужого входа отклонены.",
+          "en": "Own access is restored after a new passkey with atomic revocation of own old keys, recovery codes, sessions and subscriptions; the partner’s access remains. Code reuse, alien origin and resetting the partner’s sign-in fail."
         },
         "level": "end-to-end"
       }
@@ -3267,8 +3267,8 @@
         "en": "Implement passkeys and access recovery"
       },
       "goal": {
-        "ru": "Обеспечить единственный безопасный вход владельца.",
-        "en": "Provide a secure single-owner entry point."
+        "ru": "Обеспечить раздельный безопасный вход участников семьи и личное восстановление доступа.",
+        "en": "Provide independent secure sign-in and personal access recovery for household members."
       },
       "depends_on": [
         "task-1.3"
@@ -3282,20 +3282,33 @@
       ],
       "targets": [
         "backend/internal/identity/",
-        "backend/internal/delivery/identity/"
+        "backend/internal/delivery/identity/",
+        "backend/internal/storage/",
+        "backend/migrations/004_identity.sql",
+        "backend/cmd/",
+        "api/",
+        "backend/test/integration/identity/"
       ],
       "behavior": {
-        "ru": "Реализовать одноразовую первичную регистрацию владельца через операторский bootstrap, WebAuthn challenge/origin/RP проверки, защищённые cookie-сессии, logout и одноразовые хешированные recovery-коды. Восстановление отзывает старые сессии и подписки устройств. Исключить публичную регистрацию и повтор bootstrap после инициализации.",
-        "en": "Implement one-time owner enrollment through operator bootstrap, WebAuthn challenge/origin/RP checks, secure cookie sessions, logout and one-time hashed recovery codes. Recovery revokes old sessions and device subscriptions. Prevent public registration and repeated bootstrap after initialization."
+        "ru": "Операторский bootstrap однократен. WebAuthn v0.18.0 проверяет origin/RP/challenge/purpose/UV и подпись. Cookie-сессия живёт 12 часов и 30 минут простоя; фоновые запросы не продлевают её. Изменения ключей/кодов требуют собственной auth не старше 5 минут. Recovery выдаёт 10 одноразовых хешированных кодов; после нового passkey атомарно отзывает прежние ключи, сессии, коды и подписки этого пользователя, сохраняя доступ партнёра. PostgreSQL хранит попытки, generation, rate limits и audit. Приглашения — task-1.6, UI — task-7.1.",
+        "en": "Operator bootstrap is one-time. WebAuthn v0.18.0 verifies origin/RP/challenge/purpose/UV and signatures. Cookie sessions expire after 12 hours or 30 idle minutes; background requests do not extend them. Key/code changes require own authentication within 5 minutes. Recovery issues 10 hashed one-use codes; after a new passkey it atomically revokes that user’s old keys, sessions, codes and subscriptions while preserving the partner’s access. PostgreSQL persists attempts, generation, rate limits and audit. Invitations belong to task-1.6; UI belongs to task-7.1."
       },
       "verification": {
-        "command": "make test-integration AREA=identity",
+        "command": "make check\nmake test-integration AREA=identity\nmake test-integration AREA=storage\nmake test-identity-race\nmake test-storage-race",
         "expected": {
           "ru": "Вход и восстановление проходят; чужой origin, повтор challenge/recovery-кода и неавторизованный доступ отклонены.",
           "en": "Sign-in and recovery pass; alien origin, challenge/recovery-code replay and unauthorized access fail."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/14"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/14",
+      "status": {
+        "ru": "Реализована backend/API-основа; продуктовые экраны, приглашения и browser/manual AC остаются профильным задачам.",
+        "en": "Backend/API foundation implemented; product screens, invitations and browser/manual AC remain with their owning tasks."
+      },
+      "verification_note": {
+        "ru": "HTTP/PostgreSQL и криптографические fixtures проверяются в изоляции; отсутствие БД — ошибка. Доказательства и ограничения: evidence/task-1.4-identity.md. Реальные Chrome/Arc, Touch ID, push delivery, приглашения, banking и production не заявляются пройденными.",
+        "en": "HTTP/PostgreSQL and cryptographic fixtures run in isolation; missing DB fails. Evidence and limits: evidence/task-1.4-identity.en.md. Real Chrome/Arc, Touch ID, push delivery, invitations, banking and production are not claimed as passed."
+      }
     },
     {
       "id": "task-1.5",
