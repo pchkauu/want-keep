@@ -109,13 +109,13 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Вопрос:** Почему остаток отличается?
 
-**Главный ответ:** Размер/дата расхождения и вероятные объяснения с доказательствами.
+**Главный ответ:** Owned, available, locked и debt источника и журнала на sourceAsOf, их точная разница, качество данных и доказанные объяснения.
 
-**Структура сверху вниз:** Источник vs журнал на одну дату → неполная история/pending/связи → возможные действия.
+**Структура сверху вниз:** Lifecycle/result и свежесть → четыре компонента source/ledger/difference → объяснения и связанные операции → replay → resolution.
 
-**Следующее действие:** Обновить, открыть движения SCR-010, сопоставить/исправить FORM-06.
+**Следующее действие:** Запустить/дождаться повторной загрузки, повторно войти в источник, открыть связанные движения SCR-010 либо после completed/unavailable replay явно скорректировать owned/debt.
 
-**Объяснение и детализация:** Нельзя выровнять остаток скрытой проводкой; пользователь видит причину и последствия коррекции.
+**Объяснение и детализация:** Unknown не равен нулю; balanced stale не становится fresh. Available/locked напрямую не корректируются. Явный adjustment не является доходом/расходом, не меняет снимок источника и заранее показывает рассчитанный эффект.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -527,13 +527,13 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Question:** Why does the balance differ?
 
-**Primary answer:** Discrepancy amount/date and possible evidence-backed explanations.
+**Primary answer:** Source and ledger owned, available, locked and debt at sourceAsOf, their exact differences, data quality and evidence-backed explanations.
 
-**Top-down structure:** Source vs ledger at same date → incomplete history/pending/links → possible actions.
+**Top-down structure:** Lifecycle/result and freshness → four source/ledger/difference components → explanations and related transactions → replay → resolution.
 
-**Next action:** Refresh, open movements SCR-010, match/correct FORM-06.
+**Next action:** Start/wait for bounded replay, reauthenticate the source, open related movements in SCR-010 or, after completed/unavailable replay, explicitly adjust owned/debt.
 
-**Explanation and details:** No hidden balancing entry; user sees correction reason and consequences.
+**Explanation and details:** Unknown is not zero; balanced stale does not become fresh. Available/locked cannot be adjusted directly. An explicit adjustment is not income/expense, never changes the source observation and previews the server-derived effect.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
