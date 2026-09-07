@@ -4,7 +4,7 @@
 
 ## Scope
 
-D-37, 2026-09-07: the user authorized independent task-1.2 implementation before parallel research completes. The branch base and PR target are `docs/want-keep-mvp-sdd`. Overall MVP status remains Not Ready.
+D-44, 2026-09-07: independent task-1.2 implementation before research completion was previously labeled D-37 on its branch. D-37 now retains the Alfa decision from task-0.10. Branch base and PR target are `docs/want-keep-mvp-sdd`. The SDD is Ready for development; application operational readiness is not yet established. The user accepted D-41 instead of the earlier family-lifetime command retention.
 
 Implemented exact Money/Asset/Rate, explicit rounding and largest-remainder allocation; calendar types; User/Household/Membership and household/personal-edit policies; knowledge, coverage and freshness states; immutable command transitions and replay/revision checks. Money encapsulates apd v3.2.3. Input strings are limited to 256 characters; display scale never limits source precision. Overflow returns an error instead of truncating. Allocation accepts up to 1000 unique weights and scale 0–254; the total must be exactly representable in that quantum. Floor and half-even are explicit choices.
 
@@ -26,4 +26,4 @@ Task-1.3 owns atomic command registration and effect+final-status persistence, p
 
 PostgreSQL, banking, payment, browser E2E and deployment checks were not run: those implementations are outside task-1.2. This result does not claim full product AC-002/003/039/059/077/079/090 acceptance.
 
-Task-1.2 review clarification: payer is explicit known/memberId, unknown or not_applicable, entered/corrected independently from actor and shares. Existing movement links require each ID/expectedRevision and atomic validation. Plan preview distinguishes create/update/delete and lineId; expectedRevision identifies the Budget aggregate, advanced by every line change/approval. ReturnsReport carries decimal-string dimensionless XIRR ratios, native/reporting basis, dated cash flows and unavailable reasons; task-0.10/task-6.4 still own the solver. These changes affect unreleased DTOs; both clients regenerate together and no deployed data requires migration.
+Task-1.2 review clarification: payer is explicit known/memberId, unknown or not_applicable, entered/corrected independently from actor and shares. Existing movement links require each ID/expectedRevision and atomic validation. Plan preview distinguishes create/update/delete and lineId; expectedRevision identifies the Budget aggregate, advanced by every line change/approval. ReturnsReport carries decimal-string dimensionless XIRR ratios, native/reporting basis, dated cash flows and unavailable reasons; task-6.4 still owns the solver. These changes affect unreleased DTOs; both clients regenerate together and no deployed data requires migration.

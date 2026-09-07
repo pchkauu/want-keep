@@ -5,7 +5,7 @@
 
 Сделать условия, прогнозы и результаты продуктов понятными.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-7.2`, `task-6.2`, `task-6.3`, `task-6.4`, `task-6.5`, `task-7.9`.
 
@@ -240,7 +240,7 @@ make test-web FILTER=products && make e2e SCENARIO=financial-products
 
 Make product terms, forecasts and results understandable.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-7.2`, `task-6.2`, `task-6.3`, `task-6.4`, `task-6.5`, `task-7.9`.
 

@@ -5,7 +5,7 @@
 
 Дать объяснимую доступную и прогнозную сумму по каждой валюте.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-6.6`, `task-6.7`, `task-6.3`, `task-2.5`.
 
@@ -153,7 +153,7 @@ make test-go PKG=./internal/forecast/...
 
 Provide explainable available/forecast allowance for each currency.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-6.6`, `task-6.7`, `task-6.3`, `task-2.5`.
 

@@ -5,7 +5,7 @@
 
 Добавить семейный контекст и принадлежность в интерфейс.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-7.1`, `task-1.6`.
 
@@ -152,7 +152,7 @@ RU/EN и desktop-вид различают текущего автора и вы
 
 Add household context and ownership to the interface.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-7.1`, `task-1.6`.
 

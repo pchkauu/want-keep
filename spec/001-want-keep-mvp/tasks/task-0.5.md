@@ -5,7 +5,7 @@
 
 Зафиксировать проверяемый read-контракт и ограничения RUB, USDT, ETH и используемой криптокарты Aifory по D-33.
 
-**Состояние:** Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.md), [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.en.md). UI-чтение выполнено; AIFORY-B02–B04 / BLK-05 остаются открыты под контролем task-0.10. Другие продукты отложены без блокировки. task-4.5 и MVP — Not Ready.
+**Состояние:** Исследование Aifory UI завершено; task-0.10 закрепила D-33/D-39 safe boundary. SDD Ready; permission, structured fixtures, lifecycle, reauth и второй аккаунт остаются gate task-4.5.
 
 **Зависимости:** нет.
 
@@ -97,7 +97,7 @@ RU/EN evidence содержит 19 наблюдений/источников, п
 
 Record a verifiable read contract and limitations for Aifory RUB, USDT, ETH and the existing crypto card under D-33.
 
-**Status:** Research completed 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.md), [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/aifory.en.md). UI reading performed; AIFORY-B02–B04 / BLK-05 remain open under task-0.10. Other products are deferred without blocking. task-4.5 and MVP are Not Ready.
+**Status:** Aifory UI research is complete; task-0.10 fixed the D-33/D-39 safe boundary. The SDD is Ready; permission, structured fixtures, lifecycle, reauthentication and a second account remain the task-4.5 gate.
 
 **Dependencies:** none.
 

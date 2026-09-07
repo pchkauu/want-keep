@@ -5,7 +5,7 @@
 
 Доказать восстановление согласованного учёта и файлов до четырёх часов.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-8.2`.
 
@@ -128,7 +128,7 @@ make restore-check MODE=synthetic
 
 Demonstrate consistent accounting/file recovery within four hours.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-8.2`.
 

@@ -5,7 +5,7 @@
 
 Понятная свежесть данных и безопасное восстановление чтения.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-7.1`, `task-7.9`, `task-3.3`, `task-4.1`, `task-4.2`, `task-4.3`, `task-4.4`, `task-4.5`, `task-4.6`.
 
@@ -203,7 +203,7 @@ make e2e SCENARIO=connection-ui
 
 Understandable freshness and safe restoration of read access.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-7.1`, `task-7.9`, `task-3.3`, `task-4.1`, `task-4.2`, `task-4.3`, `task-4.4`, `task-4.5`, `task-4.6`.
 

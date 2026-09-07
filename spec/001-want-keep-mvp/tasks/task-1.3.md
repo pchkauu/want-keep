@@ -5,7 +5,7 @@
 
 Сделать сохранение учёта, версий и заданий атомарным.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-1.2`.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Добавить миграции для владельца, счетов, неизменяемых исходников, операций/проводок, версий, идемпотентности и outbox/jobs. Использовать NUMERIC с достаточной точностью исходника и явными ограничениями; не связывать внешний ID разных провайдеров без namespace. Уникальность, version-check и резервирование денег обеспечивать транзакционно. D-37: хранить command status/key/hash/result всё время хранения семьи, не исходный payload. Регистрация предшествует исполнению; эффект и terminal result атомарны. Уникальность household+actor+key; type/hash неизменны, replay до повторного version check. Pending после неизвестного исхода требует сверки; not_found не разрешает новый ключ. Статусы доступны только инициатору; права на результат проверяются отдельно.
+Добавить миграции для семьи/участников, счетов, неизменяемых source records, операций/проводок, revisions, command records, idempotency tombstones и outbox/jobs. Денежные поля NUMERIC сохраняют точность источника. Source uniqueness следует D-39 и включает household, provider, стабильный внешний счёт, product/log namespace и provider record ID; connection/session ID остаётся provenance. Коллизия сохраняет evidence как `source_ambiguous` без проводки. Транзакционно обеспечить uniqueness, version-check и резервы. Реализовать независимые retention jobs: terminal detail 90 дней после исхода; unresolved до сверки плюс 90 дней; tombstone с `commandId` живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome; финансовый source/audit не удаляется вместе с command detail. Регистрация предшествует исполнению; эффект и terminal result атомарны. Уникальность household+actor+key; type/hash неизменны, replay до повторного version check. Pending после неизвестного исхода требует сверки; not_found не разрешает новый ключ. Статусы доступны только инициатору; права на результат проверяются отдельно.
 
 ### Границы изменений
 
@@ -116,7 +116,7 @@ Make предоставляет точку входа test-integration, но sui
 
 Make accounting, revision and job persistence atomic.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-1.2`.
 
@@ -124,7 +124,7 @@ Make accounting, revision and job persistence atomic.
 
 ### Change and contracts
 
-Add migrations for owner, accounts, immutable source records, transactions/postings, revisions, idempotency and outbox/jobs. Use NUMERIC preserving source precision with explicit constraints; namespace provider IDs. Enforce uniqueness, version checks and money reservation transactionally. D-37: retain command status/key/hash/result for the family lifetime, never the source payload. Registration precedes execution; effect and terminal result are atomic. Uniqueness is household+actor+key; type/hash are immutable and replay precedes a fresh version check. Pending after an unknown outcome requires reconciliation; not_found does not permit a new key. Status is visible only to its originator; result permissions are checked separately.
+Add migrations for households/members, accounts, immutable source records, transactions/postings, revisions, command records, idempotency tombstones and outbox/jobs. NUMERIC money fields preserve source precision. Source uniqueness follows D-39 and includes household, provider, stable external account, product/log namespace and provider record ID; connection/session ID remains provenance. A collision retains evidence as `source_ambiguous` without posting. Enforce uniqueness, version checks and reservations transactionally. Implement independent retention jobs: terminal detail for 90 days after outcome; unresolved commands through reconciliation plus 90 days; a tombstone with `commandId` lives throughout unresolved state and for 400 days after terminal/reconciled outcome; financial source/audit data is not removed with command detail. Registration precedes execution; effect and terminal result are atomic. Uniqueness is household+actor+key; type/hash are immutable and replay precedes a fresh version check. Pending after an unknown outcome requires reconciliation; not_found does not permit a new key. Status is visible only to its originator; result permissions are checked separately.
 
 ### Change boundaries
 

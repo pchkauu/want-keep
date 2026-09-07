@@ -5,7 +5,7 @@
 
 Собрать доказательства всех требований на полном кандидате.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-4.1`, `task-4.2`, `task-4.3`, `task-4.4`, `task-4.5`, `task-4.6`, `task-7.3`, `task-7.6`, `task-7.7`, `task-7.8`, `task-8.3`, `task-7.12`.
 
@@ -40,7 +40,7 @@
 - **REQ-035:** Торговая аналитика отделяет реализованный результат, нереализованный результат, комиссии и funding.
 - **REQ-036:** Вознаграждения майнинга отделены от переводов между собственными кошельками.
 - **REQ-037:** Исторические расходы используют зафиксированную оценку на дату операции, текущий капитал — актуальную оценку.
-- **REQ-042:** Интеграция Альфа-Банк автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
+- **REQ-042:** Alfa автоматически читает debit, current/savings, deposits и кэшбэк по проверенному контракту.
 - **REQ-043:** Raiffeisen через RBO API читает только расчётный счёт ИП: остатки, поступления, списания, комиссии и историю (D-35).
 - **REQ-044:** Интеграция Ozon Банк автоматически читает дебетовую карту и связанный основной счёт: остатки, операции и доступные сведения в пределах подтверждённого контракта. Другие продукты Ozon отложены до расширения контракта.
 - **REQ-045:** Bybit автоматически читает Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен. Остальные продукты отложены без блокировки по D-36.
@@ -87,9 +87,9 @@
 
 #### AC-042
 
-- **Дано:** Подключён разрешённый личный аккаунт Альфа-Банк с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый аккаунт Alfa с продуктами D-37.
+- **Когда:** Запрошены счета, остатки, операции, кэшбэк и условия накоплений.
+- **Тогда:** Данные совпадают с source evidence; кредитка Alfa не требуется, unknown блокирует только deployment коннектора.
 - **Уровень:** `contract+manual`.
 
 #### AC-043
@@ -427,7 +427,7 @@ make check && make test-integration AREA=all && make e2e SCENARIO=all && make ev
 
 Collect evidence for all requirements on the complete candidate.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-4.1`, `task-4.2`, `task-4.3`, `task-4.4`, `task-4.5`, `task-4.6`, `task-7.3`, `task-7.6`, `task-7.7`, `task-7.8`, `task-8.3`, `task-7.12`.
 
@@ -462,7 +462,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-035:** Trading analytics separates realized P&L, unrealized P&L, fees and funding.
 - **REQ-036:** Mining rewards are separate from transfers between owned wallets.
 - **REQ-037:** Historical expenses use a fixed transaction-date valuation; current wealth uses a current valuation.
-- **REQ-042:** The Alfa-Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+- **REQ-042:** Alfa automatically reads debit, current/savings, deposits and cashback under a verified contract.
 - **REQ-043:** Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35).
 - **REQ-044:** The Ozon Bank integration automatically reads the debit card and linked main account: balances, transactions and available details under a verified contract. Other Ozon products are deferred until a contract extension.
 - **REQ-045:** Bybit automatically reads Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; the official API is preferred. Other products are deferred without blocking under D-36.
@@ -509,9 +509,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-042
 
-- **Given:** An authorized personal Alfa-Bank account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized Alfa account with D-37 products is connected.
+- **When:** Accounts, balances, transactions, cashback and savings terms are requested.
+- **Then:** Data matches source evidence; an Alfa credit card is not required and unknown blocks only connector deployment.
 - **Level:** `contract+manual`.
 
 #### AC-043

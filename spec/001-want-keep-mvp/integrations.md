@@ -1,44 +1,39 @@
-# Интеграции и исследовательские блокеры
+# Интеграции и provider gates
 
 [English](integrations.en.md)
 
-Срез публичной документации: 2026-09-06; обновления исследований датированы в строках ниже. Подтверждённое чтение отдельных продуктов, полнота истории и готовность автоматизации оцениваются отдельно. Наличие публичной документации или маркетингового описания не означает доступ к личному аккаунту.
+Срез evidence: 2026-09-07. SDD **Ready for development** по D-38. Это не доказательство работающих коннекторов: каждый provider deployment выключен до D-43 admission по результатам task-4.x и task-8.x для точного binding.
 
 ## Обязательное покрытие
 
-| Платформа | Продукты | Подтверждено | Открыто и задача |
+| Платформа | Scope MVP | Доказательство для дизайна | Entry/deployment gate |
 | --- | --- | --- | --- |
-| Альфа-Банк | Debit/credit cards, current/savings, deposits; кэшбэк | 2026-09-07: [исследование завершено с блокерами](evidence/alfa.md). Live-чтение текущего/накопительного счетов, двух типов вкладов, операций и кэшбэка; опубликованные retail API accounts/cards/operations/loyalty. | BLK-01 открыт: eligibility и проверенный автоматический read-контракт, identity/полнота/reauth, второй аккаунт, отсутствующая кредитка, точные условия и FX/cashback lifecycle. task-0.1 завершает research; task-4.1 и task-0.10 остаются заблокированы. |
-| Райффайзенбанк РФ | Только расчётный счёт ИП: остатки, поступления, списания, комиссии, история (D-35) | 2026-09-07: [исследование завершено](evidence/raiffeisen.md) с блокерами. Refresh и account GET с Mac/VPS — 200; две camt.053, семь совпавших записей, OPBD/CLBD сверены. DNS/TLS готовы. | RAIF-B02/B03/B04/B06: текущие/available/locked остатки, комиссии, история и auth lifecycle. Intraday 404 no-statements; callback 503. task-4.2 и MVP Not Ready. |
-| Ozon Банк | Дебетовая карта и связанный основной счёт (D-32) | 2026-09-07: [исследование завершено с блокерами](evidence/ozon.md); пять read-маршрутов, два HAR, 10 синтетических проекций, отдельная комиссия и цепочка семи страниц. | BLK-03 открыт: конец истории, эксплуатация сессии, второй аккаунт и семантика недоступных полей. task-0.10 проверяет закрытие; task-4.3 заблокирована. Другие продукты Ozon — будущее расширение, не блокер. |
-| Bybit | Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P (D-36) | 2026-09-07: [исследование](evidence/bybit.md), [подписанное чтение API](evidence/bybit-api.md) успешно, включая P2P; read-only RSA. Необходимость браузера не установлена. | BLK-04: BYBIT-B03/B04 — детерминированные связи, точность/история и hourly identity/база Earn; task-0.10 → task-4.4. Доступ BYBIT-B02/B05 закрыт. Остальные продукты не блокируют. |
-| Aifory Pro | RUB-счета, USDT, ETH и используемая карта USD (D-33) | 2026-09-07: [исследование завершено](evidence/aifory.md); UI-чтение счетов, движений и карты. | BLK-05: право/структурированный read-контракт, identity/history/reauth и card lifecycle — AIFORY-B02–B04 под task-0.10. task-4.5 не разблокирована. Другие продукты отложены без блокировки. |
-| EMCD | Кошелёк USDT, существующие Coinhold/Grow, используемые криптокарты и исторические P2P-ордера (D-34) | 2026-09-07: [исследование завершено с блокерами](evidence/emcd.md); четыре области UI, 26 источников/наблюдений, шесть синтетических сценариев. Mining Pool API не покрывает выбранные продукты. | BLK-06: структурированный read-контракт, identity/history/reauth, балансы/Grow/card/P2P — EMCD-B02–B04 под task-0.10; task-4.6 заблокирована. Майнинг никогда не использовался, его история и другие неиспользуемые продукты не требуются. |
+| Альфа-Банк | Дебетовая карта, текущий и накопительные счета, вклады, кэшбэк (D-37) | [UI/API research](evidence/alfa.md): продуктовые разделы и история доступны; опубликованы только синтетические сведения. Кредитка Alfa не требуется. | task-4.1: разрешённый structured read path, allowlist, stable IDs, coverage/revisions/statuses/fees/cashback, reauth, два аккаунта и target-host Alfa route. |
+| Райффайзенбанк РФ | Расчётный счёт ИП через RBO API (D-35) | [API/CAMT evidence](evidence/raiffeisen.md): Account, CAMT.053, OPBD/CLBD и `no-statements`; синтетические JSON/XML. | task-4.2: OAuth lifecycle, CAMT corrections/reversals, full coverage, два аккаунта, unknown balances/fees и live conformance. |
+| Ozon Банк | Дебетовая карта и связанный основной счёт (D-32) | [Sanitized HAR projection](evidence/ozon.md): read routes, pagination, fee relation и synthetic fixtures. | task-4.3: session-transport permission, stable account identity, end-of-history, lifecycle/revisions, второй аккаунт и reauth. |
+| Bybit | Funding USDT/USDC/ETH/BTC, используемый Flexible Easy Earn и P2P (D-36) | [Research](evidence/bybit.md) и [read-only RSA API](evidence/bybit-api.md); официальный API приоритетен. | task-4.4: route-specific identities, hourly collision, precision/history gaps, два аккаунта, rotation/revocation и live conformance. |
+| Aifory Pro | RUB-счета, USDT, ETH и используемая карта USD (D-33) | [UI research](evidence/aifory.md): выбранные области доступны; Flutter UI не является схемой API. | task-4.5: разрешённый structured fixture, allowlist, account/log IDs, card lifecycle/fees/FX, coverage, reauth и два аккаунта. |
+| EMCD | Кошелёк USDT, Grow/Coinhold, используемые криптокарты и P2P history (D-34) | [UI research](evidence/emcd.md) и синтетические сценарии; mining API не заменяет выбранные продукты. | task-4.6: structured fixtures каждого журнала, allowlist, balance composition, lifecycle/fees, coverage, reauth и два аккаунта. |
 
-Источники: [Alfa developer portal](https://developers.alfabank.ru/), [Alfa onboarding](https://developers.alfabank.ru/products/alfa-api/documentation/articles/connection/connection), [Raiffeisen API](https://developer.raiffeisen.ru/), [Ozon Bank](https://finance.ozon.ru/), [Bybit wallet balance](https://bybit-exchange.github.io/docs/v5/asset/balance/all-balance), [Bybit transaction log](https://bybit-exchange.github.io/docs/v5/asset/fund-history), [Aifory Pro](https://aifory.pro/), [EMCD wallet](https://help.emcd.io/en/articles/16205516-what-is-emcd-wallet).
+Неиспользуемые продукты, исключённые D-32–D-37, расширяются отдельным решением и не блокируют текущий scope. Общие ручные кредитки, накопления, trading/mining domain features сохраняются там, где они не привязаны к исключённому provider product.
 
-Ссылки Ozon и отдельные страницы Alfa при повторном чтении через исследовательский инструмент были недоступны. Это ограничение исследования, не доказательство отсутствия API.
+## Общий read-контракт
 
-## Результат исследования каждого источника
+Read allowlist задаётся на route/action уровне. Любые payment, transfer, trade, product-open, P2P create/pay/release, stake/redeem и другие внешние изменения запрещены. API предпочтительнее browser collector; collector допускается только при доказанном API-пробеле и разрешении владельца. Пароль/MFA вводит внешний владелец, секреты не попадают в Git, AI, логи или fixtures.
 
-Для каждого обязательного продукта заполнить матрицу: продукт существует/доступен владельцу; read method; необходимые scopes; account identity/card alias; balances owned/available/locked/debt; events/IDs/revisions/statuses; fees/net-gross; date/timezone; pagination/window/depth; terms/minimum/grace/accrual; quote direction/amount/fee; rate limits; reauth; endpoint allowlist; evidence date; synthetic fixture; live result.
+D-43 связывает admission с environment, adapter/collector build, contract, allowlist, non-secret config и operator permission. task-4.x подтверждает provider evidence, task-8.x — host/deployment evidence; только admission service объединяет оба pass. Stale/missing binding даёт `provider_not_admitted` до collector IO. Pre-admission conformance идёт в quarantine без source records и проводок.
 
-Положительный результат требует фактического сопоставления с авторизованным источником. Если продукт не предоставляется владельцу, недоступен без оплаты или нет допустимого автоматического пути, записать конкретный blocker и необходимое решение; не объявлять unsupported эквивалентом реализации.
+D-39 задаёт identity: `household + provider + stable external account + product/log namespace + provider record ID`. Сумма, время, текст, connection/session и UI-label не являются identity. Provider-specific immutable fallback должен быть документирован; collision даёт `source_ambiguous`, сохраняет evidence и не проводит деньги.
 
-Приоритет — официальный read API с минимальными правами. Браузерный сбор допустим по согласию владельца, только для согласованных действий чтения; сессии защищены, истечение и MFA требуют участия человека. Это не разрешение обходить ограничения или совершать внешние финансовые действия.
+Каждый адаптер сохраняет raw revision/hash reference, fetched/occurred time, status, native amounts, fee known/unknown, pagination cursor, requested/observed coverage и reauth state. Gap даёт `source_partial`; unknown balance/fee не равен нулю.
+
+## Provider-specific решения
+
+- **Bybit:** IDs относятся к конкретному route namespace. Cross-log amount/time — только кандидат. Hourly fallback `(coin, productId, hourlyDate)` разрешён в hourly namespace; differing payload — collision. Короткая страница с cursor не завершает импорт.
+- **Raiffeisen:** Account UUID и number/accountKeys различаются. CAMT entry допускает 1:N details. NtryRef/AcctSvcrRef/EndToEndId применяются только при наличии и доказанном scope; statement/report ID — provenance. Fallback — transaction-scoped fingerprint полей, доказанно стабильных между camt.052/camt.053, без amount/time; недостаточная identity даёт `source_ambiguous` без проводки. Corrections/reversals создают revisions. Если camt.052 недоступен, показывается последний подтверждённый CLBD с `asOf`; available/locked/fee остаются unknown.
+- **Ozon:** accountToken/connection и groupID не являются identity; parent relation связывает комиссию, не объединяя финансовые эффекты.
+- **Alfa/Aifory/EMCD:** авторизованные UI-наблюдения подтверждают scope, но stable source fields получает только structured fixture в task-4.x. До этого ни UI-текст, ни DOM-selector не создаёт проводку.
 
 ## Курсы
 
-[Исследование task-0.7](evidence/fx.md) завершено 2026-09-07. Основной USD/RUB — официальный XML Банка России; Frankfurter v2 допустим только с `providers=CBR` как fallback/cross-check. BTC/USD, ETH/USD, USDT/USD и USDC/USD — отдельные CoinGecko Demo observations: current и история до 365 дней. Кроссы вычисляются через USD точной Decimal-арифметикой; default blended rates и предположение USD/USDT/USDC=1 запрещены. Похожие токены, включая USDC.E, не объединяются без проверенной identity mapping.
-
-TradingView отвергнут: charting libraries не поставляют market data, а terms запрещают automated price referencing/non-display processing. Справочная цена не является исполнимой котировкой. Provider buy/sell требует direction, applicable amount, timestamp, spread/fee из подтверждённого source contract; неизвестные поля остаются unavailable/unknown.
-
-BLK-07 сохраняет FX-B02–FX-B04 до task-0.10: решение для crypto history старше 365 дней, provider executable quotes и keyed CoinGecko Demo probe/attribution. Research Issue может быть закрыт, но task-6.1 и MVP остаются Not Ready.
-
-## Порядок закрытия
-
-task-0.1–task-0.7 формируют конкретные evidence документы, task-0.8 проверяет OpenAI, task-0.9 — инфраструктуру. task-0.10 переносит подтверждённые contracts в спецификацию, уточняет affected tasks и проверяет Ready. Реализация адаптеров зависит от собственного исследования и общего Ready-барьера.
-
-## Два участника и идентичность источника
-
-Каждый провайдер должен поддержать независимые аккаунты участников. Один банковский/криптоаккаунт, повторно авторизованный другим участником, не создаёт второй набор финансовых счетов. Исследование фиксирует устойчивую external-account identity и namespace операций отдельно от connectionId. Оба управляют синхронизацией; ввод MFA/пароля выполняет внешний владелец в защищённом потоке. Это требования, а не подтверждённая возможность сервисов.
+D-40: CBR — основной USD/RUB; Frankfurter `providers=CBR` — fallback/cross-check; CoinGecko Demo — current и история BTC/ETH/USDT/USDC в USD до 365 дней. Старше 365 дней — `valuation_unavailable` с сохранением native amount. Platform quote без direction/amount/time/known fee-spread — `quote_unavailable`; reference rate его не заменяет. Demo key/quota/attribution проверяет task-6.1 перед runtime.

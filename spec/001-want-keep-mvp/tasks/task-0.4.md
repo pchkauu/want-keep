@@ -5,7 +5,7 @@
 
 Зафиксировать проверяемый read-контракт Bybit для Funding USDT/USDC/ETH/BTC, Easy Earn и P2P и ограничения доступа.
 
-**Состояние:** Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit-api.md). RSA readOnly API успешно читает Funding USDT/USDC/ETH/BTC, Flexible Easy Earn и P2P. BYBIT-B01/B02/B05 закрыты для проверенного доступа, BYBIT-B03/B04 открыты под task-0.10, BYBIT-B06 отложен без блокировки. 18 наблюдений/источников, 12 синтетических сценариев; продуктовые AC не объявлены пройденными. task-4.4 и BLK-04 Not Ready.
+**Состояние:** Исследование Bybit и RSA read-only API завершено; task-0.10 закрепила route identity, candidate links, hourly collision и history-gap rules. SDD Ready; executable conformance остаётся gate task-4.4.
 
 **Зависимости:** нет.
 
@@ -108,7 +108,7 @@ RU/EN содержат датированные BYBIT-E01–E18, матрицу 
 
 Record a verifiable Bybit read contract for Funding USDT/USDC/ETH/BTC, Easy Earn and P2P and its access limits.
 
-**Status:** Research completed on 2026-09-07: [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit-api.en.md). RSA readOnly API successfully reads Funding USDT/USDC/ETH/BTC, Flexible Easy Earn and P2P. BYBIT-B01/B02/B05 closed for verified access, BYBIT-B03/B04 open under task-0.10, BYBIT-B06 non-blocking deferred. 18 observations/sources, 12 synthetic scenarios; product ACs are not declared passed. task-4.4 and BLK-04 remain Not Ready.
+**Status:** Bybit research and RSA read-only API checks are complete; task-0.10 fixed route identity, candidate links, hourly collision and history-gap rules. The SDD is Ready; executable conformance remains the task-4.4 gate.
 
 **Dependencies:** none.
 

@@ -5,7 +5,7 @@
 
 Доказать понятность семи сценариев на ноутбуке.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-7.2`, `task-7.3`, `task-7.4`, `task-7.5`, `task-7.6`, `task-7.7`, `task-7.8`, `task-7.9`, `task-7.13`, `task-7.14`, `task-7.15`.
 
@@ -153,7 +153,7 @@ make e2e SCENARIO=desktop-ux
 
 Demonstrate seven understandable laptop flows.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-7.2`, `task-7.3`, `task-7.4`, `task-7.5`, `task-7.6`, `task-7.7`, `task-7.8`, `task-7.9`, `task-7.13`, `task-7.14`, `task-7.15`.
 

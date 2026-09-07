@@ -5,7 +5,7 @@
 
 Внести расход из текста или чека через один объяснимый диалог.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-7.1`, `task-5.4`, `task-7.9`.
 
@@ -279,7 +279,7 @@ make test-web FILTER=chat && make e2e SCENARIO=receipt-chat
 
 Record a text/receipt expense through one explainable conversation.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-7.1`, `task-5.4`, `task-7.9`.
 

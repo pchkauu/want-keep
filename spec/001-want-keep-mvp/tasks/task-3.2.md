@@ -5,7 +5,7 @@
 
 Нормализовать данные без утечки моделей платформ в домен.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-3.1`, `task-1.2`, `task-2.1`, `task-2.2`.
 
@@ -145,7 +145,7 @@ Round-trip и ошибки контракта проверены; replay и ча
 
 Normalize data without leaking provider models into the domain.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-3.1`, `task-1.2`, `task-2.1`, `task-2.2`.
 

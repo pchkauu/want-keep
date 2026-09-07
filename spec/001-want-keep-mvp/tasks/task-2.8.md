@@ -5,7 +5,7 @@
 
 Распределять семейные расходы и позиции по участникам.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-2.6`, `task-1.6`.
 
@@ -118,7 +118,7 @@ make test-integration AREA=family-allocation
 
 Allocate household expenses and items to members.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-2.6`, `task-1.6`.
 

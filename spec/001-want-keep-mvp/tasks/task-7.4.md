@@ -5,7 +5,7 @@
 
 Редактировать и утверждать план доходов и расходов по валютам.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-7.1`, `task-6.6`, `task-7.9`.
 
@@ -268,7 +268,7 @@ make test-web FILTER=budget && make e2e SCENARIO=planning
 
 Edit and approve per-currency income/expense plans.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-7.1`, `task-6.6`, `task-7.9`.
 

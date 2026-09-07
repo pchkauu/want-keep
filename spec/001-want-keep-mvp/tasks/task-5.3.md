@@ -5,7 +5,7 @@
 
 Извлекать подтверждаемые данные чека и связывать их с одной оплатой.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-5.2`, `task-1.5`, `task-2.7`.
 
@@ -131,7 +131,7 @@ make test-integration AREA=receipts && make eval-ai SUITE=receipts
 
 Extract verifiable receipt data and link it to one payment.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-5.2`, `task-1.5`, `task-2.7`.
 

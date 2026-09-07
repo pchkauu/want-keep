@@ -5,7 +5,7 @@
 
 Понятная эмоциональная обратная связь без потери контроля и точности.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-7.11`, `task-7.2`, `task-7.4`, `task-7.5`, `task-7.14`.
 
@@ -257,7 +257,7 @@ make e2e SCENARIO=event-motion
 
 Understandable expressive feedback without losing control or accuracy.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-7.11`, `task-7.2`, `task-7.4`, `task-7.5`, `task-7.14`.
 

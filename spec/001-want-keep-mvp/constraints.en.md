@@ -43,7 +43,7 @@ Persist exact decimals and transport strings; retain source precision. Separate 
 
 ## Failure and observability
 
-Source and AI work use independent queues. Sync has leases, bounded retries, checkpoints and last-success time. One failed source does not stop others. Recovery replays idempotent read jobs; reconcile ambiguous paid/external effects first.
+Source and AI work use independent queues. Sync has leases, bounded retries, checkpoints and last-success time. One failed source does not stop others. Recovery replays idempotent read jobs; reconcile ambiguous paid/external effects first. An incomplete source yields `source_partial`; an identity collision yields `source_ambiguous`. A confirmed monetary effect remains posted while an unverified effect does not post. D-43 admission is checked before scheduling a sync job; a stale/missing binding yields `provider_not_admitted` without provider IO.
 
 AI-reviewed does not mean posted. During AI outage confirmed source/manual transactions persist and calculations work; unknown classification is separate. Unknown amount/account/currency stays draft. Stale AI results never apply.
 
@@ -71,7 +71,9 @@ Suite names in task cards form part of the runner contract. A missing suite fail
 
 ## Readiness, migrations and rollout
 
-The owner explicitly authorized task-1.1 early as an independent technical foundation. This does not change the overall Not Ready verdict. D-37 separately authorizes task-1.2: domain types and shared OpenAPI/bindings do not wait for remaining research. Before dependent adapter/product implementation, task-0.10 resolves the relevant fields/sources/terms and publishes a Ready plan. Never fill unknown external contracts with invented endpoints.
+task-1.1 is complete as an independent technical foundation. task-0.10 resolved fundamental D-37–D-43 decisions and published the [Ready plan](plan.en.md). Implementation starts with task-1.2 and follows each task's dependencies. Unknown provider fields are never filled with invented endpoints or values: safe unknown/partial/ambiguous behavior is part of the completed contract.
+
+SDD Ready and operational approval are separate. Every provider deployment is disabled by default. task-4.x proves provider evidence and task-8.x proves host/deployment evidence; only the server-owned admission service combines them for the exact D-43 build/contract/allowlist/configuration/permission/environment binding. A binding change or failed/revoked check atomically returns it to `pending|blocked` before another sync. A failed gate blocks only that connector deployment or production, not development of the domain and other adapters.
 
 Add schema changes through new migrations; do not rewrite applied migrations. Check compatibility against existing APIs/data; use expand → backfill → switch → contract only where needed. Rollback never discards the ledger, files or owner corrections.
 

@@ -2,13 +2,13 @@
 
 [Русский](contracts.md)
 
-Project contract version 9, D-37 dated 2026-09-07. Task-1.2 implements OpenAPI and basic domain types; HTTP handlers and a database schema do not exist yet. These are shared rules; task-0.1–task-0.10 resolve provider-specific fields/terms before implementation. REQ/AC take precedence over adapter assumptions.
+Project contract version 10; task-0.10 declared the SDD Ready for development on 2026-09-07. Task-1.2 implements OpenAPI and basic domain types; HTTP handlers and a database schema do not exist yet. D-37–D-43 resolve fundamental rules; provider-specific permissions and conformance remain task-4.x/task-8.x entry/deployment gates. REQ/AC take precedence over adapter assumptions.
 
-Task-1.2 review clarification: payer is explicit known/memberId, unknown or not_applicable, entered/corrected independently from actor and shares. Existing movement links require each ID/expectedRevision and atomic validation. Plan preview distinguishes create/update/delete and lineId; expectedRevision identifies the Budget aggregate, advanced by every line change/approval. ReturnsReport carries decimal-string dimensionless XIRR ratios, native/reporting basis, dated cash flows and unavailable reasons; task-0.10/task-6.4 still own the solver. These changes affect unreleased DTOs; both clients regenerate together and no deployed data requires migration.
+Task-1.2 review clarification: payer is explicit known/memberId, unknown or not_applicable, entered/corrected independently from actor and shares. Existing movement links require each ID/expectedRevision and atomic validation. Plan preview distinguishes create/update/delete and lineId; expectedRevision identifies the Budget aggregate, advanced by every line change/approval. ReturnsReport carries decimal-string dimensionless XIRR ratios, native/reporting basis, dated cash flows and unavailable reasons; task-6.4 still owns the solver. These changes affect unreleased DTOs; both clients regenerate together and no deployed data requires migration.
 
 ## Domain entities
 
-### Executable foundation D-37
+### Executable foundation D-44
 
 Decimal strings are limited to 256 characters, reject exponent/float input and retain fractional precision for all six assets. RUB does not imply two stored decimal places, nor BTC eight. Rounding is a separate action with scale and floor/half-even; allocation preserves the exact total and distributes remainders by stable ID. Totals not representable in the chosen quantum and overflow are rejected. Rate is a positive finite decimal quote/base observation; valuation owns cross calculations and retains source legs.
 
@@ -16,7 +16,7 @@ A known amount contains value; unknown/unavailable contains reason without value
 
 OpenAPI 3.0.3 and Go/TypeScript models/strict interfaces derive from one source. Schema validation and explicit boundary converters do not replace permissions, transactions or use-case invariants. DTOs distinguish actorId/User, payer.memberId/Membership, personalOwnerId/User and externalAccountOwnerId/User. Command input cannot assign actor/household. Lists and result references require current household scope and resource authorization.
 
-Command ID is a client-created UUIDv4 Idempotency-Key, unique within household+actor and bound to immutable type/hash. Pending is persisted before execution; effect and succeeded/result commit atomically. Replay precedes old expectedRevision checks and returns the original outcome. Timeout never changes a command to failed; not_found permits only the original key under the registration protocol. Status/key/hash/result metadata lives for the family lifetime. Auth/recovery/enrollment, private upload bytes and push credentials use separate protected flows and are not copied into financial-command records; preview stores no financial change.
+Command ID is a client-created UUIDv4 Idempotency-Key, unique within household+actor and bound to immutable type/hash. Pending is persisted before execution; effect and succeeded/result commit atomically. Replay precedes old expectedRevision checks and returns the original outcome. Timeout never changes a command to failed; not_found permits only the original key under the registration protocol. D-41 defines retention periods. Auth/recovery/enrollment, private upload bytes and push credentials use separate protected flows and are not copied into financial-command records; preview stores no financial change.
 
 This is a new foundation with no running product API or database, so data migration is unnecessary. Task-1.3/task-1.4 own durable storage and server authorization. [Checks and limitations](evidence/task-1.2-domain-api.en.md).
 
@@ -53,13 +53,13 @@ Historical rate snapshots are fixed to transaction dates. Current quote updates 
 
 ## Reference-rate contract
 
-[task-0.7 evidence](evidence/fx.en.md) selects Bank of Russia as primary USD/RUB, Frankfurter v2 only with `providers=CBR` as fallback/cross-check, and CoinGecko Demo for separate BTC/USD, ETH/USD, USDT/USD and USDC/USD observations at most 365 days old. Default blends are forbidden. TradingView is not a data source. Crypto history older than 365 days remains unavailable pending task-0.10.
+[Task-0.7 evidence](evidence/fx.en.md) and D-40 select CBR as primary USD/RUB, Frankfurter v2 only with `providers=CBR` as fallback/cross-check, and CoinGecko Demo for distinct current and up-to-365-day BTC/USD, ETH/USD, USDT/USD and USDC/USD observations. Default blends and TradingView are forbidden.
 
-For `P_USD(X,D)`, USD per one asset unit, calculate `R(S→T,D) = P_USD(S,D) / P_USD(T,D)`. `P_USD(USD,D)=1`; `P_USD(RUB,D)=1/CBR_USD_RUB(D)`. Each leg retains provider asset ID, requested date, observed/effective time, fetchedAt, granularity, source/transport and revision. Calculation and inversion use Decimal; rounding happens only at an explicit presentation boundary.
+For USD per asset unit `P_USD(X,D)`, cross-rate is `R(S→T,D) = P_USD(S,D) / P_USD(T,D)`. `P_USD(USD,D)=1` and `P_USD(RUB,D)=1/CBR_USD_RUB(D)`. Each leg retains provider asset ID, requested date, observed/effective time, fetchedAt, granularity, source/transport and revision. Calculate with Decimal and round only at the presentation boundary.
 
-Historical CBR uses the latest effective date `≤ D`; a weekend creates no new observation. CoinGecko history is a daily UTC snapshot for the operation date in the budget timezone. If a leg is missing, outside available depth or a current response lacks the required timestamp, the cross and dependent conclusions are partial/unavailable. The latest cache may be displayed as stale with dates but cannot rewrite history.
+CBR uses the latest effective date `≤ D`; a weekend creates no observation. CoinGecko history uses a daily UTC snapshot for the operation date in the budget timezone. Crypto history older than 365 days returns `valuation_unavailable` while retaining native amount, source coverage and reason. A latest cache is only stale data with dates. task-6.1 verifies the free Demo key, quota/usage and attribution before runtime.
 
-Reference valuation does not replace an actual exchange. An executed quote needs both native amounts, direction, applicable amount, provider timestamp and known spread/fees from the source operation. Missing fields display as unknown/quote unavailable. A primary/cross-check mismatch retains both observations and creates diagnostics without hidden averaging.
+Reference valuation never replaces an executed exchange or executable quote. A platform quote exists only with known direction, applicable amount, provider timestamp and fee/spread coverage; otherwise return `quote_unavailable`. A primary/cross-check mismatch retains both observations and diagnostics without hidden averaging.
 
 ## Daily allowances
 
@@ -79,11 +79,15 @@ Calculations are exact; rounding displayed safe allowance downward does not chan
 
 ## Credit cards, savings and returns
 
-Grace, minimum/due and eligibility use structured provider fields or an owner-confirmed structured terms model. Do not turn marketing/free text into critical business automation. Missing statement cycles, exclusions, accrual basis or repayment order block exact conclusions, not viewing the account.
+Grace, minimum/due and eligibility use structured provider fields or an explicitly owner-confirmed structured terms model. Marketing prose never controls calculations. Missing cycle, exceptions, accrual basis or repayment order makes the exact result unavailable without hiding known transactions or debt.
 
-Savings forecasts use effective rate schedules, day-count/basis, compounding/payout schedules, term/lock, top-ups/withdrawals and explicit early-exit terms. Promised-rate income is forecast; actual accrual is a separate transaction. Contributions are not returns.
+Savings forecasts use effective rate schedules, day-count/basis, compounding/payout schedule, term/lock, top-ups/withdrawals and known early-exit terms. A promised rate is forecast; an actual accrual is a separate transaction. A contribution is not yield.
 
-Comparison uses XIRR: `Σ CF_i / (1+r)^((date_i−date_0)/365) = 0`, with owner contributions negative and distributions/terminal value positive; `r > −1`. Native and reporting-currency results are separate, historical flows use their own dates and terminal value the comparison date. No sign change, zero period, missing valuation, incomplete history or no uniquely substantiated root returns explained unavailable, not 0%. task-0.10 resolves the solver and reference vectors; provider APR is not XIRR.
+D-42 defines XIRR: aggregate flows on each calendar date and use Actual/365. Cash-flow amounts remain exact decimals. Evaluate a fractional power as `exp((days/365) × ln(1+r))` in a decimal context of at least 50 significant digits with ROUND_HALF_EVEN; the ln/exp implementation and NPV accumulation must prove total numeric error `≤ 1e-24 × max(1, Σ|CF_i|)`, otherwise return `unavailable`. After removing zero aggregates, inputs need at least one negative and one positive flow and exactly one sign transition in chronological order.
+
+Solve `Σ CF_i / (1+r)^((date_i−date_0)/365) = 0` with bracketed bisection between `rLow = -1 + 1e-12` and `rHigh = 1,000,000`. A bracket exists only when boundary NPVs have opposite signs or a boundary meets tolerance. Stop when `|NPV| ≤ 1e-12 × max(1, Σ|CF_i|)` or interval width is `≤ 1e-12 × max(1, |rMid|)`; at most 512 iterations. Return `rMid` rounded ROUND_HALF_EVEN to 12 decimal places.
+
+No bracket, multiple sign transitions, a zero period, missing valuation, incomplete history, an unproven numeric error bound or non-convergence returns explained `unavailable`, never 0%. Native and reporting-currency results remain separate; provider APR is not XIRR. References: `-1000` and `+1100` after 365 days yields `0.100000000000`; `-1000` and `+1050` after 182 days yields `0.102795595422`; `-1000/+0.000000001` after 365 days accepts `rLow`, while `-1/+1000002` needs a root above `rHigh` and returns `unavailable`. `-100,+230,-132`, same-sign and same-day net-zero inputs are unavailable.
 
 ## Web API
 
@@ -100,7 +104,11 @@ Target prefix `/api/v1`, JSON, money strings, UTC RFC3339 timestamps plus explic
 | Reports | GET dashboard, valuation, daily-limit, credit, savings, returns and insights with filters/date/currency/coverage. Reads do not trigger hidden mutations. |
 | Notifications | GET in-app notifications, POST read acknowledgment, POST/DELETE push subscriptions. Delivery receipt does not mean read. |
 
-Under D-37 task-1.2 materializes shared OpenAPI independently of remaining research. Provider-specific forms and handlers stay with their owning tasks. Client/generated types never become domain types.
+Under D-44 task-1.2 materializes shared OpenAPI independently of remaining research. Provider-specific forms and handlers stay with their owning tasks. Client/generated types never become domain types.
+
+Under D-43, server-owned `ProviderDeploymentAdmission` is addressed by `provider + environment`. Its binding contains `adapterBuildDigest`, `collectorImageDigest`, `contractVersion`, `allowlistRevision`, `nonSecretConfigRevision` and `operatorPermissionRevision`. task-4.x produces provider evidence and task-8.x produces host/deployment evidence for the same binding; only the application admission service atomically sets it to `admitted`. Clients, AI and provider responses cannot change admission.
+
+The connection read model exposes `deploymentGate.status = pending|admitted|blocked`, binding, `checkedAt` and safe reasons separately from `connected|reauth_required`. POST `/{id}/sync` requires `admitted`, an exact binding match with running artifacts/configuration/allowlist/permission and a valid authenticated connection; otherwise it returns `provider_not_admitted` before creating a job or performing provider IO. Any binding change, permission revocation or failed check returns the gate to `pending|blocked`. Pre-admission conformance runs in quarantine: allowed reads and sanitized evidence are permitted, but source records and financial postings are not.
 
 ### Raiffeisen authorization callback
 
@@ -112,6 +120,25 @@ At callback, the server checks state and bindings, then atomically claims a vali
 
 task-4.2 checks success, bank denial, missing/foreign/expired state, repeated callbacks, another user's or an expired session, connection disconnection/version changes, invalid nonce/ID token, unknown exchange outcome and secret-free logs. This refines REQ-048/REQ-073 and AC-048/AC-087; implementation and runtime checks remain future work.
 
+## Source identity and provider gates
+
+D-39 defines a source-record key as `householdId + provider + stableExternalAccountId + productOrLogNamespace + providerRecordId`. `connectionId`, session/profile, cursor and fetch job are provenance. Amount, time, merchant, text and localized labels are not identity.
+
+When a source provides no record ID, an adapter may use only a documented provider-specific immutable composite within one namespace. Payload hash does not replace identity; it detects revision/conflict. A repeated key/payload is idempotent; changed payload becomes a source revision. Two facts with one key or an ambiguous composite yield `source_ambiguous`: retain both evidence revisions, create clarification/reconciliation and make no financial posting until resolved.
+
+Persist every page before its checkpoint. Coverage retains requested/observed range, next cursor/end reason and gaps. A gap yields `source_partial`; a missing balance/fee/status field remains typed `unknown`, never zero. Reconnection finds stableExternalAccountId; one external account is not duplicated across sessions, while two members' distinct accounts never merge.
+
+| Provider | Normalized namespace and special rule |
+| --- | --- |
+| Alfa D-37 | Debit/current/savings/deposit/cashback journals are separate; stable account/record IDs must come from a structured fixture before deployment. A UI selector or product name is not identity. |
+| Raiffeisen D-35 | Account UUID and number/accountKeys are separate. A CAMT entry permits 1:N details. Use NtryRef/AcctSvcrRef/EndToEndId only when present and in a proven scope. Statement/report identity is provenance. Fallback is a transaction-scoped fingerprint of fields proven invariant across overlapping camt.052/camt.053: non-empty structured references, party/account/remittance and bank-code fields in documented order. Amount/time are excluded. An insufficient or collision-prone fingerprint yields `source_ambiguous` without posting. Corrections/reversals are revisions. |
+| Ozon D-32 | accountToken/connection and groupID are not identity; route-specific record ID belongs to its namespace. A parent relation links a fee without merging effects. |
+| Bybit D-36 | Route-specific IDs do not cross Funding/Earn/P2P. Amount/time matches are candidates. Hourly records without ID may use `(coin, productId, hourlyDate)` only in the hourly namespace; differing payload is a collision. |
+| Aifory D-33 | Office/address/UI path is not identity. RUB, crypto and card logs are separate; a structured fixture proves stable IDs and lifecycle. |
+| EMCD D-34 | Aggregate/wallet/Grow/card/P2P namespaces are separate. UI labels, currency order and approximate valuation are not identity. |
+
+Provider deployment is disabled by default. Before admission, task-4.x proves operator permission, read allowlist, structured fixture, identity/revisions/statuses/fees, pagination/coverage, reauthentication, two independent accounts, stale-job rejection and absence of write routes. task-8.x proves target-host reachability/hardening; the Alfa DNS/TLS route is also checked by task-4.1/task-8.1. D-43 combines both passes only for the exact binding. A failed or stale gate blocks only that connector.
+
 ## Collector and AI
 
 Collector read jobs contain job ID, connection reference, authorized action/product, range/cursor, deadline and short-lived authorization binding. Calls stay on an authenticated private network; credentials come from isolated secret stores/profiles, never AI payloads. Results contain source records, account references, balance snapshots, next cursor, coverage and typed status/errors. Never return/log full secrets/sessions. Unknown products/fields remain unsupported/unknown.
@@ -120,7 +147,7 @@ Allowed AI commands: classify transaction/items; propose/link a verified match; 
 
 Receipt pipeline: uploaded → validating → processing → clarification / skipped / linked / recorded; failure and waiting-AI are separate. Retain originals. Initial technical limits: JPEG/PNG/WebP/PDF, 10 MiB/file, 10 PDF pages; excess/unsupported inputs receive explicit errors without losing the message. task-0.8 checks these limits against cost/load; changes require contract updates, not silent changes.
 
-Important failure codes: unauthorized, version_conflict, duplicate_command, invalid_money, unsupported_asset, source_reauth_required, source_partial, valuation_unavailable, clarification_required, ai_waiting, ai_budget_exhausted, invalid_attachment, backup_stale. Each status maps to a clear UI state and AC scenario.
+Important failure codes: unauthorized, version_conflict, duplicate_command, invalid_money, unsupported_asset, source_reauth_required, source_partial, source_ambiguous, valuation_unavailable, quote_unavailable, command_expired, provider_not_admitted, clarification_required, ai_waiting, ai_budget_exhausted, invalid_attachment and backup_stale. Each status maps to a clear UI state and AC scenario.
 
 ## Household entities, API and actions
 
@@ -133,7 +160,7 @@ Important failure codes: unauthorized, version_conflict, duplicate_command, inva
 | Reimbursement | Explicit creditor/debtor member IDs, asset/amount, optional expense link, settlements and revision. Internal claims do not enter household wealth. |
 | SharedThread / Message | One household thread, message actorId, attachments, proposal/clarification revision. Shared visibility does not grant authority for every command. |
 
-Minimum `/api/v1` additions: GET `/me` and `/household`; POST `/household/invitations`, POST `/invitations/accept`; ownership in accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` and memberId for reports. These filters do not change principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached and version_conflict are distinct safe errors. Shared forms are materialized in task-1.2 OpenAPI under D-37; runtime permissions are implemented separately.
+Minimum `/api/v1` additions: GET `/me` and `/household`; POST `/household/invitations`, POST `/invitations/accept`; ownership in accounts/transactions/budgets/goals; versioned allocation/reimbursement commands; `view=household|member` and memberId for reports. These filters do not change principal. Unauthorized/forbidden/scope mismatch, invitation_expired/used, member_limit_reached and version_conflict are distinct safe errors. Shared forms are materialized in task-1.2 OpenAPI under D-44; runtime permissions are implemented separately.
 
 Engineering defaults: the first user uses restricted single-use bootstrap; the second accepts a signed-in member’s single-use random invitation with a 24-hour expiry, stored hashed. It binds to a separate new sign-in; replay and the limit are checked atomically. It cannot reset another user’s passkeys. The system does not send external invitation messages itself. Editing a personal goal or plan line, including deletion, changing owner/personal scope or applying an AI proposal, requires its current owner. Converting another user’s goal to joint cannot bypass this. Members create personal goals/lines for themselves and joint ones freely. Both can read/create/correct all accounting transactions. Personal account ownership changes require its owner, household account changes either member; these cannot change the verified external owner or transaction history.
 
@@ -155,9 +182,11 @@ In `F(d)`, outstandingPayments is the same unpaid obligation portion not covered
 
 ## Presentation, command and event contracts
 
-SCR-001–SCR-035 UI routes are not API endpoints. The [screen catalog](screens.en.md) defines FORM-01–FORM-15 fields and error flows; task-1.2 materializes shared OpenAPI under D-37. Reports return native amounts, separately known reporting amounts, asOf/coverage, actual/forecast/reserved type, calculation inputs and explanatory transaction links. Client formats and expands these data without repeating financial formulas.
+SCR-001–SCR-035 UI routes are not API endpoints. The [screen catalog](screens.en.md) defines FORM-01–FORM-15 fields and error flows; task-1.2 materializes shared OpenAPI under D-44. Reports return native amounts, separately known reporting amounts, asOf/coverage, actual/forecast/reserved type, calculation inputs and explanatory transaction links. Client formats and expands these data without repeating financial formulas.
 
-For a mutating command, server binds Idempotency-Key to householdId, actorId, type and payload hash; same key with a different payload is rejected. Result and financial effect are atomic. Target GET `/api/v1/commands/{id}` and `/api/v1/commands/recent` return only the current member’s own authorized commands with `pending|succeeded|failed`, outcome reference and safe error. `unknown` describes client knowledge, not permission to create a new command. After timeout/reload client checks command status; `not_found` cannot prove no effect without the server registration contract. Keep input in tab memory, never secrets in URLs/localStorage. Under D-37 compact command records and idempotency keys live as long as the family, without copies of source documents/messages or secrets. Task-1.3 implements durable storage.
+For a mutating command, the server binds Idempotency-Key to householdId, actorId, type and payload hash; the same key with a different payload is rejected. Result and financial effect are atomic. GET `/api/v1/commands/{id}` and `/api/v1/commands/recent` return only commands authorized for the current principal with `pending|succeeded|failed`, outcome reference and safe error. `unknown` describes client knowledge, not permission to create another command.
+
+Under D-41, terminal command detail/status/result is retained for 90 days after terminal outcome. An unresolved command remains until reconciliation and then for another 90 days. A minimal tombstone `(commandId, household, actor, type, key, payloadHash, outcomeRef)` lives throughout unresolved state and for 400 days after terminal/reconciled outcome. `/commands/recent` returns terminal commands from the last 30 days and every unresolved command. Once detail expires, a known command returns HTTP 410 `command_expired`; a live tombstone for the same key/hash returns its outcome reference and prevents a repeated effect, while a different hash is rejected. After tombstone expiry replay recovery is not guaranteed: clients generate unique keys and never intentionally reuse old keys. Financial source records, postings, revisions and audit are retained independently of command retention.
 
 UIState derives from typed errors/coverage/result. `version_conflict` includes an authorized current revision for comparison; server rechecks permission on reapply. Session expiry hides protected screens; another principal never receives a draft. Personal preferences include locale, reporting currency, notification options and decorativeEffectsEnabled; preferences change neither household fact nor authority.
 
@@ -167,31 +196,23 @@ Synthetic overview response example: “Available today RUB 400; USD 100 expecte
 
 ## Aifory and ETH: D-33
 
-RUB, USD, USDT, USDC (D-36), BTC and ETH are available in Money and valuation. Network is a separate source/operation attribute; verify provider scale at the boundary. Do not round ETH to fiat cents or equate USD/USDT/USDC. Unknown rate/available/locked does not become zero or spendable money.
+RUB, USD, USDT, USDC, BTC and ETH are distinct Money/valuation assets; network is a separate source attribute. Aifory scope is RUB accounts, USDT, ETH and the existing USD card. A RUB aggregate creates no second balance; the USD card and USDT funding are separate native facts. Link funding legs, gross/net, rate/fee basis and authorization/clearing/refund lifecycle only through structured evidence.
 
-Aifory reads only RUB accounts, USDT, ETH and the existing USD card with their movements/fees. A RUB-group total does not create another balance; matching office names do not merge accounts. A platform RUB wallet preserves product kind and is not a bank deposit. Card funding links distinct native legs under an established contract, with fees separate. Authorization/clearing need IDs/linkage; UI sign, mask, shared URL and similar merchant are not identity.
-
-Other products are deferred without blocking. Retain their movements through included wallets with provenance and clarification of unknown semantics. task-0.10 resolves structured provider mapping, automation permission, history/reauth and card lifecycle under AIFORY-B02–B04 before task-4.5; no OCR-accounting bypass. [Evidence](evidence/aifory.en.md).
+Other products are deferred without blocking. Before deployment, task-4.5 obtains an authorized structured fixture, allowlist, stable identity, history/coverage, revisions/statuses/fees, reauthentication and a second account. Flutter/UI text and similar pending/confirmed records are not contracts; ambiguity yields `source_ambiguous` without duplicate charges. [Evidence](evidence/aifory.en.md).
 
 ## EMCD: D-34
 
-The current contract covers the USDT wallet, existing Coinhold/Grow, used Plus/Light cards and historical P2P orders. Mining has never been used; its history and other unused products are unnecessary. Crypto cards do not acquire credit characteristics without an established agreement. Grow identity persists across Coinhold/Grow names; one product does not create two accounts.
+D-34 scope is the USDT wallet, used Grow/Coinhold, crypto cards and P2P history. Mining and other unused products are deferred without blocking. Aggregate, wallet, Grow and card owned/available/reserve are not summed twice. Link reward/capitalization/payout and authorization/clearing/refund/reversal; unknown fee or owner side stays unknown. USDT funding, the USD card, EUR purchase and approximate valuation are separate facts.
 
-The main aggregate and child wallet/Grow balances are not added twice. Link accrued, capitalized and paid rewards; capitalization/movement of already recognized income creates no additional income. Unknown balance composition or card reserves cannot become spendable funds. Purchase decline and a posted fee are separate effects; legacy Light and Plus use their own terms. Card funding links USDT and USD; original EUR purchase amounts remain separate from approximate USD valuation and settlement. Exact owner-side fields link P2P to wallet/bank facts, not currency order, conversations or rounded UI amounts.
-
-[Evidence and gaps](evidence/emcd.en.md), [synthetic scenarios](evidence/emcd.samples.json). Real provider request/response pairs were not obtained; scenarios are not an API schema. task-0.10 closes BLK-06 before task-4.6 implementation. This updates target-contract version 5; financial runtime/database are absent and no migration is needed; the task-1.1 foundation is already implemented.
+Before deployment, task-4.6 obtains authorized structured fixtures for every log, allowlist, stable identity, full pagination/coverage, revisions/statuses/fees, reauthentication and a second account. UI text and currency order create no posting; a collision yields `source_ambiguous`. [Evidence](evidence/emcd.en.md), [synthetic scenarios](evidence/emcd.samples.json).
 
 ## Bybit: D-36
 
-Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P remain required; unused products do not block. [Route matrix](evidence/bybit.en.md), [authenticated evidence](evidence/bybit-api.en.md) and [synthetic projections](evidence/bybit.samples.json) define task-0.10 inputs. RSA readOnly with Wallet/AccountTransfer, Exchange/ExchangeHistory, Earn/Earn and FiatP2P/FiatP2POrder succeeded for this owner. Read POST `/v5/p2p/order/simplifyList` and `/v5/p2p/order/info` are explicitly allowlisted; financial POSTs remain forbidden. P2P API is confirmed, so no Playwright collector is required for observed coverage. `apiKey` echoed by query-api is filtered before logs/AI/evidence; credentials stay in protected infrastructure.
+Funding USDT/USDC/ETH/BTC, used Flexible Easy Earn and P2P are mandatory; other products do not block. Official read-only APIs take priority. Allowlist required read POST list/detail routes and forbid create/pay/release/ads/transfer/stake/redeem. Filter secrets and echoed provider-key fields before logs, AI and evidence.
 
-Identity separates household/provider/site/UID, FUND accountType/asset and each source-log ID. Rotate credentials without creating an account; isolate different owners. Funding `currcCursor` and detail IDs do not automatically identify different economic events. Observed amount/time matches for 49 Convert pairs, 45 withdrawal gross debits, 140 nonzero yield credits and two P2P debits are candidates, not proven cross-log foreign keys. Define deterministic matching and ambiguity handling before automated posting; localized business labels cannot drive critical classification. Fees, exchange legs and accrued/distributed/Funding yield affect money once; zero yield needs no credit, principal is not income.
+Route-specific provider IDs live in separate D-39 Funding/Earn/P2P namespaces. Amount/time equality across logs is only a linkage candidate. An hourly record without ID uses `(coin, productId, hourlyDate)` only in the hourly namespace; differing payload retains both revisions as `source_ambiguous` without posting. Account for principal, distribution and Funding credit once; zero yield creates no credit. Preserve exact decimals, seconds/ms semantics, cursor even on short pages, coverage/revisions and independent P2P fiat/quantity/quote; an empty fee is unknown.
 
-Preserve exact decimals and distinguish USD/USDT/USDC. Balance snapshots can hide ledger residuals; neither single-coin nor all-coin reads solved the observed difference. Do not discard precision or create a balancing expense. P2P native fiat amount and crypto quantity are independent authoritative legs; quoted price does not necessarily reconstruct fiat cents. Empty maker/taker fee is unknown, not zero. Bank settlement is a separate link. Historical/forecast valuation remains separate from these native amounts.
-
-Observed boundaries: Funding and internal-deposit event times are seconds; most detail/query times are ms. Flexible yield uses `result.list`, P2P uses `ret_code` and list `items`. Flexible positions have IDs in this sample; hourly accruals do not. The tuple coin/productId/hourlyDate repeats uniquely in one query/replay, but its revision/collision policy remains unresolved. Current Flexible principal is zero with prior orders/yield; USDT lifetime totalPnl differs from the available yield sum. Fixed queries are empty within their bounds and do not become an unused-product blocker. APR percent/hourly units remain as documented by live evidence.
-
-Follow supplied cursors even on short pages. Convert index and P2P page completion are source-specific. Store pages durably before checkpoints, replay overlaps and retain revisions. An 89-day sampled backfill does not extend published yield retention (three months), P2P maximum 180 days or Convert web history from 2025-09-10. Partial history requires explicit coverage/opening-balance evidence. BYBIT-B02/B05 read access is closed; task-0.10 closes BYBIT-B03/B04 before task-4.4. This evidence supplement does not change the shared target contract version, financial runtime or database schema.
+Observed samples never extend published history limits. Gaps and lifetime mismatch yield `source_partial`, never a correcting expense. Before deployment, task-4.4 verifies RSA read-only access, precision reconciliation, history/lifecycle, two accounts, rotation/revocation and stale jobs. A collector is allowed only for a newly proven API gap. [Matrix](evidence/bybit.en.md), [API evidence](evidence/bybit-api.en.md), [projections](evidence/bybit.samples.json).
 
 ## OpenAI: selection contract and execution boundary
 

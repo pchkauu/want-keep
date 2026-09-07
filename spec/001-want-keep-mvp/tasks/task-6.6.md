@@ -5,7 +5,7 @@
 
 Разделить утверждённый план, фактические платежи и ожидаемые поступления.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-2.7`, `task-2.6`, `task-6.1`, `task-6.2`, `task-2.8`.
 
@@ -168,7 +168,7 @@ make test-go PKG=./internal/budget/... && make test-integration AREA=budget
 
 Separate approved plans, actual payments and expected receipts.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-2.7`, `task-2.6`, `task-6.1`, `task-6.2`, `task-2.8`.
 

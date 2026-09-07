@@ -5,7 +5,7 @@
 
 Подтвердить историческую и текущую оценку RUB, USD, USDT, USDC, BTC и ETH и покрытие обменных котировок.
 
-**Состояние:** Исследование завершено 2026-09-07: CBR/CoinGecko/Frankfurter contract, 18 evidence items и шесть blocker decisions записаны; TradingView отвергнут. FX-B02–FX-B04 / BLK-07 переданы task-0.10; task-6.1 и MVP Not Ready.
+**Состояние:** Исследование CBR/CoinGecko/Frankfurter завершено; D-40 закрепляет `valuation_unavailable`/`quote_unavailable`. SDD Ready; Demo key/quota/attribution и runtime adapter остаются task-6.1.
 
 **Зависимости:** нет.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Evidence/fx.md и .en.md содержат датированные официальные источники, live boundary probes, матрицу кандидатов, формулу USD-кроссов, failure/cache/audit правила и FX-B01–FX-B06. Основной USD/RUB — XML Банка России; Frankfurter v2 только с providers=CBR — fallback/cross-check; CoinGecko Demo — отдельные BTC/USD, ETH/USD, USDT/USD и USDC/USD current/history не старше 365 дней. Default blend и peg USD/USDT/USDC=1 запрещены; похожие токены, включая USDC.E, не объединять без проверенной identity mapping. TradingView отвергнут: библиотеки требуют внешний datafeed, terms запрещают non-display price referencing. Reference valuation не заменяет provider executable buy/sell с обеими native amounts, applicable amount, timestamp, spread/fee. DE/NL/BG snapshot подтверждён, но не является SLA/VPS runtime. BLK-07 сохраняет FX-B02–FX-B04 под task-0.10; исследование не разблокирует task-6.1 до Ready.
+Evidence/fx.md и .en.md содержат датированные официальные источники, live boundary probes, матрицу кандидатов, формулу USD-кроссов, failure/cache/audit правила и FX-B01–FX-B06. Основной USD/RUB — XML Банка России; Frankfurter v2 только с providers=CBR — fallback/cross-check; CoinGecko Demo — отдельные BTC/USD, ETH/USD, USDT/USD и USDC/USD current/history не старше 365 дней. Default blend и peg USD/USDT/USDC=1 запрещены; похожие токены, включая USDC.E, не объединять без проверенной identity mapping. TradingView отвергнут: библиотеки требуют внешний datafeed, terms запрещают non-display price referencing. Reference valuation не заменяет provider executable buy/sell с обеими native amounts, applicable amount, timestamp, spread/fee. DE/NL/BG snapshot подтверждён, но не является SLA/VPS runtime. D-40 закрывает SDD-часть FX-B02/B03; Demo key/quota/attribution и работающий adapter остаются gate task-6.1.
 
 ### Границы изменений
 
@@ -83,7 +83,7 @@ make docs-check проверяет SDD. Anonymous current/history/plan-limit и 
 
 Verify historical/current RUB, USD, USDT, USDC, BTC and ETH valuation and exchange-quote coverage.
 
-**Status:** Research completed on 2026-09-07: CBR/CoinGecko/Frankfurter contract, 18 evidence items and six blocker decisions recorded; TradingView rejected. FX-B02–FX-B04 / BLK-07 handed to task-0.10; task-6.1 and MVP Not Ready.
+**Status:** CBR/CoinGecko/Frankfurter research is complete; D-40 fixes `valuation_unavailable`/`quote_unavailable`. The SDD is Ready; Demo key/quota/attribution and runtime adapter remain task-6.1 work.
 
 **Dependencies:** none.
 
@@ -91,7 +91,7 @@ Verify historical/current RUB, USD, USDT, USDC, BTC and ETH valuation and exchan
 
 ### Change and contracts
 
-Evidence/fx.md and .en.md contain dated official sources, live boundary probes, a candidate matrix, USD-cross formula, failure/cache/audit rules and FX-B01–FX-B06. Primary USD/RUB is Bank of Russia XML; Frankfurter v2 with providers=CBR only is fallback/cross-check; CoinGecko Demo supplies separate BTC/USD, ETH/USD, USDT/USD and USDC/USD current/history no older than 365 days. Default blends and a USD/USDT/USDC=1 peg are forbidden; similar tokens, including USDC.E, are not merged without verified identity mapping. TradingView is rejected: libraries need an external datafeed and terms prohibit non-display price referencing. Reference valuation cannot replace provider-executable buy/sell with both native amounts, applicable amount, timestamp and spread/fee. DE/NL/BG snapshot reachability is established but is not SLA/VPS runtime. BLK-07 retains FX-B02–FX-B04 under task-0.10; research does not unblock task-6.1 before Ready.
+Evidence/fx.md and .en.md contain dated official sources, live boundary probes, a candidate matrix, USD-cross formula, failure/cache/audit rules and FX-B01–FX-B06. Primary USD/RUB is Bank of Russia XML; Frankfurter v2 with providers=CBR only is fallback/cross-check; CoinGecko Demo supplies separate BTC/USD, ETH/USD, USDT/USD and USDC/USD current/history no older than 365 days. Default blends and a USD/USDT/USDC=1 peg are forbidden; similar tokens, including USDC.E, are not merged without verified identity mapping. TradingView is rejected: libraries need an external datafeed and terms prohibit non-display price referencing. Reference valuation cannot replace provider-executable buy/sell with both native amounts, applicable amount, timestamp and spread/fee. DE/NL/BG snapshot reachability is established but is not SLA/VPS runtime. D-40 resolves the SDD portion of FX-B02/B03; Demo key/quota/attribution and a running adapter remain the task-6.1 gate.
 
 ### Change boundaries
 

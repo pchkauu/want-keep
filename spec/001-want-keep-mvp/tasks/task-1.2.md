@@ -5,7 +5,7 @@
 
 Закрепить точность денег и типы публичных границ до адаптеров и UI.
 
-**Состояние:** Доменные типы, OpenAPI и генерация реализованы как независимая техническая основа по D-37; общий статус MVP Not Ready. Проверки и публикация фиксируются в evidence и Issue #12.
+**Состояние:** Основа task-1.2 реализована по D-44. SDD Ready for development; приведение API и доменных политик к D-41/D-43 проверяется отдельным изменением. Runtime AC остаются у следующих задач.
 
 **Зависимости:** `task-1.1`.
 
@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Реализовать Money/Asset/Rate/календарные типы, отдельные knownness/coverage/freshness, семейную область и command transitions. apd v3.2.3 закрыт внутри money/domain; десятичные строки до 256 символов без float или display truncation. Материализовать OpenAPI 3.0.3 и воспроизводимую генерацию Go/TypeScript, явные boundary converters, безопасные ошибки версии 1, объяснимые read models и command status/recent. По D-37 status/key/hash/result хранятся всё время хранения семьи; secret ceremonies исключены. Остаточный ресерч эту техническую задачу не блокирует; auth/DB/handlers принадлежат следующим задачам. См. evidence/task-1.2-domain-api.md.
+Реализовать Money/Asset/Rate/календарные типы, отдельные knownness/coverage/freshness, семейную область и command transitions. apd v3.2.3 закрыт внутри money/domain; десятичные строки до 256 символов без float или display truncation. Материализовать OpenAPI 3.0.3 и воспроизводимую генерацию Go/TypeScript, явные boundary converters, безопасные ошибки версии 1, объяснимые read models и command status/recent. Определить Money/Asset/Rate/Time/coverage и версионированные состояния `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired`, `provider_not_admitted` по contracts.md. Деньги передавать десятичными строками и валидировать на первой границе; домен не импортирует generated DTO. Добавить explainable read models, command status/recent API и connection `deploymentGate.status=pending|admitted|blocked`. Server-owned admission связывается с environment, adapter/collector build digests, contract, allowlist, non-secret config и operator-permission revisions; sync разрешён только при совпадении текущего binding и `admitted`, иначе collector не запускается. Terminal detail хранится 90 дней после исхода, unresolved — до сверки плюс 90 дней; tombstone с `commandId`, scope, key/hash и outcome живёт всё unresolved-состояние и 400 дней после terminal/reconciled outcome. `/commands/recent` отдаёт 30 дней terminal и все unresolved; истёкшая detail возвращает `command_expired`, не разрешая повторный эффект по живому tombstone.
 
 ### Границы изменений
 
@@ -22,6 +22,7 @@
 - `backend/internal/household/`
 - `backend/internal/reporting/`
 - `backend/internal/commands/`
+- `backend/internal/connections/`
 - `backend/internal/delivery/http/`
 - `api/`
 - `scripts/generate-openapi.sh`
@@ -40,6 +41,7 @@
 - **REQ-063:** Пользователь, семья и членство моделируются отдельно; ограничение двух участников задаётся конфигурацией.
 - **REQ-065:** Принадлежность счёта, владелец внешнего аккаунта, автор записи и принадлежность расхода являются отдельными признаками.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации и окружения.
 
 ### Критерии приёмки
 
@@ -101,6 +103,13 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Сервер возвращает `provider_not_admitted`, collector не запускается и проводок нет. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding; любое расхождение снова закрывает sync.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
@@ -121,7 +130,7 @@ make check
 
 Establish money precision and public boundary types before adapters and UI.
 
-**Status:** Domain types, OpenAPI and generation implemented as an independent technical foundation under D-37; overall MVP remains Not Ready. Checks and publication are recorded in evidence and Issue #12.
+**Status:** The task-1.2 foundation is implemented under D-44. The SDD is Ready for development; API and domain-policy alignment with D-41/D-43 is verified in a separate change. Runtime ACs remain with subsequent tasks.
 
 **Dependencies:** `task-1.1`.
 
@@ -129,7 +138,7 @@ Establish money precision and public boundary types before adapters and UI.
 
 ### Change and contracts
 
-Implement Money/Asset/Rate/calendar types, separate knowledge/coverage/freshness, household scope and command transitions. Encapsulate apd v3.2.3 in money/domain; decimal strings up to 256 characters without float or display truncation. Materialize OpenAPI 3.0.3 and reproducible Go/TypeScript generation, explicit boundary converters, safe version-1 errors, explainable read models and command status/recent. Under D-37 status/key/hash/result metadata lives as long as the family; secret ceremonies are excluded. Remaining research does not block this technical task; auth/DB/handlers belong to subsequent tasks. See evidence/task-1.2-domain-api.en.md.
+Implement Money/Asset/Rate/calendar types, separate knowledge/coverage/freshness, household scope and command transitions. Encapsulate apd v3.2.3 in money/domain; decimal strings up to 256 characters without float or display truncation. Materialize OpenAPI 3.0.3 and reproducible Go/TypeScript generation, explicit boundary converters, safe version-1 errors, explainable read models and command status/recent. Define Money/Asset/Rate/Time/coverage and versioned `source_partial`, `source_ambiguous`, `valuation_unavailable`, `quote_unavailable`, `command_expired` and `provider_not_admitted` states from contracts.en.md. Transport money as decimal strings and validate at the first boundary; the domain must not import generated DTOs. Add explainable read models, command status/recent APIs and connection `deploymentGate.status=pending|admitted|blocked`. Server-owned admission binds environment, adapter/collector build digests, contract, allowlist, non-secret configuration and operator-permission revisions; sync is permitted only when the current binding matches `admitted`, otherwise the collector never starts. Terminal detail remains for 90 days after outcome, unresolved commands through reconciliation plus 90 days; a tombstone with `commandId`, scope, key/hash and outcome lives throughout unresolved state and for 400 days after terminal/reconciled outcome. `/commands/recent` returns 30 days of terminal commands and all unresolved commands; expired detail returns `command_expired` without permitting a repeated effect while the tombstone is live.
 
 ### Change boundaries
 
@@ -138,6 +147,7 @@ Implement Money/Asset/Rate/calendar types, separate knowledge/coverage/freshness
 - `backend/internal/household/`
 - `backend/internal/reporting/`
 - `backend/internal/commands/`
+- `backend/internal/connections/`
 - `backend/internal/delivery/http/`
 - `api/`
 - `scripts/generate-openapi.sh`
@@ -156,6 +166,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-063:** User, household and membership are separate models; the two-member limit is configured.
 - **REQ-065:** Account ownership, external-account owner, record author and expense attribution are distinct dimensions.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
 
 ### Acceptance criteria
 
@@ -216,6 +227,13 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **When:** File reads, import, correction, AI retrieval and deduplication are exercised.
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
+
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again.
+- **Level:** `integration+security`.
 
 ### Verification
 

@@ -5,7 +5,7 @@
 
 Показывать полноту истории и объяснимые расхождения.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-2.3`.
 
@@ -96,7 +96,7 @@ make test-integration AREA=reconciliation
 
 Expose history completeness and explainable discrepancies.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-2.3`.
 

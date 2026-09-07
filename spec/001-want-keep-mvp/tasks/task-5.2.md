@@ -5,7 +5,7 @@
 
 Автоматизировать классификацию и подтверждённые связи с защитой финансовых инвариантов.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-5.1`, `task-2.4`, `task-2.6`, `task-2.8`, `task-2.9`.
 
@@ -155,7 +155,7 @@ make test-integration AREA=ai-commands && make eval-ai SUITE=transactions
 
 Automate classification and substantiated links while protecting financial invariants.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-5.1`, `task-2.4`, `task-2.6`, `task-2.8`, `task-2.9`.
 

@@ -5,7 +5,7 @@
 
 Создать единый проверяемый учёт движения денег.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-2.1`, `task-1.2`.
 
@@ -144,7 +144,7 @@ make test-go PKG=./internal/ledger/... && make test-integration AREA=ledger
 
 Create one verifiable record of money movements.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-2.1`, `task-1.2`.
 

@@ -93,6 +93,7 @@ Scenarios are future product criteria, not a report of passing tests. `contract+
 | [REQ-085](requirements.en.md#req-085) | [AC-102](#ac-102) |
 | [REQ-086](requirements.en.md#req-086) | [AC-103](#ac-103) |
 | [REQ-087](requirements.en.md#req-087) | [AC-104](#ac-104) |
+| [REQ-088](requirements.en.md#req-088) | [AC-106](#ac-106) |
 
 ## AC-001
 
@@ -547,13 +548,13 @@ REQ: `REQ-041`.
 
 ## AC-042
 
-The Alfa-Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+Alfa automatically reads debit, current/savings, deposits and cashback under a verified contract.
 
 REQ: `REQ-042`.
 
-- **Given:** An authorized personal Alfa-Bank account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized Alfa account with D-37 products is connected.
+- **When:** Accounts, balances, transactions, cashback and savings terms are requested.
+- **Then:** Data matches source evidence; an Alfa credit card is not required and unknown blocks only connector deployment.
 - **Level:** `contract+manual`.
 
 ## AC-043
@@ -1050,6 +1051,17 @@ REQ: `REQ-087`.
 - **When:** The user receives a confirmed event, revisits the page, disables effects or enables reduced motion.
 - **Then:** Rocket/sparkles/confetti/soft disco follow design.en.md and event IDs, never replay from refresh/retry/backfill. Limit breach gets a calm actionable warning, not a reward. No flashes/strobe, blocked forms or hidden text; disabled/reduced motion uses a static acknowledgement. Financial figures never animate through false intermediate values.
 - **Level:** `manual+e2e`.
+
+## AC-106
+
+Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
+
+REQ: `REQ-088`.
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again.
+- **Level:** `integration+security`.
 
 ## AC-063
 

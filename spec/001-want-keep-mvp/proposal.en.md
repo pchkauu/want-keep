@@ -2,7 +2,7 @@
 
 Execution mode: autonomous
 
-**D-37, 2026-09-07:** task-1.2 proceeds independently of remaining research. Branch and PR are based on `docs/want-keep-mvp-sdd`; the overall MVP remains Not Ready. Compact command status/key/hash/result metadata is retained for the family lifetime without copies of source files/messages or secrets. [Outcome and boundaries](evidence/task-1.2-domain-api.en.md).
+D-44, 2026-09-07: independent task-1.2 implementation before research completion was previously labeled D-37 on its branch. D-37 now retains the Alfa decision from task-0.10. Branch base and PR target are `docs/want-keep-mvp-sdd`. The SDD is Ready for development; application operational readiness is not yet established. The user accepted D-41 instead of the earlier family-lifetime command retention.
 
 Initially agreed on 2026-09-06; family amendment agreed on 2026-09-07. Basis: the detailed interview and the user's explicit request to implement the agreed documentation and GitHub backlog plan.
 
@@ -12,7 +12,7 @@ Manually maintaining fragmented fiat/crypto finances is time-consuming. Want Kee
 
 The first release is a family pilot for a couple. Expected load is hundreds of monthly transactions; daily chat, receipt, budget and clarification work targets up to 45 minutes according to the owner. There is no current application to migrate; importing old Excel records is not mandatory scope.
 
-This stage delivers bilingual specifications, criteria, architecture, integration matrix, full backlog and self-contained GitHub Issues. It does not implement the application, purchase infrastructure, commit/push or deploy.
+This stage delivers a bilingual Ready specification, criteria, architecture, integration matrix, full backlog, implementation plan and self-contained GitHub Issues. It does not implement the application, purchase infrastructure or deploy.
 
 ## Interview decisions
 
@@ -30,7 +30,7 @@ This stage delivers bilingual specifications, criteria, architecture, integratio
 | D-10 | Goals have amount, currency, deadline and virtual-reservation or dedicated-account mode. No double reservation. Daily allowances are overall/per-category and available/forecast with separate funding by currency. |
 | D-11 | Credit cards with debt, payments and grace; savings with actual/forecast and comparable dated-cash-flow returns; realized/unrealized trading P&L, fees, funding and mining. No trading terminal. |
 | D-12 | Transaction-date expense valuation, current wealth valuation and separate FX effects. Reference rates and available provider buy/sell quotes with fees. USD, USDT and USDC are not automatically equal. |
-| D-13 | Alfa-Bank: cards, current/savings accounts, deposits; Raif Russia: individual entrepreneur current account through RBO API (D-35); Ozon Bank: debit card and main account (D-32 refinement); Bybit: Funding USDT/USDC/ETH/BTC, Easy Earn, P2P (D-36); Aifory: RUB accounts, USDT, ETH and existing card with their movements (D-33); EMCD: used cards, Coinhold/Grow, USDT wallet and P2P history (D-34). Read-only; browser automation allowed. |
+| D-13 | Alfa-Bank products under D-37; Raif Russia individual entrepreneur current account through RBO API (D-35); Ozon debit card and main account (D-32); Bybit Funding USDT/USDC/ETH/BTC, Easy Earn and P2P (D-36); Aifory RUB accounts, USDT, ETH and existing card (D-33); EMCD used cards, Coinhold/Grow, USDT wallet and P2P history (D-34). Read-only; browser automation is allowed for a proven API gap. |
 | D-14 | Separate passkeys and personal one-time recovery codes for each member; partner-assisted reset is unavailable. Protected secrets, attachments and sessions; AI has no payment authority. |
 | D-15 | For the whole household: server up to $40/month in DE/NL/BG, OpenAI up to $50/month; separately sourced data must be free. Hourly MacBook backups while reachable; visible backup age, conditional RPO and recovery target within four hours. |
 | D-16 | UI, AI interaction and documentation in RU/EN. Dashboard covers plan/actuals, income/expenses, goals and daily allowances. In-app and web-push notifications. |
@@ -46,11 +46,11 @@ Manual cash and receipt entry is mandatory. Manual bank-statement upload may aid
 
 These are defaults, not user answers: initial `Europe/Moscow` timezone explicitly selected by the owner; online operation with clear offline status; two category levels; private push without monetary details; annualized money-weighted XIRR for investment comparison; retained originals for audit. Formulas, file limits and errors are in [contracts.en.md](contracts.en.md).
 
-Fundamental contract changes require both languages, ACs and dependent tasks to change. Library versions, verified APIs, full product terms and a server tariff are not selected yet: they are task-0.1–task-0.10 outcomes, not hidden decisions left to implementers.
+Fundamental contract changes require both languages, ACs and dependent tasks to change. Library versions are pinned during implementation within the selected stack. Provider-specific permissions, structured fixtures, a second account and production conformance are explicit task-4.x/task-8.x entry/deployment gates; unknown fields are never filled by inference.
 
 ## Readiness
 
-Documentation and backlog can be delivered before live access. Full-MVP Ready requires evidence for every mandatory capability/product. [verification.en.md](verification.en.md) retains Not Ready until external contracts close; [backlog.en.md](backlog.en.md) includes the full scope and blocked tasks.
+On 2026-09-07 task-0.10 declared the SDD **Ready for development**: fundamental business and system decisions are closed, and safe behavior for incomplete provider data is contractual. This permits work under [plan.en.md](plan.en.md) and its dependencies. The full MVP is accepted only after all ACs, live conformance for mandatory products and operational gates; SDD Ready does not mean a running or deployed product.
 
 ## Family amendment
 
@@ -110,4 +110,16 @@ REQ-043/AC-043 and task-0.2/task-4.2 were refined with IDs preserved; the Raif l
 | --- | --- |
 | D-36 | Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P. Official APIs take priority over Playwright. Spot/UTA trading, futures, options, card, On-Chain/Advanced Earn and other unused products are deferred without blocking; retain included-wallet movements. USDC is a distinct accounting and selectable valuation asset without assumed USD/USDT/USDC parity. Expansion requires a new decision and verified contracts. |
 
-REQ-002/REQ-003/REQ-039/REQ-045 and task IDs remain; AC-071 and task-6.5 no longer require unused Bybit products. Shared financial functions remain. Target-contract version 6; task-1.1 foundation exists, financial API/database do not and no migration is needed. [Research](evidence/bybit.en.md). Authenticated RSA reads later closed BYBIT-B02/B05 access; BYBIT-B03/B04 and BLK-04 remain open. See [private API evidence](evidence/bybit-api.en.md).
+REQ-002/REQ-003/REQ-039/REQ-045 and task IDs remain; AC-071 and task-6.5 no longer require unused Bybit products. Shared financial functions remain. Target-contract version 6; task-1.1 foundation exists, financial API/database do not and no migration is needed. [Research](evidence/bybit.en.md). Authenticated RSA reads closed BYBIT-B02/B05 access; D-39 and the task-4.4 provider gate resolve the remaining questions without a global SDD block. See [private API evidence](evidence/bybit-api.en.md).
+
+## Ready-gate decisions, 2026-09-07
+
+| ID | Decision |
+| --- | --- |
+| D-37 | Current Alfa scope: debit card, current and savings accounts, deposits and cashback. The Alfa credit card is deferred; shared credit-card modeling and manual accounting remain. |
+| D-38 | `Ready for development` means a decision-complete SDD with safe unknown/partial/ambiguous states. Operator permission, second-account, revocation, production reachability and executable conformance remain task-4.x/task-8.x entry/deployment gates. |
+| D-39 | Source identity is `household + provider + stable external account + product/log namespace + provider record ID`. Connection/session ID is provenance; amount, time and text are not identity. A missing ID permits only a documented provider-specific immutable composite. A collision retains evidence as `source_ambiguous`, creates clarification and posts no money. |
+| D-40 | CBR is primary USD/RUB, Frankfurter `providers=CBR` is fallback/cross-check, and CoinGecko Demo supplies current and up-to-365-day crypto history. Older history yields `valuation_unavailable`. A platform quote without direction, amount, time and known fee/spread yields `quote_unavailable`; a reference rate never substitutes for it. |
+| D-41 | Terminal command detail is retained for 90 days after outcome; unresolved commands remain through reconciliation plus 90 days. A tombstone with `commandId`, scope, key/hash and outcome lives throughout unresolved state and for 400 days after terminal/reconciled outcome. `/commands/recent` returns 30 days of terminal commands and all unresolved commands. Expired detail yields `command_expired`; a live tombstone prevents a repeated effect. Financial audit is retained independently. |
+| D-42 | XIRR uses Actual/365, same-date aggregation, both signs and exactly one sign transition; fractional powers use decimal ln/exp with at least 50 digits, HALF_EVEN and an NPV error bound of `1e-24`; bisection runs from `-1 + 1e-12` through `1,000,000` with `1e-12` solver tolerance and at most 512 iterations. Ambiguous, numerically unproven or non-convergent results are explained `unavailable`. |
+| D-43 | Provider sync requires server-owned admission for the exact environment + adapter/collector build + contract + allowlist + non-secret configuration + operator-permission binding. task-4.x and task-8.x provide the two evidence parts; the application admission service combines them. A binding change or failed/revoked check closes sync with `provider_not_admitted` before collector IO. Pre-admission conformance creates no source record/posting. |

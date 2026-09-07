@@ -5,7 +5,7 @@
 
 Учесть собственные счета, наличные и начальную точку истории.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-1.3`, `task-1.6`.
 
@@ -111,7 +111,7 @@ make test-go PKG=./internal/accounts/...
 
 Account for owned accounts, cash and the history opening point.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-1.3`, `task-1.6`.
 

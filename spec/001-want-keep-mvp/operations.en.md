@@ -2,17 +2,21 @@
 
 [Русский](operations.md)
 
+SDD Ready for development is not operational approval. Before production, task-8.x proves the infrastructure and each task-4.x passes its own provider deployment gate.
+
 ## Limits and hosting
 
 D-15: server at most $40/month in Germany, the Netherlands or Bulgaria; OpenAI separately at most $50/month. Paid external data is not authorized. Initial load is hundreds of transactions/month; receipt pages, chat length and backfill are measured separately.
 
 task-0.9 completed the dated [infrastructure research](evidence/hosting.en.md) on 2026-09-07. The owner selected a German 2 vCPU/4 GB/50 GB VPS for web/reverse proxy, Go API/worker and one sequential collector, plus 1 vCPU/2 GB/20 GB managed PostgreSQL in the same private VPC with no public DB IP. Annual pricing with one VPS IPv4 is RUB 2,520/month; conservative no-discount pricing plus 10% reserve is RUB 3,055.56/$35.29 at CBR 86.5857 RUB/USD, below $40. Re-read pricing, tax, IP and FX before purchase.
 
-The current research VPS costs RUB 800/month per the owner. Read-only audit found Ubuntu 26.04.1 LTS, 1 vCPU, about 889 MiB RAM, no swap and a roughly 14 GiB filesystem; application, DB and backup are not deployed. It is not admitted for production. Before financial data, task-8.1 hardens SSH/firewall/monitoring/secrets, creates the private DB connection, reads back the invoice and measures peak CPU/RAM/disk/collector use. From the current VPS, public OpenAI/rate endpoints and several platforms are reachable with stated limits; safe Alfa-Bank DNS/TLS routing is not established and remains HOST-B04 for task-0.10/task-4.1.
+The current research VPS costs RUB 800/month per the owner. Read-only audit found Ubuntu 26.04.1 LTS, 1 vCPU, about 889 MiB RAM, no swap and a roughly 14 GiB filesystem; application, DB and backup are not deployed. It is not admitted for production. Before financial data, task-8.1 hardens SSH/firewall/monitoring/secrets, creates the private DB connection, reads back the invoice and measures peak CPU/RAM/disk/collector use. From the current VPS, public OpenAI/rate endpoints and several platforms are reachable with stated limits; task-4.1/task-8.1 verify safe Alfa-Bank DNS/TLS routing as a runtime gate.
+
+Provider deployment is disabled by default. D-43 admission requires task-4.x provider evidence and task-8.x host/deployment evidence for one environment/build/contract/allowlist/configuration/permission binding. Only the admission service changes server-owned state; a stale/missing binding returns `provider_not_admitted` before collector IO. Pre-admission conformance runs in quarantine without source records/postings. A failed gate leaves that source disabled while ordinary/manual accounting continues. Health reports unknown/partial/ambiguous separately.
 
 ## OpenAI
 
-Model choice and limits are owned by [task-0.8 research](evidence/openai.en.md); the [estimate](evidence/openai.cost.json) is distinct from actual usage and bank charges. Pricing date: 2026-09-07. Select gpt-5.6-terra xhigh for all AI tasks; final evaluation is 206/206 without unnecessary clarifications, 6/6 PNG/PDF and 3/3 function calling. BLK-08 is closed; application runtime work remains.
+Model choice and limits are owned by [task-0.8 research](evidence/openai.en.md); the [estimate](evidence/openai.cost.json) is distinct from actual usage and bank charges. Pricing date: 2026-09-07. Select gpt-5.6-terra xhigh for all AI tasks; final evaluation is 206/206 without unnecessary clarifications, 6/6 PNG/PDF and 3/3 function calling. The SDD contract is closed; application runtime work remains.
 
 Use foreground Responses, `store=false`, local chat history, `prompt_cache_options.mode=explicit` without breakpoints and `detail=high` for pages. Models only propose validated application commands; credentials, SQL, browser, shell, payments and hosted tools are unavailable. Evidence discloses OpenAI retention and unverified ZDR/EU residency; a European VPS does not establish European OpenAI processing.
 
@@ -37,13 +41,13 @@ An isolated rehearsal restores DB/attachments/schema, checks balances, audit, id
 
 ## Monitoring and notifications
 
-Source states: connected/reauth_required/syncing/stale/partial/failed/disconnected. AI: pending/running/reviewed/clarification/waiting_budget/failed/superseded. Backup: pending/complete/stale/failed. Never collapse these into one green indicator.
+Source states: connected/reauth_required/syncing/stale/partial/failed/disconnected. Provider admission: pending/admitted/blocked with binding/reasons. AI: pending/running/reviewed/clarification/waiting_budget/failed/superseded. Backup: pending/complete/stale/failed. Never collapse these into one green indicator.
 
 Summaries/reminders have source event ID, time/timezone and dedup key. Push subscriptions bind to device/owner and are invalidated on recovery/device revocation. Default lock-screen payloads omit amounts/merchants. In-app delivery works without push permission. Actual push permission/denial, delivery and revocation are tested in Chrome and Arc on macOS. The contract requires no application installation; unsupported delivery retains in-app and an explicit status.
 
 ## Release evidence
 
-Full-MVP acceptance requires all ACs, every product's live readback across six platforms, measured AI quality/cost, no duplicate financial effects under retries, privacy/auth, RU/EN/desktop, push in actual Chrome and Arc on macOS, backup/restore rehearsal and actual costs. CI/mocks do not replace these checks. Deployment and resource purchases require current authorization for that separate stage.
+Full-MVP acceptance requires all ACs, every product's live readback across six platforms after provider gates, measured AI quality/cost, no duplicate financial effects under retries, privacy/auth, RU/EN/desktop, push in actual Chrome and Arc on macOS, backup/restore rehearsal and actual costs. CI/mocks do not replace these checks. SDD Ready permits development but skips none of these runtime gates. Deployment and resource purchases require current authorization for that separate stage.
 
 ## Household operations
 

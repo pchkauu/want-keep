@@ -5,7 +5,7 @@
 
 Предоставить вход, навигацию и доступные состояния на ноутбуке macOS Chrome/Arc.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-1.4`, `task-1.2`, `task-7.11`, `task-1.6`.
 
@@ -337,7 +337,7 @@ RU/EN вход/восстановление и навигация работаю
 
 Provide sign-in, navigation and accessible states on a macOS laptop in Chrome/Arc.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-1.4`, `task-1.2`, `task-7.11`, `task-1.6`.
 

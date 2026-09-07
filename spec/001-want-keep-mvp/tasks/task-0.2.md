@@ -5,7 +5,7 @@
 
 Получить проверяемый контракт чтения расчётного счёта ИП через RBO API.
 
-**Состояние:** Исследование завершено 2026-09-07 с открытыми контрактными вопросами. D-35 ограничивает Raif расчётным счётом ИП. Refresh grant, GET счетов с Mac и VPS, две исторические CAMT.053-выписки и сверка остатков прошли; семь NtryRef и записей совпали между отчётами. Текущий CAMT.052 вернул 404 no-statements. RAIF-B01 и RAIF-B05 закрыты; RAIF-B02/B03/B04/B06 остаются в BLK-02. task-4.2 и MVP Not Ready. Evidence RU/EN, синтетические JSON/XML и диагностические скрипты подготовлены. Оставшиеся вопросы переданы task-0.10; закрытие исследования не снимает Ready gate.
+**Состояние:** Исследование Raiffeisen RBO/CAMT завершено; task-0.10 закрепила CAMT 1:N, identity/fallback, revision и unknown-balance правила. SDD Ready; OAuth/history/второй аккаунт/conformance остаются gate task-4.2.
 
 **Зависимости:** нет.
 
@@ -92,7 +92,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 Produce a verifiable read contract for the individual entrepreneur current account through RBO API.
 
-**Status:** Research completed on 2026-09-07 with open contract questions. D-35 limits Raif to the individual entrepreneur current account. Refresh grant, account GETs from Mac and VPS, two historical CAMT.053 statements and balance reconciliation passed; seven NtryRefs and entries matched across reports. Current CAMT.052 returned 404 no-statements. RAIF-B01 and RAIF-B05 closed; RAIF-B02/B03/B04/B06 remain in BLK-02. task-4.2 and MVP Not Ready. RU/EN evidence, synthetic JSON/XML and diagnostic scripts prepared. Remaining questions are assigned to task-0.10; research closure does not remove the Ready gate.
+**Status:** Raiffeisen RBO/CAMT research is complete; task-0.10 fixed CAMT 1:N, identity/fallback, revision and unknown-balance rules. The SDD is Ready; OAuth/history/second-account/conformance remains the task-4.2 gate.
 
 **Dependencies:** none.
 

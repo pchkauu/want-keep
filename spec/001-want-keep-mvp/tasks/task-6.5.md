@@ -5,7 +5,7 @@
 
 Получать согласованный результат по криптопродуктам без двойных начислений.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
 
 **Зависимости:** `task-6.1`, `task-2.4`.
 
@@ -80,7 +80,7 @@ make test-integration AREA=crypto-results
 
 Produce consistent crypto-product results without double accruals.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Not started; the task awaits its own dependencies and entry gates.
 
 **Dependencies:** `task-6.1`, `task-2.4`.
 

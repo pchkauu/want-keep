@@ -5,7 +5,7 @@
 
 Получить Ready-спецификацию перед реализацией приложения.
 
-**Состояние:** Заблокировано зависимостями и проверкой SDD Ready; реализация не начата.
+**Состояние:** Завершено 2026-09-07: спецификация Ready for development. BLK-01–BLK-10 закрыты как решения SDD или перенесены в явные provider/runtime gates; приложение и продуктовые AC ещё не реализованы.
 
 **Зависимости:** `task-0.1`, `task-0.2`, `task-0.3`, `task-0.4`, `task-0.5`, `task-0.6`, `task-0.7`, `task-0.8`, `task-0.9`.
 
@@ -13,14 +13,21 @@
 
 ### Изменение и контракты
 
-Свести результаты исследований, закрыть контракты, поля, источники и фундаментальные вопросы. Обновить RU/EN и все затронутые задачи. При блокерах сохранить Not Ready и не создавать plan.md. После Ready создать решение-полный план по SDD с точными проверками и отправить независимому read-only reviewer; только свежий Ready допускает реализацию. D-37/task-1.2 закрывает retention: компактные command status/key/hash/result хранятся всё время хранения семьи без копий секретов/исходных документов; task-1.3 реализует атомарность и долговечную идемпотентность. Это не зависит от незавершённых provider contracts. Для Aifory действует D-33: закрыть AIFORY-B02–B04 только для RUB, USDT, ETH и используемой карты; AIFORY-B05/остальные продукты не блокируют. Согласовать структурированный read-контракт, право автоматизации, identity/history и card lifecycle; учесть ETH в оценке. Для Bybit по D-36 использовать успешное RSA readOnly чтение evidence/bybit-api: BYBIT-B02/B05 закрыты для владельца, включая P2P. Закрыть BYBIT-B03/B04: детерминированную identity/связь журналов и неоднозначность, precision-aware сверку, границы истории, отсутствующий hourly ID/корректировки и базу прогноза Earn/расхождение lifetime totalPnl USDT. VPS проверяет task-0.9; второй владелец, отзыв и executable conformance — task-4.4. Funding USDT/USDC/ETH/BTC, Flexible Easy Earn и P2P обязательны; Fixed/прочие неиспользуемые BYBIT-B06 не блокируют. USDC остаётся отдельной валютой оценки. Для Raiffeisen по D-35 закрыть RAIF-B02/B03/B04/B06: CAMT mapping и ID при исправлениях, глубину/полноту истории, текущие/доступные/заблокированные остатки и комиссии, auth lifecycle и независимость аккаунтов. Использовать evidence/raiffeisen; RAIF-B01/B05 закрыты только в указанном объёме. Закрытие task-0.2 не разблокирует task-4.2 без Ready.
+Закрепить D-37–D-43 и выпуск Ready for development: текущий Alfa scope, смысл SDD/runtime gates, нормализованную source identity и коллизии, FX gaps, command retention и детерминированный XIRR. Свести provider evidence в синтетические allowlist/identity/history/revision/status/fee/reauth контракты. Непроверенные разрешения, fixtures, второй аккаунт, production reachability и conformance становятся entry/deployment gates task-4.x/task-8.x и не подменяются вымышленными полями. Создать парные RU/EN plan и итоговый evidence, проверить REQ → AC → task и провести независимый read-only review. Ready разрешает начать задачи по их зависимостям; не означает реализованный MVP, пройденные продуктовые AC или разрешение коннектора к production.
 
 ### Границы изменений
 
+- `spec/001-want-keep-mvp/catalog.json`
+- `spec/001-want-keep-mvp/README.md`
+- `spec/001-want-keep-mvp/proposal.md`
 - `spec/001-want-keep-mvp/constraints.md`
 - `spec/001-want-keep-mvp/contracts.md`
+- `spec/001-want-keep-mvp/integrations.md`
+- `spec/001-want-keep-mvp/operations.md`
 - `spec/001-want-keep-mvp/verification.md`
+- `spec/001-want-keep-mvp/evidence/`
 - `spec/001-want-keep-mvp/plan.md`
+- `spec/001-want-keep-mvp/tools/spec_tool.py`
 
 Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
 
@@ -33,7 +40,7 @@
 - **REQ-034:** Доходность вложений сравнивается с учётом дат денежных потоков и валюты оценки.
 - **REQ-038:** Курсы обмена учитывают направление, сервис, время, сумму применимости и известные комиссии.
 - **REQ-039:** Отсутствующие курсы и неподдерживаемые активы не превращаются в нулевые суммы или условный паритет USD/USDT/USDC.
-- **REQ-042:** Интеграция Альфа-Банк автоматически читает дебетовые/кредитные карты, текущие/накопительные счета и вклады в пределах подтверждённого контракта.
+- **REQ-042:** Alfa автоматически читает debit, current/savings, deposits и кэшбэк по проверенному контракту.
 - **REQ-043:** Raiffeisen через RBO API читает только расчётный счёт ИП: остатки, поступления, списания, комиссии и историю (D-35).
 - **REQ-044:** Интеграция Ozon Банк автоматически читает дебетовую карту и связанный основной счёт: остатки, операции и доступные сведения в пределах подтверждённого контракта. Другие продукты Ozon отложены до расширения контракта.
 - **REQ-045:** Bybit автоматически читает Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен. Остальные продукты отложены без блокировки по D-36.
@@ -57,6 +64,7 @@
 - **REQ-074:** Изменения плана и целей уведомляют второго участника; прочтение и push-подписки принадлежат конкретному пользователю.
 - **REQ-075:** Восстановление данных сохраняет пользователей, членство, принадлежность, роли, историю и общий семейный учёт.
 - **REQ-076:** Семейная область проверяется для API, файлов, AI, фоновых задач и внешних ID независимо от присланных actor/owner.
+- **REQ-088:** Синхронизация провайдера разрешена только актуальным server-side admission, связанным с проверенными версиями адаптера, контракта, allowlist, конфигурации и окружения.
 
 ### Критерии приёмки
 
@@ -92,9 +100,9 @@
 
 #### AC-042
 
-- **Дано:** Подключён разрешённый личный аккаунт Альфа-Банк с тестируемыми продуктами.
-- **Когда:** Запрошены счета, остатки, операции и необходимые условия продуктов.
-- **Тогда:** Для каждого обязательного продукта получены сопоставимые с источником данные и свидетельство чтения; отсутствие доступа фиксируется блокером, а не успешным покрытием.
+- **Дано:** Подключён разрешённый аккаунт Alfa с продуктами D-37.
+- **Когда:** Запрошены счета, остатки, операции, кэшбэк и условия накоплений.
+- **Тогда:** Данные совпадают с source evidence; кредитка Alfa не требуется, unknown блокирует только deployment коннектора.
 - **Уровень:** `contract+manual`.
 
 #### AC-043
@@ -258,13 +266,20 @@
 - **Тогда:** Чужие объекты недоступны и не объединяются; сервер берёт principal из сессии или проверенного контекста задания. Отказ не раскрывает чужое содержимое.
 - **Уровень:** `integration`.
 
+#### AC-106
+
+- **Дано:** Подключение авторизовано, но provider/host gate неполон либо прошлый admission относится к другой версии binding.
+- **Когда:** Участник или scheduler запрашивает sync, либо меняются build, contract, allowlist, config, permission или environment.
+- **Тогда:** Сервер возвращает `provider_not_admitted`, collector не запускается и проводок нет. Только admission service ставит `admitted` после provider evidence task-4.x и host evidence task-8.x для точного binding; любое расхождение снова закрывает sync.
+- **Уровень:** `integration+security`.
+
 ### Проверка результата
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check && make check
 ```
 
-Полное покрытие REQ/AC/task; нет скрытого выбора API/прав/формул; независимая проверка плана Ready или явно сохранён Not Ready.
+Каталог и RU/EN-артефакты согласованы; Ready plan существует; identity, повторы, gaps, unknown, коллизии, CAMT corrections, FX, XIRR и retention имеют синтетические проверки; независимый review не оставляет подтверждённых P0–P3.
 
 Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.
 
@@ -278,7 +293,7 @@ python3 spec/001-want-keep-mvp/tools/spec_tool.py check
 
 Obtain a Ready specification before application implementation.
 
-**Status:** Blocked by dependencies and the SDD Ready gate; implementation has not started.
+**Status:** Completed on 2026-09-07: the specification is Ready for development. BLK-01–BLK-10 are resolved as SDD decisions or reclassified as explicit provider/runtime gates; the application and product acceptance criteria are not implemented yet.
 
 **Dependencies:** `task-0.1`, `task-0.2`, `task-0.3`, `task-0.4`, `task-0.5`, `task-0.6`, `task-0.7`, `task-0.8`, `task-0.9`.
 
@@ -286,14 +301,21 @@ Obtain a Ready specification before application implementation.
 
 ### Change and contracts
 
-Reconcile research outcomes and resolve contracts, fields, sources and fundamental questions. Update RU/EN and affected tasks. With blockers retain Not Ready and do not create plan.md. After Ready, create a decision-complete SDD plan with exact checks and dispatch an independent read-only reviewer; only fresh Ready permits implementation. D-37/task-1.2 resolves retention: compact command status/key/hash/result metadata lives as long as the family without copies of secrets/source documents; task-1.3 implements atomicity and durable idempotency. This is independent of unfinished provider contracts. Apply Aifory D-33: close AIFORY-B02–B04 only for RUB, USDT, ETH and the existing card; AIFORY-B05/other products do not block. Establish the structured read contract, automation permission, identity/history and card lifecycle; include ETH valuation. For Bybit D-36 use successful RSA readOnly evidence/bybit-api: BYBIT-B02/B05 are closed for this owner, including P2P. Close BYBIT-B03/B04: deterministic identity/cross-log linkage and ambiguity, precision-aware reconciliation, history bounds, missing hourly ID/revisions and Earn forecast basis/USDT lifetime totalPnl difference. task-0.9 checks VPS; task-4.4 checks a second owner, revocation and executable conformance. Funding USDT/USDC/ETH/BTC, Flexible Easy Earn and P2P remain required; Fixed/other unused BYBIT-B06 products do not block. USDC remains a separate valuation asset. For Raiffeisen under D-35 close RAIF-B02/B03/B04/B06: CAMT mapping and revision identity, history depth/completeness, current/available/locked balances and fees, auth lifecycle and independent accounts. Use evidence/raiffeisen; RAIF-B01/B05 are closed only within the stated scope. Closing task-0.2 does not unblock task-4.2 without Ready.
+Establish D-37–D-43 and issue Ready for development: current Alfa scope, SDD/runtime gate semantics, normalized source identity and collisions, FX gaps, command retention and deterministic XIRR. Consolidate provider evidence into synthetic allowlist/identity/history/revision/status/fee/reauth contracts. Unverified permissions, fixtures, second account, production reachability and conformance become task-4.x/task-8.x entry/deployment gates and are never replaced with invented fields. Create paired RU/EN plans and final evidence, verify REQ → AC → task and run an independent read-only review. Ready allows tasks to start according to dependencies; it does not mean an implemented MVP, passing product acceptance criteria or production connector permission.
 
 ### Change boundaries
 
+- `spec/001-want-keep-mvp/catalog.json`
+- `spec/001-want-keep-mvp/README.md`
+- `spec/001-want-keep-mvp/proposal.md`
 - `spec/001-want-keep-mvp/constraints.md`
 - `spec/001-want-keep-mvp/contracts.md`
+- `spec/001-want-keep-mvp/integrations.md`
+- `spec/001-want-keep-mvp/operations.md`
 - `spec/001-want-keep-mvp/verification.md`
+- `spec/001-want-keep-mvp/evidence/`
 - `spec/001-want-keep-mvp/plan.md`
+- `spec/001-want-keep-mvp/tools/spec_tool.py`
 
 These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
 
@@ -306,7 +328,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-034:** Investment returns are compared using dated cash flows and valuation currency.
 - **REQ-038:** Exchange quotes include direction, provider, timestamp, applicable amount and known fees.
 - **REQ-039:** Missing rates and unsupported assets never become zero amounts or assumed USD/USDT/USDC parity.
-- **REQ-042:** The Alfa-Bank integration automatically reads debit/credit cards, current/savings accounts and deposits under a verified contract.
+- **REQ-042:** Alfa automatically reads debit, current/savings, deposits and cashback under a verified contract.
 - **REQ-043:** Raiffeisen RBO API reads only the entrepreneur current account: balances, receipts, debits, fees and history (D-35).
 - **REQ-044:** The Ozon Bank integration automatically reads the debit card and linked main account: balances, transactions and available details under a verified contract. Other Ozon products are deferred until a contract extension.
 - **REQ-045:** Bybit automatically reads Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P; the official API is preferred. Other products are deferred without blocking under D-36.
@@ -330,6 +352,7 @@ These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.
 - **REQ-074:** Plan and goal changes notify the other member; read state and push subscriptions belong to the individual user.
 - **REQ-075:** Data recovery preserves users, memberships, ownership, roles, history and shared household accounting.
 - **REQ-076:** Household scope is checked for APIs, files, AI, jobs and external IDs independently of supplied actor/owner fields.
+- **REQ-088:** Provider sync is allowed only by a current server-side admission bound to verified adapter, contract, allowlist, configuration and environment revisions.
 
 ### Acceptance criteria
 
@@ -365,9 +388,9 @@ A criterion link establishes coverage; research or a partial task does not prove
 
 #### AC-042
 
-- **Given:** An authorized personal Alfa-Bank account with the tested products is connected.
-- **When:** Accounts, balances, transactions and required product terms are requested.
-- **Then:** Every mandatory product has source-matching data and read evidence; inaccessible products are blockers, not successful coverage.
+- **Given:** An authorized Alfa account with D-37 products is connected.
+- **When:** Accounts, balances, transactions, cashback and savings terms are requested.
+- **Then:** Data matches source evidence; an Alfa credit card is not required and unknown blocks only connector deployment.
 - **Level:** `contract+manual`.
 
 #### AC-043
@@ -531,13 +554,20 @@ A criterion link establishes coverage; research or a partial task does not prove
 - **Then:** Foreign objects are inaccessible and never merged; the server takes principal from the session or validated job context. Denial reveals no foreign content.
 - **Level:** `integration`.
 
+#### AC-106
+
+- **Given:** A connection is authenticated, but the provider/host gate is incomplete or the prior admission belongs to a different binding revision.
+- **When:** A member or scheduler requests sync, or the build, contract, allowlist, configuration, permission or environment changes.
+- **Then:** The server returns `provider_not_admitted`, never starts the collector and creates no posting. Only the admission service sets `admitted` after task-4.x provider evidence and task-8.x host evidence for the exact binding; any mismatch closes sync again.
+- **Level:** `integration+security`.
+
 ### Verification
 
 ```sh
-python3 spec/001-want-keep-mvp/tools/spec_tool.py check
+make docs-check && make check
 ```
 
-Complete REQ/AC/task coverage; no hidden API/permission/formula decisions; independent plan review is Ready or Not Ready is explicitly retained.
+The catalog and RU/EN artifacts agree; the Ready plan exists; identity, replay, gaps, unknown values, collisions, CAMT corrections, FX, XIRR and retention have synthetic checks; the independent review leaves no confirmed P0–P3 findings.
 
 The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof.
 
