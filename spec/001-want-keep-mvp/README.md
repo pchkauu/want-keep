@@ -51,7 +51,7 @@ git diff --check
 
 Уточнение D-34: EMCD — кошелёк USDT, используемые Grow/криптокарты и история P2P. Майнинг никогда не использовался; его данные и другие неиспользуемые продукты отложены без блокировки. [Исследование](evidence/emcd.md), вопросы автоматизации — BLK-06.
 
-D-36: Bybit — Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; официальный API приоритетен, остальные продукты отложены без блокировки. USDC добавлен в учёт/оценку. [Исследование](evidence/bybit.md); приватный доступ, история и P2P eligibility остаются в BLK-04.
+D-36: Bybit — Funding USDT/USDC/ETH/BTC, используемый Easy Earn и P2P; авторизованное чтение официального API успешно, включая P2P. Остальные продукты отложены без блокировки. USDC включён в учёт/оценку. [Исследование](evidence/bybit.md), [приватный API](evidence/bybit-api.md); BYBIT-B03/B04 остаются в BLK-04.
 
 Исследование курсов task-0.7: CBR выбран основным USD/RUB, CoinGecko Demo — отдельные BTC/ETH/USDT/USDC в USD для current и history ≤365 дней, Frankfurter `providers=CBR` — fallback/cross-check. TradingView отвергнут как серверный источник. [Evidence и открытые FX-B02–FX-B04](evidence/fx.md); BLK-07 и Ready закрывает task-0.10.
 

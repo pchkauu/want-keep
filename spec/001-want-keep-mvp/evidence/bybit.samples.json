@@ -1,8 +1,8 @@
 {
   "synthetic": true,
   "provenance": {
-    "ru": "Синтетические проекции опубликованных полей и целевые сценарии, не приватные ответы Bybit. Связи и правила требуют BYBIT-B02–B05.",
-    "en": "Synthetic published-field projections and target scenarios, not private Bybit responses. Linkage and rules require BYBIT-B02–B05."
+    "ru": "Синтетические проекции опубликованных и проверенных приватных форм; все личные ID/суммы заменены. Это не сырые ответы и не исполняемые тесты. BYBIT-B03/B04 оставляют открытыми связи, сверку и hourly identity/базу Earn.",
+    "en": "Synthetic projections of published and observed private shapes; all personal IDs/amounts replaced. These are neither raw responses nor executable tests. BYBIT-B03/B04 retain linkage, reconciliation and hourly identity/Earn basis questions."
   },
   "scenarios": [
     {
@@ -114,8 +114,8 @@
         "en": "Withdrawal fee once under proven gross/net semantics"
       },
       "assumption": {
-        "ru": "В этом вымышленном контракте amount — полученная основная сумма, fee — отдельная часть полного списания. Реальный контракт ещё не доказан.",
-        "en": "This fictional contract defines amount as delivered principal and fee as a separate part of the gross debit. The actual contract is unverified."
+        "ru": "Синтетический пример отражает наблюдаемое равенство ledger debit = amount + withdrawFee для 45 записей. Совпадение суммы/времени не гарантирует cross-log identity; поступление на принадлежащий семье счёт здесь условное.",
+        "en": "This synthetic example reflects observed ledger debit = amount + withdrawFee for 45 records. Amount/time matching does not guarantee cross-log identity; receipt in an owned destination account is hypothetical here."
       },
       "ledger_debit": "10.20",
       "withdrawal_projection": {
@@ -142,12 +142,16 @@
       "principal": "200.00",
       "hourly_accruals": [
         {
-          "id": "synthetic-hour-1",
-          "amount": "0.01"
+          "amount": "0.01",
+          "coin": "USDT",
+          "productId": "synthetic-flexible-usdt",
+          "hourlyDate": "1767225600000"
         },
         {
-          "id": "synthetic-hour-2",
-          "amount": "0.02"
+          "amount": "0.02",
+          "coin": "USDT",
+          "productId": "synthetic-flexible-usdt",
+          "hourlyDate": "1767229200000"
         }
       ],
       "distribution": {
@@ -291,6 +295,123 @@
         "coverage": "partial",
         "advance_checkpoint": false,
         "empty_outside_retention": "unknown_not_zero"
+      }
+    },
+    {
+      "id": "BYBIT-S09",
+      "purpose": {
+        "ru": "Hourly без ID и коллизия кортежа",
+        "en": "Hourly without ID and a tuple collision"
+      },
+      "projection": {
+        "retCode": 0,
+        "result": {
+          "list": [
+            {
+              "coin": "ETH",
+              "productId": "synthetic-flex-eth",
+              "hourlyDate": "1767225600000",
+              "createdAt": "1767229200000",
+              "amount": "0.00000001",
+              "effectiveStakingAmount": "1",
+              "status": "Success"
+            }
+          ],
+          "nextPageCursor": ""
+        }
+      },
+      "replay_identical": true,
+      "changed_same_tuple": {
+        "amount": "0.00000002"
+      },
+      "expected": {
+        "missing_id": "observed_shape_not_parse_failure",
+        "same_payload": "one_observation",
+        "changed_payload": "retain_revision_or_collision_for_resolution",
+        "additional_income_over_distributed_yield": "0"
+      }
+    },
+    {
+      "id": "BYBIT-S10",
+      "purpose": {
+        "ru": "Snapshot скрывает остаточную сумму; сверка не списывает её",
+        "en": "Snapshot hides a residual; reconciliation does not spend it"
+      },
+      "coin": "BTC",
+      "ledger_after": "0.00123456789123456",
+      "snapshot_wallet": "0.00123456",
+      "snapshot_transfer": "0.00123456",
+      "expected": {
+        "residual": "0.00000000789123456",
+        "ledger_precision_preserved": true,
+        "auto_adjustment": "forbidden",
+        "reconciliation": "difference_requires_explanation"
+      }
+    },
+    {
+      "id": "BYBIT-S11",
+      "purpose": {
+        "ru": "P2P fiat amount не восстанавливается из quote",
+        "en": "P2P fiat amount is not reconstructed from the quote"
+      },
+      "projection": {
+        "ret_code": 0,
+        "ret_msg": "SUCCESS",
+        "result": {
+          "id": "synthetic-p2p-quantized",
+          "side": 1,
+          "status": 50,
+          "tokenId": "USDT",
+          "currencyId": "RUB",
+          "amount": "3000.00",
+          "price": "83.27",
+          "quantity": "36.0273",
+          "fee": "0",
+          "makerFee": "",
+          "takerFee": "",
+          "createDate": "1767225600000",
+          "transferDate": "1767229200000"
+        }
+      },
+      "expected": {
+        "quantity_times_price": "2999.993271",
+        "authoritative_fiat": "3000.00",
+        "invented_fee": false,
+        "empty_maker_taker_fee": "unknown",
+        "bank_link": "requires_separate_evidence",
+        "rounded_quote_product_equals_fiat": false
+      }
+    },
+    {
+      "id": "BYBIT-S12",
+      "purpose": {
+        "ru": "Короткая страница с cursor и нулевая выплата",
+        "en": "Short page with cursor and zero yield"
+      },
+      "requested_limit": 50,
+      "first_page": {
+        "rows": [
+          {
+            "id": "synthetic-deposit-one"
+          }
+        ],
+        "nextPageCursor": "synthetic-next"
+      },
+      "terminal_page": {
+        "rows": [],
+        "nextPageCursor": ""
+      },
+      "zero_yield": {
+        "id": "synthetic-yield-zero",
+        "orderId": "synthetic-redeem-zero",
+        "amount": "0",
+        "distributionMode": "Manual"
+      },
+      "expected": {
+        "must_read_cursor": true,
+        "checkpoint_before_durable_terminal": false,
+        "zero_yield_credit_count": 0,
+        "coverage": "requested_window_only"
       }
     }
   ]

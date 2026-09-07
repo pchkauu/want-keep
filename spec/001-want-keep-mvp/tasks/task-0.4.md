@@ -5,7 +5,7 @@
 
 Зафиксировать проверяемый read-контракт Bybit для Funding USDT/USDC/ETH/BTC, Easy Earn и P2P и ограничения доступа.
 
-**Состояние:** Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit.md), десять наблюдений/источников и восемь синтетических сценариев. Chrome и публичный Earn API прочитаны; API-ключей нет, P2P advertiser eligibility не выполнена. BYBIT-B01 закрыт, BYBIT-B02–B05 открыты под task-0.10, BYBIT-B06 отложен без блокировки. task-4.4 и BLK-04 остаются Not Ready; исследование не доказывает полные AC.
+**Состояние:** Исследование завершено 2026-09-07: [RU evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit-api.md). RSA readOnly API успешно читает Funding USDT/USDC/ETH/BTC, Flexible Easy Earn и P2P. BYBIT-B01/B02/B05 закрыты для проверенного доступа, BYBIT-B03/B04 открыты под task-0.10, BYBIT-B06 отложен без блокировки. 18 наблюдений/источников, 12 синтетических сценариев; продуктовые AC не объявлены пройденными. task-4.4 и BLK-04 Not Ready.
 
 **Зависимости:** нет.
 
@@ -13,13 +13,15 @@
 
 ### Изменение и контракты
 
-По D-36 предпочесть официальный API браузеру. Разделить опубликованный контракт, Chrome-наблюдение, успешный публичный GET и непроверенный приватный запрос. Описать Funding balances/history, Convert и deposit/withdraw/transfer enrichment, Easy Earn Flexible/Fixed по фактически используемому продукту, P2P read POST и advertiser eligibility. Зафиксировать UID/identity, decimals, status/gross/net/fee, связи журналов, окна/cursors/retention, scopes/reauth/revocation и противоречия документации. Не создавать ключи, заявки рекламодателя или финансовые операции. Другие продукты не исследуются и не блокируют. task-0.7 получает USDC, task-0.9 — доступ/лимиты; task-0.10 закрывает BYBIT-B02–B05 перед task-4.4. Отсутствие приватного доступа — явный результат, а не успешное покрытие.
+По D-36 использовать официальный API для Funding USDT/USDC/ETH/BTC, используемого Easy Earn и P2P. Разделить первичные Chrome/публичные наблюдения и подписанные приватные ответы. Владелец отдельно разрешил выпуск IP-ограниченного RSA readOnly ключа и ввёл MFA; публиковать только синтетические проекции. Проверить UID/scopes, Funding/history, deposit/withdraw/transfer/Convert, Flexible positions/orders/yield/hourly и P2P list/detail read POST. Зафиксировать типы/единицы, source identity, gross/net/fee, связи, precision, окна/cursors/retention и противоречия документации. Не выполнять финансовые операции и не подавать заявку рекламодателя. BYBIT-B02/B05 закрываются только доказанным чтением; BYBIT-B03/B04 передаются task-0.10, VPS — task-0.9, USDC — task-0.7, контрактные сценарии — task-4.4. Остальные продукты не исследуются и не блокируют.
 
 ### Границы изменений
 
 - `spec/001-want-keep-mvp/evidence/bybit.md`
 - `spec/001-want-keep-mvp/evidence/bybit.en.md`
 - `spec/001-want-keep-mvp/evidence/bybit.samples.json`
+- `spec/001-want-keep-mvp/evidence/bybit-api.md`
+- `spec/001-want-keep-mvp/evidence/bybit-api.en.md`
 
 Это планируемые пути. Общие контракты: `spec/001-want-keep-mvp/contracts.md`; архитектура и команды: `constraints.md`. Менять только владельца поведения и затронутые тесты; при незакрытом контракте обновить evidence и остановить зависимую реализацию.
 
@@ -92,7 +94,7 @@
 make docs-check
 ```
 
-RU/EN содержат источники/даты, точную матрицу read-маршрутов, восемь синтетических сценариев и открытые блокеры. Публичные HTTP 200/retCode=0 отделены от отсутствующих private API/полной истории/второго владельца. Исследование может завершиться с блокерами по README.
+RU/EN содержат датированные BYBIT-E01–E18, матрицу read-маршрутов и 12 синтетических сценариев. Подтверждены readOnly/права, 357 Funding-записей за 89 дней, Flexible и P2P list/detail, арифметика и replay. Неполная история, расхождения точности/totalPnl, hourly identity, отсутствие второго владельца/отзыва/VPS и production-коннектора выделены явно. Исследование может завершиться с блокерами по README.
 
 Команды make созданы основой task-1.1; финансовые provider/integration/E2E suites ещё не реализованы. Для документации используется make docs-check. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат; наличие команды или UI-доступа не доказывает runtime.
 
@@ -106,7 +108,7 @@ RU/EN содержат источники/даты, точную матрицу 
 
 Record a verifiable Bybit read contract for Funding USDT/USDC/ETH/BTC, Easy Earn and P2P and its access limits.
 
-**Status:** Research completed on 2026-09-07: [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit.en.md), ten observations/sources and eight synthetic scenarios. Chrome and public Earn APIs were read; no API keys, P2P advertiser prerequisites unmet. BYBIT-B01 closed, BYBIT-B02–B05 open under task-0.10, BYBIT-B06 deferred without blocking. task-4.4 and BLK-04 remain Not Ready; research does not prove complete ACs.
+**Status:** Research completed on 2026-09-07: [EN evidence](https://github.com/pchkauu/want-keep/blob/docs/want-keep-mvp-sdd/spec/001-want-keep-mvp/evidence/bybit-api.en.md). RSA readOnly API successfully reads Funding USDT/USDC/ETH/BTC, Flexible Easy Earn and P2P. BYBIT-B01/B02/B05 closed for verified access, BYBIT-B03/B04 open under task-0.10, BYBIT-B06 non-blocking deferred. 18 observations/sources, 12 synthetic scenarios; product ACs are not declared passed. task-4.4 and BLK-04 remain Not Ready.
 
 **Dependencies:** none.
 
@@ -114,13 +116,15 @@ Record a verifiable Bybit read contract for Funding USDT/USDC/ETH/BTC, Easy Earn
 
 ### Change and contracts
 
-Under D-36 prefer official APIs to browser access. Separate published contracts, Chrome observations, successful public GETs and unverified private requests. Describe Funding balances/history, Convert and deposit/withdraw/transfer enrichment, Easy Earn Flexible/Fixed according to actual usage, P2P read POST and advertiser eligibility. Record UID/identity, decimals, status/gross/net/fees, cross-log links, windows/cursors/retention, scopes/reauth/revocation and documentation contradictions. Do not create keys, advertiser applications or financial operations. Other products are not researched and do not block. task-0.7 receives USDC, task-0.9 access/limits; task-0.10 closes BYBIT-B02–B05 before task-4.4. Missing private access is an explicit result, not successful coverage.
+Under D-36 use official APIs for Funding USDT/USDC/ETH/BTC, used Easy Earn and P2P. Separate initial Chrome/public observations from signed private responses. The owner separately authorized an IP-restricted RSA readOnly key and entered MFA; publish synthetic projections only. Check UID/scopes, Funding/history, deposit/withdraw/transfer/Convert, Flexible positions/orders/yield/hourly and P2P list/detail read POSTs. Record types/units, source identity, gross/net/fees, links, precision, windows/cursors/retention and documentation contradictions. Do not perform financial operations or apply for advertiser status. Close BYBIT-B02/B05 only with verified reads; hand BYBIT-B03/B04 to task-0.10, VPS to task-0.9, USDC to task-0.7 and contract scenarios to task-4.4. Other products are not researched and do not block.
 
 ### Change boundaries
 
 - `spec/001-want-keep-mvp/evidence/bybit.md`
 - `spec/001-want-keep-mvp/evidence/bybit.en.md`
 - `spec/001-want-keep-mvp/evidence/bybit.samples.json`
+- `spec/001-want-keep-mvp/evidence/bybit-api.md`
+- `spec/001-want-keep-mvp/evidence/bybit-api.en.md`
 
 These are planned paths. Shared contracts: `spec/001-want-keep-mvp/contracts.en.md`; architecture and commands: `constraints.en.md`. Change only the behavior owner and affected tests; an unresolved contract requires updated evidence and stops dependent implementation.
 
@@ -193,7 +197,7 @@ A criterion link establishes coverage; research or a partial task does not prove
 make docs-check
 ```
 
-RU/EN include dated sources, an exact read-route matrix, eight synthetic scenarios and open blockers. Public HTTP 200/retCode=0 is separate from missing private API/full-history/second-owner evidence. Research can complete with blockers under README.
+RU/EN include dated BYBIT-E01–E18, the read-route matrix and 12 synthetic scenarios. Confirm readOnly/scopes, 357 Funding records over 89 days, Flexible and P2P list/detail, arithmetic and replay. Explicitly distinguish incomplete history, precision/totalPnl differences, hourly identity and absent second-owner/revocation/VPS/production-connector evidence. Research can complete with blockers under README.
 
 The task-1.1 foundation provides make commands; financial provider/integration/E2E suites are not implemented yet. Use make docs-check for documentation. Live/paid/manual checks separately record access and outcomes; an existing command or UI access is not runtime proof.
 
