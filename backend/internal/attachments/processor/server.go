@@ -17,17 +17,23 @@ type Server struct {
 	mu     sync.Mutex
 	engine interface {
 		Inspect(context.Context, string, []byte) (application.Inspection, error)
+		Ready(context.Context) bool
 	}
 }
 
 func NewServer(engine interface {
 	Inspect(context.Context, string, []byte) (application.Inspection, error)
+	Ready(context.Context) bool
 }) *Server {
 	return &Server{engine: engine}
 }
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if r.Method == http.MethodGet && r.URL.Path == "/ready" {
+		if !s.engine.Ready(r.Context()) {
+			w.WriteHeader(503)
+			return
+		}
 		w.Header().Set("Content-Type", "text/plain")
 		_, _ = io.WriteString(w, "want-keep-document-processor/1\n")
 		return

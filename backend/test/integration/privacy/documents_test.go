@@ -62,6 +62,9 @@ func pdfDocument(pages int, extra string) []byte {
 		objects = append(objects, fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 120 80] /Resources << >> /Contents %d 0 R >>", id+1), "<< /Length 0 >>\nstream\n\nendstream")
 	}
 	objects[1] = fmt.Sprintf("<< /Type /Pages /Count %d /Kids [%s] >>", pages, strings.Join(kids, " "))
+	return pdfObjects(objects)
+}
+func pdfObjects(objects []string) []byte {
 	var b bytes.Buffer
 	b.WriteString("%PDF-1.7\n")
 	offsets := []int{0}
@@ -134,6 +137,7 @@ func TestRejectInvalidAndActiveDocuments(t *testing.T) {
 		{"pages", "application/pdf", pdfDocument(11, ""), domain.LimitExceeded},
 		{"javascript", "application/pdf", pdfDocument(1, "/OpenAction << /S /JavaScript /JS (synthetic) >>"), domain.UnsupportedContent},
 		{"launch", "application/pdf", pdfDocument(1, "/Names << /Actions << /S /Launch /F (synthetic) >> >>"), domain.UnsupportedContent},
+		{"indirect-launch", "application/pdf", indirectLaunchPDF(), domain.UnsupportedContent},
 		{"embedded", "application/pdf", pdfDocument(1, "/Names << /EmbeddedFiles << /Names [] >> >>"), domain.UnsupportedContent},
 		{"media", "application/pdf", pdfDocument(1, "/RichMediaContent << >>"), domain.UnsupportedContent},
 	}
@@ -230,4 +234,15 @@ func TestDimensionsExactUploadLimitAndEncryptedPDF(t *testing.T) {
 	if f.metadata(f.ta, id).State != domain.Rejected {
 		t.Fatal("size boundary bypassed content validation")
 	}
+}
+
+func indirectLaunchPDF() []byte {
+	return pdfObjects([]string{
+		"<< /Type /Catalog /Pages 2 0 R >>",
+		"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+		"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 120 80] /Resources << >> /Contents 4 0 R /Annots [5 0 R] >>",
+		"<< /Length 0 >>\nstream\n\nendstream",
+		"<< /Type /Annot /Subtype /Link /Rect [0 0 120 80] /A << /S 6 0 R /F (synthetic.txt) >> >>",
+		"/Launch",
+	})
 }

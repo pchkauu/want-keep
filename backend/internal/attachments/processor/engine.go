@@ -43,3 +43,7 @@ func (e *Engine) Inspect(ctx context.Context, media string, data []byte) (applic
 	}
 	return application.Inspection{Reason: domain.UnsupportedContent}, nil
 }
+
+func (e *Engine) Ready(ctx context.Context) bool {
+	return ctx.Err() == nil && e != nil && e.qpdf != "" && e.pdftoppm != ""
+}

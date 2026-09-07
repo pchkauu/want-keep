@@ -6,6 +6,7 @@ import sys
 state = json.loads(subprocess.check_output(["docker", "inspect", sys.argv[1]]))[0]
 host, config = state["HostConfig"], state["Config"]
 assert host["NetworkMode"] == "none"
+assert host["Init"] is True
 assert host["ReadonlyRootfs"] and not host["Privileged"]
 assert config["User"] == "10000:10000"
 assert host["Memory"] == 512 * 1024 * 1024

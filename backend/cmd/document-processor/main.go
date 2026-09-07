@@ -24,7 +24,7 @@ func main() {
 func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	engine, err := processor.NewEngine("/usr/local/bin/qpdf", "/usr/local/bin/pdftoppm", "/tmp")
+	engine, err := processor.NewEngine("/usr/local/bin/qpdf", "/usr/local/bin/pdftoppm", os.TempDir())
 	if err != nil {
 		return err
 	}
@@ -38,6 +38,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	defer runner.Close()
 	socket := "/run/want-keep/documents.sock"
 	if info, err := os.Lstat(socket); err == nil {
 		if info.Mode()&os.ModeSocket == 0 {
@@ -65,7 +66,7 @@ func run() error {
 	if err = os.Chmod(socket, 0o600); err != nil {
 		return err
 	}
-	server := &http.Server{Handler: processor.NewServer(runner), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 35 * time.Second, MaxHeaderBytes: 4096}
+	server := &http.Server{Handler: processor.NewServer(runner), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 35 * time.Second, MaxHeaderBytes: 4096, BaseContext: func(net.Listener) context.Context { return ctx }}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
 	select {

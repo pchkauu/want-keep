@@ -3,7 +3,6 @@ package processor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"image/png"
@@ -19,19 +18,23 @@ import (
 	domain "github.com/pchkauu/want-keep/backend/internal/attachments/domain"
 )
 
+var errOutputLimit = errors.New("document processor output limit exceeded")
+
 type boundedOutput struct {
-	bytes.Buffer
+	buffer   bytes.Buffer
 	maximum  int
 	exceeded bool
 }
 
 func (b *boundedOutput) Write(p []byte) (int, error) {
-	if len(p) > b.maximum-b.Len() {
+	if len(p) > b.maximum-b.buffer.Len() {
 		b.exceeded = true
-		return 0, domain.ErrInvalid
+		return 0, errOutputLimit
 	}
-	return b.Buffer.Write(p)
+	return b.buffer.Write(p)
 }
+func (b *boundedOutput) Bytes() []byte { return b.buffer.Bytes() }
+
 func (e *Engine) command(ctx context.Context, directory, path string, maximum int, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Dir = directory
@@ -44,82 +47,21 @@ func (e *Engine) command(ctx context.Context, directory, path string, maximum in
 		return nil, ctx.Err()
 	}
 	if out.exceeded {
-		return nil, domain.ErrInvalid
+		return nil, errOutputLimit
 	}
 	if err != nil {
 		var exit *exec.ExitError
-		if errors.As(err, &exit) {
-			return nil, domain.ErrInvalid
+		if errors.As(err, &exit) && exit.Exited() {
+			code := exit.ExitCode()
+			if (path == e.qpdf && (code == 2 || code == 3)) || (path == e.pdftoppm && (code == 1 || code == 3)) {
+				return nil, domain.ErrInvalid
+			}
 		}
 		return nil, domain.ErrUnavailable
 	}
 	return out.Bytes(), nil
 }
 
-type pdfStructure struct {
-	Version int               `json:"version"`
-	Pages   []json.RawMessage `json:"pages"`
-	Encrypt struct {
-		Encrypted bool `json:"encrypted"`
-	} `json:"encrypt"`
-	Objects []json.RawMessage `json:"qpdf"`
-}
-
-func (e *Engine) inspectStructure(data []byte) (int, domain.Reason) {
-	var structure pdfStructure
-	if json.Unmarshal(data, &structure) != nil || structure.Version != 2 || len(structure.Objects) != 2 {
-		return 0, domain.InvalidDocument
-	}
-	if structure.Encrypt.Encrypted {
-		return 0, domain.UnsupportedContent
-	}
-	if len(structure.Pages) < 1 {
-		return 0, domain.InvalidDocument
-	}
-	if len(structure.Pages) > domain.MaxPages {
-		return 0, domain.LimitExceeded
-	}
-	var objects map[string]any
-	if json.Unmarshal(structure.Objects[1], &objects) != nil || len(objects) == 0 {
-		return 0, domain.InvalidDocument
-	}
-	remaining := 200000
-	if !e.passiveObject(objects, 0, &remaining) {
-		return 0, domain.UnsupportedContent
-	}
-	return len(structure.Pages), domain.NoReason
-}
-func (e *Engine) passiveObject(value any, depth int, remaining *int) bool {
-	*remaining--
-	if depth > 128 || *remaining < 0 {
-		return false
-	}
-	switch v := value.(type) {
-	case map[string]any:
-		for key, item := range v {
-			switch key {
-			case "/JS", "/JavaScript", "/EmbeddedFiles", "/EF", "/RichMedia", "/RichMediaContent", "/XFA", "/OpenAction", "/AA", "/Movie", "/Sound", "/3D", "/3DD", "/RichMediaSettings":
-				return false
-			}
-			if key == "/S" {
-				switch item {
-				case "/JavaScript", "/Launch", "/SubmitForm", "/ImportData", "/GoToR", "/GoToE", "/Rendition", "/Movie", "/Sound":
-					return false
-				}
-			}
-			if !e.passiveObject(item, depth+1, remaining) {
-				return false
-			}
-		}
-	case []any:
-		for _, item := range v {
-			if !e.passiveObject(item, depth+1, remaining) {
-				return false
-			}
-		}
-	}
-	return true
-}
 func (e *Engine) pdf(ctx context.Context, data []byte) (application.Inspection, error) {
 	if !bytes.HasPrefix(data, []byte("%PDF-")) {
 		return application.Inspection{Reason: domain.UnsupportedContent}, nil
@@ -145,7 +87,8 @@ func (e *Engine) pdf(ctx context.Context, data []byte) (application.Inspection, 
 	if err != nil {
 		return e.pdfFailure(err)
 	}
-	count, reason := e.inspectStructure(structure)
+	var policy pdfStructure
+	count, reason := policy.inspect(structure)
 	if reason != domain.NoReason {
 		return application.Inspection{Reason: reason}, nil
 	}
@@ -194,7 +137,7 @@ func (e *Engine) pdfFailure(err error) (application.Inspection, error) {
 	if errors.Is(err, domain.ErrInvalid) {
 		return application.Inspection{Reason: domain.InvalidDocument}, nil
 	}
-	if errors.Is(err, context.DeadlineExceeded) {
+	if errors.Is(err, errOutputLimit) {
 		return application.Inspection{Reason: domain.LimitExceeded}, nil
 	}
 	return application.Inspection{}, err

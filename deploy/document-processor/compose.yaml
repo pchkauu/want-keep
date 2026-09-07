@@ -4,6 +4,7 @@ services:
       context: ../..
       dockerfile: deploy/document-processor/Dockerfile
       target: runtime
+    init: true
     network_mode: none
     read_only: true
     user: '10000:10000'

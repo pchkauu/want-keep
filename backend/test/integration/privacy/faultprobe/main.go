@@ -6,11 +6,21 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 var retained [][]byte
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--version" {
+		fmt.Println("qpdf version 12.4.1")
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "--suppress-recovery" {
+		_ = syscall.Kill(os.Getpid(), syscall.SIGKILL)
+		os.Exit(2)
+	}
+
 	if len(os.Args) == 2 && os.Args[1] == "events" {
 		data, err := os.ReadFile("/sys/fs/cgroup/memory.events")
 		if err != nil {
