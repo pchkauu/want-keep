@@ -63,7 +63,8 @@ export class SessionController {
   }
 
   accept(member: MemberSession, ticket = this.epoch) {
-    if (!this.current(ticket)) throw new ApiFailure("session_changed");
+    if (!this.current(ticket) || this.state.status === "signing_out")
+      throw new ApiFailure("session_changed");
     if (this.state.member && this.state.member.userId !== member.userId)
       this.onIdentityChange();
     if (
@@ -76,12 +77,14 @@ export class SessionController {
   }
 
   expire() {
+    if (this.state.status === "signing_out") return;
     this.epoch++;
     this.api.http.bind("");
     this.publish({ status: "expired", member: this.state.member });
   }
 
   verify = (): Promise<void> => {
+    if (this.state.status === "signing_out") return Promise.resolve();
     if (this.probe) return this.probe;
     const ticket = this.epoch;
     const previous = this.state.member;
@@ -108,6 +111,7 @@ export class SessionController {
   };
 
   async signOut() {
+    if (this.state.status === "signing_out") return;
     this.epoch++;
     this.onIdentityChange();
     this.publish({ status: "signing_out" });

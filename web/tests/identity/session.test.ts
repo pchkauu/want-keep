@@ -139,6 +139,74 @@ describe("identity session boundaries", () => {
     });
     expect(session.onIdentityChange).toHaveBeenCalledOnce();
   });
+  it.each(["confirmed", "unknown"] as const)(
+    "keeps access hidden during sign-out until its %s outcome",
+    async (outcome) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(start);
+      let complete!: () => void;
+      let fail!: (error: Error) => void;
+      const api = new IdentityApi(new HttpClient());
+      vi.spyOn(api, "logout").mockImplementation(
+        () =>
+          new Promise<void>((resolve, reject) => {
+            complete = resolve;
+            fail = reject;
+          }),
+      );
+      vi.spyOn(api, "me").mockResolvedValue(member);
+      const session = new SessionController(api);
+      session.accept(member);
+      const logout = session.signOut();
+      await session.verify();
+      session.expire();
+      await session.verify();
+      await session.signOut();
+      expect(() => session.accept(member)).toThrow("session_changed");
+      expect(api.me).not.toHaveBeenCalled();
+      expect(api.logout).toHaveBeenCalledOnce();
+      expect(session.snapshot()).toEqual({ status: "signing_out" });
+      if (outcome === "confirmed") {
+        complete();
+        await logout;
+        expect(session.snapshot()).toEqual({ status: "anonymous" });
+      } else {
+        const rejected = expect(logout).rejects.toThrow("network_unconfirmed");
+        fail(new ApiFailure("network_unconfirmed"));
+        await rejected;
+        expect(session.snapshot()).toEqual({
+          status: "unavailable",
+          logoutUnconfirmed: true,
+        });
+        await session.verify();
+        expect(api.me).toHaveBeenCalledOnce();
+        expect(session.snapshot()).toEqual({ status: "active", member });
+      }
+    },
+  );
+  it("discards a session probe started before sign-out", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(start);
+    let completeLogout!: () => void;
+    let completeProbe!: (value: MemberSession) => void;
+    const api = new IdentityApi(new HttpClient());
+    vi.spyOn(api, "logout").mockImplementation(
+      () => new Promise<void>((resolve) => (completeLogout = resolve)),
+    );
+    vi.spyOn(api, "me").mockImplementation(
+      () => new Promise<MemberSession>((resolve) => (completeProbe = resolve)),
+    );
+    const session = new SessionController(api);
+    session.accept(member);
+    const probe = session.verify();
+    const logout = session.signOut();
+    completeProbe(member);
+    await probe;
+    expect(session.snapshot()).toEqual({ status: "signing_out" });
+    completeLogout();
+    await logout;
+    expect(session.snapshot()).toEqual({ status: "anonymous" });
+  });
 });
 
 describe("same-origin HTTP boundary", () => {
