@@ -64,6 +64,11 @@ func (s *Service) applyImport(ctx context.Context, p household.Principal, r Impo
 			return a, err
 		}
 	}
+	if s.reconciler != nil {
+		if err = s.reconciler.ReconcileAccount(ctx, p, a.ID); err != nil {
+			return a, err
+		}
+	}
 	return s.repository.Account(ctx, p, a.ID)
 }
 

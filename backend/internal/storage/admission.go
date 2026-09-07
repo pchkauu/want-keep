@@ -220,6 +220,55 @@ func (s *Store) CreateSyncJob(ctx context.Context, c admission.Connection, a con
 	}
 	return s.Job(ctx, scope.principal, id)
 }
+
+func (s *Store) CreateReplayJob(ctx context.Context, c admission.Connection, a connections.Admission, deadline time.Time, requestID string, from, to time.Time) (jobs.Job, error) {
+	scope, err := s.familyScope(ctx)
+	if err != nil {
+		return jobs.Job{}, err
+	}
+	request := jobs.Job{ReplayRequestID: requestID, RangeFrom: from, RangeTo: to}
+	if err = request.ValidateReplay(); err != nil || !scope.holdsAdmission(a.Binding().Provider, a.Binding().Environment) {
+		return jobs.Job{}, jobs.ErrInvalidJob
+	}
+	if err = a.RequireSync(a.Binding()); err != nil {
+		return jobs.Job{}, err
+	}
+	if err = (connections.ExternalOwnership{HouseholdID: c.HouseholdID, OwnerID: c.Owner}).RequireManage(scope.principal); err != nil {
+		return jobs.Job{}, err
+	}
+	if !c.Authorized || c.Provider != a.Binding().Provider {
+		return jobs.Job{}, connections.ErrProviderNotAdmitted
+	}
+	now, err := s.DatabaseTime(ctx)
+	if err != nil {
+		return jobs.Job{}, err
+	}
+	if !deadline.After(now) || deadline.After(now.Add(24*time.Hour)) {
+		return jobs.Job{}, jobs.ErrInvalidJob
+	}
+	existing, err := scanJob(scope.tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND replay_request_id=$2`, scope.principal.HouseholdID(), requestID))
+	if err == nil {
+		if existing.ConnectionID != c.ID || existing.Binding != a.Binding() || existing.AdmissionRevision != a.Revision() || existing.ConnectionGeneration != c.Generation || !existing.RangeFrom.Equal(from) || !existing.RangeTo.Equal(to) {
+			return jobs.Job{}, jobs.ErrInvalidJob
+		}
+		return existing, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return jobs.Job{}, err
+	}
+	binding, err := json.Marshal(bindingFromDomain(a.Binding()))
+	if err != nil {
+		return jobs.Job{}, err
+	}
+	id := newID()
+	fromAt, fromNS := splitTime(from)
+	toAt, toNS := splitTime(to)
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.jobs(household_id,id,actor_id,kind,connection_id,connection_generation,binding,admission_revision,state,max_attempts,available_at,deadline,secret_purpose,replay_request_id,range_from,range_from_ns,range_to,range_to_ns) VALUES($1,$2,$3,'sync',$4,$5,$6,$7,'ready',5,clock_timestamp(),$8,$9,$10,$11,$12,$13,$14)`, scope.principal.HouseholdID(), id, scope.principal.UserID(), c.ID, c.Generation, binding, a.Revision(), deadline, c.SecretPurpose, requestID, fromAt, fromNS, toAt, toNS)
+	if err != nil {
+		return jobs.Job{}, err
+	}
+	return s.Job(ctx, scope.principal, id)
+}
 func (s *Store) Quarantine(ctx context.Context, j jobs.Job, evidence, reason string) error {
 	scope, err := s.familyScope(ctx)
 	if err != nil {

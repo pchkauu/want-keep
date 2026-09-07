@@ -1,0 +1,144 @@
+package storage
+
+import (
+	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
+	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
+	reporting "github.com/pchkauu/want-keep/backend/internal/reporting/domain"
+)
+
+func (s *Store) SyncJob(ctx context.Context, p household.Principal, id string) (jobs.Job, error) {
+	return s.Job(ctx, p, id)
+}
+
+func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal, accountID string, asOf calendar.Instant) (account.Amounts, reporting.Coverage, []string, error) {
+	entry, err := s.Account(ctx, p, accountID)
+	if err != nil {
+		return account.Amounts{}, reporting.Coverage{}, nil, err
+	}
+	opening, found, err := s.Opening(ctx, p, accountID)
+	if err != nil {
+		return account.Amounts{}, reporting.Coverage{}, nil, err
+	}
+	if !found {
+		coverage, _ := reporting.NewCoverage(reporting.Partial, []string{"opening_missing"})
+		return account.UnknownAmounts("opening_missing"), coverage, nil, nil
+	}
+	openingAt, err := opening.Instant()
+	if err != nil {
+		return account.Amounts{}, reporting.Coverage{}, nil, err
+	}
+	if openingAt.Time().After(asOf.Time()) {
+		coverage, _ := reporting.NewCoverage(reporting.Partial, []string{"opening_after_source"})
+		return account.UnknownAmounts("opening_after_source"), coverage, nil, nil
+	}
+	q, err := s.reader(ctx, p)
+	if err != nil {
+		return account.Amounts{}, reporting.Coverage{}, nil, err
+	}
+	rows, err := q.Query(ctx, `SELECT o.id,o.revision FROM want_keep.operations o JOIN want_keep.postings p ON (p.household_id,p.operation_id,p.revision)=(o.household_id,o.id,o.revision) WHERE o.household_id=$1 AND p.account_id=$2 ORDER BY o.id`, p.HouseholdID(), accountID)
+	if err != nil {
+		return account.Amounts{}, reporting.Coverage{}, nil, err
+	}
+	type reference struct {
+		id       string
+		revision uint64
+	}
+	references := []reference{}
+	for rows.Next() {
+		var reference reference
+		if err = rows.Scan(&reference.id, &reference.revision); err != nil {
+			rows.Close()
+			return account.Amounts{}, reporting.Coverage{}, nil, err
+		}
+		references = append(references, reference)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return account.Amounts{}, reporting.Coverage{}, nil, err
+	}
+	effects := []account.Effect{}
+	related := []string{}
+	uncertain := false
+	at, ns := splitInstant(asOf)
+	for _, reference := range references {
+		current, err := s.LedgerRevision(ctx, p, reference.id, reference.revision)
+		if err != nil {
+			return account.Amounts{}, reporting.Coverage{}, nil, err
+		}
+		// Opening is the projection anchor below, not an additional movement.
+		if current.Type == ledger.Opening {
+			continue
+		}
+		if current.OccurredAt.Time().After(asOf.Time()) {
+			continue
+		}
+		effective := current.Clone()
+		if current.Type != ledger.Adjustment {
+			var historical uint64
+			err = q.QueryRow(ctx, `SELECT r.revision FROM want_keep.ledger_revision_audit r WHERE r.household_id=$1 AND r.operation_id=$2 AND (r.recorded_at,r.recorded_ns)<=($3,$4) ORDER BY r.revision DESC LIMIT 1`, p.HouseholdID(), reference.id, at, ns).Scan(&historical)
+			if err == nil {
+				state, loadErr := s.LedgerRevision(ctx, p, reference.id, historical)
+				if loadErr != nil {
+					return account.Amounts{}, reporting.Coverage{}, nil, loadErr
+				}
+				effective.State = state.State
+				effective.PostedAt = state.PostedAt
+				if effective.State != ledger.Posted && effective.State != ledger.Reversed {
+					effective.PostedAt = calendar.Instant{}
+				}
+			} else if errors.Is(err, pgx.ErrNoRows) && current.Origin == "source" && current.State == ledger.Posted && current.PostedAt.String() != "" && !current.PostedAt.Time().After(asOf.Time()) {
+				err = nil
+			} else if errors.Is(err, pgx.ErrNoRows) {
+				uncertain = true
+				continue
+			} else if err != nil {
+				return account.Amounts{}, reporting.Coverage{}, nil, err
+			}
+		}
+		balanceEffects, err := effective.BalanceEffects()
+		if err != nil {
+			return account.Amounts{}, reporting.Coverage{}, nil, err
+		}
+		for _, effect := range balanceEffects {
+			if effect.AccountID != accountID {
+				continue
+			}
+			changes := account.Amounts{Owned: effect.Owned, Available: effect.Available, Locked: effect.Locked, Debt: effect.Debt}
+			effects = append(effects, account.Effect{OperationID: current.OperationID, Revision: current.Revision, At: effect.At, Changes: &changes})
+			related = append(related, current.OperationID)
+		}
+	}
+	values, err := opening.Project(entry.Asset, effects)
+	if err != nil {
+		return account.Amounts{}, reporting.Coverage{}, nil, err
+	}
+	reasons := []string{}
+	if !opening.Confirmed {
+		reasons = append(reasons, "opening_unconfirmed")
+	}
+	if uncertain {
+		reasons = append(reasons, "transaction_state_at_source_unknown")
+		values = account.UnknownAmounts("transaction_state_at_source_unknown")
+	}
+	for _, value := range values.Fields() {
+		if _, known := value.Value(); !known {
+			reasons = append(reasons, "balance_components_incomplete")
+			break
+		}
+	}
+	coverage := reporting.Coverage{}
+	if len(reasons) == 0 {
+		coverage, _ = reporting.NewCoverage(reporting.Complete, nil)
+	} else {
+		coverage, _ = reporting.NewCoverage(reporting.Partial, reasons)
+	}
+	return values, coverage, related, nil
+}

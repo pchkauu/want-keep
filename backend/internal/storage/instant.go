@@ -9,6 +9,10 @@ import (
 func splitInstant(i calendar.Instant) (time.Time, int16) {
 	return i.Time().Truncate(time.Microsecond), int16(i.Time().Nanosecond() % 1000)
 }
+func splitTime(value time.Time) (time.Time, int16) {
+	value = value.UTC()
+	return value.Truncate(time.Microsecond), int16(value.Nanosecond() % 1000)
+}
 func restoreInstant(at time.Time, ns int16) (calendar.Instant, error) {
 	if ns < 0 || ns > 999 || at.Nanosecond()%1000 != 0 {
 		return calendar.Instant{}, calendar.ErrInvalidTime

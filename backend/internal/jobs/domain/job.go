@@ -27,11 +27,20 @@ type Job struct {
 	CancelRequested      bool
 	Cursor, Coverage     string
 	Gaps                 []string
+	ReplayRequestID      string
+	RangeFrom, RangeTo   time.Time
 }
 
 func (j Job) RequireAttempt(issued Job, now time.Time) error {
 	if j.HouseholdID != issued.HouseholdID || j.ID != issued.ID || j.ActorID != issued.ActorID || j.SecretPurpose != issued.SecretPurpose || j.Kind != issued.Kind || j.Binding != issued.Binding || j.AdmissionRevision != issued.AdmissionRevision || j.ConnectionGeneration != issued.ConnectionGeneration || j.ConnectionID != issued.ConnectionID || j.State != "running" || j.CancelRequested || j.LeaseToken == "" || j.LeaseToken != issued.LeaseToken || j.Attempt != issued.Attempt || !now.Before(j.LeaseUntil) || !now.Before(j.Deadline) {
 		return ErrStaleAttempt
+	}
+	return nil
+}
+
+func (j Job) ValidateReplay() error {
+	if j.ReplayRequestID == "" || j.RangeFrom.IsZero() || j.RangeTo.IsZero() || !j.RangeFrom.Before(j.RangeTo) || j.RangeTo.Sub(j.RangeFrom) > 90*24*time.Hour {
+		return ErrInvalidJob
 	}
 	return nil
 }

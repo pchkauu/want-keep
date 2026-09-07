@@ -19,12 +19,19 @@ type Journal interface {
 	RequireLedgerPayer(context.Context, household.Principal, household.MembershipID) error
 	EmitEvent(context.Context, string, string, uint64, string) error
 }
+type ReconciliationTrigger interface {
+	ReconcileAccount(context.Context, household.Principal, string) error
+}
 type Writer struct {
-	journal  Journal
-	accounts accounts.Repository
+	journal    Journal
+	accounts   accounts.Repository
+	reconciler ReconciliationTrigger
 }
 
-func NewWriter(j Journal, a accounts.Repository) *Writer { return &Writer{j, a} }
+func NewWriter(j Journal, a accounts.Repository) *Writer { return &Writer{journal: j, accounts: a} }
+func NewWriterWithReconciliation(j Journal, a accounts.Repository, reconciler ReconciliationTrigger) *Writer {
+	return &Writer{journal: j, accounts: a, reconciler: reconciler}
+}
 
 // Append must be called inside the household transaction, including the command or import fence.
 func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64) error {
@@ -67,7 +74,8 @@ func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Rev
 		}
 	}
 	r.Postings = append([]ledger.Posting(nil), r.Postings...)
-	for _, id := range r.AffectedAccounts(previous) {
+	affected := r.AffectedAccounts(previous)
+	for _, id := range affected {
 		a, e := w.accounts.Account(ctx, p, id)
 		if e != nil {
 			return e
@@ -95,6 +103,13 @@ func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Rev
 	}
 	if err = accounts.NewProjector(w.accounts).Apply(ctx, p, r, previous); err != nil {
 		return err
+	}
+	if w.reconciler != nil && r.Type != ledger.Opening {
+		for _, id := range affected {
+			if err = w.reconciler.ReconcileAccount(ctx, p, id); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

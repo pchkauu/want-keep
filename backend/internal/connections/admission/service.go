@@ -28,6 +28,7 @@ type Repository interface {
 	InvalidateJobs(context.Context, connections.Admission) error
 	Connection(context.Context, household.Principal, string) (Connection, error)
 	CreateSyncJob(context.Context, Connection, connections.Admission, time.Time) (jobs.Job, error)
+	CreateReplayJob(context.Context, Connection, connections.Admission, time.Time, string, time.Time, time.Time) (jobs.Job, error)
 	Job(context.Context, household.Principal, string) (jobs.Job, error)
 	DatabaseTime(context.Context) (time.Time, error)
 	FenceSyncResult(context.Context, household.Principal, jobs.Job) error
@@ -35,6 +36,41 @@ type Repository interface {
 	SaveCheckpoint(context.Context, jobs.Job, string, string, []string) error
 	ImportOmissions(context.Context, household.Principal, string) ([]string, error)
 	FinishJob(context.Context, household.Principal, jobs.Job) error
+}
+
+func (s *Service) RequestReplay(ctx context.Context, p household.Principal, id string, b connections.Binding, deadline time.Time, requestID string, from, to time.Time) (jobs.Job, error) {
+	request := jobs.Job{ReplayRequestID: requestID, RangeFrom: from, RangeTo: to}
+	if err := request.ValidateReplay(); err != nil || b.Validate() != nil {
+		return jobs.Job{}, jobs.ErrInvalidJob
+	}
+	var result jobs.Job
+	err := s.transactions.WithinAdmission(ctx, b.Provider, b.Environment, func(ctx context.Context) error {
+		a, _, err := s.repository.Admission(ctx, b.Provider, b.Environment)
+		if err != nil {
+			return err
+		}
+		if err = a.RequireSync(b); err != nil {
+			return err
+		}
+		return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
+			connection, err := s.repository.Connection(ctx, p, id)
+			if err != nil {
+				return err
+			}
+			if err = (connections.ExternalOwnership{HouseholdID: connection.HouseholdID, OwnerID: connection.Owner}).RequireManage(p); err != nil {
+				return err
+			}
+			if !connection.Authorized {
+				return connections.ErrSecretAccess
+			}
+			if connection.Provider != b.Provider {
+				return connections.ErrProviderNotAdmitted
+			}
+			result, err = s.repository.CreateReplayJob(ctx, connection, a, deadline, requestID, from, to)
+			return err
+		})
+	})
+	return result, err
 }
 
 // Service is the trusted server application boundary. User/AI commands cannot supply gate evidence.

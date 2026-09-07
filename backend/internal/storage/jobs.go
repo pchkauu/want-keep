@@ -21,18 +21,24 @@ func newID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
-const jobColumns = `household_id,id,actor_id,kind,COALESCE(connection_id::text,''),COALESCE(connection_generation,0),binding,COALESCE(admission_revision,0),state,attempt,max_attempts,COALESCE(lease_token::text,''),lease_until,deadline,cancel_requested,cursor,coverage,gaps,secret_purpose`
+const jobColumns = `household_id,id,actor_id,kind,COALESCE(connection_id::text,''),COALESCE(connection_generation,0),binding,COALESCE(admission_revision,0),state,attempt,max_attempts,COALESCE(lease_token::text,''),lease_until,deadline,cancel_requested,cursor,coverage,gaps,secret_purpose,COALESCE(replay_request_id::text,''),range_from,range_from_ns,range_to,range_to_ns`
 
 func scanJob(row pgx.Row) (jobs.Job, error) {
 	var j jobs.Job
 	var binding []byte
 	var until *time.Time
-	err := row.Scan(&j.HouseholdID, &j.ID, &j.ActorID, &j.Kind, &j.ConnectionID, &j.ConnectionGeneration, &binding, &j.AdmissionRevision, &j.State, &j.Attempt, &j.MaxAttempts, &j.LeaseToken, &until, &j.Deadline, &j.CancelRequested, &j.Cursor, &j.Coverage, &j.Gaps, &j.SecretPurpose)
+	var rangeFrom, rangeTo *time.Time
+	var rangeFromNS, rangeToNS *int16
+	err := row.Scan(&j.HouseholdID, &j.ID, &j.ActorID, &j.Kind, &j.ConnectionID, &j.ConnectionGeneration, &binding, &j.AdmissionRevision, &j.State, &j.Attempt, &j.MaxAttempts, &j.LeaseToken, &until, &j.Deadline, &j.CancelRequested, &j.Cursor, &j.Coverage, &j.Gaps, &j.SecretPurpose, &j.ReplayRequestID, &rangeFrom, &rangeFromNS, &rangeTo, &rangeToNS)
 	if err != nil {
 		return j, err
 	}
 	if until != nil {
 		j.LeaseUntil = *until
+	}
+	if rangeFrom != nil && rangeFromNS != nil && rangeTo != nil && rangeToNS != nil {
+		j.RangeFrom = rangeFrom.UTC().Add(time.Duration(*rangeFromNS))
+		j.RangeTo = rangeTo.UTC().Add(time.Duration(*rangeToNS))
 	}
 	if len(binding) > 0 {
 		j.Binding, err = decodeBinding(binding)
