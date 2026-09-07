@@ -71,3 +71,16 @@ func (c Command) requireRetained(now calendar.Instant) error {
 func (c Command) acceptsTime(at calendar.Instant) bool {
 	return c.registeredAt.String() != "" && at.String() != "" && !at.Time().Before(c.registeredAt.Time())
 }
+
+// RetentionCutoffs shares the domain's exact UTC durations with bounded cleanup queries.
+func RetentionCutoffs(now calendar.Instant) (detail, tombstone calendar.Instant, err error) {
+	if now.String() == "" {
+		return detail, tombstone, ErrInvalidCommand
+	}
+	detail, err = calendar.ParseInstant(now.Time().Add(-detailRetention).Format(time.RFC3339Nano))
+	if err != nil {
+		return detail, tombstone, err
+	}
+	tombstone, err = calendar.ParseInstant(now.Time().Add(-tombstoneRetention).Format(time.RFC3339Nano))
+	return
+}

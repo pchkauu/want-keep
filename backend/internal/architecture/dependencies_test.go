@@ -185,6 +185,9 @@ func inspectImports(internalRoot string) ([]importViolation, error) {
 }
 
 func owningLayer(relative string) string {
+	if strings.HasPrefix(filepath.ToSlash(relative), "connections/admission/") {
+		return "application"
+	}
 	parts := strings.Split(filepath.ToSlash(relative), "/")
 	for _, part := range parts[:len(parts)-1] {
 		switch part {
@@ -206,6 +209,9 @@ func owningLayer(relative string) string {
 func forbiddenImport(layer, importPath string) bool {
 	switch layer {
 	case "domain":
+		if strings.HasPrefix(importPath, modulePath+"/internal/connections/admission") {
+			return true
+		}
 		return isForbiddenInnerImport(importPath, "application", "delivery", "storage", "integrations", "gateways", "ai")
 	case "application":
 		return isForbiddenInnerImport(importPath, "delivery", "storage", "integrations", "gateways", "ai")
@@ -266,5 +272,22 @@ func writeGoFile(t *testing.T, root, relative, contents string) {
 	}
 	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
+	}
+}
+
+func TestAdmissionBoundaryIsApplicationOwned(t *testing.T) {
+	root := t.TempDir()
+	writeGoFile(t, root, "connections/admission/service.go", `package admission
+import _ "github.com/pchkauu/want-keep/backend/internal/storage"
+`)
+	writeGoFile(t, root, "ledger/domain/admission.go", `package domain
+import _ "github.com/pchkauu/want-keep/backend/internal/connections/admission"
+`)
+	violations, err := inspectImports(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(violations) != 2 {
+		t.Fatalf("admission dependency violations: %v", violations)
 	}
 }
