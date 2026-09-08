@@ -276,15 +276,23 @@ func (f *fixture) correctOpening(accountID string, values account.Amounts) {
 }
 
 func (f *fixture) expense(accountID string, asset money.Asset, amount string) string {
+	return f.expenseWithFee(accountID, asset, amount, "")
+}
+
+func (f *fixture) expenseWithFee(accountID string, asset money.Asset, amount, fee string) string {
 	f.t.Helper()
 	id := uuid.NewString()
 	date, _ := calendar.ParseDate(f.now.Time().Format(time.DateOnly))
 	month, _ := calendar.ParseMonth(f.now.Time().Format("2006-01"))
+	postings := []ledger.Posting{{AccountID: accountID, Money: cash("-"+amount, asset), Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}}
+	if fee != "" {
+		postings = append(postings, ledger.Posting{AccountID: accountID, Money: cash("-"+fee, asset), Role: ledger.Fee, Funding: ledger.OwnFunds, Treatment: ledger.Movement})
+	}
 	revision := ledger.Revision{
 		OperationID: id, Revision: 1, ActorID: f.p.UserID(), Reason: "Synthetic expense", Type: ledger.Expense, State: ledger.Posted,
 		OccurredAt: f.now, PostedAt: f.now, RecordedAt: f.now, CashDate: date, ExpenseMonth: month, Timezone: timezone(),
 		PayerState: "known", PayerMemberID: f.members[0].ID, FeeKnowledge: ledger.KnownFees, AllocationReason: "unresolved",
-		Postings: []ledger.Posting{{AccountID: accountID, Money: cash("-"+amount, asset), Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}},
+		Postings: postings,
 	}
 	request := commands.Request{ID: uuid.NewString(), Kind: "transaction.create", PayloadHash: strings.Repeat("b", 64)}
 	result, err := f.executor.Execute(testContext, f.p, request, func(ctx context.Context) (command.Result, error) {
@@ -334,12 +342,11 @@ func (f *fixture) completeReplay(accountID string) reconciliation.Reconciliation
 		current = f.active(accountID)
 	}
 	issued := f.claim(current.Replay.JobID)
-	applied, err := f.admission.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:history-replay", Coverage: "complete", Complete: true}, func(context.Context) error { return nil })
+	applied, err := f.admission.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:history-replay", Coverage: "complete", Complete: true}, func(ctx context.Context) error {
+		return f.reconciler.RecordReplayOutcome(ctx, f.p, current.ID, issued, reconciliation.ReplayCompleted, "history_replayed")
+	})
 	if err != nil || !applied {
 		f.t.Fatalf("replay page failed: %v", err)
-	}
-	if err = f.reconciler.RecordReplayOutcome(testContext, f.p, current.ID, issued.ID, reconciliation.ReplayCompleted, "history_replayed"); err != nil {
-		f.t.Fatal(err)
 	}
 	return f.active(accountID)
 }

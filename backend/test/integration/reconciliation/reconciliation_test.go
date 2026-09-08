@@ -11,13 +11,18 @@ import (
 
 	"github.com/google/uuid"
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
+	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
+	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledgerapp "github.com/pchkauu/want-keep/backend/internal/ledger/application"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 	reconciliation "github.com/pchkauu/want-keep/backend/internal/reconciliation/domain"
 	reporting "github.com/pchkauu/want-keep/backend/internal/reporting/domain"
+	"github.com/pchkauu/want-keep/backend/internal/storage"
 )
 
 func exactAmounts(asset money.Asset, owned, available, locked, debt string) account.Amounts {
@@ -57,7 +62,7 @@ func TestOpeningExpenseAndSourceBalanceWithoutFalseIncome(t *testing.T) {
 
 func TestReplayBoundsDeduplicationAndOwnedAdjustment(t *testing.T) {
 	f := newFixture(t)
-	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "900", "0", "0"), completeCoverage(), reporting.Fresh)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
 	f.correctOpening(id, exactAmounts(money.RUB, "900", "900", "0", "0"))
 	current := f.active(id)
 	if current.Result != reconciliation.Discrepant || current.Replay.Status != reconciliation.ReplayPending {
@@ -99,6 +104,14 @@ func TestReplayBoundsDeduplicationAndOwnedAdjustment(t *testing.T) {
 	if !known || value.Amount() != "1000" {
 		t.Fatalf("adjustment did not reconcile owned funds: %#v", balance)
 	}
+	available, err := f.store.Balance(testContext, f.p, id, "available")
+	if err != nil {
+		t.Fatal(err)
+	}
+	availableValue, availableKnown := available.Amount.Value()
+	if !availableKnown || availableValue.Amount() != "1000" {
+		t.Fatalf("adjustment did not preserve the derived available balance: %#v", available)
+	}
 	revision, found, err := f.store.CurrentLedgerRevision(testContext, f.p, resolved.Resolution.AdjustmentTransactionID)
 	components, componentErr := revision.Components()
 	if err != nil || componentErr != nil || !found || revision.Type != "adjustment" || len(components) != 0 {
@@ -106,6 +119,215 @@ func TestReplayBoundsDeduplicationAndOwnedAdjustment(t *testing.T) {
 	}
 	if f.count("account_observations") != 1 {
 		t.Fatal("adjustment mutated source evidence")
+	}
+}
+
+func TestOwnedAdjustmentRejectsContradictoryAvailableResult(t *testing.T) {
+	f := newFixture(t)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "900", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(id, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	current := f.completeReplay(id)
+	if outcome := f.resolve(current, reconciliation.Owned); outcome.Status() != command.Failed || outcome.ErrorCode() != "component_not_adjustable" {
+		t.Fatalf("contradictory available result was hidden: %#v", outcome)
+	}
+	if f.count("reconciliation_resolutions") != 0 {
+		t.Fatal("invalid derived adjustment persisted a resolution")
+	}
+}
+
+func TestHistoricalProjectionAppliesMultiPostingOperationOnce(t *testing.T) {
+	f := newFixture(t)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "890", "890", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(id, exactAmounts(money.RUB, "1000", "1000", "0", "0"))
+	f.expenseWithFee(id, money.RUB, "100", "10")
+	current := f.active(id)
+	if current.Result != reconciliation.Balanced {
+		t.Fatalf("principal and fee were projected more than once: %#v", current)
+	}
+}
+
+func TestDelayedSourcePostingUsesConfirmedPostingTime(t *testing.T) {
+	f := newFixture(t)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "900", "900", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(id, exactAmounts(money.RUB, "1000", "1000", "0", "0"))
+	occurred := instant(f.now.Time().Add(-time.Hour).Format(time.RFC3339Nano))
+	date, _ := occurred.DateIn(timezone())
+	month, _ := calendar.ParseMonth(date.String()[:7])
+	operationID := uuid.NewString()
+	pending := ledger.Revision{
+		OperationID: operationID, Revision: 1, ActorID: f.p.UserID(), Reason: "Synthetic delayed source expense", Type: ledger.Expense, State: ledger.Pending,
+		OccurredAt: occurred, RecordedAt: instant(f.now.Time().Add(-time.Minute).Format(time.RFC3339Nano)), CashDate: date, ExpenseMonth: month, Timezone: timezone(),
+		Origin: "source", PayerState: "unknown", FeeKnowledge: ledger.KnownFees, AllocationReason: "unresolved",
+		Postings: []ledger.Posting{{AccountID: id, Money: cash("-100", money.RUB), Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}},
+	}
+	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error { return f.writer.Append(ctx, f.p, pending, 0) }); err != nil {
+		t.Fatal(err)
+	}
+	posted := pending.Clone()
+	posted.Revision = 2
+	posted.State = ledger.Posted
+	posted.PostedAt = instant(f.now.Time().Add(-30 * time.Second).Format(time.RFC3339Nano))
+	posted.RecordedAt = instant(f.now.Time().Add(time.Minute).Format(time.RFC3339Nano))
+	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error { return f.writer.Append(ctx, f.p, posted, 1) }); err != nil {
+		t.Fatal(err)
+	}
+	current := f.active(id)
+	if current.Result != reconciliation.Balanced {
+		t.Fatalf("confirmed posting time was replaced by ingestion time: %#v", current)
+	}
+}
+
+func TestSourceReversalWithoutTransitionTimeKeepsProjectionIncomplete(t *testing.T) {
+	f := newFixture(t)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(id, exactAmounts(money.RUB, "1000", "1000", "0", "0"))
+	occurred := instant(f.now.Time().Add(-time.Hour).Format(time.RFC3339Nano))
+	date, _ := occurred.DateIn(timezone())
+	month, _ := calendar.ParseMonth(date.String()[:7])
+	operationID := uuid.NewString()
+	pending := ledger.Revision{
+		OperationID: operationID, Revision: 1, ActorID: f.p.UserID(), Reason: "Synthetic source purchase", Type: ledger.Expense, State: ledger.Pending,
+		OccurredAt: occurred, RecordedAt: instant(f.now.Time().Add(-time.Minute).Format(time.RFC3339Nano)), CashDate: date, ExpenseMonth: month, Timezone: timezone(),
+		Origin: "source", PayerState: "unknown", FeeKnowledge: ledger.KnownFees, AllocationReason: "unresolved",
+		Postings: []ledger.Posting{{AccountID: id, Money: cash("-100", money.RUB), Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}},
+	}
+	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error { return f.writer.Append(ctx, f.p, pending, 0) }); err != nil {
+		t.Fatal(err)
+	}
+	posted := pending.Clone()
+	posted.Revision = 2
+	posted.State = ledger.Posted
+	posted.PostedAt = instant(f.now.Time().Add(-30 * time.Second).Format(time.RFC3339Nano))
+	posted.RecordedAt = instant(f.now.Time().Add(30 * time.Second).Format(time.RFC3339Nano))
+	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error { return f.writer.Append(ctx, f.p, posted, 1) }); err != nil {
+		t.Fatal(err)
+	}
+	reversed := posted.Clone()
+	reversed.Revision = 3
+	reversed.State = ledger.Reversed
+	reversed.RecordedAt = instant(f.now.Time().Add(time.Minute).Format(time.RFC3339Nano))
+	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error { return f.writer.Append(ctx, f.p, reversed, 2) }); err != nil {
+		t.Fatal(err)
+	}
+	current := f.active(id)
+	if current.Result != reconciliation.Incomplete || current.Coverage.State() != reporting.Partial {
+		t.Fatalf("unknown reversal time was treated as a proven lifecycle: %#v", current)
+	}
+}
+
+func TestReplayDispatchRejectsChangedAdmissionEvidence(t *testing.T) {
+	f := newFixture(t)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(id, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	current := f.active(id)
+	if _, err := f.admission.RecordCheck(testContext, connections.Check{Kind: connections.ProviderCheck, Binding: binding(), Result: connections.CheckPassed, At: instant(f.now.Time().Add(time.Second).Format(time.RFC3339Nano))}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.reconciler.DispatchReplay(testContext, f.p, current.ID); err != nil {
+		t.Fatal(err)
+	}
+	current = f.active(id)
+	if current.Replay.Status != reconciliation.ReplayUnavailable || current.Replay.JobID != "" || current.Replay.Reason != "provider_not_admitted" {
+		t.Fatalf("changed admission evidence issued a replay: %#v", current.Replay)
+	}
+}
+
+func TestReplayDispatchRejectsChangedConnectionGeneration(t *testing.T) {
+	f := newFixture(t)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(id, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	current := f.active(id)
+	if _, err := f.admin.Exec(testContext, `UPDATE want_keep.connections SET generation=generation+1 WHERE household_id=$1 AND id=$2`, f.family.ID, current.Replay.ConnectionID); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.reconciler.DispatchReplay(testContext, f.p, current.ID); err != nil {
+		t.Fatal(err)
+	}
+	current = f.active(id)
+	if current.Replay.Status != reconciliation.ReplayUnavailable || current.Replay.JobID != "" || current.Replay.Reason != "provider_not_admitted" {
+		t.Fatalf("changed connection generation issued a replay: %#v", current.Replay)
+	}
+}
+
+func TestReplayCompletionRequiresAdmittedCommitPage(t *testing.T) {
+	f := newFixture(t)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(id, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	current := f.active(id)
+	if err := f.reconciler.DispatchReplay(testContext, f.p, current.ID); err != nil {
+		t.Fatal(err)
+	}
+	current = f.active(id)
+	issued := f.claim(current.Replay.JobID)
+	err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
+		return f.reconciler.RecordReplayOutcome(ctx, f.p, current.ID, issued, reconciliation.ReplayCompleted, "history_replayed")
+	})
+	if !errors.Is(err, storage.ErrTransactionRequired) {
+		t.Fatalf("completion escaped the admitted page fence: %v", err)
+	}
+	if current = f.active(id); current.Replay.Status != reconciliation.ReplayPending {
+		t.Fatalf("failed completion changed replay state: %#v", current.Replay)
+	}
+	applied, err := f.admission.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:fenced-replay", Coverage: "complete", Complete: true}, func(ctx context.Context) error {
+		return f.reconciler.RecordReplayOutcome(ctx, f.p, current.ID, issued, reconciliation.ReplayCompleted, "history_replayed")
+	})
+	if err != nil || !applied {
+		t.Fatalf("fenced replay completion failed: applied=%v err=%v", applied, err)
+	}
+	if current = f.active(id); current.Replay.Status != reconciliation.ReplayCompleted {
+		t.Fatalf("fenced completion was not recorded: %#v", current.Replay)
+	}
+}
+
+func TestReplayFailureRequiresExactAdmittedAttempt(t *testing.T) {
+	f := newFixture(t)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(id, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	current := f.active(id)
+	if err := f.reconciler.DispatchReplay(testContext, f.p, current.ID); err != nil {
+		t.Fatal(err)
+	}
+	current = f.active(id)
+	issued := f.claim(current.Replay.JobID)
+	applied, err := f.admission.CommitFailure(testContext, f.p, issued, "synthetic:replay-failure", func(ctx context.Context) error {
+		return f.reconciler.RecordReplayOutcome(ctx, f.p, current.ID, issued, reconciliation.ReplayFailed, "source_history_failed")
+	})
+	if err != nil || !applied {
+		t.Fatalf("admitted failure was not recorded: applied=%v err=%v", applied, err)
+	}
+	if current = f.active(id); current.Replay.Status != reconciliation.ReplayFailed {
+		t.Fatalf("replay failure was not recorded: %#v", current.Replay)
+	}
+	var state string
+	if err = f.admin.QueryRow(testContext, `SELECT state FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, issued.ID).Scan(&state); err != nil || state != "failed" {
+		t.Fatalf("replay job was not terminalized: state=%s err=%v", state, err)
+	}
+}
+
+func TestStaleReplayFailureIsQuarantined(t *testing.T) {
+	f := newFixture(t)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(id, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	current := f.active(id)
+	if err := f.reconciler.DispatchReplay(testContext, f.p, current.ID); err != nil {
+		t.Fatal(err)
+	}
+	current = f.active(id)
+	issued := f.claim(current.Replay.JobID)
+	if _, err := f.admission.RecordCheck(testContext, connections.Check{Kind: connections.ProviderCheck, Binding: binding(), Result: connections.CheckPassed, At: instant(f.now.Time().Add(time.Second).Format(time.RFC3339Nano))}); err != nil {
+		t.Fatal(err)
+	}
+	applied, err := f.admission.CommitFailure(testContext, f.p, issued, "synthetic:stale-replay-failure", func(ctx context.Context) error {
+		return f.reconciler.RecordReplayOutcome(ctx, f.p, current.ID, issued, reconciliation.ReplayFailed, "source_history_failed")
+	})
+	if err != nil || applied {
+		t.Fatalf("stale failure was applied: applied=%v err=%v", applied, err)
+	}
+	if current = f.active(id); current.Replay.Status != reconciliation.ReplayPending {
+		t.Fatalf("stale failure changed replay state: %#v", current.Replay)
+	}
+	if f.count("quarantine") != 1 {
+		t.Fatal("stale replay failure evidence was not quarantined")
 	}
 }
 
@@ -250,7 +472,7 @@ func TestExclusionAndUndoReevaluateCurrentReconciliation(t *testing.T) {
 
 func TestRequiredReauthenticationKeepsDifferenceWithoutReplayJob(t *testing.T) {
 	f := newFixture(t)
-	accountID := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "900", "0", "0"), completeCoverage(), reporting.Fresh)
+	accountID := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
 	f.correctOpening(accountID, exactAmounts(money.RUB, "900", "900", "0", "0"))
 	current := f.active(accountID)
 	var before int

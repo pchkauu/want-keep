@@ -42,7 +42,7 @@ func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal,
 	if err != nil {
 		return account.Amounts{}, reporting.Coverage{}, nil, err
 	}
-	rows, err := q.Query(ctx, `SELECT o.id,o.revision FROM want_keep.operations o JOIN want_keep.postings p ON (p.household_id,p.operation_id,p.revision)=(o.household_id,o.id,o.revision) WHERE o.household_id=$1 AND p.account_id=$2 ORDER BY o.id`, p.HouseholdID(), accountID)
+	rows, err := q.Query(ctx, `SELECT o.id,o.revision FROM want_keep.operations o WHERE o.household_id=$1 AND EXISTS(SELECT 1 FROM want_keep.postings p WHERE (p.household_id,p.operation_id,p.revision)=(o.household_id,o.id,o.revision) AND p.account_id=$2) ORDER BY o.id`, p.HouseholdID(), accountID)
 	if err != nil {
 		return account.Amounts{}, reporting.Coverage{}, nil, err
 	}
@@ -84,7 +84,8 @@ func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal,
 		if current.Type != ledger.Adjustment {
 			var historical uint64
 			err = q.QueryRow(ctx, `SELECT r.revision FROM want_keep.ledger_revision_audit r WHERE r.household_id=$1 AND r.operation_id=$2 AND (r.recorded_at,r.recorded_ns)<=($3,$4) ORDER BY r.revision DESC LIMIT 1`, p.HouseholdID(), reference.id, at, ns).Scan(&historical)
-			if err == nil {
+			historicalKnown := err == nil
+			if historicalKnown {
 				state, loadErr := s.LedgerRevision(ctx, p, reference.id, historical)
 				if loadErr != nil {
 					return account.Amounts{}, reporting.Coverage{}, nil, loadErr
@@ -94,13 +95,22 @@ func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal,
 				if effective.State != ledger.Posted && effective.State != ledger.Reversed {
 					effective.PostedAt = calendar.Instant{}
 				}
-			} else if errors.Is(err, pgx.ErrNoRows) && current.Origin == "source" && current.State == ledger.Posted && current.PostedAt.String() != "" && !current.PostedAt.Time().After(asOf.Time()) {
-				err = nil
-			} else if errors.Is(err, pgx.ErrNoRows) {
+			} else if !errors.Is(err, pgx.ErrNoRows) {
+				return account.Amounts{}, reporting.Coverage{}, nil, err
+			}
+			postedBySource := current.Origin == "source" && current.State == ledger.Posted && current.PostedAt.String() != "" && !current.PostedAt.Time().After(asOf.Time())
+			if postedBySource && (!historicalKnown || effective.State == ledger.Draft || effective.State == ledger.Pending) {
+				effective.State = ledger.Posted
+				effective.PostedAt = current.PostedAt
+				historicalKnown = true
+			}
+			if current.Origin == "source" && current.State == ledger.Reversed && current.PostedAt.String() != "" && !current.PostedAt.Time().After(asOf.Time()) && (!historicalKnown || effective.State == ledger.Draft || effective.State == ledger.Pending) {
 				uncertain = true
 				continue
-			} else if err != nil {
-				return account.Amounts{}, reporting.Coverage{}, nil, err
+			}
+			if !historicalKnown {
+				uncertain = true
+				continue
 			}
 		}
 		balanceEffects, err := effective.BalanceEffects()

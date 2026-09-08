@@ -150,6 +150,9 @@ func (s *Store) Heartbeat(ctx context.Context, p household.Principal, j jobs.Job
 func (s *Store) FinishJob(ctx context.Context, p household.Principal, j jobs.Job) error {
 	return s.transitionJob(ctx, p, j, "succeeded", 0)
 }
+func (s *Store) FailJob(ctx context.Context, p household.Principal, j jobs.Job) error {
+	return s.transitionJob(ctx, p, j, "failed", 0)
+}
 func (s *Store) RetryJob(ctx context.Context, p household.Principal, j jobs.Job, delay time.Duration, ambiguous bool) error {
 	if delay < 0 || delay > time.Hour {
 		return jobs.ErrInvalidJob

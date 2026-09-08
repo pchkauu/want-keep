@@ -10,6 +10,7 @@ import (
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 	reconciliationapp "github.com/pchkauu/want-keep/backend/internal/reconciliation/application"
 	reconciliation "github.com/pchkauu/want-keep/backend/internal/reconciliation/domain"
@@ -426,6 +427,23 @@ func (s *Store) UpdateReplay(ctx context.Context, p household.Principal, request
 	value.Replay = next
 	err = s.SaveReconciliation(ctx, p, value)
 	return value, err == nil, err
+}
+
+func (s *Store) FenceReplayOutcome(ctx context.Context, p household.Principal, replay reconciliation.Replay, issued jobs.Job, status reconciliation.ReplayStatus) error {
+	scope, err := s.familyScope(ctx)
+	if err != nil {
+		return err
+	}
+	if scope.principal != p || replay.Status != reconciliation.ReplayPending || replay.JobID != issued.ID || issued.ReplayRequestID != replay.RequestID || issued.ConnectionID != replay.ConnectionID || issued.Binding != replay.Binding || issued.AdmissionRevision != replay.AdmissionRevision || issued.ConnectionGeneration != replay.ConnectionGeneration || !issued.RangeFrom.Equal(replay.From.Time()) || !issued.RangeTo.Equal(replay.To.Time()) {
+		return jobs.ErrStaleAttempt
+	}
+	if err = issued.ValidateReplay(); err != nil {
+		return err
+	}
+	if status == reconciliation.ReplayCompleted && (scope.syncJobID != issued.ID || scope.syncConnectionID != issued.ConnectionID) {
+		return ErrTransactionRequired
+	}
+	return s.FenceSyncResult(ctx, p, issued)
 }
 
 func databaseInstant(ctx context.Context, q interface {

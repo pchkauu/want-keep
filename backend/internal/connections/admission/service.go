@@ -36,11 +36,12 @@ type Repository interface {
 	SaveCheckpoint(context.Context, jobs.Job, string, string, []string) error
 	ImportOmissions(context.Context, household.Principal, string) ([]string, error)
 	FinishJob(context.Context, household.Principal, jobs.Job) error
+	FailJob(context.Context, household.Principal, jobs.Job) error
 }
 
-func (s *Service) RequestReplay(ctx context.Context, p household.Principal, id string, b connections.Binding, deadline time.Time, requestID string, from, to time.Time) (jobs.Job, error) {
+func (s *Service) RequestReplay(ctx context.Context, p household.Principal, id string, b connections.Binding, admissionRevision int64, connectionGeneration uint64, deadline time.Time, requestID string, from, to time.Time) (jobs.Job, error) {
 	request := jobs.Job{ReplayRequestID: requestID, RangeFrom: from, RangeTo: to}
-	if err := request.ValidateReplay(); err != nil || b.Validate() != nil {
+	if err := request.ValidateReplay(); err != nil || b.Validate() != nil || admissionRevision < 1 || connectionGeneration < 1 {
 		return jobs.Job{}, jobs.ErrInvalidJob
 	}
 	var result jobs.Job
@@ -49,7 +50,7 @@ func (s *Service) RequestReplay(ctx context.Context, p household.Principal, id s
 		if err != nil {
 			return err
 		}
-		if err = a.RequireSync(b); err != nil {
+		if err = a.RequireResult(b, admissionRevision); err != nil {
 			return err
 		}
 		return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
@@ -63,7 +64,7 @@ func (s *Service) RequestReplay(ctx context.Context, p household.Principal, id s
 			if !connection.Authorized {
 				return connections.ErrSecretAccess
 			}
-			if connection.Provider != b.Provider {
+			if connection.Provider != b.Provider || connection.Generation != connectionGeneration {
 				return connections.ErrProviderNotAdmitted
 			}
 			result, err = s.repository.CreateReplayJob(ctx, connection, a, deadline, requestID, from, to)
@@ -279,6 +280,37 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
 		// The failed transaction has rolled back before retaining the stale evidence.
 		return false, s.quarantineResult(ctx, p, issued.ID, page.EvidenceRef)
+	}
+	return applied && err == nil, err
+}
+
+// CommitFailure records a terminal provider failure while the exact admission,
+// connection generation, job attempt and lease remain current.
+func (s *Service) CommitFailure(ctx context.Context, p household.Principal, issued jobs.Job, evidence string, apply func(context.Context) error) (bool, error) {
+	if issued.HouseholdID != p.HouseholdID() {
+		return false, household.ErrForbidden
+	}
+	if evidence == "" || len(evidence) > 2000 || issued.Binding.Validate() != nil {
+		return false, jobs.ErrInvalidJob
+	}
+	applied := false
+	err := s.transactions.WithinAdmission(ctx, issued.Binding.Provider, issued.Binding.Environment, func(ctx context.Context) error {
+		return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
+			if err := s.repository.FenceSyncResult(ctx, p, issued); err != nil {
+				return err
+			}
+			if err := apply(ctx); err != nil {
+				return err
+			}
+			if err := s.repository.FailJob(ctx, p, issued); err != nil {
+				return err
+			}
+			applied = true
+			return nil
+		})
+	})
+	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
+		return false, s.quarantineResult(ctx, p, issued.ID, evidence)
 	}
 	return applied && err == nil, err
 }

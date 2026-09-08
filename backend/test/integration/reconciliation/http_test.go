@@ -117,7 +117,7 @@ func decode[T any](t *testing.T, response *httptest.ResponseRecorder) T {
 
 func TestHTTPListReadResolveRecoveryAndCSRF(t *testing.T) {
 	f := newFixture(t)
-	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "900", "0", "0"), completeCoverage(), reporting.Fresh)
+	id := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
 	f.correctOpening(id, exactAmounts(money.RUB, "900", "900", "0", "0"))
 	current := f.completeReplay(id)
 	client := f.client(f.p)

@@ -51,6 +51,7 @@ type Repository interface {
 	SaveReconciliation(context.Context, household.Principal, reconciliation.Reconciliation) error
 	SaveResolution(context.Context, household.Principal, reconciliation.Reconciliation) error
 	UpdateReplay(context.Context, household.Principal, string, reconciliation.ReplayStatus, string, string) (reconciliation.Reconciliation, bool, error)
+	FenceReplayOutcome(context.Context, household.Principal, reconciliation.Replay, jobs.Job, reconciliation.ReplayStatus) error
 	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
 	EmitEvent(context.Context, string, string, uint64, string) error
 }
@@ -60,7 +61,7 @@ type Transactions interface {
 }
 
 type ReplayScheduler interface {
-	RequestReplay(context.Context, household.Principal, string, connections.Binding, time.Time, string, time.Time, time.Time) (jobs.Job, error)
+	RequestReplay(context.Context, household.Principal, string, connections.Binding, int64, uint64, time.Time, string, time.Time, time.Time) (jobs.Job, error)
 }
 
 type LedgerWriter interface {
@@ -263,31 +264,9 @@ func (s *Service) Resolve(ctx context.Context, principal household.Principal, id
 		}
 		selected[name] = true
 	}
-	postings := []ledger.Posting{}
-	for _, component := range current.Components {
-		difference, known := component.Difference.Value()
-		if !known {
-			return command.Result{}, commands.Rejection{Code: "reconciliation_not_ready"}
-		}
-		if difference.Sign() == 0 {
-			continue
-		}
-		if !component.Name.Adjustable() || !selected[component.Name] {
-			return command.Result{}, commands.Rejection{Code: "component_not_adjustable"}
-		}
-		funding := ledger.OwnFunds
-		if component.Name == reconciliation.Debt {
-			zero, _ := money.NewMoney("0", difference.Asset())
-			difference, err = zero.Subtract(difference)
-			if err != nil {
-				return command.Result{}, err
-			}
-			funding = ledger.CreditFunds
-		}
-		postings = append(postings, ledger.Posting{AccountID: current.AccountID, Money: difference, Role: ledger.Principal, Funding: funding, Treatment: ledger.Movement})
-	}
-	if len(postings) == 0 {
-		return command.Result{}, commands.Rejection{Code: "no_change"}
+	postings, err := s.prepareResolutionPostings(current, selected)
+	if err != nil {
+		return command.Result{}, err
 	}
 	zone, err := s.repository.AccountTimezone(ctx, principal)
 	if err != nil {
@@ -308,6 +287,10 @@ func (s *Service) Resolve(ctx context.Context, principal household.Principal, id
 		Protections:   map[ledger.Field]ledger.Protection{ledger.PrincipalField: {Revision: 1}},
 		FieldVersions: map[ledger.Field]uint64{ledger.PrincipalField: 1}, Postings: postings,
 	}
+	resolvedComponents, err := s.applyResolutionEffects(current, revision)
+	if err != nil {
+		return command.Result{}, err
+	}
 	if err = s.writer.Append(ctx, principal, revision, 0); err != nil {
 		return command.Result{}, s.reject(err)
 	}
@@ -318,13 +301,7 @@ func (s *Service) Resolve(ctx context.Context, principal household.Principal, id
 	resolved.EvaluatedAt = now
 	resolved.RelatedOperationIDs = append(resolved.RelatedOperationIDs, adjustmentID)
 	resolved.Resolution = &reconciliation.Resolution{ActorID: string(principal.UserID()), Reason: input.Reason, AdjustmentTransactionID: adjustmentID, At: now, Components: append([]reconciliation.ComponentName(nil), input.Components...)}
-	for index := range resolved.Components {
-		component := &resolved.Components[index]
-		component.Ledger = component.Source
-		value, _ := component.Source.Value()
-		zero, _ := money.NewMoney("0", value.Asset())
-		component.Difference, _ = reporting.KnownAmount(zero)
-	}
+	resolved.Components = resolvedComponents
 	if err = s.repository.SaveResolution(ctx, principal, resolved); err != nil {
 		return command.Result{}, err
 	}
@@ -332,6 +309,86 @@ func (s *Service) Resolve(ctx context.Context, principal household.Principal, id
 		return command.Result{}, err
 	}
 	return command.Result{ResourceType: "reconciliation", ResourceID: resolved.ID, Revision: resolved.Revision}, nil
+}
+
+func (s *Service) prepareResolutionPostings(current reconciliation.Reconciliation, selected map[reconciliation.ComponentName]bool) ([]ledger.Posting, error) {
+	postings := []ledger.Posting{}
+	for _, component := range current.Components {
+		name := component.Name
+		if !selected[name] {
+			continue
+		}
+		difference, known := component.Difference.Value()
+		if !known {
+			return nil, commands.Rejection{Code: "reconciliation_not_ready"}
+		}
+		if difference.Sign() == 0 {
+			return nil, commands.Rejection{Code: "no_change"}
+		}
+		posting := ledger.Posting{AccountID: current.AccountID, Money: difference, Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}
+		if name == reconciliation.Debt {
+			zero, _ := money.NewMoney("0", difference.Asset())
+			posting.Money, _ = zero.Subtract(difference)
+			posting.Funding = ledger.CreditFunds
+		}
+		postings = append(postings, posting)
+	}
+	return postings, nil
+}
+
+func (s *Service) applyResolutionEffects(current reconciliation.Reconciliation, revision ledger.Revision) ([]reconciliation.Component, error) {
+	effects, err := revision.BalanceEffects()
+	if err != nil {
+		return nil, err
+	}
+	deltas := map[reconciliation.ComponentName]money.Money{}
+	for _, effect := range effects {
+		if effect.AccountID != current.AccountID {
+			return nil, reconciliation.ErrInvalidReconciliation
+		}
+		for _, item := range []struct {
+			name  reconciliation.ComponentName
+			value reporting.Amount
+		}{{reconciliation.Owned, effect.Owned}, {reconciliation.Available, effect.Available}, {reconciliation.Locked, effect.Locked}, {reconciliation.Debt, effect.Debt}} {
+			value, known := item.value.Value()
+			if !known {
+				return nil, commands.Rejection{Code: "reconciliation_not_ready"}
+			}
+			if previous, exists := deltas[item.name]; exists {
+				value, err = previous.Add(value)
+				if err != nil {
+					return nil, err
+				}
+			}
+			deltas[item.name] = value
+		}
+	}
+	resolved := make([]reconciliation.Component, 0, len(current.Components))
+	for _, component := range current.Components {
+		source, sourceKnown := component.Source.Value()
+		ledgerValue, ledgerKnown := component.Ledger.Value()
+		if !sourceKnown || !ledgerKnown {
+			return nil, commands.Rejection{Code: "reconciliation_not_ready"}
+		}
+		if delta, changed := deltas[component.Name]; changed {
+			var err error
+			ledgerValue, err = ledgerValue.Add(delta)
+			if err != nil {
+				return nil, err
+			}
+		}
+		remaining, err := source.Subtract(ledgerValue)
+		if err != nil {
+			return nil, err
+		}
+		if remaining.Sign() != 0 {
+			return nil, commands.Rejection{Code: "component_not_adjustable"}
+		}
+		ledgerAmount, _ := reporting.KnownAmount(ledgerValue)
+		difference, _ := reporting.KnownAmount(remaining)
+		resolved = append(resolved, reconciliation.Component{Name: component.Name, Source: component.Source, Ledger: ledgerAmount, Difference: difference})
+	}
+	return resolved, nil
 }
 
 func (s *Service) DispatchReplay(ctx context.Context, principal household.Principal, id string) error {
@@ -350,7 +407,7 @@ func (s *Service) DispatchReplay(ctx context.Context, principal household.Princi
 	if current.Lifecycle != reconciliation.Open || current.Replay.Status != reconciliation.ReplayPending || current.Replay.JobID != "" {
 		return reconciliation.ErrNotReady
 	}
-	job, err := s.scheduler.RequestReplay(ctx, principal, current.Replay.ConnectionID, current.Replay.Binding, s.now().Time().Add(23*time.Hour), current.Replay.RequestID, current.Replay.From.Time(), current.Replay.To.Time())
+	job, err := s.scheduler.RequestReplay(ctx, principal, current.Replay.ConnectionID, current.Replay.Binding, current.Replay.AdmissionRevision, current.Replay.ConnectionGeneration, s.now().Time().Add(23*time.Hour), current.Replay.RequestID, current.Replay.From.Time(), current.Replay.To.Time())
 	status, reason := reconciliation.ReplayPending, ""
 	if errors.Is(err, connections.ErrProviderNotAdmitted) {
 		status, reason, err = reconciliation.ReplayUnavailable, "provider_not_admitted", nil
@@ -365,22 +422,23 @@ func (s *Service) DispatchReplay(ctx context.Context, principal household.Princi
 	})
 }
 
-// RecordReplayOutcome completes the reconciliation-side lifecycle after the admitted
-// import boundary has fenced and committed the provider result.
-func (s *Service) RecordReplayOutcome(ctx context.Context, principal household.Principal, id, jobID string, status reconciliation.ReplayStatus, reason string) error {
-	if s.transactions == nil || jobID == "" || reason == "" || status != reconciliation.ReplayCompleted && status != reconciliation.ReplayFailed {
+// RecordReplayOutcome runs inside the admitted job-attempt transaction. Completion
+// additionally requires CommitPage to have fenced the page before invoking it.
+func (s *Service) RecordReplayOutcome(ctx context.Context, principal household.Principal, id string, issued jobs.Job, status reconciliation.ReplayStatus, reason string) error {
+	if issued.ID == "" || reason == "" || status != reconciliation.ReplayCompleted && status != reconciliation.ReplayFailed {
 		return reconciliation.ErrInvalidReconciliation
 	}
-	return s.transactions.WithinHousehold(ctx, principal, func(ctx context.Context) error {
-		current, err := s.repository.Reconciliation(ctx, principal, id)
-		if err != nil {
-			return err
-		}
-		if current.Lifecycle != reconciliation.Open || current.Replay.Status != reconciliation.ReplayPending || current.Replay.JobID != jobID {
-			return reconciliation.ErrNotReady
-		}
-		return s.updateReplay(ctx, principal, current.Replay.RequestID, status, jobID, reason)
-	})
+	current, err := s.repository.Reconciliation(ctx, principal, id)
+	if err != nil {
+		return err
+	}
+	if current.Lifecycle != reconciliation.Open || current.Replay.Status != reconciliation.ReplayPending || current.Replay.JobID != issued.ID {
+		return reconciliation.ErrNotReady
+	}
+	if err = s.repository.FenceReplayOutcome(ctx, principal, current.Replay, issued, status); err != nil {
+		return err
+	}
+	return s.updateReplay(ctx, principal, current.Replay.RequestID, status, issued.ID, reason)
 }
 
 func (s *Service) updateReplay(ctx context.Context, principal household.Principal, requestID string, status reconciliation.ReplayStatus, jobID, reason string) error {
