@@ -1,30 +1,70 @@
-export function App() {
+import { useEffect } from "react";
+import { Outlet, ScrollRestoration } from "react-router";
+import {
+  IdentityContext,
+  useIdentity,
+  LoginPage,
+  InvitePage,
+} from "@/features/identity";
+import { LocaleProvider } from "@/locales/LocaleProvider";
+import {
+  ServicesContext,
+  useServices,
+  type ApplicationServices,
+} from "./services";
+import { SessionBoundary } from "./SessionBoundary";
+import { DesktopShell } from "./DesktopShell";
+import "./desktop-access.css";
+
+function Root() {
+  const services = useServices();
+  const state = useIdentity();
+  useEffect(() => services.identity.start(), [services]);
+  useEffect(() => {
+    if (state.status === "active" && state.member)
+      services.locale.profile(state.member.locale);
+  }, [services, state.status, state.member]);
   return (
-    <main className="foundation-shell bg-background text-foreground">
-      <div className="foundation-shell__content">
-        <img
-          className="foundation-shell__logo"
-          src="/brand/logo_512px.svg"
-          width="455"
-          height="512"
-          alt=""
-        />
-        <p className="foundation-shell__eyebrow text-accent-readable">
-          One place. All your money.
-        </p>
-        <h1>
-          WANT <span>KEEP</span>
-        </h1>
-        <div className="foundation-shell__signal" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <p className="foundation-shell__status">Foundation build</p>
-        <p className="foundation-shell__notice">
-          Product workflows are intentionally unavailable in this build.
-        </p>
-      </div>
-    </main>
+    <>
+      <Outlet />
+      <ScrollRestoration />
+    </>
+  );
+}
+export function LoginRoute() {
+  const services = useServices();
+  const { member } = useIdentity();
+  const destination =
+    services.returnTo && services.returnTo.userId === member?.userId
+      ? services.returnTo.path
+      : "/overview";
+  return <LoginPage destination={destination} />;
+}
+export function InviteRoute() {
+  const services = useServices();
+  return (
+    <InvitePage
+      initialToken={services.invitationToken}
+      consumed={services.consumeInvitation}
+    />
+  );
+}
+export function App({ services }: { services: ApplicationServices }) {
+  return (
+    <ServicesContext.Provider value={services}>
+      <LocaleProvider controller={services.locale}>
+        <IdentityContext.Provider value={services.identity}>
+          <Root />
+        </IdentityContext.Provider>
+      </LocaleProvider>
+    </ServicesContext.Provider>
+  );
+}
+export function ProtectedShell() {
+  const { member } = useIdentity();
+  return (
+    <SessionBoundary>
+      <DesktopShell key={member?.userId} />
+    </SessionBoundary>
   );
 }
