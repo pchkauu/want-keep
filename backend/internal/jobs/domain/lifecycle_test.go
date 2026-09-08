@@ -28,11 +28,11 @@ func TestJobCompletionAndReconciliation(t *testing.T) {
 		})
 	}
 	j := Job{State: Unresolved, Attempt: 5, MaxAttempts: 5, ExternalStarted: true}
-	if got := j.Reconcile(true); got != (Outcome{Failed, AttemptsExhausted, 5}) {
-		t.Fatalf("exhausted reconciliation: %+v", got)
+	if got, err := j.Reconcile(PageConfirmed, false); err != nil || got != (Outcome{Failed, AttemptsExhausted, 5}) {
+		t.Fatalf("exhausted reconciliation: %+v, %v", got, err)
 	}
-	if got := j.Reconcile(false); got != (Outcome{Succeeded, "", 5}) {
-		t.Fatalf("confirmed final effect: %+v", got)
+	if got, err := j.Reconcile(EffectConfirmed, false); err != nil || got != (Outcome{Succeeded, "", 5}) {
+		t.Fatalf("confirmed final effect: %+v, %v", got, err)
 	}
 	if !j.ExternalStarted || j.State != Unresolved {
 		t.Fatal("decision mutated source job")
@@ -42,6 +42,61 @@ func TestJobCompletionAndReconciliation(t *testing.T) {
 	}
 	if _, err := j.Complete(Running, ""); err != ErrInvalidJob {
 		t.Fatal("invalid completion accepted")
+	}
+}
+
+func TestJobCancellation(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		job  Job
+		want Outcome
+	}{
+		{"ready", Job{State: Ready}, Outcome{Canceled, Cancellation, 0}},
+		{"running", Job{State: Running, Attempt: 2}, Outcome{Canceled, Cancellation, 2}},
+		{"waiting", Job{State: Waiting, Reason: BudgetWait}, Outcome{Canceled, Cancellation, 0}},
+		{"external running", Job{State: Running, Attempt: 2, ExternalStarted: true}, Outcome{Unresolved, ExternalUnknown, 2}},
+		{"legacy unresolved", Job{State: Unresolved, Attempt: 1}, Outcome{Unresolved, ExternalUnknown, 1}},
+		{"already canceled", Job{State: Canceled, Reason: Cancellation}, Outcome{Canceled, Cancellation, 0}},
+		{"completed", Job{State: Succeeded, Attempt: 2}, Outcome{Succeeded, "", 2}},
+		{"failed", Job{State: Failed, Reason: AttemptsExhausted, Attempt: 5}, Outcome{Failed, AttemptsExhausted, 5}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := test.job.Cancel(); got != test.want {
+				t.Fatalf("got %+v; want %+v", got, test.want)
+			}
+		})
+	}
+}
+
+func TestJobReconciliationWithReplacement(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		kind        Kind
+		resolution  Resolution
+		replacement bool
+		attempt     int
+		want        Outcome
+	}{
+		{"absence retries", Sync, EffectAbsent, false, 1, Outcome{Ready, TemporaryFailure, 1}},
+		{"absence preserves replacement", Sync, EffectAbsent, true, 1, Outcome{Canceled, Cancellation, 1}},
+		{"absence cannot reset attempts", Sync, EffectAbsent, true, 5, Outcome{Failed, AttemptsExhausted, 5}},
+		{"confirmed page continues", Sync, PageConfirmed, true, 1, Outcome{Ready, TemporaryFailure, 1}},
+		{"confirmed final page", Sync, EffectConfirmed, true, 5, Outcome{Succeeded, "", 5}},
+		{"review has no source replacement", AI, EffectAbsent, true, 1, Outcome{Ready, TemporaryFailure, 1}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			j := Job{Kind: test.kind, State: Unresolved, ExternalStarted: true, Attempt: test.attempt, MaxAttempts: 5}
+			got, err := j.Reconcile(test.resolution, test.replacement)
+			if err != nil || got != test.want {
+				t.Fatalf("got %+v, %v; want %+v", got, err, test.want)
+			}
+			if !j.ExternalStarted || j.State != Unresolved {
+				t.Fatal("reconciliation mutated source job")
+			}
+		})
+	}
+	if _, err := (Job{}).Reconcile("unknown", false); err != ErrInvalidJob {
+		t.Fatal("invalid resolution accepted")
 	}
 }
 

@@ -117,8 +117,11 @@ func (s *Store) InvalidateJobs(ctx context.Context, a connections.Admission) err
 	if err != nil {
 		return err
 	}
-	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN external_started OR state='unresolved' THEN 'unresolved' ELSE 'canceled' END,reason=CASE WHEN external_started OR state='unresolved' THEN 'external_unknown' ELSE 'canceled' END,cancel_requested=true WHERE kind='sync' AND state IN ('ready','running','waiting','unresolved') AND binding->>'provider'=$1 AND binding->>'environment'=$2 AND (binding!=$3::jsonb OR admission_revision!=$4 OR $5!='admitted')`, b.Provider, b.Environment, binding, a.Revision(), a.Status())
-	return err
+	rows, err := scope.tx.Query(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE kind='sync' AND state IN ('ready','running','waiting','unresolved') AND binding->>'provider'=$1 AND binding->>'environment'=$2 AND (binding!=$3::jsonb OR admission_revision!=$4 OR $5!='admitted') ORDER BY household_id,id FOR UPDATE`, b.Provider, b.Environment, binding, a.Revision(), a.Status())
+	if err != nil {
+		return err
+	}
+	return s.cancelJobs(ctx, scope.tx, rows)
 }
 func (s *Store) CreateConnection(ctx context.Context, c admission.Connection) error {
 	scope, err := s.familyScope(ctx)
@@ -173,8 +176,11 @@ func (s *Store) Disconnect(ctx context.Context, id string) error {
 	if tag.RowsAffected() != 1 {
 		return jobs.ErrInvalidJob
 	}
-	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN external_started OR state='unresolved' THEN 'unresolved' ELSE 'canceled' END,reason=CASE WHEN external_started OR state='unresolved' THEN 'external_unknown' ELSE 'canceled' END,cancel_requested=true WHERE household_id=$1 AND connection_id=$2 AND state IN ('ready','running','waiting','unresolved')`, scope.principal.HouseholdID(), id)
+	rows, err := scope.tx.Query(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND connection_id=$2 AND state IN ('ready','running','waiting','unresolved') ORDER BY id FOR UPDATE`, scope.principal.HouseholdID(), id)
 	if err != nil {
+		return err
+	}
+	if err = s.cancelJobs(ctx, scope.tx, rows); err != nil {
 		return err
 	}
 	return s.RevokeConnectionSecrets(ctx, id)

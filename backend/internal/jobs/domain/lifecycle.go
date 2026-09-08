@@ -45,15 +45,42 @@ func (j Job) Complete(state State, reason Reason) (Outcome, error) {
 	return out, nil
 }
 
+type Resolution string
+
+const (
+	EffectConfirmed Resolution = "confirmed"
+	PageConfirmed   Resolution = "page_confirmed"
+	EffectAbsent    Resolution = "absent"
+)
+
+// Cancel retains uncertainty until trusted reconciliation resolves the effect.
+func (j Job) Cancel() Outcome {
+	out := Outcome{j.State, j.Reason, j.Attempt}
+	switch {
+	case j.ExternalStarted || j.State == Unresolved:
+		out.State, out.Reason = Unresolved, ExternalUnknown
+	case j.State == Ready || j.State == Running || j.State == Waiting:
+		out.State, out.Reason = Canceled, Cancellation
+	}
+	return out
+}
+
 // Reconcile is called only after trusted evidence has resolved the external action.
-func (j Job) Reconcile(continueWork bool) Outcome {
+func (j Job) Reconcile(resolution Resolution, replacementExists bool) (Outcome, error) {
+	if resolution != EffectConfirmed && resolution != PageConfirmed && resolution != EffectAbsent {
+		return Outcome{}, ErrInvalidJob
+	}
 	j.ExternalStarted = false
+	j.State = Ready
 	state := Succeeded
-	if continueWork {
+	if resolution != EffectConfirmed {
 		state = Ready
 	}
-	out, _ := j.Complete(state, "")
-	return out
+	out, err := j.Complete(state, "")
+	if err == nil && resolution == EffectAbsent && j.Kind == Sync && replacementExists && out.State == Ready {
+		out = j.Cancel()
+	}
+	return out, err
 }
 
 // Recover retains unstarted dependency work even if the worker was offline past its deadline.
