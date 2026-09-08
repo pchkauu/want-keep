@@ -12,6 +12,13 @@ ALTER TABLE want_keep.jobs
  );
 CREATE UNIQUE INDEX one_replay_job ON want_keep.jobs(household_id,replay_request_id) WHERE replay_request_id IS NOT NULL;
 
+ALTER TABLE want_keep.command_tombstones
+ ADD COLUMN failure_revision want_keep.revision,
+ ADD CONSTRAINT command_failure_revision CHECK(
+  failure_revision IS NULL OR (status='failed' AND failure_code='version_conflict')
+ );
+GRANT UPDATE(failure_revision) ON want_keep.command_tombstones TO want_keep_app;
+
 CREATE TABLE want_keep.reconciliations (
  household_id uuid NOT NULL, id uuid NOT NULL, account_id uuid NOT NULL, observation_id uuid NOT NULL,
  current_revision want_keep.revision NOT NULL, lifecycle text NOT NULL CHECK(lifecycle IN ('open','resolved','superseded')),

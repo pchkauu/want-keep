@@ -17,6 +17,7 @@ import (
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	ledgerapp "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
@@ -212,6 +213,94 @@ func TestSourceReversalWithoutTransitionTimeKeepsProjectionIncomplete(t *testing
 	current := f.active(id)
 	if current.Result != reconciliation.Incomplete || current.Coverage.State() != reporting.Partial {
 		t.Fatalf("unknown reversal time was treated as a proven lifecycle: %#v", current)
+	}
+	for _, name := range []reconciliation.ComponentName{reconciliation.Owned, reconciliation.Available} {
+		component, _ := current.Component(name)
+		if _, known := component.Ledger.Value(); known {
+			t.Fatalf("%s remained known despite the uncertain reversal", name)
+		}
+	}
+	for _, name := range []reconciliation.ComponentName{reconciliation.Locked, reconciliation.Debt} {
+		component, _ := current.Component(name)
+		value, known := component.Ledger.Value()
+		if !known || value.Sign() != 0 {
+			t.Fatalf("unaffected %s component lost its known value: %#v", name, component)
+		}
+	}
+}
+
+func TestReplayJobBecomesClaimableOnlyAfterAttachment(t *testing.T) {
+	f := newFixture(t)
+	accountID := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(accountID, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	current := f.active(accountID)
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	type result struct {
+		job jobs.Job
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		job, err := f.admission.RequestReplay(testContext, f.p, current.Replay.ConnectionID, current.Replay.Binding, current.Replay.AdmissionRevision, current.Replay.ConnectionGeneration, time.Now().Add(time.Hour), current.Replay.RequestID, current.Replay.From.Time(), current.Replay.To.Time(), func(ctx context.Context, issued jobs.Job) error {
+			close(entered)
+			<-release
+			_, changed, updateErr := f.store.UpdateReplay(ctx, f.p, current.Replay.RequestID, reconciliation.ReplayPending, issued.ID, "")
+			if updateErr != nil {
+				return updateErr
+			}
+			if !changed {
+				return reconciliation.ErrNotReady
+			}
+			return nil
+		})
+		done <- result{job: job, err: err}
+	}()
+	<-entered
+	claimed, err := f.store.ClaimJobs(testContext, "sync", 100, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, job := range claimed {
+		if job.ReplayRequestID == current.Replay.RequestID {
+			t.Fatal("replay job was claimable before reconciliation attachment")
+		}
+	}
+	close(release)
+	created := <-done
+	if created.err != nil {
+		t.Fatal(created.err)
+	}
+	if issued := f.claim(created.job.ID); issued.ReplayRequestID != current.Replay.RequestID {
+		t.Fatalf("attached replay job was not claimable: %#v", issued)
+	}
+}
+
+func TestCurrentRevisionLoadsItsExactReplayRequest(t *testing.T) {
+	f := newFixture(t)
+	accountID := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(accountID, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	completed := f.completeReplay(accountID)
+	firstRequestID := completed.Replay.RequestID
+	f.correctOpening(accountID, exactAmounts(money.RUB, "1000", "1000", "0", "0"))
+	balanced := f.active(accountID)
+	if balanced.ID != completed.ID || balanced.Replay.Status != reconciliation.ReplayNotRequired {
+		t.Fatalf("balanced reevaluation did not clear the replay: %#v", balanced)
+	}
+	f.correctOpening(accountID, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	pending := f.active(accountID)
+	if pending.ID != completed.ID || pending.Replay.Status != reconciliation.ReplayPending || pending.Replay.RequestID == firstRequestID {
+		t.Fatalf("later discrepancy did not create a distinct current replay: %#v", pending)
+	}
+	var storedRequestID string
+	if err := f.admin.QueryRow(testContext, `SELECT replay_request_id FROM want_keep.reconciliation_revisions WHERE household_id=$1 AND reconciliation_id=$2 AND revision=$3`, f.family.ID, pending.ID, pending.Revision).Scan(&storedRequestID); err != nil {
+		t.Fatal(err)
+	}
+	if pending.Replay.RequestID != storedRequestID {
+		t.Fatalf("read replay %s instead of revision reference %s", pending.Replay.RequestID, storedRequestID)
+	}
+	if outcome := f.resolve(pending, reconciliation.Owned); outcome.Status() != command.Failed || outcome.ErrorCode() != "reconciliation_not_ready" {
+		t.Fatalf("pending current replay allowed resolution: %#v", outcome)
 	}
 }
 
@@ -413,6 +502,9 @@ func TestStaleResolutionRevisionAndRollbackAreSafe(t *testing.T) {
 	outcome := f.resolve(stale, reconciliation.Owned)
 	if outcome.Status() != command.Failed || outcome.ErrorCode() != "version_conflict" {
 		t.Fatalf("stale resolution applied: %#v", outcome)
+	}
+	if revision, ok := outcome.CurrentRevision(); !ok || revision != current.Revision+1 {
+		t.Fatalf("version conflict lost authorized current revision: %d %v", revision, ok)
 	}
 	if balance, err := f.store.Balance(testContext, f.p, id, "owned"); err != nil {
 		t.Fatal(err)

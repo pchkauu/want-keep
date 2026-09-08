@@ -39,9 +39,9 @@ type Repository interface {
 	FailJob(context.Context, household.Principal, jobs.Job) error
 }
 
-func (s *Service) RequestReplay(ctx context.Context, p household.Principal, id string, b connections.Binding, admissionRevision int64, connectionGeneration uint64, deadline time.Time, requestID string, from, to time.Time) (jobs.Job, error) {
+func (s *Service) RequestReplay(ctx context.Context, p household.Principal, id string, b connections.Binding, admissionRevision int64, connectionGeneration uint64, deadline time.Time, requestID string, from, to time.Time, attach func(context.Context, jobs.Job) error) (jobs.Job, error) {
 	request := jobs.Job{ReplayRequestID: requestID, RangeFrom: from, RangeTo: to}
-	if err := request.ValidateReplay(); err != nil || b.Validate() != nil || admissionRevision < 1 || connectionGeneration < 1 {
+	if err := request.ValidateReplay(); err != nil || b.Validate() != nil || admissionRevision < 1 || connectionGeneration < 1 || attach == nil {
 		return jobs.Job{}, jobs.ErrInvalidJob
 	}
 	var result jobs.Job
@@ -68,7 +68,10 @@ func (s *Service) RequestReplay(ctx context.Context, p household.Principal, id s
 				return connections.ErrProviderNotAdmitted
 			}
 			result, err = s.repository.CreateReplayJob(ctx, connection, a, deadline, requestID, from, to)
-			return err
+			if err != nil {
+				return err
+			}
+			return attach(ctx, result)
 		})
 	})
 	return result, err

@@ -208,7 +208,8 @@ func (s *Store) reconciliationRevision(ctx context.Context, p household.Principa
 	var sourceNS, evaluatedNS int16
 	var coverage, freshness string
 	var reasons []string
-	err = q.QueryRow(ctx, `SELECT r.account_id,r.observation_id,v.lifecycle,v.result,v.replay_status,v.source_as_of,v.source_as_of_ns,v.evaluated_at,v.evaluated_at_ns,v.coverage,v.coverage_reasons,v.freshness FROM want_keep.reconciliations r JOIN want_keep.reconciliation_revisions v ON (v.household_id,v.reconciliation_id,v.revision)=(r.household_id,r.id,$3) WHERE r.household_id=$1 AND r.id=$2`, p.HouseholdID(), id, revision).Scan(&value.AccountID, &value.ObservationID, &value.Lifecycle, &value.Result, &value.Replay.Status, &sourceAt, &sourceNS, &evaluatedAt, &evaluatedNS, &coverage, &reasons, &freshness)
+	var replayRequestID string
+	err = q.QueryRow(ctx, `SELECT r.account_id,r.observation_id,v.lifecycle,v.result,v.replay_status,COALESCE(v.replay_request_id::text,''),v.source_as_of,v.source_as_of_ns,v.evaluated_at,v.evaluated_at_ns,v.coverage,v.coverage_reasons,v.freshness FROM want_keep.reconciliations r JOIN want_keep.reconciliation_revisions v ON (v.household_id,v.reconciliation_id,v.revision)=(r.household_id,r.id,$3) WHERE r.household_id=$1 AND r.id=$2`, p.HouseholdID(), id, revision).Scan(&value.AccountID, &value.ObservationID, &value.Lifecycle, &value.Result, &value.Replay.Status, &replayRequestID, &sourceAt, &sourceNS, &evaluatedAt, &evaluatedNS, &coverage, &reasons, &freshness)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return value, reconciliation.ErrNotFound
 	}
@@ -296,7 +297,7 @@ func (s *Store) reconciliationRevision(ctx context.Context, p household.Principa
 		return value, err
 	}
 	if value.Replay.Status != reconciliation.ReplayNotRequired {
-		if err = s.loadReplay(ctx, q, p, id, &value.Replay); err != nil {
+		if err = s.loadReplay(ctx, q, p, id, replayRequestID, &value.Replay); err != nil {
 			return value, err
 		}
 	}
@@ -324,11 +325,11 @@ func (s *Store) reconciliationRevision(ctx context.Context, p household.Principa
 	return value, value.Validate(entry.Asset)
 }
 
-func (s *Store) loadReplay(ctx context.Context, q reader, p household.Principal, reconciliationID string, replay *reconciliation.Replay) error {
+func (s *Store) loadReplay(ctx context.Context, q reader, p household.Principal, reconciliationID, requestID string, replay *reconciliation.Replay) error {
 	var from, to time.Time
 	var fromNS, toNS int16
 	var binding []byte
-	err := q.QueryRow(ctx, `SELECT id,connection_id,status,reason,COALESCE(job_id::text,''),range_from,range_from_ns,range_to,range_to_ns,binding,admission_revision,connection_generation FROM want_keep.reconciliation_replay_requests WHERE household_id=$1 AND reconciliation_id=$2`, p.HouseholdID(), reconciliationID).Scan(&replay.RequestID, &replay.ConnectionID, &replay.Status, &replay.Reason, &replay.JobID, &from, &fromNS, &to, &toNS, &binding, &replay.AdmissionRevision, &replay.ConnectionGeneration)
+	err := q.QueryRow(ctx, `SELECT id,connection_id,status,reason,COALESCE(job_id::text,''),range_from,range_from_ns,range_to,range_to_ns,binding,admission_revision,connection_generation FROM want_keep.reconciliation_replay_requests WHERE household_id=$1 AND reconciliation_id=$2 AND id=$3`, p.HouseholdID(), reconciliationID, requestID).Scan(&replay.RequestID, &replay.ConnectionID, &replay.Status, &replay.Reason, &replay.JobID, &from, &fromNS, &to, &toNS, &binding, &replay.AdmissionRevision, &replay.ConnectionGeneration)
 	if err != nil {
 		return err
 	}
@@ -414,6 +415,9 @@ func (s *Store) UpdateReplay(ctx context.Context, p household.Principal, request
 	value, err := s.Reconciliation(ctx, p, reconciliationID)
 	if err != nil {
 		return reconciliation.Reconciliation{}, false, err
+	}
+	if value.Replay.RequestID != requestID {
+		return value, false, reconciliation.ErrNotReady
 	}
 	next, changed, err := value.Replay.Transition(status, jobID, reason)
 	if err != nil || !changed {

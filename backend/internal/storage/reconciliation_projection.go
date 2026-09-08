@@ -10,6 +10,7 @@ import (
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
+	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 	reporting "github.com/pchkauu/want-keep/backend/internal/reporting/domain"
 )
 
@@ -104,12 +105,28 @@ func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal,
 				effective.PostedAt = current.PostedAt
 				historicalKnown = true
 			}
-			if current.Origin == "source" && current.State == ledger.Reversed && current.PostedAt.String() != "" && !current.PostedAt.Time().After(asOf.Time()) && (!historicalKnown || effective.State == ledger.Draft || effective.State == ledger.Pending) {
-				uncertain = true
+			if current.Origin == "source" && current.State == ledger.Reversed && current.PostedAt.String() != "" && !current.PostedAt.Time().After(asOf.Time()) && (!historicalKnown || effective.State != ledger.Reversed) {
+				effect, uncertaintyErr := s.historicalUncertainty(ctx, q, p, current, accountID, entry.Asset, openingAt, asOf, true)
+				if uncertaintyErr != nil {
+					return account.Amounts{}, reporting.Coverage{}, nil, uncertaintyErr
+				}
+				if effect != nil {
+					effects = append(effects, *effect)
+					related = append(related, current.OperationID)
+					uncertain = true
+				}
 				continue
 			}
 			if !historicalKnown {
-				uncertain = true
+				effect, uncertaintyErr := s.historicalUncertainty(ctx, q, p, current, accountID, entry.Asset, openingAt, asOf, false)
+				if uncertaintyErr != nil {
+					return account.Amounts{}, reporting.Coverage{}, nil, uncertaintyErr
+				}
+				if effect != nil {
+					effects = append(effects, *effect)
+					related = append(related, current.OperationID)
+					uncertain = true
+				}
 				continue
 			}
 		}
@@ -136,7 +153,6 @@ func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal,
 	}
 	if uncertain {
 		reasons = append(reasons, "transaction_state_at_source_unknown")
-		values = account.UnknownAmounts("transaction_state_at_source_unknown")
 	}
 	for _, value := range values.Fields() {
 		if _, known := value.Value(); !known {
@@ -151,4 +167,95 @@ func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal,
 		coverage, _ = reporting.NewCoverage(reporting.Partial, reasons)
 	}
 	return values, coverage, related, nil
+}
+
+func (s *Store) historicalUncertainty(ctx context.Context, q reader, p household.Principal, current ledger.Revision, accountID string, asset money.Asset, openingAt, asOf calendar.Instant, forcePosted bool) (*account.Effect, error) {
+	rows, err := q.Query(ctx, `SELECT revision FROM want_keep.operation_revisions WHERE household_id=$1 AND operation_id=$2 AND revision<=$3 ORDER BY revision`, p.HouseholdID(), current.OperationID, current.Revision)
+	if err != nil {
+		return nil, err
+	}
+	revisions := []uint64{}
+	for rows.Next() {
+		var revision uint64
+		if err = rows.Scan(&revision); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		revisions = append(revisions, revision)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	affected := [4]bool{}
+	for _, revision := range revisions {
+		candidate, loadErr := s.LedgerRevision(ctx, p, current.OperationID, revision)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if candidate.OccurredAt.Time().Before(openingAt.Time()) || candidate.OccurredAt.Time().After(asOf.Time()) {
+			continue
+		}
+		states := []ledger.State{}
+		if forcePosted {
+			states = append(states, ledger.Posted)
+		} else {
+			switch candidate.State {
+			case ledger.Pending, ledger.Cancelled:
+				states = append(states, ledger.Pending)
+			case ledger.Posted, ledger.Reversed:
+				states = append(states, ledger.Posted)
+			}
+		}
+		for _, state := range states {
+			possible := candidate.Clone()
+			possible.AccountingState = ledger.IncludedInAccounting
+			possible.State = state
+			if state == ledger.Pending {
+				possible.PostedAt = calendar.Instant{}
+			} else if possible.PostedAt.String() == "" {
+				possible.PostedAt = possible.OccurredAt
+			}
+			balanceEffects, effectErr := possible.BalanceEffects()
+			if effectErr != nil {
+				return nil, effectErr
+			}
+			for _, effect := range balanceEffects {
+				if effect.AccountID != accountID {
+					continue
+				}
+				for index, amount := range []reporting.Amount{effect.Owned, effect.Available, effect.Locked, effect.Debt} {
+					value, known := amount.Value()
+					if !known || value.Sign() != 0 {
+						affected[index] = true
+					}
+				}
+			}
+		}
+	}
+	if !affected[0] && !affected[1] && !affected[2] && !affected[3] {
+		return nil, nil
+	}
+	zero, err := money.NewMoney("0", asset)
+	if err != nil {
+		return nil, err
+	}
+	knownZero, err := reporting.KnownAmount(zero)
+	if err != nil {
+		return nil, err
+	}
+	unknown, err := reporting.MissingAmount(reporting.Unknown, "transaction_state_at_source_unknown")
+	if err != nil {
+		return nil, err
+	}
+	changes := account.Amounts{Owned: knownZero, Available: knownZero, Locked: knownZero, Debt: knownZero}
+	fields := []*reporting.Amount{&changes.Owned, &changes.Available, &changes.Locked, &changes.Debt}
+	for index := range affected {
+		if affected[index] {
+			*fields[index] = unknown
+		}
+	}
+	return &account.Effect{OperationID: current.OperationID, Revision: current.Revision, At: asOf, Changes: &changes}, nil
 }

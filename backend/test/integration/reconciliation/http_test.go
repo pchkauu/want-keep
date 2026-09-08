@@ -147,6 +147,10 @@ func TestHTTPListReadResolveRecoveryAndCSRF(t *testing.T) {
 	if succeeded.Result.Id != current.ID {
 		t.Fatalf("wrong command result: %#v", succeeded)
 	}
+	stale := decode[generated.CommandFailed](t, client.call("POST", "/reconciliations/"+current.ID+"/resolve", uuid.NewString(), input, http.StatusAccepted))
+	if stale.Error.CurrentRevision == nil || int64(*stale.Error.CurrentRevision) != succeeded.Result.Revision {
+		t.Fatalf("stale command did not expose the authorized current revision: %#v", stale)
+	}
 	client.call("POST", "/reconciliations/"+current.ID+"/resolve", key, input, http.StatusAccepted)
 	input["reason"] = "Changed payload"
 	client.call("POST", "/reconciliations/"+current.ID+"/resolve", key, input, http.StatusConflict)

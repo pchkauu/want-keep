@@ -96,6 +96,10 @@ func (s *Server) problem(w http.ResponseWriter, err error) {
 	response := (contract.ErrorConverter{}).ToResponse(err, uuid.NewString())
 	var rejection commands.Rejection
 	if errors.As(err, &rejection) {
+		if rejection.CurrentRevision != 0 {
+			revision := generated.Revision(rejection.CurrentRevision)
+			response.Body.CurrentRevision = &revision
+		}
 		switch rejection.Code {
 		case "not_found":
 			response.Status, response.Body.Code, response.Body.Message = 404, "not_found", "Reconciliation not found."

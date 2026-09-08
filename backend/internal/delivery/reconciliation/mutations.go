@@ -52,7 +52,7 @@ func (s *Server) execute(w http.ResponseWriter, r *http.Request, access identity
 	}
 	if errors.Is(result.RequireDetail(access.Principal, s.now()), command.ErrCommandExpired) {
 		snapshot := result.Snapshot()
-		outcome := command.Outcome{CommandID: snapshot.ID, Status: snapshot.Status, Result: snapshot.Result, FailureCode: snapshot.ErrorCode}
+		outcome := command.Outcome{CommandID: snapshot.ID, Status: snapshot.Status, Result: snapshot.Result, FailureCode: snapshot.ErrorCode, CurrentRevision: snapshot.CurrentRevision}
 		out, convertErr := s.boundary.ExpiredCommandToDTO(uuid.NewString(), &outcome)
 		if convertErr != nil {
 			s.problem(w, convertErr)

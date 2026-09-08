@@ -44,15 +44,21 @@ func TestCommandReplayVisibilityAndUnknownOutcome(t *testing.T) {
 	if completed.CheckReplay(a, cmd.Kind(), hash, now) != nil {
 		t.Fatal("completed replay should return existing result")
 	}
-	if _, err := completed.Fail("internal_error", now); !errors.Is(err, command.ErrFinalCommand) {
+	if _, err := completed.Fail("internal_error", 0, now); !errors.Is(err, command.ErrFinalCommand) {
 		t.Fatal("final command changed")
 	}
-	if _, err := cmd.Fail("provider secret details", now); err == nil {
+	if _, err := cmd.Fail("provider secret details", 0, now); err == nil {
 		t.Fatal("unsafe failure accepted")
 	}
-	failed, err := cmd.Fail("version_conflict", now)
+	failed, err := cmd.Fail("version_conflict", 7, now)
 	if err != nil || failed.Status() != command.Failed || failed.ErrorCode() != "version_conflict" {
 		t.Fatal("failed status lost")
+	}
+	if revision, ok := failed.CurrentRevision(); !ok || revision != 7 {
+		t.Fatal("authorized current revision was not retained", revision, ok)
+	}
+	if _, err = cmd.Fail("invalid_request", 7, now); err == nil {
+		t.Fatal("current revision was accepted for a non-conflict failure")
 	}
 	if _, err := command.NewCommand("bad", cmd.Kind(), hash, a, now); err == nil {
 		t.Fatal("invalid ID accepted")

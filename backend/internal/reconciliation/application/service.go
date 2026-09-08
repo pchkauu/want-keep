@@ -61,7 +61,7 @@ type Transactions interface {
 }
 
 type ReplayScheduler interface {
-	RequestReplay(context.Context, household.Principal, string, connections.Binding, int64, uint64, time.Time, string, time.Time, time.Time) (jobs.Job, error)
+	RequestReplay(context.Context, household.Principal, string, connections.Binding, int64, uint64, time.Time, string, time.Time, time.Time, func(context.Context, jobs.Job) error) (jobs.Job, error)
 }
 
 type LedgerWriter interface {
@@ -252,7 +252,7 @@ func (s *Service) Resolve(ctx context.Context, principal household.Principal, id
 		return command.Result{}, s.reject(err)
 	}
 	if current.Revision != input.ExpectedRevision {
-		return command.Result{}, commands.Rejection{Code: "version_conflict"}
+		return command.Result{}, commands.Rejection{Code: "version_conflict", CurrentRevision: current.Revision}
 	}
 	if current.Lifecycle != reconciliation.Open || current.Coverage.State() != reporting.Complete || current.Result != reconciliation.Discrepant || current.Replay.Status != reconciliation.ReplayCompleted && current.Replay.Status != reconciliation.ReplayUnavailable {
 		return command.Result{}, commands.Rejection{Code: "reconciliation_not_ready"}
@@ -407,8 +407,17 @@ func (s *Service) DispatchReplay(ctx context.Context, principal household.Princi
 	if current.Lifecycle != reconciliation.Open || current.Replay.Status != reconciliation.ReplayPending || current.Replay.JobID != "" {
 		return reconciliation.ErrNotReady
 	}
-	job, err := s.scheduler.RequestReplay(ctx, principal, current.Replay.ConnectionID, current.Replay.Binding, current.Replay.AdmissionRevision, current.Replay.ConnectionGeneration, s.now().Time().Add(23*time.Hour), current.Replay.RequestID, current.Replay.From.Time(), current.Replay.To.Time())
-	status, reason := reconciliation.ReplayPending, ""
+	job, err := s.scheduler.RequestReplay(ctx, principal, current.Replay.ConnectionID, current.Replay.Binding, current.Replay.AdmissionRevision, current.Replay.ConnectionGeneration, s.now().Time().Add(23*time.Hour), current.Replay.RequestID, current.Replay.From.Time(), current.Replay.To.Time(), func(ctx context.Context, issued jobs.Job) error {
+		latest, readErr := s.repository.Reconciliation(ctx, principal, current.ID)
+		if readErr != nil {
+			return readErr
+		}
+		if latest.Revision != current.Revision || latest.Lifecycle != reconciliation.Open || latest.Replay.Status != reconciliation.ReplayPending || latest.Replay.RequestID != current.Replay.RequestID || latest.Replay.JobID != "" {
+			return reconciliation.ErrNotReady
+		}
+		return s.updateReplay(ctx, principal, latest.Replay.RequestID, reconciliation.ReplayPending, issued.ID, "")
+	})
+	status, reason := reconciliation.ReplayNotRequired, ""
 	if errors.Is(err, connections.ErrProviderNotAdmitted) {
 		status, reason, err = reconciliation.ReplayUnavailable, "provider_not_admitted", nil
 	} else if errors.Is(err, connections.ErrSecretAccess) {
@@ -417,8 +426,18 @@ func (s *Service) DispatchReplay(ctx context.Context, principal household.Princi
 	if err != nil {
 		return err
 	}
+	if status == reconciliation.ReplayNotRequired {
+		return nil
+	}
 	return s.transactions.WithinHousehold(ctx, principal, func(ctx context.Context) error {
-		return s.updateReplay(ctx, principal, current.Replay.RequestID, status, job.ID, reason)
+		latest, readErr := s.repository.Reconciliation(ctx, principal, current.ID)
+		if readErr != nil {
+			return readErr
+		}
+		if latest.Revision != current.Revision || latest.Lifecycle != reconciliation.Open || latest.Replay.Status != reconciliation.ReplayPending || latest.Replay.RequestID != current.Replay.RequestID || latest.Replay.JobID != "" {
+			return reconciliation.ErrNotReady
+		}
+		return s.updateReplay(ctx, principal, latest.Replay.RequestID, status, job.ID, reason)
 	})
 }
 
