@@ -23,11 +23,12 @@ func newID() string {
 
 const jobColumns = `household_id,id,actor_id,kind,COALESCE(connection_id::text,''),COALESCE(connection_generation,0),binding,COALESCE(admission_revision,0),state,attempt,max_attempts,COALESCE(lease_token::text,''),lease_until,COALESCE(run_deadline,deadline),cancel_requested,cursor,coverage,gaps,secret_purpose,reason,external_started,COALESCE(resource_id::text,''),COALESCE(resource_revision,0)`
 
-func scanJob(row pgx.Row) (jobs.Job, error) {
+func scanJob(row pgx.Row, additional ...any) (jobs.Job, error) {
 	var j jobs.Job
 	var binding []byte
 	var until *time.Time
-	err := row.Scan(&j.HouseholdID, &j.ID, &j.ActorID, &j.Kind, &j.ConnectionID, &j.ConnectionGeneration, &binding, &j.AdmissionRevision, &j.State, &j.Attempt, &j.MaxAttempts, &j.LeaseToken, &until, &j.Deadline, &j.CancelRequested, &j.Cursor, &j.Coverage, &j.Gaps, &j.SecretPurpose, &j.Reason, &j.ExternalStarted, &j.ResourceID, &j.ResourceRevision)
+	fields := []any{&j.HouseholdID, &j.ID, &j.ActorID, &j.Kind, &j.ConnectionID, &j.ConnectionGeneration, &binding, &j.AdmissionRevision, &j.State, &j.Attempt, &j.MaxAttempts, &j.LeaseToken, &until, &j.Deadline, &j.CancelRequested, &j.Cursor, &j.Coverage, &j.Gaps, &j.SecretPurpose, &j.Reason, &j.ExternalStarted, &j.ResourceID, &j.ResourceRevision}
+	err := row.Scan(append(fields, additional...)...)
 	if err != nil {
 		return j, err
 	}
@@ -75,7 +76,7 @@ func (s *Store) ClaimJobs(ctx context.Context, kind string, limit int, lease tim
 		return nil, err
 	}
 	defer tx.Rollback(context.Background())
-	if err = s.recoverJobs(ctx, tx, kind); err != nil {
+	if err = s.recoverJobs(ctx, tx, kind, ""); err != nil {
 		return nil, err
 	}
 	rows, err := tx.Query(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE kind=$1 AND NOT cancel_requested AND COALESCE(run_deadline,deadline)>clock_timestamp() AND attempt<max_attempts AND state='ready' AND available_at<=clock_timestamp() AND NOT external_started AND (kind!='sync' OR NOT EXISTS(SELECT 1 FROM want_keep.jobs blocked WHERE blocked.household_id=want_keep.jobs.household_id AND blocked.connection_id=want_keep.jobs.connection_id AND blocked.state='unresolved')) ORDER BY available_at,id LIMIT $2 FOR UPDATE SKIP LOCKED`, kind, limit)
@@ -151,7 +152,7 @@ func (s *Store) FinishJob(ctx context.Context, p household.Principal, j jobs.Job
 		if err := s.RecordJobReceipt(ctx, p, j); err != nil {
 			return err
 		}
-		if err := s.transitionJob(ctx, p, j, "succeeded", 0); err != nil {
+		if err := s.transitionJob(ctx, p, j, jobs.Succeeded, "", 0); err != nil {
 			return err
 		}
 		if j.Kind != jobs.Sync {
@@ -166,13 +167,13 @@ func (s *Store) RetryJob(ctx context.Context, p household.Principal, j jobs.Job,
 	if delay < 0 || delay > time.Hour {
 		return jobs.ErrInvalidJob
 	}
-	state := "ready"
+	state := jobs.Ready
 	if ambiguous {
-		state = "unresolved"
+		state = jobs.Unresolved
 	}
-	return s.transitionJob(ctx, p, j, state, delay)
+	return s.transitionJob(ctx, p, j, state, "", delay)
 }
-func (s *Store) transitionJob(ctx context.Context, p household.Principal, j jobs.Job, state string, delay time.Duration) error {
+func (s *Store) transitionJob(ctx context.Context, p household.Principal, j jobs.Job, state jobs.State, reason jobs.Reason, delay time.Duration) error {
 	return s.WithinHousehold(ctx, p, func(ctx context.Context) error {
 		scope, err := s.familyScope(ctx)
 		if err != nil {
@@ -181,10 +182,15 @@ func (s *Store) transitionJob(ctx context.Context, p household.Principal, j jobs
 		if j.HouseholdID != p.HouseholdID() || j.ActorID != p.UserID() {
 			return household.ErrForbidden
 		}
-		if _, err = s.FenceJob(ctx, p, j); err != nil {
+		current, err := s.FenceJob(ctx, p, j)
+		if err != nil {
 			return err
 		}
-		tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN external_started AND $5!='succeeded' THEN 'unresolved' WHEN $5='ready' AND attempt>=max_attempts THEN 'failed' ELSE $5 END,available_at=clock_timestamp()+$6::bigint*INTERVAL '1 microsecond' WHERE household_id=$1 AND id=$2 AND lease_token=$3 AND attempt=$4 AND state='running' AND NOT cancel_requested AND lease_until>clock_timestamp() AND COALESCE(run_deadline,deadline)>clock_timestamp()`, p.HouseholdID(), j.ID, j.LeaseToken, j.Attempt, state, delay.Microseconds())
+		outcome, err := current.Complete(state, reason)
+		if err != nil {
+			return err
+		}
+		tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=$5,reason=$7,attempt=$8,available_at=clock_timestamp()+$6::bigint*INTERVAL '1 microsecond' WHERE household_id=$1 AND id=$2 AND lease_token=$3 AND attempt=$4 AND state='running' AND NOT cancel_requested AND lease_until>clock_timestamp() AND COALESCE(run_deadline,deadline)>clock_timestamp()`, p.HouseholdID(), j.ID, j.LeaseToken, j.Attempt, outcome.State, delay.Microseconds(), outcome.Reason, outcome.Attempt)
 		if err != nil {
 			return err
 		}

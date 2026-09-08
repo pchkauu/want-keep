@@ -70,16 +70,8 @@ func (s *Store) ReconcileJob(ctx context.Context, p household.Principal, r jobs.
 			if err != nil {
 				return err
 			}
-			state := "succeeded"
-			if r.Outcome == "absent" || (r.Page != nil && !r.Page.Complete) {
-				state = "ready"
-				if current.CancelRequested {
-					state = "canceled"
-				} else if current.Attempt >= current.MaxAttempts {
-					state = "failed"
-				}
-			}
-			if current.Kind == domain.Sync && r.Outcome == "absent" && state == "ready" {
+			outcome := current.Reconcile(r.Outcome == "absent" || (r.Page != nil && !r.Page.Complete))
+			if current.Kind == domain.Sync && r.Outcome == "absent" && outcome.State == domain.Ready {
 				// Legacy queues could already have a replacement; preserve its continuation.
 				var replacement bool
 				err = scope.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM want_keep.jobs WHERE household_id=$1 AND connection_id=$2 AND id!=$3 AND state IN ('ready','running','waiting') AND NOT cancel_requested)`, p.HouseholdID(), current.ConnectionID, current.ID).Scan(&replacement)
@@ -87,7 +79,7 @@ func (s *Store) ReconcileJob(ctx context.Context, p household.Principal, r jobs.
 					return err
 				}
 				if replacement {
-					state = "canceled"
+					outcome.State, outcome.Reason = domain.Canceled, domain.Cancellation
 				}
 			}
 			if current.Kind == domain.Sync && r.Outcome == "confirmed" {
@@ -97,12 +89,12 @@ func (s *Store) ReconcileJob(ctx context.Context, p household.Principal, r jobs.
 					return err
 				}
 			}
-			if state == "succeeded" {
+			if outcome.State == domain.Succeeded {
 				if err = s.insertJobReceipt(ctx, p, current); err != nil {
 					return err
 				}
 			}
-			_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=$3,external_started=false,reason='',run_deadline=clock_timestamp()+INTERVAL '24 hours',available_at=clock_timestamp() WHERE household_id=$1 AND id=$2`, p.HouseholdID(), current.ID, state)
+			_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=$3,external_started=false,reason=$4,run_deadline=clock_timestamp()+INTERVAL '24 hours',available_at=clock_timestamp() WHERE household_id=$1 AND id=$2`, p.HouseholdID(), current.ID, outcome.State, outcome.Reason)
 			return err
 		})
 	}

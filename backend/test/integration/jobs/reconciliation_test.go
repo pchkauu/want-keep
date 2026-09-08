@@ -108,7 +108,7 @@ func TestConfirmedSyncPageReconciliation(t *testing.T) {
 					t.Fatal("confirmed page was repeated")
 				}
 				if test.lastAttempt {
-					if current.State != jobs.Failed || next.ID == issued.ID {
+					if current.State != jobs.Failed || current.Reason != "attempts_exhausted" || next.ID == issued.ID {
 						t.Fatal("attempt limit ignored")
 					}
 				} else if next.ID != issued.ID {

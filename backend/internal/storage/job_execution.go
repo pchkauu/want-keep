@@ -96,23 +96,7 @@ func (s *Store) SetJobOutcome(ctx context.Context, p household.Principal, j jobs
 	if delay < 0 || delay > time.Hour || (state != jobs.Ready && state != jobs.Failed && state != jobs.Waiting && state != jobs.Unresolved) || (state == jobs.Waiting && !reason.Waiting()) {
 		return jobs.ErrInvalidJob
 	}
-	return s.WithinHousehold(ctx, p, func(ctx context.Context) error {
-		current, err := s.FenceJob(ctx, p, j)
-		if err != nil {
-			return err
-		}
-		if current.ExternalStarted {
-			state = jobs.Unresolved
-			reason = jobs.ExternalUnknown
-		}
-		if state == jobs.Ready && current.Attempt >= current.MaxAttempts {
-			state = jobs.Failed
-			reason = "attempts_exhausted"
-		}
-		scope, _ := s.familyScope(ctx)
-		_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=$3,reason=$4,attempt=attempt-CASE WHEN $3='waiting' THEN 1 ELSE 0 END,available_at=clock_timestamp()+$5::bigint*INTERVAL '1 microsecond' WHERE household_id=$1 AND id=$2`, p.HouseholdID(), j.ID, state, reason, delay.Microseconds())
-		return err
-	})
+	return s.transitionJob(ctx, p, j, state, reason, delay)
 }
 
 // PauseReady never takes a lease or consumes an execution attempt.
@@ -120,8 +104,15 @@ func (s *Store) PauseReady(ctx context.Context, kind jobs.Kind, reason jobs.Reas
 	if !kind.Valid() || !reason.Waiting() {
 		return jobs.ErrInvalidJob
 	}
-	_, err := s.pool.Exec(ctx, `WITH pending AS (SELECT household_id,id FROM want_keep.jobs WHERE kind=$1 AND state='ready' AND NOT cancel_requested AND NOT external_started ORDER BY available_at,id LIMIT 100 FOR UPDATE SKIP LOCKED) UPDATE want_keep.jobs j SET state='waiting',reason=$2 FROM pending p WHERE (j.household_id,j.id)=(p.household_id,p.id)`, kind, reason)
-	return err
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+	if err = s.recoverJobs(ctx, tx, string(kind), reason); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 func (s *Store) ResumeWaiting(ctx context.Context, kind jobs.Kind, reason jobs.Reason) error {
 	if !kind.Valid() || !reason.Waiting() {

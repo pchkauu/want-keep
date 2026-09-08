@@ -71,9 +71,6 @@ func (w Worker) Step(ctx context.Context) (err error) {
 	}()
 
 	if w.Handler == nil {
-		if err := w.Repository.RecoverJobs(ctx, w.Config.Kind); err != nil {
-			return err
-		}
 		return w.Repository.PauseReady(ctx, w.Config.Kind, jobs.HandlerUnavailable)
 	}
 	if err := w.Repository.ResumeWaiting(ctx, w.Config.Kind, jobs.HandlerUnavailable); err != nil {

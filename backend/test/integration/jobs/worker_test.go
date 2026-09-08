@@ -126,6 +126,49 @@ func TestWorkerBudgetWaitAndUnknownRecovery(t *testing.T) {
 		t.Fatal("conflicting reconciliation accepted", err)
 	}
 }
+
+func TestMissingHandlerRetainsAgedUnstartedReview(t *testing.T) {
+	f := newFixture(t)
+	account := f.account(money.RUB, "100")
+	r := f.revision(uuid.NewString(), account, "-10", money.RUB, 1)
+	if _, err := f.write(r, request()); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.worker(app.OutboxHandler{Repository: f.store}).Step(testContext); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET deadline=clock_timestamp()-INTERVAL '1 day' WHERE kind='ai'`); err != nil {
+		t.Fatal(err)
+	}
+	worker := app.Worker{Repository: f.restart(), Config: app.DefaultWorkerConfig(jobs.AI)}
+	if err := worker.Step(testContext); err != nil {
+		t.Fatal(err)
+	}
+	var state, reason string
+	var attempt int
+	if err := f.admin.QueryRow(testContext, `SELECT state,reason,attempt FROM want_keep.jobs WHERE kind='ai'`).Scan(&state, &reason, &attempt); err != nil {
+		t.Fatal(err)
+	}
+	if state != "waiting" || reason != "handler_unavailable" || attempt != 0 {
+		t.Fatalf("unstarted review lost: %s/%s attempt %d", state, reason, attempt)
+	}
+	calls := 0
+	worker.Handler = handlerFunc(func(_ context.Context, x app.Execution) (app.Result, error) {
+		calls++
+		if x.Job.ResourceID != r.OperationID || x.Job.ResourceRevision != 1 {
+			t.Fatal("review identity changed")
+		}
+		return app.Result{State: jobs.Succeeded}, nil
+	})
+	for range 2 {
+		if err := worker.Step(testContext); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if calls != 1 || f.count("job_receipts") != 2 || f.available(account) != "90" {
+		t.Fatal("resumed review duplicated or changed accounting")
+	}
+}
 func TestExternalCrashAndExplicitAbsent(t *testing.T) {
 	f := newFixture(t)
 	f.event()
