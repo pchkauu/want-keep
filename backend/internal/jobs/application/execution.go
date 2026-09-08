@@ -36,9 +36,10 @@ func (e Execution) BeginExternal(ctx context.Context) error {
 }
 
 type Result struct {
-	State  jobs.State
-	Reason jobs.Reason
-	Apply  Effect
+	State        jobs.State
+	Reason       jobs.Reason
+	MinimumDelay time.Duration
+	Apply        Effect
 }
 type Handler interface {
 	Prepare(context.Context, Execution) (Result, error)

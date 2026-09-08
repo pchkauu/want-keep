@@ -59,7 +59,7 @@ func (h *Handler) Prepare(ctx context.Context, execution jobapp.Execution) (joba
 	}
 	reservation, err := ai.TerraPricing().Reservation(counted, request.MaximumOutputTokens)
 	if err != nil {
-		return h.recordKnownFailure(ctx, execution, request.ID, ai.MustCost("0"), "reservation_invalid", false)
+		return h.recordKnownFailure(ctx, execution, request.ID, ai.MustCost("0"), "reservation_invalid", false, 0)
 	}
 	if err = h.repository.ReserveAIAttempt(ctx, execution.Principal, job, request.ID, counted, reservation, now); err != nil {
 		return h.waitOrFail(err)
@@ -72,10 +72,10 @@ func (h *Handler) Prepare(ctx context.Context, execution jobapp.Execution) (joba
 		return h.handleGatewayFailure(ctx, execution, request.ID, reservation, true, err)
 	}
 	if providerResult.Usage.InputTokens < counted || providerResult.Usage.InputTokens > counted+ai.InputReservationMargin {
-		return h.markUnknown(execution, request.ID, "input_count_mismatch", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: &providerResult.Usage})
+		return h.markUnknown(execution, request.ID, "input_count_mismatch", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: ObserveUsage(providerResult.Usage)})
 	}
 	if providerResult.Usage.OutputTokens < 1 || providerResult.Usage.OutputTokens > request.MaximumOutputTokens {
-		return h.markUnknown(execution, request.ID, "output_count_mismatch", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: &providerResult.Usage})
+		return h.markUnknown(execution, request.ID, "output_count_mismatch", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: ObserveUsage(providerResult.Usage)})
 	}
 	actual, conservative, err := ai.TerraPricing().Actual(providerResult.Usage)
 	if err != nil {
@@ -83,7 +83,7 @@ func (h *Handler) Prepare(ctx context.Context, execution jobapp.Execution) (joba
 	}
 	comparison, err := actual.Compare(reservation)
 	if err != nil {
-		return h.markUnknown(execution, request.ID, "cost_invalid", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: &providerResult.Usage})
+		return h.markUnknown(execution, request.ID, "cost_invalid", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: ObserveUsage(providerResult.Usage)})
 	}
 	settlement := Settlement{Result: providerResult, Reservation: reservation, Actual: &actual, Conservative: conservative, NeedsReconciliation: comparison > 0}
 	if providerResult.State == ai.Completed {
@@ -107,17 +107,25 @@ func (h *Handler) handleGatewayFailure(ctx context.Context, execution jobapp.Exe
 	if failure.OutcomeUnknown {
 		return h.markUnknown(execution, attemptID, failure.Code, failure.Observation)
 	}
-	if generation && failure.Retryable && !failure.ConfirmedNoCharge {
+	if generation && !failure.ConfirmedNoCharge {
 		return h.markUnknown(execution, attemptID, "provider_charge_unknown", failure.Observation)
 	}
 	if !generation && failure.Retryable {
+		if failure.RetryAfter > 0 {
+			return h.recordProviderRetry(execution, attemptID, failure.Code, failure.RetryAfter)
+		}
 		return h.recordProviderWait(execution, attemptID, failure.Code)
 	}
-	if generation && failure.Retryable {
-		failure.Code = "provider_retryable_rejection"
-	}
 	result := ai.Result{State: ai.KnownRejection, Code: failure.Code}
-	return h.recordKnownFailure(ctx, execution, attemptID, reservation, result.Code, failure.Retryable)
+	return h.recordKnownFailure(ctx, execution, attemptID, reservation, result.Code, failure.Retryable, failure.RetryAfter)
+}
+
+func (h *Handler) recordProviderRetry(execution jobapp.Execution, attemptID, code string, retryAfter time.Duration) (jobapp.Result, error) {
+	retryAfter = min(max(retryAfter, 0), jobs.DefaultRetryPolicy().Maximum)
+	settlement := Settlement{Result: ai.Result{State: ai.KnownRejection, Code: code}, Reservation: ai.MustCost("0")}
+	return jobapp.Result{State: jobs.Ready, Reason: jobs.TemporaryFailure, MinimumDelay: retryAfter, Apply: func(ctx context.Context, _ household.Principal) error {
+		return h.repository.SaveAIOutcome(ctx, execution.Principal, execution.Job, attemptID, settlement, h.now().UTC())
+	}}, nil
 }
 
 func (h *Handler) recordProviderWait(execution jobapp.Execution, attemptID, code string) (jobapp.Result, error) {
@@ -127,7 +135,8 @@ func (h *Handler) recordProviderWait(execution jobapp.Execution, attemptID, code
 	}}, nil
 }
 
-func (h *Handler) recordKnownFailure(ctx context.Context, execution jobapp.Execution, attemptID string, reservation ai.Cost, code string, retryable bool) (jobapp.Result, error) {
+func (h *Handler) recordKnownFailure(ctx context.Context, execution jobapp.Execution, attemptID string, reservation ai.Cost, code string, retryable bool, retryAfter time.Duration) (jobapp.Result, error) {
+	retryAfter = min(max(retryAfter, 0), jobs.DefaultRetryPolicy().Maximum)
 	settlement := Settlement{Result: ai.Result{State: ai.KnownRejection, Code: code}, Reservation: reservation}
 	canRetry := false
 	if retryable {
@@ -140,6 +149,7 @@ func (h *Handler) recordKnownFailure(ctx context.Context, execution jobapp.Execu
 	result := jobapp.Result{State: jobs.Failed, Reason: jobs.PermanentFailure}
 	if retryable && canRetry {
 		result.State, result.Reason = jobs.Ready, jobs.TemporaryFailure
+		result.MinimumDelay = retryAfter
 	}
 	result.Apply = func(ctx context.Context, _ household.Principal) error {
 		return h.repository.SaveAIOutcome(ctx, execution.Principal, execution.Job, attemptID, settlement, h.now().UTC())

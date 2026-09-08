@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	aiapp "github.com/pchkauu/want-keep/backend/internal/ai/application"
 	ai "github.com/pchkauu/want-keep/backend/internal/ai/domain"
@@ -141,6 +142,12 @@ func TestGenerationKeepsUnauditableResponseBehindReconciliation(t *testing.T) {
 			if !errors.As(err, &failure) || !failure.OutcomeUnknown || failure.Observation.ID != "resp_synthetic" {
 				t.Fatalf("response was not preserved for reconciliation: %+v, %v", failure, err)
 			}
+			if test.name == "contradictory total" {
+				usage := failure.Observation.Usage
+				if usage == nil || usage.InputTokens == nil || *usage.InputTokens != 100 || usage.OutputTokens == nil || *usage.OutputTokens != 50 || usage.TotalTokens == nil || *usage.TotalTokens != 149 {
+					t.Fatalf("contradictory usage evidence was discarded: %+v", usage)
+				}
+			}
 		})
 	}
 }
@@ -174,14 +181,50 @@ func TestProviderHTTPFailuresPreserveChargeUncertainty(t *testing.T) {
 				client := newTestClientWithHTTP(t, "http://127.0.0.1/v1", httpClient)
 				err := call.run(client, validRequest(client.Contract()))
 				var failure aiapp.GatewayFailure
-				wantUnknown := call.name == "generation" && (testCase.status == http.StatusRequestTimeout || testCase.status >= 500)
+				wantUnknown := call.name == "generation" && (testCase.status == http.StatusRequestTimeout || testCase.status == http.StatusTooManyRequests || testCase.status >= 500)
 				wantRetryable := testCase.retryable && !wantUnknown
-				wantConfirmedNoCharge := call.name == "generation" && testCase.status == http.StatusTooManyRequests
+				if testCase.status == http.StatusTooManyRequests {
+					wantRetryable = false
+				}
+				wantConfirmedNoCharge := false
 				if !errors.As(err, &failure) || failure.Retryable != wantRetryable || failure.OutcomeUnknown != wantUnknown || failure.ConfirmedNoCharge != wantConfirmedNoCharge || requests != 1 {
 					t.Fatalf("failure classification: calls=%d failure=%+v err=%v", requests, failure, err)
 				}
 			})
 		}
+	}
+}
+
+func TestProvider429ClassificationUsesStructuredCodeAndBoundedRetry(t *testing.T) {
+	tests := []struct {
+		name, code, kind, wantCode string
+		retryable, confirmed       bool
+		wantDelay                  time.Duration
+	}{
+		{"request rate", "rate_limit_exceeded", "requests", "provider_rate_limited", true, true, 2 * time.Minute},
+		{"quota", "insufficient_quota", "insufficient_quota", "provider_quota_exhausted", false, true, 0},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				response := jsonResponse(t, http.StatusTooManyRequests, map[string]any{"error": map[string]any{
+					"message": "synthetic", "type": test.kind, "code": test.code, "param": nil,
+				}})
+				response.Header.Set("Retry-After", "120")
+				return response, nil
+			})}
+			client := newTestClientWithHTTP(t, "http://127.0.0.1/v1", httpClient)
+			_, err := client.Generate(context.Background(), validRequest(client.Contract()))
+			var failure aiapp.GatewayFailure
+			if !errors.As(err, &failure) || failure.Code != test.wantCode || failure.Retryable != test.retryable || failure.ConfirmedNoCharge != test.confirmed || failure.OutcomeUnknown || failure.RetryAfter != test.wantDelay {
+				t.Fatalf("429 classification mismatch: %+v, %v", failure, err)
+			}
+		})
+	}
+
+	response := &http.Response{Header: http.Header{"Retry-After": []string{"999999"}}}
+	if delay := boundedRetryAfter(response); delay != 5*time.Minute {
+		t.Fatalf("unbounded retry delay: %v", delay)
 	}
 }
 

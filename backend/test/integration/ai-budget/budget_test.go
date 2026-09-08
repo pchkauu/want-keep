@@ -530,28 +530,109 @@ func TestUnknownProviderOutcomeIsNotRetried(t *testing.T) {
 	}
 }
 
-func TestUnconfirmedRetryableGenerationFailureKeepsReservation(t *testing.T) {
+func TestUnconfirmedGenerationFailureKeepsReservation(t *testing.T) {
+	for _, failure := range []aiapp.GatewayFailure{
+		{Code: "provider_400"}, {Code: "provider_401"}, {Code: "provider_403"},
+		{Code: "provider_5xx", Retryable: true},
+	} {
+		t.Run(failure.Code, func(t *testing.T) {
+			f := newFixture(t)
+			f.enqueueReviewJobs(1)
+			gateway := &fakeGateway{generateErr: failure}
+			handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
+			worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
+			if err := worker.Step(testContext); err != nil {
+				t.Fatal(err)
+			}
+			var jobState, attemptState, code, reconciliation string
+			if err := f.admin.QueryRow(testContext, `SELECT j.state,s.state,s.code,s.reconciliation_state FROM want_keep.jobs j JOIN want_keep.ai_attempts a ON (a.household_id,a.job_id)=(j.household_id,j.id) JOIN LATERAL(SELECT state,code,reconciliation_state FROM want_keep.ai_attempt_states current WHERE (current.household_id,current.attempt_id)=(a.household_id,a.id) ORDER BY revision DESC LIMIT 1) s ON true WHERE j.kind='ai'`).Scan(&jobState, &attemptState, &code, &reconciliation); err != nil {
+				t.Fatal(err)
+			}
+			if jobState != "unresolved" || attemptState != "unknown" || code != "provider_charge_unknown" || reconciliation != "pending" || gateway.generateCalls.Load() != 1 {
+				t.Fatalf("unconfirmed provider failure released reservation: %s/%s/%s/%s calls=%d", jobState, attemptState, code, reconciliation, gateway.generateCalls.Load())
+			}
+		})
+	}
+}
+
+func TestUnknownPersistsContradictoryProviderUsageEvidence(t *testing.T) {
 	f := newFixture(t)
-	f.enqueueReviewJobs(1)
-	gateway := &fakeGateway{generateErr: aiapp.GatewayFailure{Code: "provider_5xx", Retryable: true}}
+	job := f.newReviewJobs(1)[0]
+	request := f.request(job)
+	reservation, _ := ai.TerraPricing().Reservation(100, 2048)
+	if err := f.store.StartAIAttempt(testContext, f.p, job, request, strings.Repeat("d", 64), f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.ReserveAIAttempt(testContext, f.p, job, request.ID, 100, reservation, f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.BeginAIGeneration(testContext, f.p, job, request.ID, f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	input, cached, output, reasoning, total := int64(100), int64(20), int64(50), int64(12), int64(149)
+	observation := aiapp.ProviderObservation{ID: "resp_synthetic", Model: "gpt-5.6-terra", Usage: &aiapp.ObservedUsage{
+		InputTokens: &input, CachedTokens: &cached, OutputTokens: &output, ReasoningTokens: &reasoning, TotalTokens: &total,
+	}}
+	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
+		return f.store.MarkAIUnknown(ctx, f.p, job, request.ID, "usage_invalid", observation, f.now.Time())
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var raw string
+	var actual *string
+	if err := f.admin.QueryRow(testContext, `SELECT observed_usage::text,actual_usd::text FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, f.family.ID, request.ID).Scan(&raw, &actual); err != nil {
+		t.Fatal(err)
+	}
+	for _, fragment := range []string{`"input_tokens": 100`, `"output_tokens": 50`, `"total_tokens": 149`} {
+		if !strings.Contains(raw, fragment) {
+			t.Fatalf("provider evidence %q missing from %s", fragment, raw)
+		}
+	}
+	if actual != nil {
+		t.Fatalf("contradictory usage affected accounting: %s", *actual)
+	}
+}
+
+func TestConservativeCacheWriteCostCanBeReconciledWithoutBlocking(t *testing.T) {
+	f := newFixture(t)
+	f.enqueueReviewJobs(2)
+	result := completedResult()
+	result.Usage.CacheWriteTokens = nil
+	gateway := &fakeGateway{result: result}
 	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
 	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
 	if err := worker.Step(testContext); err != nil {
 		t.Fatal(err)
 	}
-	var jobState, attemptState, code, reconciliation string
-	if err := f.admin.QueryRow(testContext, `SELECT j.state,s.state,s.code,s.reconciliation_state FROM want_keep.jobs j JOIN want_keep.ai_attempts a ON (a.household_id,a.job_id)=(j.household_id,j.id) JOIN LATERAL(SELECT state,code,reconciliation_state FROM want_keep.ai_attempt_states current WHERE (current.household_id,current.attempt_id)=(a.household_id,a.id) ORDER BY revision DESC LIMIT 1) s ON true WHERE j.kind='ai'`).Scan(&jobState, &attemptState, &code, &reconciliation); err != nil {
+	var attemptID, state, reconciliation, actual string
+	var conservative bool
+	if err := f.admin.QueryRow(testContext, `SELECT a.id,s.state,s.reconciliation_state,s.actual_usd::text,s.conservative_cost FROM want_keep.ai_attempts a JOIN LATERAL(SELECT * FROM want_keep.ai_attempt_states current WHERE (current.household_id,current.attempt_id)=(a.household_id,a.id) ORDER BY revision DESC LIMIT 1) s ON true ORDER BY a.created_at LIMIT 1`).Scan(&attemptID, &state, &reconciliation, &actual, &conservative); err != nil {
 		t.Fatal(err)
 	}
-	if jobState != "unresolved" || attemptState != "unknown" || code != "provider_charge_unknown" || reconciliation != "pending" || gateway.generateCalls.Load() != 1 {
-		t.Fatalf("unconfirmed provider failure released reservation: %s/%s/%s/%s calls=%d", jobState, attemptState, code, reconciliation, gateway.generateCalls.Load())
+	if state != "completed" || reconciliation != "conservative" || actual != "0.000804" || !conservative {
+		t.Fatalf("conservative settlement mismatch: %s/%s/%s/%t", state, reconciliation, actual, conservative)
+	}
+	jobsReady := f.newReviewJobs(1)
+	next := f.request(jobsReady[0])
+	if err := f.store.StartAIAttempt(testContext, f.p, jobsReady[0], next, strings.Repeat("e", 64), f.now.Time()); err != nil {
+		t.Fatalf("conservative estimate blocked later work: %v", err)
+	}
+	service := aiapp.NewReconciliationService(f.maintenanceStore())
+	if err := service.Reconcile(testContext, attemptID, aiapp.Charged, ai.MustCost("0.000764"), "provider-dashboard:cache-write-exact"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.admin.QueryRow(testContext, `SELECT reconciliation_state,actual_usd::text,conservative_cost FROM want_keep.ai_attempt_states WHERE attempt_id=$1 ORDER BY revision DESC LIMIT 1`, attemptID).Scan(&reconciliation, &actual, &conservative); err != nil {
+		t.Fatal(err)
+	}
+	if reconciliation != "resolved" || actual != "0.000764" || conservative {
+		t.Fatalf("exact reconciliation mismatch: %s/%s/%t", reconciliation, actual, conservative)
 	}
 }
 
 func TestKnownRetryableFailureAllowsOnlyOneNewAttempt(t *testing.T) {
 	f := newFixture(t)
 	f.enqueueReviewJobs(1)
-	gateway := &fakeGateway{generateErr: aiapp.GatewayFailure{Code: "provider_429", Retryable: true, ConfirmedNoCharge: true}}
+	gateway := &fakeGateway{generateErr: aiapp.GatewayFailure{Code: "provider_rate_limited", Retryable: true, ConfirmedNoCharge: true, RetryAfter: 2 * time.Minute}}
 	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
 	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
 	for step := range 3 {
@@ -559,6 +640,10 @@ func TestKnownRetryableFailureAllowsOnlyOneNewAttempt(t *testing.T) {
 			t.Fatal(err)
 		}
 		if step == 0 {
+			var remaining float64
+			if err := f.admin.QueryRow(testContext, `SELECT EXTRACT(EPOCH FROM available_at-clock_timestamp()) FROM want_keep.jobs WHERE kind='ai'`).Scan(&remaining); err != nil || remaining < 119 {
+				t.Fatalf("provider retry delay was not preserved: %.3f, %v", remaining, err)
+			}
 			if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET available_at=clock_timestamp() WHERE kind='ai' AND state='ready'`); err != nil {
 				t.Fatal(err)
 			}
@@ -590,7 +675,7 @@ func TestPrecountOutageWaitsAndDoesNotConsumeProviderRetry(t *testing.T) {
 		t.Fatalf("precount outage did not wait: %s/%s %v", state, reason, err)
 	}
 	gateway.countErr = nil
-	gateway.generateErr = aiapp.GatewayFailure{Code: "provider_429", Retryable: true, ConfirmedNoCharge: true}
+	gateway.generateErr = aiapp.GatewayFailure{Code: "provider_rate_limited", Retryable: true, ConfirmedNoCharge: true}
 	if err := aiapp.NewGatewayQueue(f.store, time.Minute).Step(testContext); err != nil {
 		t.Fatal(err)
 	}
@@ -609,6 +694,49 @@ func TestPrecountOutageWaitsAndDoesNotConsumeProviderRetry(t *testing.T) {
 	}
 	if err := f.admin.QueryRow(testContext, `SELECT state FROM want_keep.jobs WHERE kind='ai'`).Scan(&state); err != nil || state != "failed" {
 		t.Fatalf("provider retry allowance mismatch: %s %v", state, err)
+	}
+}
+
+func TestPrecountRateLimitHonorsDelayWithoutConsumingGenerationRetry(t *testing.T) {
+	f := newFixture(t)
+	f.enqueueReviewJobs(1)
+	gateway := &fakeGateway{
+		result:   completedResult(),
+		countErr: aiapp.GatewayFailure{Code: "provider_rate_limited", Retryable: true, RetryAfter: 2 * time.Minute},
+	}
+	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
+	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
+	for range 2 {
+		if err := worker.Step(testContext); err != nil {
+			t.Fatal(err)
+		}
+		var state string
+		var remaining float64
+		if err := f.admin.QueryRow(testContext, `SELECT state,EXTRACT(EPOCH FROM available_at-clock_timestamp()) FROM want_keep.jobs WHERE kind='ai'`).Scan(&state, &remaining); err != nil || state != "ready" || remaining < 119 {
+			t.Fatalf("pre-count rate limit was not delayed: %s %.3f %v", state, remaining, err)
+		}
+		if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET available_at=clock_timestamp() WHERE kind='ai'`); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gateway.countErr = nil
+	gateway.generateErr = aiapp.GatewayFailure{Code: "provider_rate_limited", Retryable: true, ConfirmedNoCharge: true}
+	for step := range 2 {
+		if err := worker.Step(testContext); err != nil {
+			t.Fatal(err)
+		}
+		if step == 0 {
+			if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET available_at=clock_timestamp() WHERE kind='ai' AND state='ready'`); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	var state string
+	if err := f.admin.QueryRow(testContext, `SELECT state FROM want_keep.jobs WHERE kind='ai'`).Scan(&state); err != nil || state != "failed" {
+		t.Fatalf("generation retry allowance changed after pre-count rate limits: %s %v", state, err)
+	}
+	if gateway.countCalls.Load() != 4 || gateway.generateCalls.Load() != 2 {
+		t.Fatalf("provider attempts: count=%d generation=%d", gateway.countCalls.Load(), gateway.generateCalls.Load())
 	}
 }
 
@@ -632,7 +760,7 @@ func TestRecoveredPreSendReservationDoesNotConsumeGenerationLimit(t *testing.T) 
 	if err = f.store.RecoverJobs(testContext, jobs.AI); err != nil {
 		t.Fatal(err)
 	}
-	gateway := &fakeGateway{generateErr: aiapp.GatewayFailure{Code: "provider_429", Retryable: true, ConfirmedNoCharge: true}}
+	gateway := &fakeGateway{generateErr: aiapp.GatewayFailure{Code: "provider_rate_limited", Retryable: true, ConfirmedNoCharge: true}}
 	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
 	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
 	for step := range 2 {

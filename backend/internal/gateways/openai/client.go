@@ -9,7 +9,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	openaisdk "github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
@@ -154,9 +156,10 @@ func (c *Client) Generate(ctx context.Context, request ai.Request) (ai.Result, e
 	if observation.Model != string(request.Model) {
 		return ai.Result{}, aiapp.GatewayFailure{Code: "model_mismatch", OutcomeUnknown: true, Observation: observation}
 	}
+	validatedUsage, _ := observation.Usage.Exact()
 	result := ai.Result{
 		ProviderID: observation.ID, ProviderModel: observation.Model,
-		State: ai.Completed, Output: json.RawMessage(response.OutputText()), Usage: *observation.Usage,
+		State: ai.Completed, Output: json.RawMessage(response.OutputText()), Usage: validatedUsage,
 	}
 	switch response.Status {
 	case responses.ResponseStatusCompleted:
@@ -185,6 +188,34 @@ func providerObservation(response *responses.Response) (aiapp.ProviderObservatio
 		observation.Model = string(response.Model)
 	}
 	usage := response.Usage
+	observed := aiapp.ObservedUsage{}
+	if usage.JSON.InputTokens.Valid() {
+		value := usage.InputTokens
+		observed.InputTokens = &value
+	}
+	if usage.InputTokensDetails.JSON.CachedTokens.Valid() {
+		value := usage.InputTokensDetails.CachedTokens
+		observed.CachedTokens = &value
+	}
+	if usage.InputTokensDetails.JSON.CacheWriteTokens.Valid() {
+		value := usage.InputTokensDetails.CacheWriteTokens
+		observed.CacheWriteTokens = &value
+	}
+	if usage.JSON.OutputTokens.Valid() {
+		value := usage.OutputTokens
+		observed.OutputTokens = &value
+	}
+	if usage.OutputTokensDetails.JSON.ReasoningTokens.Valid() {
+		value := usage.OutputTokensDetails.ReasoningTokens
+		observed.ReasoningTokens = &value
+	}
+	if usage.JSON.TotalTokens.Valid() {
+		value := usage.TotalTokens
+		observed.TotalTokens = &value
+	}
+	if observed.Validate() == nil {
+		observation.Usage = &observed
+	}
 	valid := response.JSON.ID.Valid() && response.ID != "" && response.JSON.Model.Valid() && observation.Model != "" &&
 		response.JSON.Status.Valid() && response.JSON.Usage.Valid() && usage.JSON.InputTokens.Valid() &&
 		usage.JSON.InputTokensDetails.Valid() && usage.InputTokensDetails.JSON.CachedTokens.Valid() &&
@@ -193,18 +224,12 @@ func providerObservation(response *responses.Response) (aiapp.ProviderObservatio
 	if !valid {
 		return observation, false
 	}
-	value := ai.Usage{
-		InputTokens: usage.InputTokens, CachedTokens: usage.InputTokensDetails.CachedTokens,
-		OutputTokens: usage.OutputTokens, ReasoningTokens: usage.OutputTokensDetails.ReasoningTokens,
-	}
-	if usage.InputTokensDetails.JSON.CacheWriteTokens.Valid() {
-		writes := usage.InputTokensDetails.CacheWriteTokens
-		value.CacheWriteTokens = &writes
-	}
-	if value.Validate() != nil || usage.TotalTokens != usage.InputTokens+usage.OutputTokens {
+	value, exact := observed.Exact()
+	if !exact {
 		return observation, false
 	}
-	observation.Usage = &value
+	observation.Usage = aiapp.ObserveUsage(value)
+	observation.Usage.TotalTokens = observed.TotalTokens
 	return observation, true
 }
 
@@ -235,8 +260,22 @@ func classifyError(err error, generation bool) error {
 		if generation && (status == http.StatusRequestTimeout || status >= 500) {
 			return aiapp.GatewayFailure{Code: "provider_unknown", OutcomeUnknown: true}
 		}
-		if generation && status == http.StatusTooManyRequests {
-			return aiapp.GatewayFailure{Code: "provider_rejected", Retryable: true, ConfirmedNoCharge: true}
+		if status == http.StatusTooManyRequests {
+			code, kind := "", ""
+			if apiError.JSON.Code.Valid() {
+				code = apiError.Code
+			}
+			if apiError.JSON.Type.Valid() {
+				kind = apiError.Type
+			}
+			switch {
+			case code == "rate_limit_exceeded":
+				return aiapp.GatewayFailure{Code: "provider_rate_limited", Retryable: true, ConfirmedNoCharge: generation, RetryAfter: boundedRetryAfter(apiError.Response)}
+			case code == "insufficient_quota" || kind == "insufficient_quota":
+				return aiapp.GatewayFailure{Code: "provider_quota_exhausted", ConfirmedNoCharge: generation}
+			default:
+				return aiapp.GatewayFailure{Code: "provider_429_unclassified", OutcomeUnknown: generation}
+			}
 		}
 		return aiapp.GatewayFailure{
 			Code:      "provider_rejected",
@@ -247,4 +286,32 @@ func classifyError(err error, generation bool) error {
 		return aiapp.GatewayFailure{Code: "provider_unknown", OutcomeUnknown: true}
 	}
 	return aiapp.GatewayFailure{Code: "provider_unavailable", Retryable: !generation, OutcomeUnknown: generation}
+}
+
+func boundedRetryAfter(response *http.Response) time.Duration {
+	if response == nil {
+		return 0
+	}
+	const maximum = 5 * time.Minute
+	if raw := response.Header.Get("Retry-After-Ms"); raw != "" {
+		milliseconds, err := strconv.ParseInt(raw, 10, 64)
+		if err == nil && milliseconds > 0 {
+			if milliseconds >= int64(maximum/time.Millisecond) {
+				return maximum
+			}
+			return time.Duration(milliseconds) * time.Millisecond
+		}
+	}
+	if raw := response.Header.Get("Retry-After"); raw != "" {
+		if seconds, err := strconv.ParseInt(raw, 10, 64); err == nil && seconds > 0 {
+			if seconds >= int64(maximum/time.Second) {
+				return maximum
+			}
+			return time.Duration(seconds) * time.Second
+		}
+		if at, err := http.ParseTime(raw); err == nil {
+			return min(max(time.Until(at), 0), maximum)
+		}
+	}
+	return 0
 }

@@ -219,7 +219,7 @@ func (s *Store) AIOutcomeRetryAllowed(ctx context.Context, p household.Principal
 		return false, err
 	}
 	var retryableRejections int
-	err = q.QueryRow(ctx, `SELECT count(*) FROM want_keep.ai_attempts a JOIN LATERAL(SELECT state,code FROM want_keep.ai_attempt_states s WHERE (s.household_id,s.attempt_id)=(a.household_id,a.id) ORDER BY revision DESC LIMIT 1) latest ON true WHERE a.household_id=$1 AND a.job_id=$2 AND latest.state='known_rejection' AND latest.code='provider_retryable_rejection'`, p.HouseholdID(), job.ID).Scan(&retryableRejections)
+	err = q.QueryRow(ctx, `SELECT count(*) FROM want_keep.ai_attempts a JOIN LATERAL(SELECT state,code,external_started FROM want_keep.ai_attempt_states s WHERE (s.household_id,s.attempt_id)=(a.household_id,a.id) ORDER BY revision DESC LIMIT 1) latest ON true WHERE a.household_id=$1 AND a.job_id=$2 AND latest.external_started AND latest.state='known_rejection' AND latest.code='provider_rate_limited'`, p.HouseholdID(), job.ID).Scan(&retryableRejections)
 	return retryableRejections == 0, err
 }
 
@@ -291,13 +291,16 @@ func (s *Store) MarkAIUnknown(ctx context.Context, p household.Principal, job jo
 	current.Revision++
 	current.State, current.Code = ai.Unknown, code
 	current.Reconciliation = "pending"
-	current.ProviderID, current.ProviderModel, current.Usage = observation.ID, observation.Model, observation.Usage
+	current.ProviderID, current.ProviderModel, current.ObservedUsage = observation.ID, observation.Model, observation.Usage
 	if observation.Usage != nil {
-		actual, conservative, costErr := ai.TerraPricing().Actual(*observation.Usage)
-		if costErr != nil {
-			return costErr
+		if usage, exact := observation.Usage.Exact(); exact {
+			current.Usage = &usage
+			actual, conservative, costErr := ai.TerraPricing().Actual(usage)
+			if costErr != nil {
+				return costErr
+			}
+			current.Actual, current.Conservative = &actual, conservative
 		}
-		current.Actual, current.Conservative = &actual, conservative
 	}
 	current.RecordedAt = now
 	return s.insertAIState(ctx, scope.tx, p.HouseholdID(), attemptID, current)
@@ -312,6 +315,7 @@ type aiState struct {
 	ProviderID      string
 	ProviderModel   string
 	Usage           *ai.Usage
+	ObservedUsage   *aiapp.ObservedUsage
 	Actual          *ai.Cost
 	Conservative    bool
 	Output          json.RawMessage
@@ -323,16 +327,17 @@ type aiState struct {
 }
 
 func (s *Store) lockAIState(ctx context.Context, tx pgx.Tx, family household.HouseholdID, id string) (aiState, error) {
-	return scanAIState(tx.QueryRow(ctx, `SELECT revision,state,counted_input_tokens,reservation_usd::text,external_started,COALESCE(provider_id,''),COALESCE(provider_model,''),input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,actual_usd::text,conservative_cost,structured_output,validation_state,code,reconciliation_state,COALESCE(evidence_ref,''),recorded_at,recorded_ns FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, family, id))
+	return scanAIState(tx.QueryRow(ctx, `SELECT revision,state,counted_input_tokens,reservation_usd::text,external_started,COALESCE(provider_id,''),COALESCE(provider_model,''),input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,observed_usage,actual_usd::text,conservative_cost,structured_output,validation_state,code,reconciliation_state,COALESCE(evidence_ref,''),recorded_at,recorded_ns FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, family, id))
 }
 
 func scanAIState(row pgx.Row) (aiState, error) {
 	var state aiState
 	var reservation, actual *string
 	var input, cached, writes, output, reasoning *int64
+	var observed []byte
 	var at time.Time
 	var ns int16
-	err := row.Scan(&state.Revision, &state.State, &state.Counted, &reservation, &state.ExternalStarted, &state.ProviderID, &state.ProviderModel, &input, &cached, &writes, &output, &reasoning, &actual, &state.Conservative, &state.Output, &state.Validation, &state.Code, &state.Reconciliation, &state.EvidenceRef, &at, &ns)
+	err := row.Scan(&state.Revision, &state.State, &state.Counted, &reservation, &state.ExternalStarted, &state.ProviderID, &state.ProviderModel, &input, &cached, &writes, &output, &reasoning, &observed, &actual, &state.Conservative, &state.Output, &state.Validation, &state.Code, &state.Reconciliation, &state.EvidenceRef, &at, &ns)
 	if err != nil {
 		return state, err
 	}
@@ -356,6 +361,13 @@ func scanAIState(row pgx.Row) (aiState, error) {
 			return state, ai.ErrInvalidAttempt
 		}
 		state.Usage = &ai.Usage{InputTokens: *input, CachedTokens: *cached, CacheWriteTokens: writes, OutputTokens: *output, ReasoningTokens: *reasoning}
+	}
+	if len(observed) > 0 {
+		var usage aiapp.ObservedUsage
+		if len(observed) > 2048 || json.Unmarshal(observed, &usage) != nil || usage.Validate() != nil {
+			return state, ai.ErrInvalidAttempt
+		}
+		state.ObservedUsage = &usage
 	}
 	return state, nil
 }
@@ -383,7 +395,18 @@ func (s *Store) insertAIState(ctx context.Context, tx pgx.Tx, family household.H
 	if len(state.Output) > 0 {
 		structured = state.Output
 	}
-	_, err := tx.Exec(ctx, `INSERT INTO want_keep.ai_attempt_states(household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,external_started,provider_id,provider_model,input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,actual_usd,conservative_cost,structured_output,validation_state,code,reconciliation_state,evidence_ref,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,NULLIF($8,''),NULLIF($9,''),$10,$11,$12,$13,$14,$15::numeric,$16,$17,$18,$19,$20,NULLIF($21,''),$22,$23)`, family, attemptID, state.Revision, state.State, state.Counted, reservation, state.ExternalStarted, state.ProviderID, state.ProviderModel, input, cached, writes, output, reasoning, actual, state.Conservative, structured, state.Validation, state.Code, defaultReconciliation(state.Reconciliation), state.EvidenceRef, at, ns)
+	var observed any
+	if state.ObservedUsage != nil {
+		if state.ObservedUsage.Validate() != nil {
+			return ai.ErrInvalidAttempt
+		}
+		encoded, err := json.Marshal(state.ObservedUsage)
+		if err != nil || len(encoded) > 2048 {
+			return ai.ErrInvalidAttempt
+		}
+		observed = encoded
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO want_keep.ai_attempt_states(household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,external_started,provider_id,provider_model,input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,observed_usage,actual_usd,conservative_cost,structured_output,validation_state,code,reconciliation_state,evidence_ref,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,NULLIF($8,''),NULLIF($9,''),$10,$11,$12,$13,$14,$15,$16::numeric,$17,$18,$19,$20,$21,NULLIF($22,''),$23,$24)`, family, attemptID, state.Revision, state.State, state.Counted, reservation, state.ExternalStarted, state.ProviderID, state.ProviderModel, input, cached, writes, output, reasoning, observed, actual, state.Conservative, structured, state.Validation, state.Code, defaultReconciliation(state.Reconciliation), state.EvidenceRef, at, ns)
 	return err
 }
 
@@ -412,6 +435,8 @@ func (s *Store) writeAISettlement(ctx context.Context, tx pgx.Tx, family househo
 	}
 	if settlement.NeedsReconciliation {
 		next.Reconciliation = "pending"
+	} else if settlement.Conservative {
+		next.Reconciliation = "conservative"
 	}
 	if settlement.Result.State == ai.KnownRejection {
 		next.Usage = nil

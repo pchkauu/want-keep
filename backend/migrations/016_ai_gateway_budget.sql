@@ -28,12 +28,13 @@ CREATE TABLE want_keep.ai_attempt_states (
  input_tokens bigint CHECK(input_tokens>=0), cached_tokens bigint CHECK(cached_tokens>=0),
  cache_write_tokens bigint CHECK(cache_write_tokens>=0), output_tokens bigint CHECK(output_tokens>=0),
  reasoning_tokens bigint CHECK(reasoning_tokens>=0),
+ observed_usage jsonb CHECK(observed_usage IS NULL OR jsonb_typeof(observed_usage)='object' AND pg_column_size(observed_usage)<=2048),
  actual_usd numeric CHECK(actual_usd>=0 AND length(actual_usd::text)<=128 AND actual_usd::text NOT IN ('NaN','Infinity','-Infinity')),
  conservative_cost boolean NOT NULL DEFAULT false,
  structured_output jsonb CHECK(structured_output IS NULL OR jsonb_typeof(structured_output)='object'),
  validation_state text NOT NULL DEFAULT '' CHECK(validation_state IN ('','pending_validation')),
  code text NOT NULL DEFAULT '' CHECK(length(code)<=100),
- reconciliation_state text NOT NULL DEFAULT 'none' CHECK(reconciliation_state IN ('none','pending','resolved')),
+ reconciliation_state text NOT NULL DEFAULT 'none' CHECK(reconciliation_state IN ('none','pending','conservative','resolved')),
  evidence_ref text CHECK(evidence_ref IS NULL OR length(evidence_ref) BETWEEN 1 AND 2000),
  recorded_at timestamptz NOT NULL, recorded_ns want_keep.submicro NOT NULL,
  PRIMARY KEY(household_id,attempt_id,revision),
@@ -109,7 +110,7 @@ BEGIN
   RAISE EXCEPTION 'invalid AI reconciliation state' USING ERRCODE = '22023';
  END IF;
 
- v_terminal := v_state.reconciliation_state='pending'
+ v_terminal := v_state.reconciliation_state IN ('pending','conservative')
   AND v_state.state IN ('completed','refused','incomplete','schema_error')
   AND NOT v_job.external_started
   AND ((v_state.state='completed' AND v_job.state='succeeded')
@@ -128,7 +129,7 @@ BEGIN
  INSERT INTO want_keep.ai_attempt_states(
   household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,
   external_started,provider_id,provider_model,input_tokens,cached_tokens,
-  cache_write_tokens,output_tokens,reasoning_tokens,actual_usd,conservative_cost,
+  cache_write_tokens,output_tokens,reasoning_tokens,observed_usage,actual_usd,conservative_cost,
   structured_output,validation_state,code,reconciliation_state,evidence_ref,
   recorded_at,recorded_ns
  ) VALUES (
@@ -136,7 +137,7 @@ BEGIN
   CASE WHEN v_terminal THEN v_state.state ELSE 'unknown' END,v_state.counted_input_tokens,
   v_state.reservation_usd,false,v_state.provider_id,v_state.provider_model,
   v_state.input_tokens,v_state.cached_tokens,v_state.cache_write_tokens,
-  v_state.output_tokens,v_state.reasoning_tokens,p_actual,v_state.conservative_cost,
+  v_state.output_tokens,v_state.reasoning_tokens,v_state.observed_usage,p_actual,false,
   v_state.structured_output,
   CASE WHEN v_terminal THEN v_state.validation_state ELSE '' END,
   v_state.code,'resolved',p_evidence_ref,v_now,0
