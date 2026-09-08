@@ -3683,6 +3683,10 @@
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/21",
+      "verification_note": {
+        "ru": "Команды `make` реализованы и обязательны для локальной и CI-проверки task-2.5. Live provider IO, браузерная приёмка и production остаются последующим задачам и не подтверждаются этими suites.",
+        "en": "The `make` commands are implemented and required for local and CI validation of task-2.5. Live provider IO, browser acceptance and production remain downstream and are not proven by these suites."
+      },
       "status": {
         "ru": "Реализованы backend/API сверки, ограниченный replay-контракт и явные owned/debt adjustments; provider IO, UI и production остаются последующим задачам.",
         "en": "Reconciliation backend/API, bounded replay contract and explicit owned/debt adjustments are implemented; provider IO, UI and production remain downstream."

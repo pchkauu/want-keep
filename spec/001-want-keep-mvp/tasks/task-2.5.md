@@ -135,7 +135,7 @@ make test-go PKG=./internal/reconciliation/... && make test-integration AREA=rec
 
 Шесть активов, четыре компонента, sourceAsOf/lifecycle, unknown/partial/stale, replay 90 дней, admission/reauth, переоценка, adjustment, rollback/replay, права, пагинация и миграция проходят без ложного дохода или повторного эффекта.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды `make` реализованы и обязательны для локальной и CI-проверки task-2.5. Live provider IO, браузерная приёмка и production остаются последующим задачам и не подтверждаются этими suites.
 
 ### Передача следующему агенту
 
@@ -277,7 +277,7 @@ make test-go PKG=./internal/reconciliation/... && make test-integration AREA=rec
 
 Six assets, four components, sourceAsOf/lifecycle, unknown/partial/stale, 90-day replay, admission/reauth, re-evaluation, adjustment, rollback/replay, permissions, pagination and migration pass without false income or duplicate effects.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+The `make` commands are implemented and required for local and CI validation of task-2.5. Live provider IO, browser acceptance and production remain downstream and are not proven by these suites.
 
 ### Handoff to the next agent
 
