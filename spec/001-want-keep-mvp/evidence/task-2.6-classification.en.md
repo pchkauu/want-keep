@@ -1,8 +1,8 @@
 # Task-2.6 — categories, merchants and receipt items
 
-Implemented the backend contract for independent expense classification. Original base: `c37d9ed255b01c155d92f3163736bcf57193a25b`; target `ff9dcc79eff6c8d35a38aedb39b95532b48672b6` was integrated before review; branch: `feat/task-2.6-categories-merchants-items`; task-2.3 is included. The [contract](../contracts.en.md#task-26--categories-merchants-and-receipt-items) preserves exact financial amounts, decision history and household permissions. No new dependencies; migrations 001–009 and production remain unchanged.
+Implemented the backend contract for independent expense classification. Original base: `c37d9ed255b01c155d92f3163736bcf57193a25b`; target `0fb68ea1bb0c12cf2b4fd9a07d408188da4874d5` was integrated before final review; branch: `feat/task-2.6-categories-merchants-items`; task-2.3 and task-3.1 are included. The [contract](../contracts.en.md#task-26--categories-merchants-and-receipt-items) preserves exact financial amounts, decision history and household permissions. No new dependencies; migrations 001–009 and production remain unchanged.
 
-The catalog belongs to `categories/domain/application`; ledger owns revision classification and selective undo; storage persists migration 010; delivery uses generated DTOs. Starter RU/EN categories have stable keys. User names are never translated. Merchants and confirmed aliases are separate from categories. Review can retain a category, merchant, alias or item-set proposal but cannot apply it or mutate the catalog.
+The catalog belongs to `categories/domain/application`; ledger owns revision classification and selective undo; storage persists migration 011 after durable jobs migration 010; delivery uses generated DTOs. Starter RU/EN categories have stable keys. User names are never translated. Merchants and confirmed aliases are separate from categories. Review can retain a category, merchant, alias or item-set proposal but cannot apply it or mutate the catalog.
 
 ## Verification matrix
 
