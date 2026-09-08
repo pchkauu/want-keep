@@ -117,8 +117,11 @@ func (s *Store) InvalidateJobs(ctx context.Context, a connections.Admission) err
 	if err != nil {
 		return err
 	}
-	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN state='ready' THEN 'canceled' ELSE state END,cancel_requested=true WHERE kind='sync' AND state IN ('ready','running') AND binding->>'provider'=$1 AND binding->>'environment'=$2 AND (binding!=$3::jsonb OR admission_revision!=$4 OR $5!='admitted')`, b.Provider, b.Environment, binding, a.Revision(), a.Status())
-	return err
+	rows, err := scope.tx.Query(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE kind='sync' AND state IN ('ready','running','waiting','unresolved') AND binding->>'provider'=$1 AND binding->>'environment'=$2 AND (binding!=$3::jsonb OR admission_revision!=$4 OR $5!='admitted') ORDER BY household_id,id FOR UPDATE`, b.Provider, b.Environment, binding, a.Revision(), a.Status())
+	if err != nil {
+		return err
+	}
+	return s.cancelJobs(ctx, scope.tx, rows)
 }
 func (s *Store) CreateConnection(ctx context.Context, c admission.Connection) error {
 	scope, err := s.familyScope(ctx)
@@ -143,6 +146,10 @@ func (s *Store) CreateConnection(ctx context.Context, c admission.Connection) er
 		return jobs.ErrInvalidJob
 	}
 	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.connections(household_id,id,provider,external_owner_id,generation,authorized,secret_purpose) VALUES($1,$2,$3,$4,$5,$6,$7)`, scope.principal.HouseholdID(), c.ID, c.Provider, c.Owner, c.Generation, c.Authorized, c.SecretPurpose)
+	if err != nil {
+		return err
+	}
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.sync_schedules(household_id,connection_id,next_due) VALUES($1,$2,clock_timestamp())`, c.HouseholdID, c.ID)
 	return err
 }
 func (s *Store) Connection(ctx context.Context, p household.Principal, id string) (admission.Connection, error) {
@@ -169,8 +176,11 @@ func (s *Store) Disconnect(ctx context.Context, id string) error {
 	if tag.RowsAffected() != 1 {
 		return jobs.ErrInvalidJob
 	}
-	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET state=CASE WHEN state='ready' THEN 'canceled' ELSE state END,cancel_requested=true WHERE household_id=$1 AND connection_id=$2 AND state IN ('ready','running')`, scope.principal.HouseholdID(), id)
+	rows, err := scope.tx.Query(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND connection_id=$2 AND state IN ('ready','running','waiting','unresolved') ORDER BY id FOR UPDATE`, scope.principal.HouseholdID(), id)
 	if err != nil {
+		return err
+	}
+	if err = s.cancelJobs(ctx, scope.tx, rows); err != nil {
 		return err
 	}
 	return s.RevokeConnectionSecrets(ctx, id)
@@ -199,7 +209,7 @@ func (s *Store) CreateSyncJob(ctx context.Context, c admission.Connection, a con
 	if !deadline.After(now) || deadline.After(now.Add(24*time.Hour)) {
 		return jobs.Job{}, jobs.ErrInvalidJob
 	}
-	existing, err := scanJob(scope.tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND connection_id=$2 AND kind='sync' AND state IN ('ready','running') AND NOT cancel_requested`, scope.principal.HouseholdID(), c.ID))
+	existing, err := scanJob(scope.tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND connection_id=$2 AND kind='sync' AND state IN ('ready','running','waiting','unresolved') ORDER BY (state='unresolved') DESC,id LIMIT 1 `, scope.principal.HouseholdID(), c.ID))
 	if err == nil {
 		if existing.Binding != a.Binding() || existing.AdmissionRevision != a.Revision() || existing.ConnectionGeneration != c.Generation || existing.SecretPurpose != c.SecretPurpose {
 			return jobs.Job{}, connections.ErrProviderNotAdmitted
@@ -215,6 +225,10 @@ func (s *Store) CreateSyncJob(ctx context.Context, c admission.Connection, a con
 	}
 	id := newID()
 	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.jobs(household_id,id,actor_id,kind,connection_id,connection_generation,binding,admission_revision,state,max_attempts,available_at,deadline,secret_purpose) VALUES($1,$2,$3,'sync',$4,$5,$6,$7,'ready',5,clock_timestamp(),$8,$9)`, scope.principal.HouseholdID(), id, scope.principal.UserID(), c.ID, c.Generation, binding, a.Revision(), deadline, c.SecretPurpose)
+	if err != nil {
+		return jobs.Job{}, err
+	}
+	_, err = scope.tx.Exec(ctx, `UPDATE want_keep.jobs j SET cursor=p.cursor,coverage=p.coverage,gaps=p.gaps FROM want_keep.sync_progress p WHERE j.household_id=$1 AND j.id=$2 AND p.household_id=j.household_id AND p.connection_id=j.connection_id AND p.generation=j.connection_generation AND NOT p.completed`, scope.principal.HouseholdID(), id)
 	if err != nil {
 		return jobs.Job{}, err
 	}
@@ -242,14 +256,23 @@ func (s *Store) SaveCheckpoint(ctx context.Context, j jobs.Job, cursor, coverage
 	if gaps == nil {
 		gaps = []string{}
 	}
-	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET cursor=$5,coverage=$6,gaps=$7 WHERE household_id=$1 AND id=$2 AND lease_token=$3 AND attempt=$4 AND state='running' AND NOT cancel_requested AND lease_until>clock_timestamp() AND deadline>clock_timestamp()`, j.HouseholdID, j.ID, j.LeaseToken, j.Attempt, cursor, coverage, gaps)
+	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET cursor=$5,coverage=$6,gaps=$7,external_started=false WHERE household_id=$1 AND id=$2 AND lease_token=$3 AND attempt=$4 AND state='running' AND NOT cancel_requested AND lease_until>clock_timestamp() AND COALESCE(run_deadline,deadline)>clock_timestamp()`, j.HouseholdID, j.ID, j.LeaseToken, j.Attempt, cursor, coverage, gaps)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() != 1 {
 		return jobs.ErrStaleAttempt
 	}
-	return nil
+	return s.saveSyncProgress(ctx, j, cursor, coverage, gaps)
+}
+
+func (s *Store) saveSyncProgress(ctx context.Context, j jobs.Job, cursor, coverage string, gaps []string) error {
+	scope, err := s.familyScope(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.sync_progress(household_id,connection_id,generation,cursor,coverage,gaps,last_job_id,completed) VALUES($1,$2,$3,$4,$5,$6,$7,false) ON CONFLICT(household_id,connection_id) DO UPDATE SET generation=EXCLUDED.generation,cursor=EXCLUDED.cursor,coverage=EXCLUDED.coverage,gaps=EXCLUDED.gaps,last_job_id=EXCLUDED.last_job_id,completed=false`, j.HouseholdID, j.ConnectionID, j.ConnectionGeneration, cursor, coverage, gaps, j.ID)
+	return err
 }
 
 func (s *Store) FenceSyncResult(ctx context.Context, p household.Principal, issued jobs.Job) error {
