@@ -95,6 +95,11 @@ func TestManifestDistinguishesOmittedLookbackFromExplicitZero(t *testing.T) {
 	if _, err := contract.DecodeManifest(invalid, "bybit"); err == nil {
 		t.Fatal("explicit zero lookback was accepted")
 	}
+	history["maximumLookbackDays"] = nil
+	nullLimit, _ := json.Marshal(value)
+	if _, err := contract.DecodeManifest(nullLimit, "bybit"); err == nil {
+		t.Fatal("explicit null lookback was accepted")
+	}
 	delete(history, "maximumLookbackDays")
 	withoutLimit, _ := json.Marshal(value)
 	manifest, err := contract.DecodeManifest(withoutLimit, "bybit")
@@ -209,6 +214,21 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 				}
 			}
 		},
+		"null required cursor": func(root map[string]any) {
+			root["page"].(map[string]any)["cursor"] = nil
+		},
+		"null required boolean": func(root map[string]any) {
+			root["page"].(map[string]any)["complete"] = nil
+		},
+		"null required object": func(root map[string]any) {
+			root["page"].(map[string]any)["coverage"] = nil
+		},
+		"null required array": func(root map[string]any) {
+			root["page"].(map[string]any)["records"] = nil
+		},
+		"null optional field": func(root map[string]any) {
+			root["page"].(map[string]any)["nextCursor"] = nil
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var root map[string]any
@@ -247,6 +267,12 @@ func TestProviderFailureRequiresExactCursorEcho(t *testing.T) {
 		t.Fatal("valid provider failure was rejected", err)
 	}
 	payload := failure["failure"].(map[string]any)
+	payload["retryable"] = nil
+	encoded, _ = json.Marshal(failure)
+	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+		t.Fatal("null provider failure retryable flag was accepted")
+	}
+	payload["retryable"] = false
 	payload["cursor"] = "stale-cursor"
 	encoded, _ = json.Marshal(failure)
 	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {

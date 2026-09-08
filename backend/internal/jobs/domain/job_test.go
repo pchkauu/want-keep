@@ -8,7 +8,7 @@ import (
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 )
 
-func TestAttemptIsBoundToIssuedCursor(t *testing.T) {
+func TestAttemptFenceUsesImmutableLeaseIdentity(t *testing.T) {
 	now := time.Now()
 	current := jobs.Job{
 		ID: "job", HouseholdID: "household", ActorID: "actor", Kind: jobs.Sync,
@@ -17,11 +17,11 @@ func TestAttemptIsBoundToIssuedCursor(t *testing.T) {
 	}
 	issued := current
 	issued.Cursor = "page-1"
-	if !errors.Is(current.RequireAttempt(issued, now), jobs.ErrStaleAttempt) {
-		t.Fatal("job accepted a result issued for an older cursor")
-	}
-	issued.Cursor = current.Cursor
 	if err := current.RequireAttempt(issued, now); err != nil {
-		t.Fatal("current cursor was rejected", err)
+		t.Fatal("mutable checkpoint cursor invalidated the active lease", err)
+	}
+	issued.LeaseToken = "other"
+	if !errors.Is(current.RequireAttempt(issued, now), jobs.ErrStaleAttempt) {
+		t.Fatal("job accepted another lease token")
 	}
 }

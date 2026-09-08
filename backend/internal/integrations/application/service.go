@@ -30,8 +30,10 @@ type ProviderGateway interface {
 }
 
 type EvidenceStore interface {
-	// Save durably binds the raw bytes and references to the server-derived household and job.
+	// Save durably binds raw bytes, server-derived ownership and an initial staged disposition.
 	Save(context.Context, ingestion.EvidenceBatch) error
+	// SetDisposition is idempotent. A staged batch remains discoverable for reconciliation if this call fails.
+	SetDisposition(context.Context, ingestion.EvidenceDisposition) error
 }
 
 type Gate interface {
@@ -59,6 +61,14 @@ type Service struct {
 	sources  SourceWriter
 	now      func() calendar.Instant
 	newID    func() string
+}
+
+const evidenceDispositionTimeout = 5 * time.Second
+
+type pageTransaction struct {
+	record    ingestion.TransactionRecord
+	canonical []byte
+	hash      string
 }
 
 func NewService(gate Gate, evidence EvidenceStore, accountImporter AccountImporter, sources SourceWriter, now func() calendar.Instant, newID func() string) (*Service, error) {
@@ -114,11 +124,13 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 			return s.applyPage(tx, p, issued, *result.Page, batch.FetchedAt, references)
 		})
 		if err != nil {
-			if retainErr := s.gate.RetainRejectedResult(ctx, p, issued, batch.PageReference); retainErr != nil {
-				return false, nil, errors.Join(err, errors.Join(ingestion.ErrEvidence, retainErr))
-			}
+			return false, nil, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
 		}
-		return applied, nil, err
+		state := ingestion.EvidenceStale
+		if applied {
+			state = ingestion.EvidenceApplied
+		}
+		return applied, nil, s.setEvidenceDisposition(ctx, batch, state)
 	}
 	if !ingestion.SameToken(token, result.Failure.Token) {
 		return false, nil, ingestion.ErrInvalidContract
@@ -129,7 +141,14 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 	}
 	state, reason, delay := providerFailureOutcome(*result.Failure, issued.Attempt)
 	applied, err := s.gate.CommitProviderOutcome(ctx, p, issued, batch.PageReference, state, reason, delay, func(context.Context) error { return nil })
-	return applied, result.Failure, err
+	if err != nil {
+		return false, result.Failure, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
+	}
+	disposition := ingestion.EvidenceStale
+	if applied {
+		disposition = ingestion.EvidenceProviderOutcome
+	}
+	return applied, result.Failure, s.setEvidenceDisposition(ctx, batch, disposition)
 }
 
 func providerFailureOutcome(failure ingestion.ProviderFailure, attempt int) (jobs.State, jobs.Reason, time.Duration) {
@@ -160,7 +179,7 @@ func (s *Service) stage(ctx context.Context, p household.Principal, issued jobs.
 	if issued.HouseholdID != p.HouseholdID() {
 		return ingestion.EvidenceBatch{}, nil, household.ErrForbidden
 	}
-	batch := ingestion.EvidenceBatch{HouseholdID: string(p.HouseholdID()), JobID: issued.ID, PageReference: "evidence:page:" + s.newID(), FetchedAt: s.now()}
+	batch := ingestion.EvidenceBatch{HouseholdID: string(p.HouseholdID()), JobID: issued.ID, PageReference: "evidence:page:" + s.newID(), FetchedAt: s.now(), Disposition: ingestion.EvidenceStaged}
 	references := make(map[string]ingestion.StoredEvidence, len(raw))
 	for _, evidence := range raw {
 		item := ingestion.StoredEvidence{Reference: "evidence:raw:" + s.newID(), Raw: evidence}
@@ -176,7 +195,42 @@ func (s *Service) stage(ctx context.Context, p household.Principal, issued jobs.
 	return batch, references, nil
 }
 
+func (s *Service) retainRejectedEvidence(ctx context.Context, p household.Principal, issued jobs.Job, batch ingestion.EvidenceBatch) error {
+	gateErr := s.withEvidenceLifecycleContext(ctx, func(lifecycle context.Context) error {
+		return s.gate.RetainRejectedResult(lifecycle, p, issued, batch.PageReference)
+	})
+	storeErr := s.setEvidenceDisposition(ctx, batch, ingestion.EvidenceRejected)
+	if gateErr == nil && storeErr == nil {
+		return nil
+	}
+	return errors.Join(ingestion.ErrEvidence, gateErr, storeErr)
+}
+
+func (s *Service) setEvidenceDisposition(ctx context.Context, batch ingestion.EvidenceBatch, state ingestion.EvidenceDispositionState) error {
+	disposition := ingestion.EvidenceDisposition{HouseholdID: batch.HouseholdID, JobID: batch.JobID, PageReference: batch.PageReference, State: state}
+	if err := disposition.Validate(); err != nil {
+		return err
+	}
+	err := s.withEvidenceLifecycleContext(ctx, func(lifecycle context.Context) error {
+		return s.evidence.SetDisposition(lifecycle, disposition)
+	})
+	if err != nil {
+		return errors.Join(ingestion.ErrEvidence, err)
+	}
+	return nil
+}
+
+func (s *Service) withEvidenceLifecycleContext(ctx context.Context, action func(context.Context) error) error {
+	lifecycle, cancel := context.WithTimeout(context.WithoutCancel(ctx), evidenceDispositionTimeout)
+	defer cancel()
+	return action(lifecycle)
+}
+
 func (s *Service) applyPage(ctx context.Context, p household.Principal, issued jobs.Job, page ingestion.Page, fetchedAt calendar.Instant, evidence map[string]ingestion.StoredEvidence) error {
+	transactions, err := s.prepareTransactions(p, issued, page, evidence)
+	if err != nil {
+		return err
+	}
 	accountsByKey := map[string]ingestion.AccountRecord{}
 	balancesByKey := map[string]ingestion.BalanceSnapshot{}
 	for _, record := range page.Records {
@@ -254,15 +308,55 @@ func (s *Service) applyPage(ctx context.Context, p household.Principal, issued j
 		}
 		resolved[key] = outcome.Account.ID
 	}
-	for _, record := range page.Records {
-		if record.Transaction == nil {
-			continue
-		}
-		if err := s.applyTransaction(ctx, p, issued, *record.Transaction, record.CanonicalPayload, fetchedAt, evidence, resolved, unresolved); err != nil {
+	for _, transaction := range transactions {
+		if err := s.applyTransaction(ctx, p, issued, transaction.record, transaction.canonical, fetchedAt, evidence, resolved, unresolved); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (s *Service) prepareTransactions(p household.Principal, issued jobs.Job, page ingestion.Page, evidence map[string]ingestion.StoredEvidence) ([]pageTransaction, error) {
+	groups := make(map[ledger.SourceKey][]pageTransaction)
+	order := make([]ledger.SourceKey, 0)
+	for _, record := range page.Records {
+		if record.Transaction == nil {
+			continue
+		}
+		stored, found := evidence[record.Transaction.EvidenceID]
+		if !found {
+			return nil, ingestion.ErrInvalidContract
+		}
+		hash, err := sourceHash(record.CanonicalPayload, stored.Raw.Digest)
+		if err != nil {
+			return nil, err
+		}
+		key := ledger.SourceKey{HouseholdID: p.HouseholdID(), Provider: issued.Binding.Provider, ExternalAccountID: record.Transaction.ExternalAccountID, Product: record.Transaction.Product, Log: record.Transaction.LogNamespace, RecordID: record.Transaction.ProviderRecordID}
+		if _, found = groups[key]; !found {
+			order = append(order, key)
+		}
+		groups[key] = append(groups[key], pageTransaction{record: *record.Transaction, canonical: record.CanonicalPayload, hash: hash})
+	}
+	prepared := make([]pageTransaction, 0, len(order))
+	for _, key := range order {
+		group := groups[key]
+		identical := true
+		for index := 1; index < len(group); index++ {
+			if group[index].hash != group[0].hash {
+				identical = false
+				break
+			}
+		}
+		if identical {
+			prepared = append(prepared, group[0])
+			continue
+		}
+		for _, transaction := range group {
+			transaction.record.Classification = "ambiguous"
+			prepared = append(prepared, transaction)
+		}
+	}
+	return prepared, nil
 }
 
 func (s *Service) accountInput(issued jobs.Job, record ingestion.AccountRecord, balance ingestion.BalanceSnapshot, fetchedAt calendar.Instant, evidence map[string]ingestion.StoredEvidence) (accounts.ImportInput, error) {

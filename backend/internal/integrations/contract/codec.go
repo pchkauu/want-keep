@@ -420,6 +420,12 @@ func decodeStrict(data []byte, target any) error {
 	if len(data) == 0 || len(data) > MaxEncodedResultBytes || !validJSONUnicode(data) {
 		return ingestion.ErrInvalidContract
 	}
+	var shape any
+	shapeDecoder := json.NewDecoder(bytes.NewReader(data))
+	shapeDecoder.UseNumber()
+	if err := shapeDecoder.Decode(&shape); err != nil || jsonValueContainsNull(shape) {
+		return ingestion.ErrInvalidContract
+	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
@@ -430,6 +436,26 @@ func decodeStrict(data []byte, target any) error {
 		return ingestion.ErrInvalidContract
 	}
 	return nil
+}
+
+func jsonValueContainsNull(value any) bool {
+	switch value := value.(type) {
+	case nil:
+		return true
+	case []any:
+		for _, item := range value {
+			if jsonValueContainsNull(item) {
+				return true
+			}
+		}
+	case map[string]any:
+		for _, item := range value {
+			if jsonValueContainsNull(item) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func validJSONUnicode(data []byte) bool {

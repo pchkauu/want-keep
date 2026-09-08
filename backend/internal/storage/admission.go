@@ -343,6 +343,9 @@ func (s *Store) FenceSyncResult(ctx context.Context, p household.Principal, issu
 	if err != nil {
 		return err
 	}
+	if current.Cursor != issued.Cursor {
+		return jobs.ErrStaleAttempt
+	}
 	now, err := s.DatabaseTime(ctx)
 	if err != nil {
 		return err

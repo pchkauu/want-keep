@@ -135,6 +135,7 @@ func TestEvidenceRequiresMatchingDigestAndBoundsTheBatch(t *testing.T) {
 		JobID:         "job",
 		PageReference: "evidence:page:test",
 		FetchedAt:     fetchedAt,
+		Disposition:   ingestion.EvidenceStaged,
 		Items: []ingestion.StoredEvidence{
 			{Reference: "evidence:raw:one", Raw: ingestion.Evidence{ID: "one", MediaType: "application/json", Digest: hex.EncodeToString(digest[:]), Locator: "synthetic:one", Data: data}},
 			{Reference: "evidence:raw:two", Raw: ingestion.Evidence{ID: "two", MediaType: "application/json", Digest: hex.EncodeToString(digest[:]), Locator: "synthetic:two", Data: data}},

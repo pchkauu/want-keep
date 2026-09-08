@@ -287,9 +287,7 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 				return err
 			}
 			if page.Complete {
-				checkpointed := issued
-				checkpointed.Cursor = page.NextCursor
-				if err = s.repository.FinishJob(ctx, p, checkpointed); err != nil {
+				if err = s.repository.FinishJob(ctx, p, issued); err != nil {
 					return err
 				}
 			}

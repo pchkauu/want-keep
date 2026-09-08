@@ -208,6 +208,9 @@ func TestCommitFenceAndLeaseCannotBeBypassed(t *testing.T) {
 	if f.available(account) != "90" {
 		t.Fatal("valid effect missing")
 	}
+	if err = f.store.Heartbeat(testContext, f.p, issued, time.Minute); err != nil {
+		t.Fatal("checkpoint advancement invalidated the active lease heartbeat", err)
+	}
 	j, err := f.store.Job(testContext, f.p, issued.ID)
 	if err != nil || j.Cursor != "p2" {
 		t.Fatal("checkpoint not saved")

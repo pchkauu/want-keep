@@ -247,9 +247,9 @@ func (s *fileEvidenceStore) Save(_ context.Context, batch ingestion.EvidenceBatc
 	if err := batch.Validate(); err != nil {
 		return err
 	}
+	prefix := s.batchPrefix(batch.HouseholdID, batch.JobID, batch.PageReference)
 	for _, item := range batch.Items {
-		scope := batch.HouseholdID + "_" + batch.JobID + "_"
-		name := strings.NewReplacer(":", "_", "/", "_").Replace(scope + item.Reference)
+		name := prefix + string(batch.Disposition) + "_" + s.safeName(item.Reference)
 		temporary := filepath.Join(s.path, name+".tmp")
 		if err := os.WriteFile(temporary, item.Raw.Data, 0o600); err != nil {
 			return err
@@ -259,6 +259,46 @@ func (s *fileEvidenceStore) Save(_ context.Context, batch ingestion.EvidenceBatc
 		}
 	}
 	return nil
+}
+
+func (s *fileEvidenceStore) SetDisposition(_ context.Context, disposition ingestion.EvidenceDisposition) error {
+	if err := disposition.Validate(); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(s.path)
+	if err != nil {
+		return err
+	}
+	prefix := s.batchPrefix(disposition.HouseholdID, disposition.JobID, disposition.PageReference)
+	stagedPrefix := prefix + string(ingestion.EvidenceStaged) + "_"
+	terminalPrefix := prefix + string(disposition.State) + "_"
+	found := false
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), terminalPrefix) {
+			found = true
+			continue
+		}
+		if !strings.HasPrefix(entry.Name(), stagedPrefix) {
+			continue
+		}
+		found = true
+		target := terminalPrefix + strings.TrimPrefix(entry.Name(), stagedPrefix)
+		if err = os.Rename(filepath.Join(s.path, entry.Name()), filepath.Join(s.path, target)); err != nil {
+			return err
+		}
+	}
+	if !found {
+		return fmt.Errorf("staged evidence batch not found")
+	}
+	return nil
+}
+
+func (s *fileEvidenceStore) batchPrefix(householdID, jobID, pageReference string) string {
+	return s.safeName(householdID + "_" + jobID + "_" + pageReference + "_")
+}
+
+func (s *fileEvidenceStore) safeName(value string) string {
+	return strings.NewReplacer(":", "_", "/", "_").Replace(value)
 }
 
 func (f *fixture) count(table string) int {

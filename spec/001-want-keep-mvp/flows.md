@@ -142,7 +142,7 @@ sequenceDiagram
   J->>G: BeforeRead(binding, revision, generation, lease)
   G->>C: Server-issued request без household/actor/internal IDs
   C-->>G: Exact echo + issued cursor + evidence + typed records/coverage
-  G->>E: Сохранить raw evidence с server-derived household/job
+  G->>E: Сохранить raw evidence с server-derived household/job и disposition=staged
   alt provider failure
     G->>Q: Связать evidence с household/job
     G->>G: Атомарно сохранить waiting/retry/failed
@@ -154,10 +154,10 @@ sequenceDiagram
       A-->>G: Partial coverage без неподтверждённого эффекта
     end
   else page отклонена после staging
-    G->>Q: Durable rejected_result без финансового эффекта/checkpoint
+    G->>Q: Durable rejected_result через отдельный lifecycle context; staged остаётся при сбое
   else результат устарел
     G->>Q: Evidence reference + safe reason
   end
 ```
 
-Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Provider failure также повторяет issued cursor, поэтому запоздалый outcome предыдущей страницы не меняет job после продвижения checkpoint. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи. Подтверждённый provider mapping `RUR → RUB` сохраняет raw code в evidence/metadata и использует RUB в финансовом домене.
+Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Provider failure также повторяет issued cursor; sync-result boundary отклоняет запоздалый outcome прежней страницы, а общая lease identity продолжает heartbeat после продвижения checkpoint. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи. Подтверждённый provider mapping `RUR → RUB` сохраняет raw code в evidence/metadata и использует RUB в финансовом домене.

@@ -212,15 +212,26 @@ type StoredEvidence struct {
 	Raw       Evidence
 }
 
+type EvidenceDispositionState string
+
+const (
+	EvidenceStaged          EvidenceDispositionState = "staged"
+	EvidenceApplied         EvidenceDispositionState = "applied"
+	EvidenceRejected        EvidenceDispositionState = "rejected_result"
+	EvidenceStale           EvidenceDispositionState = "stale_result"
+	EvidenceProviderOutcome EvidenceDispositionState = "provider_outcome"
+)
+
 type EvidenceBatch struct {
 	HouseholdID, JobID string
 	PageReference      string
 	FetchedAt          calendar.Instant
+	Disposition        EvidenceDispositionState
 	Items              []StoredEvidence
 }
 
 func (b EvidenceBatch) Validate() error {
-	if !validText(b.HouseholdID) || !validText(b.JobID) || !validText(b.PageReference) || b.FetchedAt.String() == "" || len(b.Items) < 1 || len(b.Items) > MaxEvidencePerPage {
+	if !validText(b.HouseholdID) || !validText(b.JobID) || !validText(b.PageReference) || b.FetchedAt.String() == "" || b.Disposition != EvidenceStaged || len(b.Items) < 1 || len(b.Items) > MaxEvidencePerPage {
 		return ErrEvidence
 	}
 	seenIDs, seenReferences := map[string]bool{}, map[string]bool{}
@@ -236,6 +247,24 @@ func (b EvidenceBatch) Validate() error {
 		seenIDs[item.Raw.ID], seenReferences[item.Reference] = true, true
 	}
 	return nil
+}
+
+type EvidenceDisposition struct {
+	HouseholdID, JobID string
+	PageReference      string
+	State              EvidenceDispositionState
+}
+
+func (d EvidenceDisposition) Validate() error {
+	if !validText(d.HouseholdID) || !validText(d.JobID) || !validText(d.PageReference) {
+		return ErrEvidence
+	}
+	switch d.State {
+	case EvidenceApplied, EvidenceRejected, EvidenceStale, EvidenceProviderOutcome:
+		return nil
+	default:
+		return ErrEvidence
+	}
 }
 
 type Amount struct {

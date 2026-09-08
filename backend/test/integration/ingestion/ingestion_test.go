@@ -5,6 +5,7 @@ package ingestion_test
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"os"
 	"strings"
@@ -218,6 +219,57 @@ func TestDeclaredAmbiguityCannotCompleteTheCheckpoint(t *testing.T) {
 	}
 }
 
+func TestSamePageSourceIdentityIsPreflightedBeforeFinancialApply(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		changeAmount bool
+		wantPostings int
+		wantPartial  bool
+	}{
+		{name: "identical duplicate", wantPostings: 5},
+		{name: "conflicting fact", changeAmount: true, wantPostings: 4, wantPartial: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
+			job := f.issued()
+			gateway := f.gatewayWithMutation(job, func(root map[string]any) {
+				page := root["page"].(map[string]any)
+				records := page["records"].([]any)
+				for _, raw := range records {
+					record := raw.(map[string]any)
+					transaction, ok := record["transaction"].(map[string]any)
+					if !ok || transaction["providerRecordId"] != "expense-1" {
+						continue
+					}
+					encoded, _ := json.Marshal(record)
+					var duplicate map[string]any
+					_ = json.Unmarshal(encoded, &duplicate)
+					if test.changeAmount {
+						duplicate["transaction"].(map[string]any)["postings"].([]any)[0].(map[string]any)["money"] = "-700"
+					}
+					page["records"] = append(records, duplicate)
+					return
+				}
+			})
+			applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
+			if err != nil || !applied || failure != nil {
+				t.Fatal("same-page source group did not commit safely", applied, failure, err)
+			}
+			if got := f.count("postings"); got != test.wantPostings {
+				t.Fatalf("unexpected postings after source preflight: got=%d want=%d", got, test.wantPostings)
+			}
+			var coverage string
+			var gaps []string
+			if err = f.admin.QueryRow(testContext, `SELECT coverage,gaps FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID).Scan(&coverage, &gaps); err != nil {
+				t.Fatal(err)
+			}
+			if test.wantPartial != (coverage == "partial" && contains(gaps, "source_ambiguous")) {
+				t.Fatal("same-page ambiguity coverage mismatch", coverage, gaps)
+			}
+		})
+	}
+}
+
 func contains(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {
@@ -365,7 +417,7 @@ func TestEvidenceFailureAndStaleAdmissionCannotCrossCommitFence(t *testing.T) {
 			t.Fatal("rejected evidence was not associated with its household and job", evidenceRef, queryErr)
 		}
 		entries, _ := os.ReadDir(f.evidence.path)
-		if len(entries) != 1 || !strings.Contains(entries[0].Name(), string(f.family.ID)) || !strings.Contains(entries[0].Name(), job.ID) {
+		if len(entries) != 1 || !strings.Contains(entries[0].Name(), string(f.family.ID)) || !strings.Contains(entries[0].Name(), job.ID) || !strings.Contains(entries[0].Name(), string(ingestion.EvidenceRejected)) {
 			t.Fatal("raw evidence was not stored under trusted ownership", entries)
 		}
 	})

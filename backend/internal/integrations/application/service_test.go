@@ -40,7 +40,7 @@ func TestEvidenceIsDurableBeforeCommitAndFailureClosesTheBoundary(t *testing.T) 
 				if err := batch.Validate(); err != nil {
 					return err
 				}
-				if batch.HouseholdID != string(principal().HouseholdID()) || batch.JobID != issued().ID {
+				if batch.HouseholdID != string(principal().HouseholdID()) || batch.JobID != issued().ID || batch.Disposition != ingestion.EvidenceStaged {
 					t.Fatal("evidence lost trusted ownership", batch.HouseholdID, batch.JobID)
 				}
 				stored = true
@@ -67,23 +67,63 @@ func TestEvidenceIsDurableBeforeCommitAndFailureClosesTheBoundary(t *testing.T) 
 
 func TestRejectedPageRetainsOwnedEvidenceDisposition(t *testing.T) {
 	commitError := errors.New("invalid account projection")
-	retained := false
+	ctx, cancel := context.WithCancel(context.Background())
+	retained, finalized := false, false
 	gate := &gateFake{
 		commit: func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error) {
+			cancel()
 			return false, commitError
 		},
-		reject: func(_ context.Context, p household.Principal, job jobs.Job, evidence string) error {
-			retained = p.HouseholdID() == job.HouseholdID && job.ID == issued().ID && evidence != ""
+		reject: func(ctx context.Context, p household.Principal, job jobs.Job, evidence string) error {
+			retained = ctx.Err() == nil && p.HouseholdID() == job.HouseholdID && job.ID == issued().ID && evidence != ""
 			return nil
 		},
 	}
-	service, _ := application.NewService(gate, evidenceFake{save: func(context.Context, ingestion.EvidenceBatch) error { return nil }}, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+	evidence := evidenceFake{
+		save: func(_ context.Context, batch ingestion.EvidenceBatch) error { return batch.Validate() },
+		disposition: func(ctx context.Context, disposition ingestion.EvidenceDisposition) error {
+			finalized = ctx.Err() == nil && disposition.State == ingestion.EvidenceRejected && disposition.Validate() == nil
+			return nil
+		},
+	}
+	service, _ := application.NewService(gate, evidence, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
 	job := issued()
 	token, _ := application.TokenFromJob(job)
 	result := page(token)
-	applied, failure, err := service.Ingest(context.Background(), principal(), job, &gatewayFake{result: ingestion.Result{Page: &result}})
-	if applied || failure != nil || !errors.Is(err, commitError) || !retained || gate.rejectCalls != 1 {
-		t.Fatal("rejected evidence did not receive a durable disposition", applied, failure, retained, gate.rejectCalls, err)
+	applied, failure, err := service.Ingest(ctx, principal(), job, &gatewayFake{result: ingestion.Result{Page: &result}})
+	if applied || failure != nil || !errors.Is(err, commitError) || !retained || !finalized || gate.rejectCalls != 1 {
+		t.Fatal("rejected evidence did not receive a durable disposition", applied, failure, retained, finalized, gate.rejectCalls, err)
+	}
+}
+
+func TestProviderFailureCommitErrorRetainsEvidenceWithFreshContext(t *testing.T) {
+	commitError := errors.New("provider outcome unavailable")
+	ctx, cancel := context.WithCancel(context.Background())
+	retained, finalized := false, false
+	gate := &gateFake{
+		failure: func(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error) {
+			cancel()
+			return false, commitError
+		},
+		reject: func(ctx context.Context, _ household.Principal, _ jobs.Job, _ string) error {
+			retained = ctx.Err() == nil
+			return nil
+		},
+	}
+	evidence := evidenceFake{
+		save: func(_ context.Context, batch ingestion.EvidenceBatch) error { return batch.Validate() },
+		disposition: func(ctx context.Context, disposition ingestion.EvidenceDisposition) error {
+			finalized = ctx.Err() == nil && disposition.State == ingestion.EvidenceRejected
+			return nil
+		},
+	}
+	service, _ := application.NewService(gate, evidence, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+	job := issued()
+	token, _ := application.TokenFromJob(job)
+	failure := ingestion.ProviderFailure{Token: token, Kind: ingestion.MFARequired, Evidence: []ingestion.Evidence{rawEvidence()}}
+	applied, got, err := service.Ingest(ctx, principal(), job, &gatewayFake{result: ingestion.Result{Failure: &failure}})
+	if applied || got == nil || !errors.Is(err, commitError) || !retained || !finalized || gate.rejectCalls != 1 {
+		t.Fatal("provider failure evidence was not retained after commit error", applied, got, retained, finalized, gate.rejectCalls, err)
 	}
 }
 
@@ -213,11 +253,19 @@ func (g *gateFake) RetainRejectedResult(ctx context.Context, p household.Princip
 }
 
 type evidenceFake struct {
-	save func(context.Context, ingestion.EvidenceBatch) error
+	save        func(context.Context, ingestion.EvidenceBatch) error
+	disposition func(context.Context, ingestion.EvidenceDisposition) error
 }
 
 func (e evidenceFake) Save(ctx context.Context, batch ingestion.EvidenceBatch) error {
 	return e.save(ctx, batch)
+}
+
+func (e evidenceFake) SetDisposition(ctx context.Context, disposition ingestion.EvidenceDisposition) error {
+	if e.disposition == nil {
+		return nil
+	}
+	return e.disposition(ctx, disposition)
 }
 
 type accountFake struct{}
