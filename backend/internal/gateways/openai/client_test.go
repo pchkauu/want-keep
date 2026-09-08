@@ -1,0 +1,264 @@
+package openai
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	aiapp "github.com/pchkauu/want-keep/backend/internal/ai/application"
+	ai "github.com/pchkauu/want-keep/backend/internal/ai/domain"
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+)
+
+func TestClientUsesQualifiedRequestShapeAndNoSDKRetry(t *testing.T) {
+	var countBody, generationBody map[string]any
+	countCalls, generationCalls := 0, 0
+	httpClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.Header.Get("Authorization") != "Bearer synthetic-key" || r.Header.Get("OpenAI-Project") != "synthetic-project" {
+			t.Error("gateway omitted provider authentication scope")
+		}
+		switch r.URL.Path {
+		case "/v1/responses/input_tokens":
+			countCalls++
+			decodeRequest(t, r, &countBody)
+			return jsonResponse(t, http.StatusOK, map[string]any{"object": "response.input_tokens", "input_tokens": 100}), nil
+		case "/v1/responses":
+			generationCalls++
+			decodeRequest(t, r, &generationBody)
+			proposal := `{"results":[{"id":"item-1","action":"clarify","kind":null,"amount":null,"fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":["transaction"],"explanation":"Needs confirmation"}]}`
+			return jsonResponse(t, http.StatusOK, map[string]any{
+				"id": "resp_synthetic", "status": "completed",
+				"output": []any{map[string]any{"type": "message", "content": []any{map[string]any{"type": "output_text", "text": proposal}}}},
+				"usage": map[string]any{
+					"input_tokens": 100, "input_tokens_details": map[string]any{"cached_tokens": 20, "cache_write_tokens": 10},
+					"output_tokens": 50, "output_tokens_details": map[string]any{"reasoning_tokens": 12},
+				},
+			}), nil
+		default:
+			return jsonResponse(t, http.StatusNotFound, map[string]any{"error": map[string]any{"message": "missing"}}), nil
+		}
+	})}
+
+	client := newTestClientWithHTTP(t, "http://127.0.0.1/v1", httpClient)
+	request := validRequest(client.Contract())
+	if count, err := client.Count(context.Background(), request); err != nil || count != 100 {
+		t.Fatalf("count = %d, %v", count, err)
+	}
+	result, err := client.Generate(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != ai.Completed || result.ProviderID != "resp_synthetic" || result.Usage.InputTokens != 100 || result.Usage.CachedTokens != 20 || result.Usage.CacheWriteTokens == nil || *result.Usage.CacheWriteTokens != 10 || result.Usage.OutputTokens != 50 || result.Usage.ReasoningTokens != 12 {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+	if countCalls != 1 || generationCalls != 1 {
+		t.Fatalf("unexpected requests: count=%d generation=%d", countCalls, generationCalls)
+	}
+	assertCountShape(t, countBody)
+	assertGenerationShape(t, generationBody)
+
+	failureCalls := 0
+	failureClient := &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		failureCalls++
+		return jsonResponse(t, http.StatusInternalServerError, map[string]any{"error": map[string]any{"message": "temporary"}}), nil
+	})}
+	failing := newTestClientWithHTTP(t, "http://127.0.0.1/v1", failureClient)
+	_, err = failing.Count(context.Background(), validRequest(failing.Contract()))
+	var failure aiapp.GatewayFailure
+	if !errors.As(err, &failure) || !failure.Retryable || failure.OutcomeUnknown || failureCalls != 1 {
+		t.Fatalf("SDK retry or classification mismatch: calls=%d err=%v", failureCalls, err)
+	}
+}
+
+func TestGenerationTimeoutIsUnknown(t *testing.T) {
+	httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, context.DeadlineExceeded
+	})}
+	client := newTestClientWithHTTP(t, "http://127.0.0.1/v1", httpClient)
+	_, err := client.Generate(context.Background(), validRequest(client.Contract()))
+	var failure aiapp.GatewayFailure
+	if !errors.As(err, &failure) || !failure.OutcomeUnknown || failure.Retryable {
+		t.Fatalf("generation timeout was not unknown: %v", err)
+	}
+}
+
+func TestProviderHTTPFailuresAreKnownAndNeverRetried(t *testing.T) {
+	testCases := []struct {
+		status    int
+		retryable bool
+	}{{http.StatusUnauthorized, false}, {http.StatusForbidden, false}, {http.StatusTooManyRequests, true}, {http.StatusInternalServerError, true}}
+	calls := []struct {
+		name string
+		run  func(*Client, ai.Request) error
+	}{
+		{"count", func(client *Client, request ai.Request) error {
+			_, err := client.Count(context.Background(), request)
+			return err
+		}},
+		{"generation", func(client *Client, request ai.Request) error {
+			_, err := client.Generate(context.Background(), request)
+			return err
+		}},
+	}
+	for _, call := range calls {
+		for _, testCase := range testCases {
+			t.Run(call.name+"/"+http.StatusText(testCase.status), func(t *testing.T) {
+				requests := 0
+				httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+					requests++
+					return jsonResponse(t, testCase.status, map[string]any{"error": map[string]any{"message": "synthetic"}}), nil
+				})}
+				client := newTestClientWithHTTP(t, "http://127.0.0.1/v1", httpClient)
+				err := call.run(client, validRequest(client.Contract()))
+				var failure aiapp.GatewayFailure
+				if !errors.As(err, &failure) || failure.Retryable != testCase.retryable || failure.OutcomeUnknown || requests != 1 {
+					t.Fatalf("failure classification: calls=%d failure=%+v err=%v", requests, failure, err)
+				}
+			})
+		}
+	}
+}
+
+func TestGenerationPreservesRefusalIncompleteAndSchemaError(t *testing.T) {
+	validProposal := "{\"results\":[{\"id\":\"1\",\"action\":\"skip\",\"kind\":null,\"amount\":null,\"fee\":null,\"asset\":null,\"target\":null,\"month\":null,\"shares\":[],\"items\":[],\"evidence\":[],\"explanation\":\"ok\"}]}"
+	testCases := []struct {
+		name, status string
+		content      []any
+		want         ai.State
+	}{
+		{"refusal", "completed", []any{map[string]any{"type": "refusal", "refusal": "synthetic refusal"}}, ai.Refused},
+		{"incomplete", "incomplete", []any{map[string]any{"type": "output_text", "text": validProposal}}, ai.Incomplete},
+		{"schema", "completed", []any{map[string]any{"type": "output_text", "text": "{}"}}, ai.SchemaError},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return jsonResponse(t, http.StatusOK, map[string]any{
+					"id": "resp_synthetic", "status": testCase.status,
+					"output": []any{map[string]any{"type": "message", "content": testCase.content}},
+					"usage": map[string]any{
+						"input_tokens": 10, "input_tokens_details": map[string]any{"cached_tokens": 0, "cache_write_tokens": 0},
+						"output_tokens": 5, "output_tokens_details": map[string]any{"reasoning_tokens": 1},
+					},
+				}), nil
+			})}
+			client := newTestClientWithHTTP(t, "http://127.0.0.1/v1", httpClient)
+			result, err := client.Generate(context.Background(), validRequest(client.Contract()))
+			if err != nil || result.State != testCase.want || len(result.Output) != 0 {
+				t.Fatalf("result = %+v, %v", result, err)
+			}
+		})
+	}
+}
+
+func TestProposalValidationRejectsUnknownOrTrailingData(t *testing.T) {
+	valid := []byte(`{"results":[{"id":"1","action":"skip","kind":null,"amount":null,"fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":[],"explanation":"ok"}]}`)
+	if err := validateProposal(valid); err != nil {
+		t.Fatal(err)
+	}
+	for _, data := range [][]byte{
+		append(append([]byte(nil), valid...), []byte(` {}`)...),
+		[]byte(`{"results":[],"unknown":true}`),
+		[]byte(`{"results":[{"id":"1","action":"skip","kind":null,"amount":"1e3","fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":[],"explanation":"bad"}]}`),
+	} {
+		if err := validateProposal(data); err == nil {
+			t.Fatalf("invalid proposal accepted: %s", data)
+		}
+	}
+}
+
+func newTestClientWithHTTP(t *testing.T, baseURL string, httpClient *http.Client) *Client {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "openai-key")
+	if err := os.WriteFile(path, []byte("synthetic-key\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	client, err := New(Config{APIKeyFile: path, ProjectID: "synthetic-project", BaseURL: baseURL, Environment: "test", HTTPClient: httpClient})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return client
+}
+
+func validRequest(contract ai.RuntimeContract) ai.Request {
+	return ai.Request{
+		ID: "attempt", JobID: "job", ResourceID: "resource",
+		HouseholdID: household.HouseholdID("household"), ActorID: household.UserID("actor"), ResourceRevision: 1,
+		Purpose: ai.TransactionReview, Model: contract.Model, Qualification: contract.Qualification,
+		PromptFingerprint: contract.PromptFingerprint, SchemaFingerprint: contract.SchemaFingerprint,
+		ConfigFingerprint: contract.ConfigFingerprint, Input: json.RawMessage(`{"transaction":"synthetic"}`), MaximumOutputTokens: 2048,
+	}
+}
+
+func decodeRequest(t *testing.T, r *http.Request, target *map[string]any) {
+	t.Helper()
+	defer r.Body.Close()
+	decoder := json.NewDecoder(r.Body)
+	decoder.UseNumber()
+	if err := decoder.Decode(target); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func jsonResponse(t *testing.T, status int, value any) *http.Response {
+	t.Helper()
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(string(data)))}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) { return f(request) }
+
+func assertCountShape(t *testing.T, body map[string]any) {
+	t.Helper()
+	assertKeys(t, body, "input", "instructions", "model", "parallel_tool_calls", "reasoning", "text")
+	if body["model"] != "gpt-5.6-terra" || body["parallel_tool_calls"] != false {
+		t.Fatalf("count contract mismatch: %#v", body)
+	}
+	assertReasoningAndSchema(t, body)
+}
+
+func assertGenerationShape(t *testing.T, body map[string]any) {
+	t.Helper()
+	assertKeys(t, body, "background", "input", "instructions", "max_output_tokens", "model", "parallel_tool_calls", "prompt_cache_options", "reasoning", "service_tier", "store", "text", "truncation")
+	if body["model"] != "gpt-5.6-terra" || body["background"] != false || body["store"] != false || body["parallel_tool_calls"] != false || body["service_tier"] != "default" || body["truncation"] != "disabled" || body["max_output_tokens"] != json.Number("2048") {
+		t.Fatalf("generation contract mismatch: %#v", body)
+	}
+	cache, _ := body["prompt_cache_options"].(map[string]any)
+	if cache["mode"] != "explicit" {
+		t.Fatalf("cache mode mismatch: %#v", cache)
+	}
+	assertReasoningAndSchema(t, body)
+}
+
+func assertReasoningAndSchema(t *testing.T, body map[string]any) {
+	t.Helper()
+	reasoning, _ := body["reasoning"].(map[string]any)
+	text, _ := body["text"].(map[string]any)
+	format, _ := text["format"].(map[string]any)
+	if reasoning["effort"] != "xhigh" || reasoning["mode"] != "standard" || format["type"] != "json_schema" || format["strict"] != true || format["name"] != "want_keep_proposal" || format["schema"] == nil {
+		t.Fatalf("reasoning/schema mismatch: %#v %#v", reasoning, format)
+	}
+}
+
+func assertKeys(t *testing.T, body map[string]any, expected ...string) {
+	t.Helper()
+	if len(body) != len(expected) {
+		t.Fatalf("unexpected fields: %#v", body)
+	}
+	for _, key := range expected {
+		if _, ok := body[key]; !ok {
+			t.Fatalf("missing field %q: %#v", key, body)
+		}
+	}
+}

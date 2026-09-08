@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -13,9 +14,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	ai "github.com/pchkauu/want-keep/backend/internal/ai/application"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	"github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
+	openaigateway "github.com/pchkauu/want-keep/backend/internal/gateways/openai"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/application"
 	domain "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/application"
@@ -75,13 +78,39 @@ func run() error {
 		return at
 	}
 	reconciliationService := reconciliation.NewService(db, db, ledger.NewWriter(db, db), admissionService, now, uuid.NewString)
+	var aiHandler jobs.Handler = ai.WaitingHandler{}
+	var aiBudgetQueue *ai.BudgetQueue
+	if keyFile := os.Getenv("WANT_KEEP_OPENAI_API_KEY_FILE"); keyFile != "" {
+		gateway, gatewayErr := openaigateway.New(openaigateway.Config{
+			APIKeyFile: keyFile, ProjectID: os.Getenv("WANT_KEEP_OPENAI_PROJECT_ID"),
+			BaseURL: os.Getenv("WANT_KEEP_OPENAI_BASE_URL"), Environment: os.Getenv("WANT_KEEP_ENV"),
+			HTTPClient: &http.Client{Timeout: 2 * time.Minute},
+		})
+		if gatewayErr != nil {
+			return gatewayErr
+		}
+		aiHandler = ai.NewHandler(db, gateway, time.Now, uuid.NewString)
+		aiBudgetQueue = ai.NewBudgetQueue(db, time.Now, time.Minute)
+	}
 	var group sync.WaitGroup
 	group.Add(1)
 	go func() { defer group.Done(); _ = scheduler.Run(ctx) }()
+	if aiBudgetQueue != nil {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			if err := aiBudgetQueue.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				report(jobs.Diagnostic{Kind: domain.AI, Stage: "budget_queue", Code: "budget_queue_stopped"})
+				stop()
+			}
+		}()
+	}
 	for _, kind := range []domain.Kind{domain.Sync, domain.Outbox, domain.AI} {
 		var handler jobs.Handler
 		if kind == domain.Outbox {
 			handler = jobs.OutboxHandler{Repository: db, Reconciliation: reconciliationService}
+		} else if kind == domain.AI {
+			handler = aiHandler
 		}
 		worker := jobs.Worker{Repository: db, Handler: handler, Config: jobs.DefaultWorkerConfig(kind), Report: report}
 		group.Add(1)

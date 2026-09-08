@@ -93,6 +93,13 @@ jobs:
           make test-integration AREA=jobs
           make test-jobs-race
 
+      - name: Verify OpenAI budget, recovery and concurrent reservations
+        env:
+          WANT_KEEP_TEST_DATABASE_URL: postgres://postgres:synthetic-admin@127.0.0.1:5432/want_keep_test?sslmode=disable
+        run: |
+          make test-integration AREA=ai-budget
+          make test-ai-budget-race
+
       - name: Verify PostgreSQL storage and transaction races
         env:
           WANT_KEEP_TEST_DATABASE_URL: postgres://postgres:synthetic-admin@127.0.0.1:5432/want_keep_test?sslmode=disable
