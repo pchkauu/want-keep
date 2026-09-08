@@ -22,8 +22,8 @@ D-39 остаётся идентичностью источника. Прове�
 - `backend/internal/accounts/application/`
 - `backend/internal/storage/`
 - `backend/internal/delivery/ledger/`
-- `backend/migrations/010_transaction_matching.sql`
-- `backend/migrations/011_matching_decision_basis.sql`
+- `backend/migrations/011_transaction_matching.sql`
+- `backend/migrations/012_matching_decision_basis.sql`
 - `api/`
 - `backend/test/integration/matching/`
 
@@ -227,8 +227,8 @@ D-39 remains source identity. Verified structured correspondence with namespace,
 - `backend/internal/accounts/application/`
 - `backend/internal/storage/`
 - `backend/internal/delivery/ledger/`
-- `backend/migrations/010_transaction_matching.sql`
-- `backend/migrations/011_matching_decision_basis.sql`
+- `backend/migrations/011_transaction_matching.sql`
+- `backend/migrations/012_matching_decision_basis.sql`
 - `api/`
 - `backend/test/integration/matching/`
 

@@ -9,7 +9,17 @@ import (
 func (s *Service) withoutRejected(ctx context.Context, p household.Principal, operationID string, candidates []ledger.Revision) ([]ledger.Revision, error) {
 	retained := make([]ledger.Revision, 0, len(candidates))
 	for _, candidate := range candidates {
-		rejected, err := s.repository.MatchingRejected(ctx, p, []string{operationID, candidate.OperationID})
+		ids := []string{operationID, candidate.OperationID}
+		group, found, err := s.repository.MatchingForOperation(ctx, p, candidate.OperationID)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			for _, member := range group.Members {
+				ids = append(ids, member.OperationID)
+			}
+		}
+		rejected, err := s.repository.MatchingRejected(ctx, p, ids)
 		if err != nil {
 			return nil, err
 		}

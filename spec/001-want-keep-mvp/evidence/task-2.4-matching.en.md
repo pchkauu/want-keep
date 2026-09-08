@@ -1,6 +1,6 @@
 # Task-2.4 — transfer links and one payment
 
-The backend/API implements matching cases, links, effect participation and compound undo. Base: `ff9dcc79eff6c8d35a38aedb39b95532b48672b6`; branch: `feat/task-2.4-transfer-matching`. Task-2.3 is included. Contract version 10 is extended in [contracts.en.md](../contracts.en.md); migrations 010 and 011 are additive. No dependencies are added.
+The backend/API implements matching cases, links, effect participation and compound undo. Base: `ff9dcc79eff6c8d35a38aedb39b95532b48672b6`; branch: `feat/task-2.4-transfer-matching`. Task-2.3 is included. Contract version 10 is extended in [contracts.en.md](../contracts.en.md); migrations 011 and 012 are additive. No dependencies are added.
 
 Matching owns search/composition, ledger owns monetary effects/decisions, accounts owns projections. Proven correspondence requires complete namespace/ID and compatible monetary sides; amount/date/file hash alone create clarification. A waiting possible duplicate adds no second effect. Original records remain independent. User confirmation, group corrections and undo use all revisions and the existing authenticated command transaction. Bank facts use the same JournalWriter inside CommitPage. Normalized input contains verified structured data only; this task does not implement real parsers, collectors or OpenAI.
 
@@ -32,3 +32,7 @@ Additional HTTP/PostgreSQL race regressions cover automatic-link undo after post
 Regressions also cover independent date changes after linking and their later undo, fee-before-principal and replay, a separate fee, restoring two candidates and 100 candidates with incomplete coverage. Migration checks cover pre-funding records, immutable matching decision bases and retention after command cleanup. The derived contribution field cannot become a protected user override.
 
 Additional checks cover unchanged relatedChanges amounts during an independent date edit, late correspondence with a missing side or existing payment/transfer evidence, import replay and retained explicit separate decisions.
+
+After task-3.1 (PR #81), version010 belongs to durable jobs. The undeployed matching migrations are renumbered011–012 without SQL changes; target files001–010 remain byte-identical. No deployed data is migrated. Prior isolated candidate databases remain retained and are not reused to validate the new sequence.
+
+Explicit rejected pairs are checked against every member of an already linked candidate. Late evidence cannot reintroduce a rejected participant through a third record: the confirmed separate purchase retains its effect and new source evidence. Automatic linking also checks the complete expanded composition.

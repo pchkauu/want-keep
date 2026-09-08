@@ -22,7 +22,7 @@ func TestMigrationDoesNotInventMatchingAndProtectsHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range names {
-		if name >= "010_" {
+		if name >= "011_" {
 			continue
 		}
 		data, err := fs.ReadFile(migrations.Files, name)

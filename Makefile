@@ -15,7 +15,7 @@ E2E_WEB_DIR ?= web
 
 .DEFAULT_GOAL := help
 
-.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-household-race test-accounts-race test-ledger-race test-audit-race test-matching-race test-contract e2e eval-ai check-deploy backup-check restore-check
+.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-household-race test-accounts-race test-ledger-race test-audit-race test-matching-race test-jobs-race test-contract e2e eval-ai check-deploy backup-check restore-check
 
 help:
 	@echo "Want Keep repository commands"
@@ -128,11 +128,22 @@ test-contract:
 	$(NPM) --prefix collector run test -- "contracts/$(PROVIDER)"
 
 e2e:
+ifeq ($(SCENARIO),all)
+	@if ! find "$(E2E_WEB_DIR)/e2e" -type f -name '*.spec.ts' -print -quit | grep -q .; then echo "E2E suite has no scenarios." >&2; exit 2; fi
+	@for suite in "$(E2E_WEB_DIR)"/e2e/*.spec.ts; do \
+		name="$${suite##*/}"; \
+		$(MAKE) e2e SCENARIO="$${name%.spec.ts}" || exit $$?; \
+	done
+else ifeq ($(SCENARIO),access)
+	sh scripts/test-access.sh
+else
 	@if [ -z "$(SCENARIO)" ]; then echo "SCENARIO=<name|all> is required." >&2; exit 2; fi
 	@if [ "$(SCENARIO)" = "all" ]; then suite_path="$(E2E_WEB_DIR)/e2e"; else suite_path="$(E2E_WEB_DIR)/e2e/$(SCENARIO).spec.ts"; fi; \
 		if [ ! -e "$$suite_path" ]; then echo "E2E scenario '$(SCENARIO)' is not implemented." >&2; exit 2; fi; \
 		if [ "$(SCENARIO)" = "all" ] && ! find "$$suite_path" -type f -name '*.spec.ts' -print -quit | grep -q .; then echo "E2E suite has no scenarios." >&2; exit 2; fi
 	cd "$(E2E_WEB_DIR)" && $(NPM) exec playwright test -- $(if $(filter all,$(SCENARIO)),,"e2e/$(SCENARIO).spec.ts")
+
+endif
 
 eval-ai:
 	@if [ -z "$(SUITE)" ]; then echo "SUITE=<name|all> is required." >&2; exit 2; fi
@@ -166,3 +177,6 @@ test-audit-race:
 
 test-matching-race:
 	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/matching/...
+
+test-jobs-race:
+	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/jobs/...

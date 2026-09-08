@@ -203,6 +203,17 @@ func (s *Service) acceptProven(ctx context.Context, p household.Principal, r led
 			}
 		}
 		facts = append(facts, r)
+		ids = ids[:0]
+		for _, fact := range facts {
+			ids = append(ids, fact.OperationID)
+		}
+		rejected, err = s.repository.MatchingRejected(ctx, p, ids)
+		if err != nil {
+			return err
+		}
+		if rejected {
+			return s.hold(ctx, p, r, expected, existing, true)
+		}
 	}
 	proposal := g.Clone()
 	if !found {
