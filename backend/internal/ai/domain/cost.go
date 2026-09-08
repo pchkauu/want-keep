@@ -13,6 +13,8 @@ var (
 	decimalPattern  = regexp.MustCompile(`^(0|[1-9][0-9]*)(\.[0-9]+)?$`)
 )
 
+const InputReservationMargin int64 = 32
+
 // Cost is an exact non-negative USD amount. It deliberately has no float boundary.
 type Cost struct{ value string }
 
@@ -132,10 +134,10 @@ func TerraPricing() Pricing {
 }
 
 func (p Pricing) Reservation(countedInput, maximumOutput int64) (Cost, error) {
-	if countedInput < 0 || countedInput > 262144 || maximumOutput < 1 || maximumOutput > 8192 {
+	if countedInput < 1 || countedInput > 262144 || maximumOutput < 1 || maximumOutput > 8192 {
 		return Cost{}, ErrInvalidUsage
 	}
-	return p.tokenCost(0, 0, countedInput+32, maximumOutput)
+	return p.tokenCost(0, 0, countedInput+InputReservationMargin, maximumOutput)
 }
 
 func (p Pricing) Actual(usage Usage) (Cost, bool, error) {

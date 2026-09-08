@@ -535,6 +535,8 @@ func (s *Store) ReconcileAI(ctx context.Context, attemptID string, outcome aiapp
 		if compareErr != nil || comparison != 0 {
 			return aiapp.ErrInvalidReconciliation
 		}
+	} else if comparison, compareErr := actual.Compare(ai.MustCost("0")); compareErr != nil || comparison <= 0 {
+		return aiapp.ErrInvalidReconciliation
 	}
 	_, err := s.pool.Exec(ctx, `SELECT want_keep.reconcile_ai_attempt($1::uuid,$2,$3::numeric,$4)`, attemptID, outcome, actual.String(), evidenceRef)
 	if err == nil {

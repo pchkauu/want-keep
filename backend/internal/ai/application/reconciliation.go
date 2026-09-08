@@ -34,9 +34,11 @@ func (s *ReconciliationService) Reconcile(ctx context.Context, requestID string,
 	if s.repository == nil || requestID == "" || utf8.RuneCountInString(evidenceRef) < 1 || utf8.RuneCountInString(evidenceRef) > 2000 || !evidenceReference.MatchString(evidenceRef) || (outcome != Charged && outcome != NotCharged) {
 		return ErrInvalidReconciliation
 	}
-	if outcome == NotCharged {
-		actual = ai.MustCost("0")
-	} else if err := actual.Validate(); err != nil {
+	if err := actual.Validate(); err != nil {
+		return ErrInvalidReconciliation
+	}
+	comparison, err := actual.Compare(ai.MustCost("0"))
+	if err != nil || outcome == NotCharged && comparison != 0 || outcome == Charged && comparison <= 0 {
 		return ErrInvalidReconciliation
 	}
 	return s.repository.ReconcileAI(ctx, requestID, outcome, actual, evidenceRef)

@@ -42,3 +42,22 @@ func TestReconciliationAcceptsOnlyStructuralEvidenceReference(t *testing.T) {
 		}
 	}
 }
+
+func TestReconciliationRequiresPositiveChargedCost(t *testing.T) {
+	for _, test := range []struct {
+		outcome ReconciliationOutcome
+		actual  ai.Cost
+	}{
+		{outcome: Charged, actual: ai.MustCost("0")},
+		{outcome: NotCharged, actual: ai.MustCost("0.01")},
+	} {
+		repository := &reconciliationRecorder{}
+		service := NewReconciliationService(repository)
+		if err := service.Reconcile(context.Background(), "request-1", test.outcome, test.actual, "provider-dashboard:request-1"); !errors.Is(err, ErrInvalidReconciliation) {
+			t.Fatalf("contradictory cost accepted for %s: %v", test.outcome, err)
+		}
+		if repository.called {
+			t.Fatalf("invalid cost for %s reached repository", test.outcome)
+		}
+	}
+}

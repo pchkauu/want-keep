@@ -54,6 +54,7 @@ def build() -> dict[str, object]:
         "monthly_limit_usd": "50",
         "maximum_family_concurrency": 2,
         "runtime_input_shape": "qualified_case_list_v1",
+        "production_admitted": False,
         "pricing_per_million_usd": {
             "input": "2",
             "cached_input": "0.2",
@@ -66,6 +67,7 @@ def build() -> dict[str, object]:
         "kind": "want_keep_openai_runtime_contract_v1",
         "source_version": SELECTED,
         "source_fingerprint": selected["fingerprint"],
+        "runtime_schema_adaptation": "add_usdc_asset_v1",
         "prompt_fingerprint": hashlib.sha256(prompt.encode()).hexdigest(),
         "schema_fingerprint": fingerprint(schema),
         "config_fingerprint": fingerprint(config),

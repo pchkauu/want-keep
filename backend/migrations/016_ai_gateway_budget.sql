@@ -75,12 +75,14 @@ DECLARE
  v_state record;
  v_now timestamptz := clock_timestamp();
  v_next_state text;
+ v_terminal boolean;
 BEGIN
  IF p_attempt_id IS NULL OR p_outcome NOT IN ('charged','not_charged')
     OR p_actual IS NULL OR p_actual < 0 OR p_actual::text IN ('NaN','Infinity','-Infinity')
     OR p_evidence_ref IS NULL OR length(p_evidence_ref) NOT BETWEEN 1 AND 2000
     OR p_evidence_ref !~ '^[A-Za-z0-9][A-Za-z0-9._:/?#=&%+~-]*$'
-    OR (p_outcome = 'not_charged' AND p_actual <> 0) THEN
+    OR (p_outcome = 'not_charged' AND p_actual <> 0)
+    OR (p_outcome = 'charged' AND p_actual <= 0) THEN
   RAISE EXCEPTION 'invalid AI reconciliation' USING ERRCODE = '22023';
  END IF;
 
@@ -94,22 +96,32 @@ BEGIN
  FROM want_keep.jobs j
  WHERE (j.household_id,j.id)=(v_family,v_job_id)
  FOR UPDATE;
- IF NOT FOUND OR v_job.kind <> 'ai' OR NOT v_job.external_started
-    OR v_job.state NOT IN ('running','unresolved') THEN
+ IF NOT FOUND OR v_job.kind <> 'ai' THEN
   RAISE EXCEPTION 'invalid AI reconciliation job' USING ERRCODE = '22023';
- END IF;
- IF v_job.state='running' AND v_job.lease_until IS NOT NULL AND v_job.lease_until>v_now THEN
-  RAISE EXCEPTION 'AI provider call lease is live' USING ERRCODE = '55006';
  END IF;
 
  SELECT s.* INTO v_state
  FROM want_keep.ai_attempt_states s
  WHERE (s.household_id,s.attempt_id)=(v_family,p_attempt_id)
  ORDER BY s.revision DESC LIMIT 1 FOR UPDATE;
- IF NOT FOUND OR NOT v_state.external_started
-    OR NOT (v_state.reconciliation_state='pending' OR v_state.state='reserved')
-    OR v_state.state NOT IN ('reserved','unknown') THEN
+ IF NOT FOUND OR NOT v_state.external_started THEN
   RAISE EXCEPTION 'invalid AI reconciliation state' USING ERRCODE = '22023';
+ END IF;
+
+ v_terminal := v_state.reconciliation_state='pending'
+  AND v_state.state IN ('completed','refused','incomplete','schema_error')
+  AND NOT v_job.external_started
+  AND ((v_state.state='completed' AND v_job.state='succeeded')
+   OR (v_state.state<>'completed' AND v_job.state='failed'));
+ IF NOT v_terminal THEN
+  IF NOT v_job.external_started OR v_job.state NOT IN ('running','unresolved')
+     OR NOT (v_state.reconciliation_state='pending' OR v_state.state='reserved')
+     OR v_state.state NOT IN ('reserved','unknown') THEN
+   RAISE EXCEPTION 'invalid AI reconciliation state' USING ERRCODE = '22023';
+  END IF;
+  IF v_job.state='running' AND v_job.lease_until IS NOT NULL AND v_job.lease_until>v_now THEN
+   RAISE EXCEPTION 'AI provider call lease is live' USING ERRCODE = '55006';
+  END IF;
  END IF;
 
  INSERT INTO want_keep.ai_attempt_states(
@@ -119,23 +131,28 @@ BEGIN
   structured_output,validation_state,code,reconciliation_state,evidence_ref,
   recorded_at,recorded_ns
  ) VALUES (
-  v_family,p_attempt_id,v_state.revision+1,'unknown',v_state.counted_input_tokens,
+  v_family,p_attempt_id,v_state.revision+1,
+  CASE WHEN v_terminal THEN v_state.state ELSE 'unknown' END,v_state.counted_input_tokens,
   v_state.reservation_usd,false,v_state.provider_id,v_state.provider_model,
   v_state.input_tokens,v_state.cached_tokens,v_state.cache_write_tokens,
   v_state.output_tokens,v_state.reasoning_tokens,p_actual,v_state.conservative_cost,
-  v_state.structured_output,'',v_state.code,'resolved',p_evidence_ref,v_now,0
+  v_state.structured_output,
+  CASE WHEN v_terminal THEN v_state.validation_state ELSE '' END,
+  v_state.code,'resolved',p_evidence_ref,v_now,0
  );
 
- v_next_state := CASE WHEN p_outcome='not_charged' THEN 'ready' ELSE 'failed' END;
- UPDATE want_keep.jobs SET
-  state=v_next_state,
-  reason=CASE WHEN p_outcome='not_charged' THEN 'temporary_failure' ELSE 'permanent_failure' END,
-  external_started=false,lease_token=NULL,lease_until=NULL,
-  available_at=CASE WHEN p_outcome='not_charged' THEN v_now ELSE available_at END,
-  run_deadline=CASE WHEN p_outcome='not_charged' THEN v_now+INTERVAL '24 hours' ELSE run_deadline END
- WHERE (household_id,id)=(v_family,v_job_id) AND kind='ai' AND state IN ('running','unresolved');
- IF NOT FOUND THEN
-  RAISE EXCEPTION 'stale AI reconciliation job' USING ERRCODE = '22023';
+ IF NOT v_terminal THEN
+  v_next_state := CASE WHEN p_outcome='not_charged' THEN 'ready' ELSE 'failed' END;
+  UPDATE want_keep.jobs SET
+   state=v_next_state,
+   reason=CASE WHEN p_outcome='not_charged' THEN 'temporary_failure' ELSE 'permanent_failure' END,
+   external_started=false,lease_token=NULL,lease_until=NULL,
+   available_at=CASE WHEN p_outcome='not_charged' THEN v_now ELSE available_at END,
+   run_deadline=CASE WHEN p_outcome='not_charged' THEN v_now+INTERVAL '24 hours' ELSE run_deadline END
+  WHERE (household_id,id)=(v_family,v_job_id) AND kind='ai' AND state IN ('running','unresolved');
+  IF NOT FOUND THEN
+   RAISE EXCEPTION 'stale AI reconciliation job' USING ERRCODE = '22023';
+  END IF;
  END IF;
 END;
 $$;

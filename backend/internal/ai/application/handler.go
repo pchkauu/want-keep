@@ -71,6 +71,9 @@ func (h *Handler) Prepare(ctx context.Context, execution jobapp.Execution) (joba
 	if err != nil {
 		return h.handleGatewayFailure(ctx, execution, request.ID, reservation, true, err)
 	}
+	if providerResult.Usage.InputTokens < 1 || providerResult.Usage.InputTokens > counted+ai.InputReservationMargin {
+		return h.markUnknown(execution, request.ID, "input_count_mismatch", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: &providerResult.Usage})
+	}
 	actual, conservative, err := ai.TerraPricing().Actual(providerResult.Usage)
 	if err != nil {
 		return h.markUnknown(execution, request.ID, "usage_invalid", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel})

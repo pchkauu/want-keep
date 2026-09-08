@@ -24,6 +24,12 @@ func TestReservationAndActualCostAreExact(t *testing.T) {
 	}
 }
 
+func TestReservationRequiresPositiveCount(t *testing.T) {
+	if _, err := ai.TerraPricing().Reservation(0, 2048); !errors.Is(err, ai.ErrInvalidUsage) {
+		t.Fatalf("zero input count accepted: %v", err)
+	}
+}
+
 func TestUsageRejectsContradictions(t *testing.T) {
 	writes := int64(801)
 	for _, usage := range []ai.Usage{

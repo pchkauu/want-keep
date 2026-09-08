@@ -36,11 +36,14 @@ func New(config Config) (*Client, error) {
 	if err := validateEndpoint(config.Environment, config.BaseURL); err != nil {
 		return nil, err
 	}
-	key, err := readAPIKey(config.APIKeyFile)
+	contract, err := loadRuntimeContract()
 	if err != nil {
 		return nil, err
 	}
-	contract, err := loadRuntimeContract()
+	if config.Environment == "production" && !contract.ProductionAdmitted {
+		return nil, errors.New("OpenAI runtime contract is not admitted for production")
+	}
+	key, err := readAPIKey(config.APIKeyFile)
 	if err != nil {
 		return nil, err
 	}

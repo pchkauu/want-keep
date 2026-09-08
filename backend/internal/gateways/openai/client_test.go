@@ -77,6 +77,13 @@ func TestClientUsesQualifiedRequestShapeAndNoSDKRetry(t *testing.T) {
 	}
 }
 
+func TestProductionRejectsRuntimeSchemaPendingQualification(t *testing.T) {
+	_, err := New(Config{Environment: "production", APIKeyFile: "/does/not/exist"})
+	if err == nil || !strings.Contains(err.Error(), "not admitted for production") {
+		t.Fatalf("unqualified runtime contract admitted in production: %v", err)
+	}
+}
+
 func TestGenerationTimeoutIsUnknown(t *testing.T) {
 	httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return nil, context.DeadlineExceeded

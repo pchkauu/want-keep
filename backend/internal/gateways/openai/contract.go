@@ -20,6 +20,7 @@ type runtimeContract struct {
 	Kind                    string               `json:"kind"`
 	SourceVersion           string               `json:"source_version"`
 	SourceFingerprint       string               `json:"source_fingerprint"`
+	RuntimeSchemaAdaptation string               `json:"runtime_schema_adaptation"`
 	PromptFingerprint       string               `json:"prompt_fingerprint"`
 	SchemaFingerprint       string               `json:"schema_fingerprint"`
 	ConfigFingerprint       string               `json:"config_fingerprint"`
@@ -38,6 +39,7 @@ type runtimeContract struct {
 	GlobalMaximumInput      int64                `json:"global_maximum_input_tokens"`
 	MonthlyLimit            string               `json:"monthly_limit_usd"`
 	MaximumFamilyConcurrent int                  `json:"maximum_family_concurrency"`
+	ProductionAdmitted      bool                 `json:"production_admitted"`
 	Routes                  map[ai.Purpose]route `json:"routes"`
 }
 
@@ -47,7 +49,7 @@ func loadRuntimeContract() (runtimeContract, error) {
 		return contract, err
 	}
 	metadata := contract.metadata()
-	if contract.Kind != "want_keep_openai_runtime_contract_v1" || contract.SourceVersion != string(ai.TerraXHigh) || contract.SourceFingerprint != "837e23ea8215423dc003129da9c99e4ea02ec37ad260199a53fe154cc8de222b" || contract.Prompt == "" || len(contract.Schema) == 0 || contract.ReasoningEffort != "xhigh" || contract.ReasoningMode != "standard" || contract.ServiceTier != "default" || contract.Store || contract.Background || contract.PromptCacheMode != "explicit" || contract.Truncation != "disabled" || contract.ParallelToolCalls || contract.GlobalMaximumInput != 262144 || contract.MonthlyLimit != "50" || contract.MaximumFamilyConcurrent != 2 {
+	if contract.Kind != "want_keep_openai_runtime_contract_v1" || contract.SourceVersion != string(ai.TerraXHigh) || contract.SourceFingerprint != "837e23ea8215423dc003129da9c99e4ea02ec37ad260199a53fe154cc8de222b" || contract.RuntimeSchemaAdaptation != "add_usdc_asset_v1" || contract.Prompt == "" || len(contract.Schema) == 0 || contract.ReasoningEffort != "xhigh" || contract.ReasoningMode != "standard" || contract.ServiceTier != "default" || contract.Store || contract.Background || contract.PromptCacheMode != "explicit" || contract.Truncation != "disabled" || contract.ParallelToolCalls || contract.GlobalMaximumInput != 262144 || contract.MonthlyLimit != "50" || contract.MaximumFamilyConcurrent != 2 || contract.ProductionAdmitted {
 		return contract, errors.New("invalid OpenAI runtime contract")
 	}
 	if err := metadata.Validate(); err != nil {

@@ -89,6 +89,9 @@ func run() error {
 		if gatewayErr != nil {
 			return gatewayErr
 		}
+		if err = ai.ResumeGatewayWaiting(ctx, db); err != nil {
+			return err
+		}
 		aiHandler = ai.NewHandler(db, gateway, time.Now, uuid.NewString)
 		aiBudgetQueue = ai.NewBudgetQueue(db, time.Now, time.Minute)
 	}

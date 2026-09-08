@@ -61,6 +61,17 @@ type BudgetQueueRepository interface {
 	ResumeAIBudgetWaiting(context.Context, time.Time) (int64, error)
 }
 
+type GatewayQueueRepository interface {
+	ResumeWaiting(context.Context, jobs.Kind, jobs.Reason) error
+}
+
+func ResumeGatewayWaiting(ctx context.Context, repository GatewayQueueRepository) error {
+	if repository == nil {
+		return ErrInvalidBudgetQueue
+	}
+	return repository.ResumeWaiting(ctx, jobs.AI, jobs.GatewayUnavailable)
+}
+
 type WaitingHandler struct{}
 
 func (WaitingHandler) Prepare(context.Context, jobapp.Execution) (jobapp.Result, error) {

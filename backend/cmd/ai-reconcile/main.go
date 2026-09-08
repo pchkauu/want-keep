@@ -23,13 +23,17 @@ func main() {
 func run() error {
 	requestID := flag.String("request-id", "", "persisted AI request ID")
 	outcome := flag.String("outcome", "", "charged or not_charged")
-	actualUSD := flag.String("actual-usd", "0", "exact actual USD cost")
+	actualUSD := flag.String("actual-usd", "", "exact actual USD cost; required when charged")
 	evidenceRef := flag.String("evidence-ref", "", "safe evidence reference")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		return errors.New("unexpected arguments")
 	}
-	cost, err := ai.NewCost(*actualUSD)
+	costText := *actualUSD
+	if *outcome == string(aiapp.NotCharged) && costText == "" {
+		costText = "0"
+	}
+	cost, err := ai.NewCost(costText)
 	if err != nil {
 		return err
 	}
