@@ -15,12 +15,29 @@ type OutboxRepository interface {
 	OutboxEvent(context.Context, household.Principal, string) (Event, error)
 	EnqueueReview(context.Context, household.Principal, Event) error
 }
-type OutboxHandler struct{ Repository OutboxRepository }
+
+type ReconciliationDispatcher interface {
+	DispatchReplayRevision(context.Context, household.Principal, string, uint64) error
+}
+
+type OutboxHandler struct {
+	Repository     OutboxRepository
+	Reconciliation ReconciliationDispatcher
+}
 
 func (h OutboxHandler) Prepare(ctx context.Context, x Execution) (Result, error) {
 	event, err := h.Repository.OutboxEvent(ctx, x.Principal, x.Job.ID)
 	if err != nil {
 		return Result{}, err
+	}
+	if event.Type == "reconciliation.changed" && event.ResourceType == "reconciliation" {
+		if h.Reconciliation == nil {
+			return Result{State: jobs.Waiting, Reason: jobs.ConsumerUnavailable}, nil
+		}
+		if err = h.Reconciliation.DispatchReplayRevision(ctx, x.Principal, event.ResourceID, event.Revision); err != nil {
+			return Result{}, err
+		}
+		return Result{State: jobs.Succeeded}, nil
 	}
 	if event.Type != "transaction.changed" || event.ResourceType != "transaction" {
 		return Result{State: jobs.Waiting, Reason: jobs.ConsumerUnavailable}, nil

@@ -37,16 +37,17 @@ type Result struct {
 
 // Command contains durable metadata only. Payloads and financial effects are stored by their owners.
 type Command struct {
-	id           string
-	householdID  household.HouseholdID
-	actorID      household.UserID
-	kind         string
-	payloadHash  string
-	status       Status
-	result       Result
-	errorCode    string
-	registeredAt calendar.Instant
-	completedAt  calendar.Instant
+	id              string
+	householdID     household.HouseholdID
+	actorID         household.UserID
+	kind            string
+	payloadHash     string
+	status          Status
+	result          Result
+	errorCode       string
+	currentRevision uint64
+	registeredAt    calendar.Instant
+	completedAt     calendar.Instant
 }
 
 func NewCommand(id, kind, payloadHash string, principal household.Principal, registeredAt calendar.Instant) (Command, error) {
@@ -64,6 +65,9 @@ func (c Command) Kind() string           { return c.kind }
 func (c Command) Status() Status         { return c.status }
 func (c Command) Result() (Result, bool) { return c.result, c.status == Succeeded }
 func (c Command) ErrorCode() string      { return c.errorCode }
+func (c Command) CurrentRevision() (uint64, bool) {
+	return c.currentRevision, c.status == Failed && c.currentRevision != 0
+}
 
 func (c Command) RequireVisible(principal household.Principal) error {
 	if err := principal.RequireHousehold(c.householdID); err != nil {
@@ -110,13 +114,13 @@ func (c Command) Succeed(result Result, completedAt calendar.Instant) (Command, 
 	return c, nil
 }
 
-func (c Command) Fail(code string, completedAt calendar.Instant) (Command, error) {
+func (c Command) Fail(code string, currentRevision uint64, completedAt calendar.Instant) (Command, error) {
 	if c.status != Pending {
 		return Command{}, ErrFinalCommand
 	}
-	if !errorCodePattern.MatchString(code) || !c.acceptsTime(completedAt) {
+	if !errorCodePattern.MatchString(code) || currentRevision > MaxRevision || currentRevision != 0 && code != "version_conflict" || !c.acceptsTime(completedAt) {
 		return Command{}, ErrInvalidCommand
 	}
-	c.status, c.errorCode, c.completedAt = Failed, code, completedAt
+	c.status, c.errorCode, c.currentRevision, c.completedAt = Failed, code, currentRevision, completedAt
 	return c, nil
 }

@@ -52,6 +52,8 @@ ErrorCode:
   - invitation_expired
   - invitation_used
   - member_limit_reached
+  - reconciliation_not_ready
+  - component_not_adjustable
   - internal_error
 FieldViolation:
   type: object

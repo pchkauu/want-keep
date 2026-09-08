@@ -22,7 +22,7 @@
 - `backend/internal/storage/`
 - `backend/internal/delivery/categories/`
 - `backend/internal/delivery/ledger/`
-- `backend/migrations/011_categories_merchants_items.sql`
+- `backend/migrations/012_categories_merchants_items.sql`
 - `api/`
 - `backend/test/integration/categories/`
 
@@ -259,7 +259,7 @@ The household catalog contains two-level starter/custom categories with stable R
 - `backend/internal/storage/`
 - `backend/internal/delivery/categories/`
 - `backend/internal/delivery/ledger/`
-- `backend/migrations/011_categories_merchants_items.sql`
+- `backend/migrations/012_categories_merchants_items.sql`
 - `api/`
 - `backend/test/integration/categories/`
 

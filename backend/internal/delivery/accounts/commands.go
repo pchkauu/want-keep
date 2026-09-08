@@ -18,7 +18,7 @@ func (s *Server) commandResponse(w http.ResponseWriter, p household.Principal, c
 	err := c.RequireDetail(p, s.now())
 	if errors.Is(err, command.ErrCommandExpired) {
 		x := c.Snapshot()
-		outcome := command.Outcome{CommandID: x.ID, Status: x.Status, Result: x.Result, FailureCode: x.ErrorCode}
+		outcome := command.Outcome{CommandID: x.ID, Status: x.Status, Result: x.Result, FailureCode: x.ErrorCode, CurrentRevision: x.CurrentRevision}
 		dto, e := s.boundary.ExpiredCommandToDTO(uuid.NewString(), &outcome)
 		if e != nil {
 			s.problem(w, e)

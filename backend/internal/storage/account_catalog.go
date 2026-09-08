@@ -158,6 +158,9 @@ func (s *Store) AuthorizeCommandResult(ctx context.Context, p household.Principa
 	case "merchant":
 		_, err := s.Merchant(ctx, p, r.ResourceID)
 		return err
+	case "reconciliation":
+		_, err := s.Reconciliation(ctx, p, r.ResourceID)
+		return err
 	default:
 		return household.ErrForbidden
 	}

@@ -32,11 +32,11 @@ func (s *Store) ReconcileJob(ctx context.Context, p household.Principal, r jobs.
 			if !errors.Is(err, pgx.ErrNoRows) {
 				return err
 			}
-			current, err := scanJob(scope.tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND id=$2 FOR UPDATE`, p.HouseholdID(), r.Job.ID))
+			current, err := scanReplayJob(scope.tx.QueryRow(ctx, `SELECT `+replayJobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND id=$2 FOR UPDATE`, p.HouseholdID(), r.Job.ID))
 			if err != nil {
 				return err
 			}
-			if current.State != domain.Unresolved || current.LeaseToken != r.Job.LeaseToken || current.Attempt != r.Job.Attempt || current.ActorID != p.UserID() || current.Kind != r.Job.Kind || current.Binding != r.Job.Binding || current.ResourceID != r.Job.ResourceID || current.ResourceRevision != r.Job.ResourceRevision || current.ConnectionID != r.Job.ConnectionID || current.ConnectionGeneration != r.Job.ConnectionGeneration || current.AdmissionRevision != r.Job.AdmissionRevision || current.SecretPurpose != r.Job.SecretPurpose {
+			if current.State != domain.Unresolved || current.LeaseToken != r.Job.LeaseToken || current.Attempt != r.Job.Attempt || current.ActorID != p.UserID() || current.Kind != r.Job.Kind || current.Binding != r.Job.Binding || current.ResourceID != r.Job.ResourceID || current.ResourceRevision != r.Job.ResourceRevision || current.ConnectionID != r.Job.ConnectionID || current.ConnectionGeneration != r.Job.ConnectionGeneration || current.AdmissionRevision != r.Job.AdmissionRevision || current.SecretPurpose != r.Job.SecretPurpose || current.ReplayRequestID != r.Job.ReplayRequestID || !current.RangeFrom.Equal(r.Job.RangeFrom) || !current.RangeTo.Equal(r.Job.RangeTo) {
 				return domain.ErrStaleAttempt
 			}
 			if r.Outcome == "confirmed" && current.Kind == domain.Sync {

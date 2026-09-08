@@ -13,11 +13,17 @@ type Snapshot struct {
 	Status                    Status
 	Result                    Result
 	ErrorCode                 string
+	CurrentRevision           uint64
 	RegisteredAt, CompletedAt calendar.Instant
 }
 
 func (c Command) Snapshot() Snapshot {
-	return Snapshot{c.id, c.kind, c.payloadHash, c.householdID, c.actorID, c.status, c.result, c.errorCode, c.registeredAt, c.completedAt}
+	return Snapshot{
+		ID: c.id, Kind: c.kind, PayloadHash: c.payloadHash,
+		HouseholdID: c.householdID, ActorID: c.actorID, Status: c.status,
+		Result: c.result, ErrorCode: c.errorCode, CurrentRevision: c.currentRevision,
+		RegisteredAt: c.registeredAt, CompletedAt: c.completedAt,
+	}
 }
 
 func Restore(s Snapshot) (Command, error) {
@@ -27,12 +33,12 @@ func Restore(s Snapshot) (Command, error) {
 	c := Command{id: s.ID, kind: s.Kind, payloadHash: s.PayloadHash, householdID: s.HouseholdID, actorID: s.ActorID, registeredAt: s.RegisteredAt, status: Pending}
 	switch s.Status {
 	case Pending:
-		if s.Result != (Result{}) || s.ErrorCode != "" || s.CompletedAt.String() != "" {
+		if s.Result != (Result{}) || s.ErrorCode != "" || s.CurrentRevision != 0 || s.CompletedAt.String() != "" {
 			return Command{}, ErrInvalidCommand
 		}
 		return c, nil
 	case Succeeded:
-		if s.ErrorCode != "" {
+		if s.ErrorCode != "" || s.CurrentRevision != 0 {
 			return Command{}, ErrInvalidCommand
 		}
 		if s.Result.ResourceType == "" || s.Result.ResourceID == "" || s.Result.Revision == 0 || s.Result.Revision > MaxRevision || !c.acceptsTime(s.CompletedAt) {
@@ -44,10 +50,10 @@ func Restore(s Snapshot) (Command, error) {
 		if s.Result != (Result{}) {
 			return Command{}, ErrInvalidCommand
 		}
-		if !errorCodePattern.MatchString(s.ErrorCode) || !c.acceptsTime(s.CompletedAt) {
+		if !errorCodePattern.MatchString(s.ErrorCode) || s.CurrentRevision > MaxRevision || s.CurrentRevision != 0 && s.ErrorCode != "version_conflict" || !c.acceptsTime(s.CompletedAt) {
 			return Command{}, ErrInvalidCommand
 		}
-		c.status, c.errorCode, c.completedAt = Failed, s.ErrorCode, s.CompletedAt
+		c.status, c.errorCode, c.currentRevision, c.completedAt = Failed, s.ErrorCode, s.CurrentRevision, s.CompletedAt
 		return c, nil
 	default:
 		return Command{}, ErrInvalidCommand

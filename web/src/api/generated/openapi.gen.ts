@@ -2268,6 +2268,8 @@ export interface components {
       | "invitation_expired"
       | "invitation_used"
       | "member_limit_reached"
+      | "reconciliation_not_ready"
+      | "component_not_adjustable"
       | "internal_error";
     ExcludeInput: {
       expectedRevision: components["schemas"]["Revision"];
@@ -2832,20 +2834,58 @@ export interface components {
     };
     Reconciliation: {
       accountId: components["schemas"]["ID"];
+      components: components["schemas"]["ReconciliationComponent"][];
+      evaluatedAt: components["schemas"]["Instant"];
+      explanations: components["schemas"]["ReconciliationExplanation"][];
       id: components["schemas"]["ID"];
-      ledger: components["schemas"]["AmountValue"];
-      quality: components["schemas"]["DataQuality"];
-      reason: string;
-      relatedTransactionIds: components["schemas"]["ID"][];
-      revision: components["schemas"]["Revision"];
-      source: components["schemas"]["AmountValue"];
       /** @enum {string} */
-      state: "open" | "resolved";
+      lifecycle: "open" | "resolved" | "superseded";
+      quality: components["schemas"]["DataQuality"];
+      relatedTransactionIds: components["schemas"]["ID"][];
+      replay: components["schemas"]["ReconciliationReplay"];
+      resolution?: components["schemas"]["ReconciliationResolution"];
+      /** @enum {string} */
+      result: "balanced" | "discrepant" | "incomplete";
+      revision: components["schemas"]["Revision"];
+      sourceAsOf: components["schemas"]["Instant"];
+    };
+    ReconciliationComponent: {
+      adjustable: boolean;
+      /** @enum {string} */
+      component: "owned" | "available" | "locked" | "debt";
+      difference: components["schemas"]["AmountValue"];
+      ledger: components["schemas"]["AmountValue"];
+      source: components["schemas"]["AmountValue"];
+    };
+    ReconciliationExplanation: {
+      code: string;
+      message: string;
     };
     ReconciliationPage: {
       items: components["schemas"]["Reconciliation"][];
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
+    };
+    ReconciliationReplay: {
+      jobId?: components["schemas"]["ID"];
+      reason?: string;
+      requestedFrom?: components["schemas"]["Instant"];
+      requestedTo?: components["schemas"]["Instant"];
+      /** @enum {string} */
+      status:
+        "not_required" | "pending" | "completed" | "failed" | "unavailable";
+    };
+    ReconciliationResolution: {
+      actorId: components["schemas"]["ID"];
+      adjustmentTransactionId: components["schemas"]["ID"];
+      components: ("owned" | "debt")[];
+      reason: string;
+      recordedAt: components["schemas"]["Instant"];
+    };
+    ReconciliationResolutionInput: {
+      components: ("owned" | "debt")[];
+      expectedRevision: components["schemas"]["Revision"];
+      reason: string;
     };
     RecoveryAttempt: {
       attemptId: components["schemas"]["ID"];
@@ -6114,6 +6154,9 @@ export interface operations {
         /** @description Opaque, bound to family, visibility and filters. */
         cursor?: components["parameters"]["Cursor"];
         limit?: components["parameters"]["Limit"];
+        accountId?: components["schemas"]["ID"];
+        lifecycle?: "open" | "resolved" | "superseded";
+        result?: "balanced" | "discrepant" | "incomplete";
       };
       header?: never;
       path?: never;
@@ -6188,7 +6231,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UndoInput"];
+        "application/json": components["schemas"]["ReconciliationResolutionInput"];
       };
     };
     responses: {
