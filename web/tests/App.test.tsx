@@ -3,14 +3,25 @@ import { readFile } from "node:fs/promises";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { App } from "@/app/App";
+import { MemoryRouter } from "react-router";
+import { AuthLayout } from "@/features/identity/AuthLayout";
+import { LocaleProvider } from "@/locales/LocaleProvider";
+import { LocaleController } from "@/locales/locale";
 
 describe("application foundation", () => {
-  it("renders an explicit non-product shell", () => {
-    const markup = renderToStaticMarkup(<App />);
+  it("renders the centered sign-in composition in the selected language", () => {
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <LocaleProvider controller={new LocaleController(undefined, "en")}>
+          <AuthLayout login>
+            <button>Log in with Passkeys</button>
+          </AuthLayout>
+        </LocaleProvider>
+      </MemoryRouter>,
+    );
 
-    expect(markup.replace(/<[^>]+>/g, "")).toContain("WANT KEEP");
-    expect(markup).toContain("Product workflows are intentionally unavailable");
+    expect(markup.replace(/<[^>]+>/g, "")).toContain("Want Keep");
+    expect(markup).toContain("Log in with Passkeys");
   });
 
   it("configures shadcn for Base UI", async () => {

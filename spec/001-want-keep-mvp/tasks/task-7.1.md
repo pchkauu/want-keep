@@ -3,23 +3,26 @@
 
 ## RU
 
-Предоставить вход, навигацию и доступные состояния на ноутбуке macOS Chrome/Arc.
+Предоставить рабочие desktop-вход, восстановление, приглашение и начало учёта с наличным счётом на macOS Chrome.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализация подготовлена; проверки, публикация и review фиксируются в evidence/task-7.1-access.md и GitHub.
 
-**Зависимости:** `task-1.4`, `task-1.2`, `task-7.11`, `task-1.6`.
+**Зависимости:** `task-1.4`, `task-1.2`, `task-7.11`, `task-1.6`, `task-2.1`.
 
 **Тип:** `implementation`.
 
 ### Изменение и контракты
 
-Создать React/TypeScript/Vite shell для macOS Chrome/Arc, маршруты SCR-001–SCR-005, общую навигацию, passkey/recovery и typed errors. Использовать дизайн-систему task-7.11; вход следует референсу: компактный логотип, название, свободное пространство и одна основная кнопка. Сессия только в защищённой cookie. Desktop 1280×720/1440×900, zoom 200%, клавиатура/фокус; при offline нет ложного сохранения. Мобильные экраны и установка приложения исключены. Bootstrap/invite используют policy task-1.6.
+Реализованы SCR-001–005, оболочка и минимальная безопасность /settings/security. Native WebAuthn работает с настоящим API task-1.4/task-1.6; cookies и CSRF не ослабляются. Bootstrap и приглашение ведут в onboarding, обычный вход — в обзор. Наличный счёт task-2.1 сохраняет точную сумму и восстанавливает неизвестный результат по исходному UUID. Коды, токены и черновики только в памяти; язык запоминается в браузере. Полные финансовые разделы и управление доступом остаются следующим задачам. Реальная приёмка этой задачи — Chrome; Arc отложен по решению пользователя. Контракт сценариев: evidence/task-7.1-access.md. При локальном expiry вход сначала перечитывает /me: живая общая cookie восстанавливает сессию без нового prompt и без продления простоя. Pending-команда допускает явный replay исходного запроса. После reload пользователь может восстановить поля с прежним ключом; сервер проверяет hash и отклоняет любое отличие без эффекта.
 
 ### Границы изменений
 
 - `web/src/app/`
 - `web/src/features/identity/`
 - `web/src/locales/`
+- `web/src/features/accounts/`
+- `web/e2e/access.spec.ts`
+- `scripts/test-access.sh`
 
 ### Экранный контракт
 
@@ -33,7 +36,7 @@
 
 **Структура сверху вниз:** Центр: логотип, Want Keep, свободное пространство, основная кнопка; язык/помощь ненавязчивы.
 
-**Следующее действие:** Войти с passkey → SCR-006 или незавершённый SCR-005; помощь → SCR-002.
+**Следующее действие:** Обычный вход → SCR-006; повторный вход того же участника после expiry возвращает разрешённый внутренний маршрут. Помощь → SCR-002.
 
 **Объяснение и детализация:** Системный prompt, локальная причина ошибки и повтор; не копировать размеры экспорта.
 
@@ -71,9 +74,9 @@ States: UISTATE-01, UISTATE-07, UISTATE-08, UISTATE-09, UISTATE-10, UISTATE-16, 
 
 **Главный ответ:** Закрытая настройка первого участника.
 
-**Структура сверху вниз:** Проверка bootstrap → имя/семья → passkey/recovery → приглашение.
+**Структура сверху вниз:** Операторский токен, имя/семья, язык, timezone и валюта → свой passkey → однократные recovery-коды → SCR-005.
 
-**Следующее действие:** Создать семью → SCR-004 или SCR-005.
+**Следующее действие:** Создать семью → SCR-005; после неизвестного ответа проверить /me, затем войти созданным passkey.
 
 **Объяснение и детализация:** Повторный bootstrap закрыт, никакой публичной регистрации.
 
@@ -111,11 +114,11 @@ States: UISTATE-01, UISTATE-07, UISTATE-08, UISTATE-09, UISTATE-10, UISTATE-12, 
 
 **Главный ответ:** Можно начать с наличных и уже доступных счетов.
 
-**Структура сверху вниз:** Прогресс → добавить счёт/подключение → дата истории/остатки → первый план → обзор.
+**Структура сверху вниз:** Состав семьи и доступные счета → наличный счёт с точным исходным остатком/датой → приглашение партнёра или обзор. Подключения и первый план добавляются профильными задачами.
 
 **Следующее действие:** Добавить FORM-03/13 или продолжить с доступным → SCR-006.
 
-**Объяснение и детализация:** Неизвестная история видна как ограничение; незавершённое подключение не блокирует доступные функции.
+**Объяснение и детализация:** Onboarding доступен повторно без флага завершения. Приглашение и будущие подключения не блокируют продолжение. Timeout создания счёта сверяется по исходному UUID; после reload — recent commands.
 
 **Права:** Оба участника видят; действия проверяет сервер по членству и владельцу ресурса.
 
@@ -325,7 +328,7 @@ make test-web FILTER=identity && make e2e SCENARIO=access
 
 RU/EN вход/восстановление и навигация работают; unauthorized/offline состояния понятны.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды реализованы: make check; make test-web FILTER=identity; make test-web FILTER=accounts; make e2e SCENARIO=access; design-tokens/design-components; integration AREA=identity/household/accounts. Access E2E требует изолированные Docker PostgreSQL и Go API. Результаты локальных, CI и ручных проверок разделяются.
 
 ### Передача следующему агенту
 
@@ -335,23 +338,26 @@ RU/EN вход/восстановление и навигация работаю
 
 ## EN
 
-Provide sign-in, navigation and accessible states on a macOS laptop in Chrome/Arc.
+Provide working desktop sign-in, recovery, invitation and onboarding with a cash account on macOS Chrome.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Implementation prepared; verification, publication and review are recorded in evidence/task-7.1-access.en.md and GitHub.
 
-**Dependencies:** `task-1.4`, `task-1.2`, `task-7.11`, `task-1.6`.
+**Dependencies:** `task-1.4`, `task-1.2`, `task-7.11`, `task-1.6`, `task-2.1`.
 
 **Kind:** `implementation`.
 
 ### Change and contracts
 
-Create a React/TypeScript/Vite shell for macOS Chrome/Arc, SCR-001–SCR-005 routes, shared navigation, passkey/recovery and typed errors. Use task-7.11 design system; reference sign-in has a compact logo, name, whitespace and one primary button. Session stays in a protected cookie. Desktop 1280×720/1440×900, 200% zoom, keyboard/focus; offline never implies saved. Mobile screens and installation are excluded. Bootstrap/invite use task-1.6 policy.
+SCR-001–005, the shell and minimal /settings/security are implemented. Native WebAuthn uses the real task-1.4/task-1.6 API without weakening cookies or CSRF. Bootstrap and invitation lead to onboarding; normal sign-in opens overview. The task-2.1 cash account preserves exact amounts and resolves unknown results with its original UUID. Codes, tokens and drafts remain in memory; browser locale preference persists. Full financial sections and access management remain later tasks. Actual-browser acceptance for this task uses Chrome; Arc is deferred by user decision. Scenario contract: evidence/task-7.1-access.en.md. After local expiry, sign-in first re-reads /me: a live shared cookie restores the session without another prompt or idle renewal. A pending command permits explicit original-request replay. After reload, the user may reconstruct the fields with the same key; the server checks the hash and rejects any difference without an effect.
 
 ### Change boundaries
 
 - `web/src/app/`
 - `web/src/features/identity/`
 - `web/src/locales/`
+- `web/src/features/accounts/`
+- `web/e2e/access.spec.ts`
+- `scripts/test-access.sh`
 
 ### Screen contract
 
@@ -365,7 +371,7 @@ Create a React/TypeScript/Vite shell for macOS Chrome/Arc, SCR-001–SCR-005 rou
 
 **Top-down structure:** Center: logo, Want Keep, whitespace, primary button; subtle language/help.
 
-**Next action:** Log in with Passkeys → SCR-006 or unfinished SCR-005; help → SCR-002.
+**Next action:** Normal sign-in → SCR-006; same-member reauthentication after expiry restores an allowed internal route. Help → SCR-002.
 
 **Explanation and details:** System prompt, local error reason and retry; do not copy export dimensions.
 
@@ -403,9 +409,9 @@ States: UISTATE-01, UISTATE-07, UISTATE-08, UISTATE-09, UISTATE-10, UISTATE-16, 
 
 **Primary answer:** Restricted first-member setup.
 
-**Top-down structure:** Bootstrap verification → name/household → passkey/recovery → invitation.
+**Top-down structure:** Operator token, name/household, locale, timezone and asset → own passkey → one-time recovery codes → SCR-005.
 
-**Next action:** Create household → SCR-004 or SCR-005.
+**Next action:** Create household → SCR-005; after an unknown response check /me, then sign in with the created passkey.
 
 **Explanation and details:** Repeat bootstrap is closed; no public signup.
 
@@ -443,11 +449,11 @@ States: UISTATE-01, UISTATE-07, UISTATE-08, UISTATE-09, UISTATE-10, UISTATE-12, 
 
 **Primary answer:** Start with cash and accounts already available.
 
-**Top-down structure:** Progress → add account/connection → history date/balances → first plan → overview.
+**Top-down structure:** Household members and available accounts → cash account with exact opening funds/date → partner invitation or overview. Connections and the first plan are added by their owning tasks.
 
 **Next action:** Add FORM-03/13 or continue with available data → SCR-006.
 
-**Explanation and details:** Unknown history stays a visible limitation; unfinished connection does not block available features.
+**Explanation and details:** Onboarding remains accessible without a completion flag. Invitation and future connections do not block continuation. Account timeout reconciles the original UUID; reload checks recent commands.
 
 **Permissions:** Both members can read; server checks membership and resource ownership for actions.
 
@@ -657,7 +663,7 @@ make test-web FILTER=identity && make e2e SCENARIO=access
 
 RU/EN sign-in/recovery/navigation work; unauthorized/offline states are understandable.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Commands exist: make check; make test-web FILTER=identity; make test-web FILTER=accounts; make e2e SCENARIO=access; design-tokens/design-components; integration AREA=identity/household/accounts. Access E2E requires isolated Docker PostgreSQL and Go API. Local, CI and manual results are separate.
 
 ### Handoff to the next agent
 

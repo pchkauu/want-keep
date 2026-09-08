@@ -53,7 +53,7 @@
 | [task-6.6](tasks/task-6.6.md) | Планировать месячный бюджет и доходы | task-2.7, task-2.6, task-6.1, task-6.2, task-2.8 | [#45](https://github.com/pchkauu/want-keep/issues/45) |
 | [task-6.7](tasks/task-6.7.md) | Резервировать деньги на цели | task-6.6, task-2.1 | [#46](https://github.com/pchkauu/want-keep/issues/46) |
 | [task-6.8](tasks/task-6.8.md) | Считать дневные лимиты и прогноз ликвидности | task-6.6, task-6.7, task-6.3, task-2.5 | [#47](https://github.com/pchkauu/want-keep/issues/47) |
-| [task-7.1](tasks/task-7.1.md) | Создать desktop-оболочку и вход RU/EN | task-1.4, task-1.2, task-7.11, task-1.6 | [#48](https://github.com/pchkauu/want-keep/issues/48) |
+| [task-7.1](tasks/task-7.1.md) | Создать desktop-оболочку и вход RU/EN | task-1.4, task-1.2, task-7.11, task-1.6, task-2.1 | [#48](https://github.com/pchkauu/want-keep/issues/48) |
 | [task-7.2](tasks/task-7.2.md) | Показать счета, операции и исправления | task-7.1, task-2.5, task-2.6, task-2.7, task-5.2, task-7.9, task-2.9 | [#49](https://github.com/pchkauu/want-keep/issues/49) |
 | [task-7.3](tasks/task-7.3.md) | Создать чат с выбором счёта и файлами | task-7.1, task-5.4, task-7.9 | [#50](https://github.com/pchkauu/want-keep/issues/50) |
 | [task-7.4](tasks/task-7.4.md) | Создать редактор месячного бюджета | task-7.1, task-6.6, task-7.9 | [#51](https://github.com/pchkauu/want-keep/issues/51) |
