@@ -483,6 +483,7 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 	if result.State == AllocationUnresolved {
 		result.Mode, result.Purpose, result.Origin = AllocationUnknown, "", AllocationUnknownOrigin
 		result.Inputs = nil
+		result.Fallback = nil
 		if strings.TrimSpace(result.Reason) == "" {
 			result.Reason = "allocation_unresolved"
 		}

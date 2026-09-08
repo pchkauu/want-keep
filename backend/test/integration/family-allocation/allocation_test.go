@@ -78,6 +78,40 @@ func TestFamilyAllocationHTTPRulesAndExactAssets(t *testing.T) {
 	second.call(http.MethodGet, "/allocation-rules?limit=1&cursor="+url.QueryEscape(*page.NextCursor), "", nil, http.StatusBadRequest)
 }
 
+func TestRuleCanBeArchivedAfterItsConditionIsArchived(t *testing.T) {
+	for _, conditionKind := range []string{"merchant", "category"} {
+		t.Run(conditionKind, func(t *testing.T) {
+			fixture := newFixture(t)
+			client := fixture.client(fixture.p)
+			var condition map[string]any
+			var archivePath string
+			switch conditionKind {
+			case "merchant":
+				created := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/merchants", uuid.NewString(), map[string]any{"name": "Archived merchant", "aliases": []string{}}, http.StatusAccepted))
+				condition = map[string]any{"merchantId": created.Result.Id}
+				archivePath = "/merchants/" + created.Result.Id
+			case "category":
+				created := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Archived category"}, http.StatusAccepted))
+				condition = map[string]any{"categoryId": created.Result.Id}
+				archivePath = "/categories/" + created.Result.Id
+			}
+			rule := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, condition, "active", 10, "50", "50", 0), http.StatusAccepted))
+			archivedCondition := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, archivePath, uuid.NewString(), map[string]any{"expectedRevision": 1, "state": "archived"}, http.StatusAccepted))
+			if archivedCondition.Status != "succeeded" {
+				t.Fatal(archivedCondition)
+			}
+			archivedRule := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules/"+rule.Result.Id, uuid.NewString(), ruleInputForCondition(client, condition, "archived", 10, "50", "50", 1), http.StatusAccepted))
+			if archivedRule.Status != "succeeded" || archivedRule.Result.Revision != 2 {
+				t.Fatalf("archived rule = %+v", archivedRule)
+			}
+			stored := decode[generated.AllocationRule](t, client.call(http.MethodGet, "/allocation-rules/"+rule.Result.Id, "", nil, http.StatusOK))
+			if stored.State != "archived" {
+				t.Fatalf("stored rule = %+v", stored)
+			}
+		})
+	}
+}
+
 func TestNewImportedFactUsesConfirmedMerchantAliasRule(t *testing.T) {
 	fixture := newFixture(t)
 	first := fixture.client(fixture.p)
@@ -220,6 +254,19 @@ func TestMixedReceiptDirectAllocationAndValidation(t *testing.T) {
 	if unchanged.Revision != 3 || unchanged.Postings[0].Money.Amount != "-1000" {
 		t.Fatal("failed allocation left partial effect")
 	}
+	unresolvedResult := decode[generated.CommandSucceeded](t, second.call(http.MethodPost, "/transactions/"+created.Result.Id+"/allocations", uuid.NewString(), map[string]any{
+		"expectedRevision": 3,
+		"reason":           "Preserve item ambiguity",
+		"allocation":       unresolved(),
+		"items":            []any{map[string]any{"itemId": revision.ReceiptItems[0].Id, "allocation": map[string]any{"mode": "unresolved", "reason": "Ambiguous shared item"}}},
+	}, http.StatusAccepted))
+	if unresolvedResult.Status != "succeeded" {
+		t.Fatal(unresolvedResult)
+	}
+	unresolvedTransaction := readTransaction(t, first, created.Result.Id)
+	if unresolvedTransaction.Allocation.State != "unresolved" || unresolvedTransaction.ReceiptItems[0].Allocation.Reason != "Ambiguous shared item" {
+		t.Fatalf("unresolved item allocation = %+v", unresolvedTransaction)
+	}
 }
 
 func TestAmountAllocationAcrossAssetsRoundTripsPostgreSQL(t *testing.T) {
@@ -269,7 +316,11 @@ func createRule(t *testing.T, client *client, merchantID string, priority int, f
 }
 
 func ruleInput(client *client, merchantID string, priority int, first, second string, expected int64) map[string]any {
-	input := map[string]any{"priority": priority, "state": "active", "condition": map[string]any{"merchantId": merchantID}, "shares": []any{map[string]any{"memberId": string(client.f.members[0].ID), "share": first}, map[string]any{"memberId": string(client.f.members[1].ID), "share": second}}}
+	return ruleInputForCondition(client, map[string]any{"merchantId": merchantID}, "active", priority, first, second, expected)
+}
+
+func ruleInputForCondition(client *client, condition map[string]any, state string, priority int, first, second string, expected int64) map[string]any {
+	input := map[string]any{"priority": priority, "state": state, "condition": condition, "shares": []any{map[string]any{"memberId": string(client.f.members[0].ID), "share": first}, map[string]any{"memberId": string(client.f.members[1].ID), "share": second}}}
 	if expected > 0 {
 		input["expectedRevision"] = expected
 	}

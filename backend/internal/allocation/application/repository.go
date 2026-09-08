@@ -15,7 +15,7 @@ type Repository interface {
 	MatchingAllocationRules(context.Context, household.Principal, string, string) ([]allocation.Rule, error)
 	CreateAllocationRule(context.Context, allocation.Rule) error
 	SaveAllocationRule(context.Context, allocation.Rule, uint64) error
-	ActiveMemberships(context.Context, household.Principal) ([]household.Membership, error)
+	HouseholdMemberships(context.Context, household.Principal) ([]household.Membership, error)
 	Category(context.Context, household.Principal, string) (category.Category, error)
 	Merchant(context.Context, household.Principal, string) (category.Merchant, error)
 	MerchantAliasOwner(context.Context, household.Principal, string, string) (string, error)

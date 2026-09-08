@@ -12,20 +12,20 @@ import (
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 )
 
-func (s *Store) ActiveMemberships(ctx context.Context, principal household.Principal) ([]household.Membership, error) {
+func (s *Store) HouseholdMemberships(ctx context.Context, principal household.Principal) ([]household.Membership, error) {
 	q, err := s.reader(ctx, principal)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.Query(ctx, `SELECT id,user_id FROM want_keep.memberships WHERE household_id=$1 AND active ORDER BY id`, principal.HouseholdID())
+	rows, err := q.Query(ctx, `SELECT id,user_id,active FROM want_keep.memberships WHERE household_id=$1 ORDER BY id`, principal.HouseholdID())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	result := []household.Membership{}
 	for rows.Next() {
-		member := household.Membership{HouseholdID: principal.HouseholdID(), Active: true}
-		if err = rows.Scan(&member.ID, &member.UserID); err != nil {
+		member := household.Membership{HouseholdID: principal.HouseholdID()}
+		if err = rows.Scan(&member.ID, &member.UserID, &member.Active); err != nil {
 			return nil, err
 		}
 		result = append(result, member)

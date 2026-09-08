@@ -176,6 +176,30 @@ func TestCompositeAllocationPreservesSharedIntentAtOneQuantum(t *testing.T) {
 	}
 }
 
+func TestCompositeUnresolvedAllocationNormalizesAggregateAndKeepsItem(t *testing.T) {
+	paid := mustAllocationMoney(t, "100", money.RUB)
+	revision := expenseRevision(paid)
+	members := []household.MembershipID{"member-a", "member-b"}
+	revision.ReceiptItems = []ReceiptItem{
+		{ID: "ambiguous", Name: "Ambiguous", Quantity: "1", Gross: mustAllocationMoney(t, "40", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)},
+		{ID: "unknown", Name: "Unknown", Quantity: "1", Gross: mustAllocationMoney(t, "60", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)},
+	}
+	allocated, err := revision.WithAllocation(
+		AllocationInput{Mode: AllocationUnknown, Reason: "purchase_unknown"},
+		[]ItemAllocationInput{{ItemID: "ambiguous", Allocation: AllocationInput{Mode: AllocationUnknown, Reason: "item_unknown"}}},
+		members,
+	)
+	if err != nil || allocated.Validate() != nil {
+		t.Fatalf("unresolved composite allocation = %+v, err=%v", allocated.Allocation, err)
+	}
+	if allocated.Allocation.State != AllocationUnresolved || allocated.Allocation.Mode != AllocationUnknown || allocated.Allocation.Fallback != nil || allocated.Allocation.Unallocated[0].Amount() != "100" {
+		t.Fatalf("unresolved aggregate = %+v", allocated.Allocation)
+	}
+	if allocated.ReceiptItems[0].Allocation.Reason != "item_unknown" || allocated.ReceiptItems[1].Allocation.Reason != "purchase_unknown" {
+		t.Fatalf("unresolved items = %+v", allocated.ReceiptItems)
+	}
+}
+
 func TestCompositeShareAllocationRefreshesAndAmountBasisRejectsChanges(t *testing.T) {
 	paid := mustAllocationMoney(t, "100", money.RUB)
 	revision := expenseRevision(paid)

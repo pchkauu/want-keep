@@ -83,7 +83,7 @@ func (s *Service) Rule(ctx context.Context, principal household.Principal, id st
 }
 
 func (s *Service) Preview(ctx context.Context, principal household.Principal, merchantID, categoryID string) (allocation.Resolution, error) {
-	if err := s.requireConditions(ctx, principal, allocation.Condition{MerchantID: merchantID, CategoryID: categoryID}); err != nil {
+	if err := s.requireConditions(ctx, principal, allocation.Condition{MerchantID: merchantID, CategoryID: categoryID}, true); err != nil {
 		return allocation.Resolution{}, err
 	}
 	rules, err := s.repository.MatchingAllocationRules(ctx, principal, merchantID, categoryID)
@@ -143,7 +143,7 @@ func (s *Service) ResolveSource(ctx context.Context, principal household.Princip
 }
 
 func (s *Service) ActiveMemberIDs(ctx context.Context, principal household.Principal) ([]household.MembershipID, error) {
-	members, err := s.repository.ActiveMemberships(ctx, principal)
+	members, err := s.repository.HouseholdMemberships(ctx, principal)
 	if err != nil {
 		return nil, err
 	}
@@ -161,29 +161,36 @@ func (s *Service) validateRule(ctx context.Context, principal household.Principa
 	if err := rule.Validate(); err != nil {
 		return s.reject(err)
 	}
-	if err := s.requireConditions(ctx, principal, rule.Condition); err != nil {
+	requireActive := rule.State == allocation.Active
+	if err := s.requireConditions(ctx, principal, rule.Condition, requireActive); err != nil {
 		return err
 	}
-	members, err := s.ActiveMemberIDs(ctx, principal)
+	members, err := s.repository.HouseholdMemberships(ctx, principal)
 	if err != nil {
 		return err
 	}
-	active := map[household.MembershipID]bool{}
-	for _, id := range members {
-		active[id] = true
+	eligible := map[household.MembershipID]bool{}
+	activeCount := 0
+	for _, member := range members {
+		if !requireActive || member.Active {
+			eligible[member.ID] = true
+		}
+		if member.Active {
+			activeCount++
+		}
 	}
 	for _, share := range rule.Shares {
-		if !active[share.MemberID] {
+		if !eligible[share.MemberID] {
 			return commands.Rejection{Code: "invalid_allocation"}
 		}
 	}
-	if len(rule.Shares) != 1 && len(rule.Shares) != len(members) {
+	if requireActive && len(rule.Shares) != 1 && len(rule.Shares) != activeCount {
 		return commands.Rejection{Code: "invalid_allocation"}
 	}
 	return nil
 }
 
-func (s *Service) requireConditions(ctx context.Context, principal household.Principal, condition allocation.Condition) error {
+func (s *Service) requireConditions(ctx context.Context, principal household.Principal, condition allocation.Condition, requireActive bool) error {
 	if condition.MerchantID == "" && condition.CategoryID == "" {
 		return commands.Rejection{Code: "invalid_request"}
 	}
@@ -192,7 +199,7 @@ func (s *Service) requireConditions(ctx context.Context, principal household.Pri
 		if err != nil {
 			return s.reject(err)
 		}
-		if merchant.State != category.Active {
+		if requireActive && merchant.State != category.Active {
 			return commands.Rejection{Code: "not_found"}
 		}
 	}
@@ -201,7 +208,7 @@ func (s *Service) requireConditions(ctx context.Context, principal household.Pri
 		if err != nil {
 			return s.reject(err)
 		}
-		if entry.State != category.Active {
+		if requireActive && entry.State != category.Active {
 			return commands.Rejection{Code: "not_found"}
 		}
 	}
