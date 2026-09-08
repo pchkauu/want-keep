@@ -34,6 +34,18 @@ func TestStarterCatalogHierarchyAndLocalizedRename(t *testing.T) {
 	if food.Labels == nil || food.Labels.Ru != "Еда" || food.Labels.En != "Food" {
 		t.Fatalf("localized starter missing: %+v", food)
 	}
+	english := decode[generated.CategoryPage](t, client.call("GET", "/categories?search=food", "", nil, 200))
+	foundFood := false
+	for _, item := range english.Items {
+		foundFood = foundFood || item.Id == food.Id
+	}
+	if !foundFood {
+		t.Fatalf("English starter search failed: %+v", english.Items)
+	}
+	conflict := decode[generated.CommandFailed](t, client.call("POST", "/categories", uuid.NewString(), map[string]any{"name": " Food "}, 202))
+	if conflict.Error.Code != "invalid_request" {
+		t.Fatalf("English starter name collision accepted: %+v", conflict)
+	}
 	result := decode[generated.CommandSucceeded](t, client.call("POST", "/categories/"+food.Id, uuid.NewString(), map[string]any{"expectedRevision": food.Revision, "nameAction": "set", "name": "Семейная еда"}, 202))
 	if result.Status != "succeeded" {
 		t.Fatal(result)
@@ -41,6 +53,19 @@ func TestStarterCatalogHierarchyAndLocalizedRename(t *testing.T) {
 	page = decode[generated.CategoryPage](t, client.call("GET", "/categories?search="+url.QueryEscape("  СЕМЕЙНАЯ   ЕДА "), "", nil, 200))
 	if len(page.Items) != 1 || page.Items[0].Name != "Семейная еда" || page.Items[0].Labels.En != "Food" {
 		t.Fatalf("rename or normalized search failed: %+v", page.Items)
+	}
+	customFood := createCategory(t, client, "Food", "")
+	conflict = decode[generated.CommandFailed](t, client.call("POST", "/categories/"+food.Id, uuid.NewString(), map[string]any{"expectedRevision": 2, "nameAction": "restore_default"}, 202))
+	if conflict.Error.Code != "invalid_request" {
+		t.Fatalf("starter restored across English name collision: %+v", conflict)
+	}
+	archivedFood := decode[generated.CommandSucceeded](t, client.call("POST", "/categories/"+customFood, uuid.NewString(), map[string]any{"expectedRevision": 1, "state": "archived"}, 202))
+	if archivedFood.Status != "succeeded" {
+		t.Fatal(archivedFood)
+	}
+	restored := decode[generated.CommandSucceeded](t, client.call("POST", "/categories/"+food.Id, uuid.NewString(), map[string]any{"expectedRevision": 2, "nameAction": "restore_default"}, 202))
+	if restored.Status != "succeeded" {
+		t.Fatal(restored)
 	}
 	root := createCategory(t, client, "Custom root", "")
 	child := createCategory(t, client, "Child", root)
@@ -113,6 +138,35 @@ func TestMigrationSeedsExistingHouseholdAndProtectsHistory(t *testing.T) {
 		if err = f.admin.QueryRow(testContext, `SELECT has_table_privilege('want_keep_app',$1,'UPDATE') OR has_table_privilege('want_keep_app',$1,'DELETE')`, "want_keep."+table).Scan(&mutable); err != nil || mutable {
 			t.Fatalf("mutable history %s: %v", table, err)
 		}
+	}
+	for table, columns := range map[string]struct {
+		allowed   []string
+		forbidden []string
+	}{
+		"categories":       {allowed: []string{"revision", "parent_id", "custom_name", "normalized_name", "state"}, forbidden: []string{"household_id", "id", "key", "name_ru", "name_en", "origin"}},
+		"merchants":        {allowed: []string{"revision", "name", "normalized_name", "state"}, forbidden: []string{"household_id", "id"}},
+		"merchant_aliases": {allowed: []string{"state", "merchant_active"}, forbidden: []string{"household_id", "merchant_id", "id", "name", "normalized_name", "origin"}},
+	} {
+		var tableUpdate bool
+		if err = f.admin.QueryRow(testContext, `SELECT has_table_privilege('want_keep_app',$1,'UPDATE')`, "want_keep."+table).Scan(&tableUpdate); err != nil || tableUpdate {
+			t.Fatalf("table-wide update privilege for %s: %v", table, err)
+		}
+		for _, column := range columns.allowed {
+			var allowed bool
+			if err = f.admin.QueryRow(testContext, `SELECT has_column_privilege('want_keep_app',$1,$2,'UPDATE')`, "want_keep."+table, column).Scan(&allowed); err != nil || !allowed {
+				t.Fatalf("missing update privilege for %s.%s: %v", table, column, err)
+			}
+		}
+		for _, column := range columns.forbidden {
+			var allowed bool
+			if err = f.admin.QueryRow(testContext, `SELECT has_column_privilege('want_keep_app',$1,$2,'UPDATE')`, "want_keep."+table, column).Scan(&allowed); err != nil || allowed {
+				t.Fatalf("excessive update privilege for %s.%s: %v", table, column, err)
+			}
+		}
+	}
+	var claimsMutable bool
+	if err = f.admin.QueryRow(testContext, `SELECT has_table_privilege('want_keep_app','want_keep.category_name_claims','INSERT,UPDATE,DELETE')`).Scan(&claimsMutable); err != nil || claimsMutable {
+		t.Fatalf("category name claims are directly mutable: %v", err)
 	}
 }
 

@@ -116,11 +116,11 @@ func (s *Service) requireParent(ctx context.Context, p household.Principal, chil
 }
 
 func (s *Service) requireCategoryName(ctx context.Context, p household.Principal, c category.Category, exclude string) error {
-	name, err := category.Normalize(c.DisplayName())
+	claims, err := c.ActiveNameClaims()
 	if err != nil {
 		return commands.Rejection{Code: "invalid_request"}
 	}
-	found, err := s.repository.CategoryNameExists(ctx, p, c.ParentID, name, exclude)
+	found, err := s.repository.CategoryNamesExist(ctx, p, c.ParentID, claims, exclude)
 	if err != nil {
 		return err
 	}

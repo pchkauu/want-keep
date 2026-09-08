@@ -17,8 +17,39 @@ CREATE TABLE want_keep.categories (
  CHECK((origin='starter' AND key<>'' AND name_ru<>'' AND name_en<>'') OR
        (origin='custom' AND key='' AND name_ru='' AND name_en='' AND custom_name<>''))
 );
-CREATE UNIQUE INDEX category_active_name ON want_keep.categories(household_id,COALESCE(parent_id,'00000000-0000-0000-0000-000000000000'::uuid),normalized_name) WHERE state='active';
 CREATE UNIQUE INDEX category_starter_key ON want_keep.categories(household_id,key) WHERE key<>'';
+
+CREATE TABLE want_keep.category_name_claims (
+ household_id uuid NOT NULL,
+ category_id uuid NOT NULL,
+ parent_id uuid,
+ normalized_name text NOT NULL CHECK(length(normalized_name) BETWEEN 1 AND 200),
+ PRIMARY KEY(household_id,category_id,normalized_name),
+ FOREIGN KEY(household_id,category_id) REFERENCES want_keep.categories(household_id,id),
+ FOREIGN KEY(household_id,parent_id) REFERENCES want_keep.categories(household_id,id)
+);
+CREATE UNIQUE INDEX category_active_name_claim ON want_keep.category_name_claims(household_id,COALESCE(parent_id,'00000000-0000-0000-0000-000000000000'::uuid),normalized_name);
+
+CREATE FUNCTION want_keep.refresh_category_name_claims() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+BEGIN
+ DELETE FROM want_keep.category_name_claims WHERE household_id=NEW.household_id AND category_id=NEW.id;
+ IF NEW.state='active' THEN
+  INSERT INTO want_keep.category_name_claims(household_id,category_id,parent_id,normalized_name)
+  SELECT NEW.household_id,NEW.id,NEW.parent_id,claim
+  FROM (
+   SELECT NEW.normalized_name AS claim
+   UNION
+   SELECT lower(NEW.name_en) WHERE NEW.origin='starter' AND NEW.custom_name=''
+  ) names;
+ END IF;
+ RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION want_keep.refresh_category_name_claims() FROM PUBLIC;
+CREATE TRIGGER refresh_category_name_claims
+AFTER INSERT OR UPDATE OF parent_id,custom_name,normalized_name,state ON want_keep.categories
+FOR EACH ROW EXECUTE FUNCTION want_keep.refresh_category_name_claims();
 
 CREATE TABLE want_keep.category_revisions (
  household_id uuid NOT NULL,
@@ -190,5 +221,9 @@ FROM want_keep.households h CROSS JOIN definitions d;
 INSERT INTO want_keep.category_revisions(household_id,id,revision,parent_id,key,name_ru,name_en,custom_name,normalized_name,state,origin)
 SELECT household_id,id,revision,parent_id,key,name_ru,name_en,custom_name,normalized_name,state,origin FROM want_keep.categories;
 
-GRANT SELECT,INSERT,UPDATE ON want_keep.categories,want_keep.merchants,want_keep.merchant_aliases TO want_keep_app;
+GRANT SELECT,INSERT ON want_keep.categories,want_keep.merchants,want_keep.merchant_aliases TO want_keep_app;
+GRANT SELECT ON want_keep.category_name_claims TO want_keep_app;
+GRANT UPDATE(revision,parent_id,custom_name,normalized_name,state) ON want_keep.categories TO want_keep_app;
+GRANT UPDATE(revision,name,normalized_name,state) ON want_keep.merchants TO want_keep_app;
+GRANT UPDATE(state,merchant_active) ON want_keep.merchant_aliases TO want_keep_app;
 GRANT SELECT,INSERT ON want_keep.category_revisions,want_keep.merchant_revisions,want_keep.merchant_alias_revisions,want_keep.receipt_items,want_keep.ledger_classification_proposals TO want_keep_app;

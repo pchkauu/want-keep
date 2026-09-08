@@ -81,6 +81,30 @@ func (c Category) DisplayName() string {
 	return c.NameEN
 }
 
+func (c Category) ActiveNameClaims() ([]string, error) {
+	if c.State != Active {
+		return nil, nil
+	}
+	names := []string{c.DisplayName()}
+	if c.Origin == Starter && c.CustomName == "" {
+		names = []string{c.NameRU, c.NameEN}
+	}
+	claims := make([]string, 0, len(names))
+	seen := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		normalized, err := Normalize(name)
+		if err != nil {
+			return nil, err
+		}
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		claims = append(claims, normalized)
+	}
+	return claims, nil
+}
+
 func (c Category) Rename(name string) (Category, error) {
 	name = strings.TrimSpace(name)
 	if !validName(name) {

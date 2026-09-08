@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"slices"
 	"testing"
 
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -32,6 +33,25 @@ func TestNormalizePreservesPunctuationAndFoldsWhitespace(t *testing.T) {
 	got, err := Normalize("  Dizengoff\t—  Cafe!  ")
 	if err != nil || got != "dizengoff — cafe!" {
 		t.Fatalf("normalize = %q, %v", got, err)
+	}
+}
+
+func TestStarterActiveNameClaimsCoverBothLocalesUntilRenamed(t *testing.T) {
+	householdID := household.HouseholdID("24972db1-ed6c-4b19-a307-e99724d65860")
+	item := Category{HouseholdID: householdID, ID: "24972db1-ed6c-4b19-a307-e99724d65861", Revision: 1, Key: "food", NameRU: "Еда", NameEN: "Food", State: Active, Origin: Starter}
+	claims, err := item.ActiveNameClaims()
+	if err != nil || !slices.Equal(claims, []string{"еда", "food"}) {
+		t.Fatalf("starter claims = %v: %v", claims, err)
+	}
+	item.CustomName = " Family   food "
+	claims, err = item.ActiveNameClaims()
+	if err != nil || !slices.Equal(claims, []string{"family food"}) {
+		t.Fatalf("custom claims = %v: %v", claims, err)
+	}
+	item.State = Archived
+	claims, err = item.ActiveNameClaims()
+	if err != nil || len(claims) != 0 {
+		t.Fatalf("archived claims = %v: %v", claims, err)
 	}
 }
 

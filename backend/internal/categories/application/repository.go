@@ -10,7 +10,7 @@ import (
 type Repository interface {
 	Category(context.Context, household.Principal, string) (category.Category, error)
 	Categories(context.Context, household.Principal, category.Filter, string, int) ([]category.Category, string, error)
-	CategoryNameExists(context.Context, household.Principal, string, string, string) (bool, error)
+	CategoryNamesExist(context.Context, household.Principal, string, []string, string) (bool, error)
 	CategoryHasActiveChildren(context.Context, household.Principal, string) (bool, error)
 	CreateCategory(context.Context, category.Category) error
 	SaveCategory(context.Context, category.Category, uint64) error

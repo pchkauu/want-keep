@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	category "github.com/pchkauu/want-keep/backend/internal/categories/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -60,7 +61,8 @@ func (s *Store) Categories(ctx context.Context, p household.Principal, filter ca
 	}
 	rows, err := q.Query(ctx, `SELECT household_id,id,revision,COALESCE(parent_id::text,''),key,name_ru,name_en,custom_name,state,origin
  FROM want_keep.categories WHERE household_id=$1 AND ($2='' OR state=$2) AND ($3='' OR COALESCE(parent_id::text,'')=$3)
- AND ($4='' OR strpos(normalized_name,$4)>0) AND ($5='' OR id>$5::uuid) ORDER BY id LIMIT $6`, p.HouseholdID(), filter.State, filter.ParentID, filter.Search, after, limit+1)
+	 AND ($4='' OR strpos(normalized_name,$4)>0 OR strpos(lower(name_ru),$4)>0 OR strpos(lower(name_en),$4)>0)
+	 AND ($5='' OR id>$5::uuid) ORDER BY id LIMIT $6`, p.HouseholdID(), filter.State, filter.ParentID, filter.Search, after, limit+1)
 	if err != nil {
 		return nil, "", err
 	}
@@ -81,13 +83,13 @@ func (s *Store) Categories(ctx context.Context, p household.Principal, filter ca
 	return items, next, rows.Err()
 }
 
-func (s *Store) CategoryNameExists(ctx context.Context, p household.Principal, parentID, normalized, exclude string) (bool, error) {
+func (s *Store) CategoryNamesExist(ctx context.Context, p household.Principal, parentID string, normalized []string, exclude string) (bool, error) {
 	q, err := s.reader(ctx, p)
 	if err != nil {
 		return false, err
 	}
 	var found bool
-	err = q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM want_keep.categories WHERE household_id=$1 AND state='active' AND COALESCE(parent_id::text,'')=$2 AND normalized_name=$3 AND ($4='' OR id<>$4::uuid))`, p.HouseholdID(), parentID, normalized, exclude).Scan(&found)
+	err = q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM want_keep.category_name_claims WHERE household_id=$1 AND COALESCE(parent_id::text,'')=$2 AND normalized_name=ANY($3::text[]) AND ($4='' OR category_id<>$4::uuid))`, p.HouseholdID(), parentID, normalized, exclude).Scan(&found)
 	return found, err
 }
 
@@ -114,7 +116,7 @@ func (s *Store) CreateCategory(ctx context.Context, item category.Category) erro
 		return err
 	}
 	if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.categories(household_id,id,revision,parent_id,key,name_ru,name_en,custom_name,normalized_name,state,origin) VALUES($1,$2,$3,NULLIF($4,'')::uuid,$5,$6,$7,$8,$9,$10,$11)`, item.HouseholdID, item.ID, item.Revision, item.ParentID, item.Key, item.NameRU, item.NameEN, item.CustomName, normalized, item.State, item.Origin); err != nil {
-		return err
+		return catalogConstraintError(err)
 	}
 	return s.insertCategoryRevision(ctx, scope, item, normalized)
 }
@@ -133,7 +135,7 @@ func (s *Store) SaveCategory(ctx context.Context, item category.Category, expect
 	}
 	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.categories SET revision=$3,parent_id=NULLIF($4,'')::uuid,custom_name=$5,normalized_name=$6,state=$7 WHERE household_id=$1 AND id=$2 AND revision=$8`, item.HouseholdID, item.ID, item.Revision, item.ParentID, item.CustomName, normalized, item.State, expected)
 	if err != nil {
-		return err
+		return catalogConstraintError(err)
 	}
 	if tag.RowsAffected() != 1 {
 		return category.ErrVersionConflict
@@ -143,6 +145,21 @@ func (s *Store) SaveCategory(ctx context.Context, item category.Category, expect
 
 func (s *Store) insertCategoryRevision(ctx context.Context, scope *transactionScope, item category.Category, normalized string) error {
 	_, err := scope.tx.Exec(ctx, `INSERT INTO want_keep.category_revisions(household_id,id,revision,parent_id,key,name_ru,name_en,custom_name,normalized_name,state,origin,actor_id,command_id) VALUES($1,$2,$3,NULLIF($4,'')::uuid,$5,$6,$7,$8,$9,$10,$11,$12,NULLIF($13,'')::uuid)`, item.HouseholdID, item.ID, item.Revision, item.ParentID, item.Key, item.NameRU, item.NameEN, item.CustomName, normalized, item.State, item.Origin, scope.principal.UserID(), commands.CurrentCommandID(ctx))
+	return err
+}
+
+func catalogConstraintError(err error) error {
+	var pgError *pgconn.PgError
+	if errors.As(err, &pgError) {
+		switch pgError.ConstraintName {
+		case "category_active_name_claim", "category_starter_key":
+			return category.ErrCategoryConflict
+		case "merchant_active_alias":
+			return category.ErrMerchantConflict
+		case "merchant_active_name":
+			return category.ErrInvalidCategory
+		}
+	}
 	return err
 }
 
@@ -260,7 +277,7 @@ func (s *Store) CreateMerchant(ctx context.Context, item category.Merchant) erro
 	}
 	name, _ := category.Normalize(item.Name)
 	if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.merchants(household_id,id,revision,name,normalized_name,state) VALUES($1,$2,$3,$4,$5,$6)`, item.HouseholdID, item.ID, item.Revision, item.Name, name, item.State); err != nil {
-		return err
+		return catalogConstraintError(err)
 	}
 	return s.insertMerchantRevision(ctx, scope, item, name)
 }
@@ -276,13 +293,13 @@ func (s *Store) SaveMerchant(ctx context.Context, item category.Merchant, expect
 	name, _ := category.Normalize(item.Name)
 	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.merchants SET revision=$3,name=$4,normalized_name=$5,state=$6 WHERE household_id=$1 AND id=$2 AND revision=$7`, item.HouseholdID, item.ID, item.Revision, item.Name, name, item.State, expected)
 	if err != nil {
-		return err
+		return catalogConstraintError(err)
 	}
 	if tag.RowsAffected() != 1 {
 		return category.ErrVersionConflict
 	}
 	if _, err = scope.tx.Exec(ctx, `UPDATE want_keep.merchant_aliases SET merchant_active=$3 WHERE household_id=$1 AND merchant_id=$2`, item.HouseholdID, item.ID, item.State == category.Active); err != nil {
-		return err
+		return catalogConstraintError(err)
 	}
 	return s.insertMerchantRevision(ctx, scope, item, name)
 }
@@ -294,7 +311,7 @@ func (s *Store) insertMerchantRevision(ctx context.Context, scope *transactionSc
 	}
 	for _, alias := range item.Aliases {
 		if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.merchant_aliases(household_id,merchant_id,id,name,normalized_name,state,origin,merchant_active) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(household_id,id) DO UPDATE SET state=EXCLUDED.state,merchant_active=EXCLUDED.merchant_active WHERE merchant_aliases.merchant_id=EXCLUDED.merchant_id AND merchant_aliases.name=EXCLUDED.name AND merchant_aliases.normalized_name=EXCLUDED.normalized_name AND merchant_aliases.origin=EXCLUDED.origin`, item.HouseholdID, item.ID, alias.ID, alias.Name, alias.Normalized, alias.State, alias.Origin, item.State == category.Active); err != nil {
-			return err
+			return catalogConstraintError(err)
 		}
 		if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.merchant_alias_revisions(household_id,merchant_id,merchant_revision,alias_id,name,normalized_name,state,origin) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, item.HouseholdID, item.ID, item.Revision, alias.ID, alias.Name, alias.Normalized, alias.State, alias.Origin); err != nil {
 			return err
