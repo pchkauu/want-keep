@@ -423,6 +423,42 @@ func TestAllocationExcludesMatchedInternalAndNonCarrierPrincipal(t *testing.T) {
 	}
 }
 
+func TestWithAllocationRefreshesSuspendedBasisWithoutRestoringEffect(t *testing.T) {
+	revision := expenseRevision(mustAllocationMoney(t, "100", money.RUB))
+	members := []household.MembershipID{"member-a", "member-b"}
+	initial := AllocationInput{Mode: AllocationUnknown, Reason: "allocation_unresolved", Origin: AllocationUnknownOrigin}
+	allocated, err := revision.WithAllocation(initial, nil, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allocated.Participation = Participation{GroupID: "matching-group", Kind: "payment", State: "waiting"}
+	suspended, err := allocated.RefreshAllocation()
+	if err != nil {
+		t.Fatal(err)
+	}
+	updatedInput := AllocationInput{
+		Mode: AllocationByShares, Purpose: AllocationShared, Origin: AllocationRule,
+		Members:  []AllocationMemberInput{{MemberID: members[0], Share: "60"}, {MemberID: members[1], Share: "40"}},
+		RuleRefs: []AllocationRuleRef{{ID: "rule", Revision: 1}},
+	}
+	updated, err := suspended.WithAllocation(updatedInput, nil, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Allocation.State != AllocationNotApplicable || updated.Allocation.Basis == nil || updated.Allocation.Basis.Origin != AllocationRule || len(updated.Allocation.Members) != 0 {
+		t.Fatalf("suspended allocation = %+v", updated.Allocation)
+	}
+	restored := updated.Clone()
+	restored.Participation = Participation{}
+	restored, err = restored.RefreshAllocation()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.Allocation.State != AllocationResolved || restored.Allocation.Origin != AllocationRule || allocationMemberTotal(restored.Allocation, members[0], money.RUB) != "60" || allocationMemberTotal(restored.Allocation, members[1], money.RUB) != "40" {
+		t.Fatalf("restored allocation = %+v", restored.Allocation)
+	}
+}
+
 func TestIncomeAllocationIsNotApplicableEvenWithFee(t *testing.T) {
 	revision := validAllocationRevision(Income, Posted, []Posting{
 		{AccountID: "account", Money: mustAllocationMoney(t, "100", money.RUB), Role: Principal, Funding: OwnFunds, Treatment: Movement},

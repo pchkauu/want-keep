@@ -105,36 +105,25 @@ func (s *Store) AllocationRules(ctx context.Context, principal household.Princip
 	if err != nil {
 		return nil, "", err
 	}
-	rows, err := q.Query(ctx, `SELECT id FROM want_keep.allocation_rules WHERE household_id=$1 AND ($2='' OR id>$2::uuid) ORDER BY id LIMIT $3`, principal.HouseholdID(), after, limit+1)
+	rows, err := q.Query(ctx, `SELECT r.id,r.revision,r.priority,r.state,COALESCE(r.merchant_id::text,''),COALESCE(r.category_id::text,''),r.actor_id,v.recorded_at,v.recorded_ns,
+ array_agg(s.member_id::text ORDER BY s.position),array_agg(s.share::text ORDER BY s.position)
+FROM want_keep.allocation_rules r
+JOIN want_keep.allocation_rule_revisions v ON (v.household_id,v.rule_id,v.revision)=(r.household_id,r.id,r.revision)
+JOIN want_keep.allocation_rule_shares s ON (s.household_id,s.rule_id,s.revision)=(r.household_id,r.id,r.revision)
+WHERE r.household_id=$1 AND ($2='' OR r.id>$2::uuid)
+GROUP BY r.household_id,r.id,r.revision,r.priority,r.state,r.merchant_id,r.category_id,r.actor_id,v.recorded_at,v.recorded_ns
+ORDER BY r.id LIMIT $3`, principal.HouseholdID(), after, limit+1)
 	if err != nil {
 		return nil, "", err
 	}
-	ids := []string{}
-	for rows.Next() {
-		var id string
-		if err = rows.Scan(&id); err != nil {
-			rows.Close()
-			return nil, "", err
-		}
-		ids = append(ids, id)
-	}
-	if err = rows.Err(); err != nil {
-		rows.Close()
+	result, err := scanAllocationRules(rows, principal.HouseholdID())
+	if err != nil {
 		return nil, "", err
 	}
-	rows.Close()
 	var next string
-	if len(ids) > limit {
-		ids = ids[:limit]
-		next = ids[len(ids)-1]
-	}
-	result := make([]allocation.Rule, 0, len(ids))
-	for _, id := range ids {
-		rule, err := loadAllocationRule(ctx, q, principal.HouseholdID(), id)
-		if err != nil {
-			return nil, "", err
-		}
-		result = append(result, rule)
+	if len(result) > limit {
+		result = result[:limit]
+		next = result[len(result)-1].ID
 	}
 	return result, next, nil
 }
@@ -144,33 +133,23 @@ func (s *Store) MatchingAllocationRules(ctx context.Context, principal household
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.Query(ctx, `SELECT id FROM want_keep.allocation_rules WHERE household_id=$1 AND state='active' AND (merchant_id IS NULL OR merchant_id=$2::uuid) AND (category_id IS NULL OR category_id=$3::uuid) ORDER BY priority,id`, principal.HouseholdID(), nullableUUID(merchantID), nullableUUID(categoryID))
+	rows, err := q.Query(ctx, `WITH eligible AS (
+ SELECT r.household_id,r.id,r.revision,r.priority,r.state,r.merchant_id,r.category_id,r.actor_id,v.recorded_at,v.recorded_ns
+ FROM want_keep.allocation_rules r
+ JOIN want_keep.allocation_rule_revisions v ON (v.household_id,v.rule_id,v.revision)=(r.household_id,r.id,r.revision)
+ WHERE r.household_id=$1 AND r.state='active' AND (r.merchant_id IS NULL OR r.merchant_id=$2::uuid) AND (r.category_id IS NULL OR r.category_id=$3::uuid)
+), best AS (SELECT MIN(priority) AS priority FROM eligible)
+SELECT e.id,e.revision,e.priority,e.state,COALESCE(e.merchant_id::text,''),COALESCE(e.category_id::text,''),e.actor_id,e.recorded_at,e.recorded_ns,
+ array_agg(s.member_id::text ORDER BY s.position),array_agg(s.share::text ORDER BY s.position)
+FROM eligible e
+JOIN best b ON b.priority=e.priority
+JOIN want_keep.allocation_rule_shares s ON (s.household_id,s.rule_id,s.revision)=(e.household_id,e.id,e.revision)
+GROUP BY e.household_id,e.id,e.revision,e.priority,e.state,e.merchant_id,e.category_id,e.actor_id,e.recorded_at,e.recorded_ns
+ORDER BY e.priority,e.id`, principal.HouseholdID(), nullableUUID(merchantID), nullableUUID(categoryID))
 	if err != nil {
 		return nil, err
 	}
-	ids := []string{}
-	for rows.Next() {
-		var id string
-		if err = rows.Scan(&id); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	if err = rows.Err(); err != nil {
-		rows.Close()
-		return nil, err
-	}
-	rows.Close()
-	result := make([]allocation.Rule, 0, len(ids))
-	for _, id := range ids {
-		rule, err := loadAllocationRule(ctx, q, principal.HouseholdID(), id)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, rule)
-	}
-	return result, nil
+	return scanAllocationRules(rows, principal.HouseholdID())
 }
 
 func (s *Store) MatchingAllocationRulesAt(ctx context.Context, principal household.Principal, merchantID, categoryID string, at calendar.Instant) ([]allocation.Rule, error) {
@@ -183,44 +162,55 @@ func (s *Store) MatchingAllocationRulesAt(ctx context.Context, principal househo
 	}
 	recordedAt, recordedNS := splitInstant(at)
 	rows, err := q.Query(ctx, `WITH historical AS (
- SELECT DISTINCT ON (rule_id) rule_id,revision,priority,state,merchant_id,category_id
+ SELECT DISTINCT ON (rule_id) household_id,rule_id,revision,priority,state,merchant_id,category_id,actor_id,recorded_at,recorded_ns
  FROM want_keep.allocation_rule_revisions
  WHERE household_id=$1 AND (recorded_at,recorded_ns)<=($4,$5)
  ORDER BY rule_id,revision DESC
-)
-SELECT rule_id,revision FROM historical
-WHERE state='active' AND (merchant_id IS NULL OR merchant_id=$2::uuid) AND (category_id IS NULL OR category_id=$3::uuid)
-ORDER BY priority,rule_id`, principal.HouseholdID(), nullableUUID(merchantID), nullableUUID(categoryID), recordedAt, recordedNS)
+), eligible AS (
+ SELECT * FROM historical
+ WHERE state='active' AND (merchant_id IS NULL OR merchant_id=$2::uuid) AND (category_id IS NULL OR category_id=$3::uuid)
+), best AS (SELECT MIN(priority) AS priority FROM eligible)
+SELECT e.rule_id,e.revision,e.priority,e.state,COALESCE(e.merchant_id::text,''),COALESCE(e.category_id::text,''),e.actor_id,e.recorded_at,e.recorded_ns,
+ array_agg(s.member_id::text ORDER BY s.position),array_agg(s.share::text ORDER BY s.position)
+FROM eligible e
+JOIN best b ON b.priority=e.priority
+JOIN want_keep.allocation_rule_shares s ON (s.household_id,s.rule_id,s.revision)=(e.household_id,e.rule_id,e.revision)
+GROUP BY e.household_id,e.rule_id,e.revision,e.priority,e.state,e.merchant_id,e.category_id,e.actor_id,e.recorded_at,e.recorded_ns
+ORDER BY e.priority,e.rule_id`, principal.HouseholdID(), nullableUUID(merchantID), nullableUUID(categoryID), recordedAt, recordedNS)
 	if err != nil {
 		return nil, err
 	}
-	type reference struct {
-		id       string
-		revision uint64
-	}
-	references := []reference{}
+	return scanAllocationRules(rows, principal.HouseholdID())
+}
+
+func scanAllocationRules(rows pgx.Rows, householdID household.HouseholdID) ([]allocation.Rule, error) {
+	defer rows.Close()
+	result := []allocation.Rule{}
 	for rows.Next() {
-		var value reference
-		if err = rows.Scan(&value.id, &value.revision); err != nil {
-			rows.Close()
+		rule := allocation.Rule{HouseholdID: householdID}
+		var recordedAt time.Time
+		var recordedNS int16
+		var memberIDs, shares []string
+		if err := rows.Scan(&rule.ID, &rule.Revision, &rule.Priority, &rule.State, &rule.Condition.MerchantID, &rule.Condition.CategoryID, &rule.ActorID, &recordedAt, &recordedNS, &memberIDs, &shares); err != nil {
 			return nil, err
 		}
-		references = append(references, value)
-	}
-	if err = rows.Err(); err != nil {
-		rows.Close()
-		return nil, err
-	}
-	rows.Close()
-	result := make([]allocation.Rule, 0, len(references))
-	for _, reference := range references {
-		rule, loadErr := loadAllocationRuleRevision(ctx, q, principal.HouseholdID(), reference.id, reference.revision)
-		if loadErr != nil {
-			return nil, loadErr
+		if len(memberIDs) != len(shares) {
+			return nil, allocation.ErrInvalidRule
+		}
+		var err error
+		rule.RecordedAt, err = restoreInstant(recordedAt, recordedNS)
+		if err != nil {
+			return nil, err
+		}
+		for index, memberID := range memberIDs {
+			rule.Shares = append(rule.Shares, allocation.Share{MemberID: household.MembershipID(memberID), Value: shares[index]})
+		}
+		if err = rule.Validate(); err != nil {
+			return nil, err
 		}
 		result = append(result, rule)
 	}
-	return result, nil
+	return result, rows.Err()
 }
 
 func nullableUUID(value string) any {
@@ -235,21 +225,6 @@ func loadAllocationRule(ctx context.Context, q reader, householdID household.Hou
 	var recordedAt time.Time
 	var recordedNS int16
 	err := q.QueryRow(ctx, `SELECT r.revision,r.priority,r.state,COALESCE(r.merchant_id::text,''),COALESCE(r.category_id::text,''),r.actor_id,v.recorded_at,v.recorded_ns FROM want_keep.allocation_rules r JOIN want_keep.allocation_rule_revisions v ON (v.household_id,v.rule_id,v.revision)=(r.household_id,r.id,r.revision) WHERE r.household_id=$1 AND r.id=$2`, householdID, id).Scan(&rule.Revision, &rule.Priority, &rule.State, &rule.Condition.MerchantID, &rule.Condition.CategoryID, &rule.ActorID, &recordedAt, &recordedNS)
-	if err != nil {
-		return rule, err
-	}
-	rule.RecordedAt, err = restoreInstant(recordedAt, recordedNS)
-	if err != nil {
-		return rule, err
-	}
-	return loadAllocationRuleShares(ctx, q, rule)
-}
-
-func loadAllocationRuleRevision(ctx context.Context, q reader, householdID household.HouseholdID, id string, revision uint64) (allocation.Rule, error) {
-	rule := allocation.Rule{ID: id, HouseholdID: householdID, Revision: revision}
-	var recordedAt time.Time
-	var recordedNS int16
-	err := q.QueryRow(ctx, `SELECT priority,state,COALESCE(merchant_id::text,''),COALESCE(category_id::text,''),actor_id,recorded_at,recorded_ns FROM want_keep.allocation_rule_revisions WHERE household_id=$1 AND rule_id=$2 AND revision=$3`, householdID, id, revision).Scan(&rule.Priority, &rule.State, &rule.Condition.MerchantID, &rule.Condition.CategoryID, &rule.ActorID, &recordedAt, &recordedNS)
 	if err != nil {
 		return rule, err
 	}
@@ -361,176 +336,212 @@ func (s *Store) saveLedgerAllocation(ctx context.Context, revision ledger.Revisi
 }
 
 func (s *Store) loadLedgerAllocations(ctx context.Context, q reader, principal household.Principal, revision *ledger.Revision) error {
-	snapshot, err := loadLedgerAllocation(ctx, q, principal, revision.OperationID, revision.Revision, 0)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
+	family, operationID, revisionNumber := principal.HouseholdID(), revision.OperationID, revision.Revision
+	rows, err := q.Query(ctx, `SELECT position,COALESCE(item_id::text,''),state,purpose,mode,origin,reason,fallback_mode,fallback_purpose,fallback_origin,fallback_reason FROM want_keep.ledger_allocation_snapshots WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY position`, family, operationID, revisionNumber)
 	if err != nil {
 		return err
 	}
-	revision.Allocation = snapshot
-	for index := range revision.ReceiptItems {
-		itemSnapshot, err := loadLedgerAllocation(ctx, q, principal, revision.OperationID, revision.Revision, index+1)
-		if errors.Is(err, pgx.ErrNoRows) {
-			continue
-		}
-		if err != nil {
+	snapshots := storedAllocationSnapshots{}
+	for rows.Next() {
+		stored := &storedAllocationSnapshot{}
+		var position int
+		var basis ledger.AllocationInput
+		if err = rows.Scan(&position, &stored.itemID, &stored.value.State, &stored.value.Purpose, &stored.value.Mode, &stored.value.Origin, &stored.value.Reason, &basis.Mode, &basis.Purpose, &basis.Origin, &basis.Reason); err != nil {
+			rows.Close()
 			return err
 		}
-		revision.ReceiptItems[index].Allocation = itemSnapshot
+		if _, exists := snapshots[position]; exists {
+			rows.Close()
+			return ledger.ErrInvalidAllocation
+		}
+		if basis.Mode != "" {
+			stored.value.Basis = &basis
+		}
+		snapshots[position] = stored
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	if len(snapshots) == 0 {
+		return nil
+	}
+	rows, err = q.Query(ctx, `SELECT snapshot_position,member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,position`, family, operationID, revisionNumber)
+	if err != nil {
+		return err
+	}
+	if err = scanAllocationInputs(rows, snapshots, false); err != nil {
+		return err
+	}
+	rows, err = q.Query(ctx, `SELECT snapshot_position,member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_fallback_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,position`, family, operationID, revisionNumber)
+	if err != nil {
+		return err
+	}
+	if err = scanAllocationInputs(rows, snapshots, true); err != nil {
+		return err
+	}
+	rows, err = q.Query(ctx, `SELECT snapshot_position,member_id,asset,amount::text FROM want_keep.ledger_allocation_member_amounts WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,member_id,asset`, family, operationID, revisionNumber)
+	if err != nil {
+		return err
+	}
+	if err = scanAllocationMemberAmounts(rows, snapshots); err != nil {
+		return err
+	}
+	rows, err = q.Query(ctx, `SELECT snapshot_position,asset,amount::text FROM want_keep.ledger_allocation_unallocated WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,asset`, family, operationID, revisionNumber)
+	if err != nil {
+		return err
+	}
+	if err = scanAllocationUnallocated(rows, snapshots); err != nil {
+		return err
+	}
+	rows, err = q.Query(ctx, `SELECT snapshot_position,rule_id,rule_revision FROM want_keep.ledger_allocation_rule_refs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,rule_id`, family, operationID, revisionNumber)
+	if err != nil {
+		return err
+	}
+	if err = scanAllocationRuleRefs(rows, snapshots, false); err != nil {
+		return err
+	}
+	rows, err = q.Query(ctx, `SELECT snapshot_position,rule_id,rule_revision FROM want_keep.ledger_allocation_fallback_rule_refs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,rule_id`, family, operationID, revisionNumber)
+	if err != nil {
+		return err
+	}
+	if err = scanAllocationRuleRefs(rows, snapshots, true); err != nil {
+		return err
+	}
+	aggregate, err := snapshots.at(0)
+	if err != nil {
+		return err
+	}
+	if aggregate.itemID != "" || aggregate.value.Validate() != nil {
+		return ledger.ErrInvalidAllocation
+	}
+	revision.Allocation = aggregate.value
+	for position, stored := range snapshots {
+		if position == 0 {
+			continue
+		}
+		if position > len(revision.ReceiptItems) || stored.itemID != revision.ReceiptItems[position-1].ID || stored.value.Validate() != nil {
+			return ledger.ErrInvalidAllocation
+		}
+		revision.ReceiptItems[position-1].Allocation = stored.value
 	}
 	return nil
 }
 
-func loadLedgerAllocation(ctx context.Context, q reader, principal household.Principal, operationID string, revision uint64, position int) (ledger.AllocationSnapshot, error) {
-	snapshot := ledger.AllocationSnapshot{}
-	var fallbackMode ledger.AllocationMode
-	var fallbackPurpose ledger.AllocationPurpose
-	var fallbackOrigin ledger.AllocationOrigin
-	var fallbackReason string
-	err := q.QueryRow(ctx, `SELECT state,purpose,mode,origin,reason,fallback_mode,fallback_purpose,fallback_origin,fallback_reason FROM want_keep.ledger_allocation_snapshots WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND position=$4`, principal.HouseholdID(), operationID, revision, position).Scan(&snapshot.State, &snapshot.Purpose, &snapshot.Mode, &snapshot.Origin, &snapshot.Reason, &fallbackMode, &fallbackPurpose, &fallbackOrigin, &fallbackReason)
-	if err != nil {
-		return snapshot, err
+type storedAllocationSnapshot struct {
+	value  ledger.AllocationSnapshot
+	itemID string
+}
+
+type storedAllocationSnapshots map[int]*storedAllocationSnapshot
+
+func (s storedAllocationSnapshots) at(position int) (*storedAllocationSnapshot, error) {
+	snapshot, ok := s[position]
+	if !ok {
+		return nil, ledger.ErrInvalidAllocation
 	}
-	if fallbackMode != "" {
-		snapshot.Basis = &ledger.AllocationInput{Mode: fallbackMode, Purpose: fallbackPurpose, Origin: fallbackOrigin, Reason: fallbackReason}
-	}
-	rows, err := q.Query(ctx, `SELECT member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY position`, principal.HouseholdID(), operationID, revision, position)
-	if err != nil {
-		return snapshot, err
-	}
+	return snapshot, nil
+}
+
+func scanAllocationInputs(rows pgx.Rows, snapshots storedAllocationSnapshots, basis bool) error {
+	defer rows.Close()
 	for rows.Next() {
+		var position int
 		var input ledger.AllocationMemberInput
 		var amount, asset, share *string
-		if err = rows.Scan(&input.MemberID, &amount, &asset, &share); err != nil {
-			rows.Close()
-			return snapshot, err
+		if err := rows.Scan(&position, &input.MemberID, &amount, &asset, &share); err != nil {
+			return err
+		}
+		snapshot, err := snapshots.at(position)
+		if err != nil {
+			return err
 		}
 		if amount != nil && asset != nil {
 			value, parseErr := money.NewMoney(*amount, money.Asset(*asset))
 			if parseErr != nil {
-				rows.Close()
-				return snapshot, parseErr
+				return parseErr
 			}
 			input.Amount = &value
 		}
 		if share != nil {
 			input.Share = *share
 		}
-		snapshot.Inputs = append(snapshot.Inputs, input)
-	}
-	if err = rows.Err(); err != nil {
-		rows.Close()
-		return snapshot, err
-	}
-	rows.Close()
-	if snapshot.Basis != nil {
-		rows, err = q.Query(ctx, `SELECT member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_fallback_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY position`, principal.HouseholdID(), operationID, revision, position)
-		if err != nil {
-			return snapshot, err
-		}
-		for rows.Next() {
-			var input ledger.AllocationMemberInput
-			var amount, asset, share *string
-			if err = rows.Scan(&input.MemberID, &amount, &asset, &share); err != nil {
-				rows.Close()
-				return snapshot, err
+		if basis {
+			if snapshot.value.Basis == nil {
+				return ledger.ErrInvalidAllocation
 			}
-			if amount != nil && asset != nil {
-				value, parseErr := money.NewMoney(*amount, money.Asset(*asset))
-				if parseErr != nil {
-					rows.Close()
-					return snapshot, parseErr
-				}
-				input.Amount = &value
-			}
-			if share != nil {
-				input.Share = *share
-			}
-			snapshot.Basis.Members = append(snapshot.Basis.Members, input)
+			snapshot.value.Basis.Members = append(snapshot.value.Basis.Members, input)
+		} else {
+			snapshot.value.Inputs = append(snapshot.value.Inputs, input)
 		}
-		if err = rows.Err(); err != nil {
-			rows.Close()
-			return snapshot, err
-		}
-		rows.Close()
-		rows, err = q.Query(ctx, `SELECT rule_id,rule_revision FROM want_keep.ledger_allocation_fallback_rule_refs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY rule_id`, principal.HouseholdID(), operationID, revision, position)
-		if err != nil {
-			return snapshot, err
-		}
-		for rows.Next() {
-			var ref ledger.AllocationRuleRef
-			if err = rows.Scan(&ref.ID, &ref.Revision); err != nil {
-				rows.Close()
-				return snapshot, err
-			}
-			snapshot.Basis.RuleRefs = append(snapshot.Basis.RuleRefs, ref)
-		}
-		if err = rows.Err(); err != nil {
-			rows.Close()
-			return snapshot, err
-		}
-		rows.Close()
 	}
-	rows, err = q.Query(ctx, `SELECT member_id,asset,amount::text FROM want_keep.ledger_allocation_member_amounts WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY member_id,asset`, principal.HouseholdID(), operationID, revision, position)
-	if err != nil {
-		return snapshot, err
-	}
+	return rows.Err()
+}
+
+func scanAllocationMemberAmounts(rows pgx.Rows, snapshots storedAllocationSnapshots) error {
+	defer rows.Close()
 	for rows.Next() {
+		var position int
 		var member ledger.MemberAmount
 		var asset, amount string
-		if err = rows.Scan(&member.MemberID, &asset, &amount); err != nil {
-			rows.Close()
-			return snapshot, err
+		if err := rows.Scan(&position, &member.MemberID, &asset, &amount); err != nil {
+			return err
+		}
+		snapshot, err := snapshots.at(position)
+		if err != nil {
+			return err
 		}
 		member.Money, err = money.NewMoney(amount, money.Asset(asset))
 		if err != nil {
-			rows.Close()
-			return snapshot, err
+			return err
 		}
-		snapshot.Members = append(snapshot.Members, member)
+		snapshot.value.Members = append(snapshot.value.Members, member)
 	}
-	if err = rows.Err(); err != nil {
-		rows.Close()
-		return snapshot, err
-	}
-	rows.Close()
-	rows, err = q.Query(ctx, `SELECT asset,amount::text FROM want_keep.ledger_allocation_unallocated WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY asset`, principal.HouseholdID(), operationID, revision, position)
-	if err != nil {
-		return snapshot, err
-	}
-	for rows.Next() {
-		var asset, amount string
-		if err = rows.Scan(&asset, &amount); err != nil {
-			rows.Close()
-			return snapshot, err
-		}
-		value, parseErr := money.NewMoney(amount, money.Asset(asset))
-		if parseErr != nil {
-			rows.Close()
-			return snapshot, parseErr
-		}
-		snapshot.Unallocated = append(snapshot.Unallocated, value)
-	}
-	if err = rows.Err(); err != nil {
-		rows.Close()
-		return snapshot, err
-	}
-	rows.Close()
-	rows, err = q.Query(ctx, `SELECT rule_id,rule_revision FROM want_keep.ledger_allocation_rule_refs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY rule_id`, principal.HouseholdID(), operationID, revision, position)
-	if err != nil {
-		return snapshot, err
-	}
+	return rows.Err()
+}
+
+func scanAllocationUnallocated(rows pgx.Rows, snapshots storedAllocationSnapshots) error {
 	defer rows.Close()
 	for rows.Next() {
-		var ref ledger.AllocationRuleRef
-		if err = rows.Scan(&ref.ID, &ref.Revision); err != nil {
-			return snapshot, err
+		var position int
+		var asset, amount string
+		if err := rows.Scan(&position, &asset, &amount); err != nil {
+			return err
 		}
-		snapshot.RuleRefs = append(snapshot.RuleRefs, ref)
+		snapshot, err := snapshots.at(position)
+		if err != nil {
+			return err
+		}
+		value, err := money.NewMoney(amount, money.Asset(asset))
+		if err != nil {
+			return err
+		}
+		snapshot.value.Unallocated = append(snapshot.value.Unallocated, value)
 	}
-	if err = rows.Err(); err != nil {
-		return snapshot, err
+	return rows.Err()
+}
+
+func scanAllocationRuleRefs(rows pgx.Rows, snapshots storedAllocationSnapshots, basis bool) error {
+	defer rows.Close()
+	for rows.Next() {
+		var position int
+		var ref ledger.AllocationRuleRef
+		if err := rows.Scan(&position, &ref.ID, &ref.Revision); err != nil {
+			return err
+		}
+		snapshot, err := snapshots.at(position)
+		if err != nil {
+			return err
+		}
+		if basis {
+			if snapshot.value.Basis == nil {
+				return ledger.ErrInvalidAllocation
+			}
+			snapshot.value.Basis.RuleRefs = append(snapshot.value.Basis.RuleRefs, ref)
+		} else {
+			snapshot.value.RuleRefs = append(snapshot.value.RuleRefs, ref)
+		}
 	}
-	return snapshot, snapshot.Validate()
+	return rows.Err()
 }

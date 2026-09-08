@@ -19,6 +19,7 @@ import (
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	journal "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
+	matching "github.com/pchkauu/want-keep/backend/internal/matching/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 )
 
@@ -237,6 +238,114 @@ func TestTrustedClassificationUsesOnlyFactTimeRules(t *testing.T) {
 			t.Fatalf("refreshed item rule allocation = %+v", refreshed.ReceiptItems)
 		}
 		assertMemberAmounts(t, fixture, refreshed.Allocation, "60", "40")
+	})
+
+	t.Run("classification replaces an earlier rule allocation", func(t *testing.T) {
+		fixture := newFixture(t)
+		client := fixture.client(fixture.p)
+		firstCategory := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "First category"}, http.StatusAccepted))
+		secondCategory := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Second category"}, http.StatusAccepted))
+		firstRule := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": firstCategory.Result.Id}, "active", 10, "60", "40", 0), http.StatusAccepted))
+		secondRule := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": secondCategory.Result.Id}, "active", 10, "25", "75", 0), http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:01:00Z")
+		created := createExpenseWithCategory(t, client, fixture.account(money.RUB, "1000"), "100", firstCategory.Result.Id)
+		before := readTransaction(t, client, created.Result.Id)
+		assertMemberAmounts(t, fixture, before.Allocation, "60", "40")
+		if len(before.Allocation.Rules) != 1 || before.Allocation.Rules[0].RuleId != firstRule.Result.Id {
+			t.Fatalf("initial rule = %+v", before.Allocation.Rules)
+		}
+		fixture.now = instant("2026-09-08T12:02:00Z")
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{
+			"expectedRevision": 1,
+			"reason":           "Correct classification",
+			"category":         map[string]any{"action": "set", "id": secondCategory.Result.Id},
+		}, http.StatusAccepted))
+		after := readTransaction(t, client, created.Result.Id)
+		assertMemberAmounts(t, fixture, after.Allocation, "25", "75")
+		if len(after.Allocation.Rules) != 1 || after.Allocation.Rules[0].RuleId != secondRule.Result.Id {
+			t.Fatalf("replacement rule = %+v", after.Allocation.Rules)
+		}
+	})
+
+	t.Run("classification without a matching rule clears the earlier rule", func(t *testing.T) {
+		fixture := newFixture(t)
+		client := fixture.client(fixture.p)
+		category := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Ruled category"}, http.StatusAccepted))
+		createRuleResult := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": category.Result.Id}, "active", 10, "60", "40", 0), http.StatusAccepted))
+		if createRuleResult.Status != "succeeded" {
+			t.Fatal(createRuleResult)
+		}
+		fixture.now = instant("2026-09-08T12:01:00Z")
+		created := createExpenseWithCategory(t, client, fixture.account(money.RUB, "1000"), "100", category.Result.Id)
+		fixture.now = instant("2026-09-08T12:02:00Z")
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{
+			"expectedRevision": 1,
+			"reason":           "Remove incorrect classification",
+			"category":         map[string]any{"action": "clear"},
+		}, http.StatusAccepted))
+		after := readTransaction(t, client, created.Result.Id)
+		if after.Allocation.State != "unresolved" || after.Allocation.Origin != "unresolved" || len(after.Allocation.Rules) != 0 || len(after.Allocation.Members) != 0 {
+			t.Fatalf("cleared rule allocation = %+v", after.Allocation)
+		}
+	})
+
+	t.Run("classification refreshes a suspended matching allocation", func(t *testing.T) {
+		fixture := newFixture(t)
+		client := fixture.client(fixture.p)
+		category := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Matching category"}, http.StatusAccepted))
+		rule := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": category.Result.Id}, "active", 10, "60", "40", 0), http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:01:00Z")
+		created := createExpense(t, client, fixture.account(money.RUB, "1000"), money.RUB, "100", "", unresolved())
+		current := currentLedgerRevision(t, fixture, created.Result.Id)
+		matchingID := uuid.NewString()
+		if err := fixture.store.WithinHousehold(testContext, fixture.p, func(ctx context.Context) error {
+			return fixture.store.SaveMatchingGroup(ctx, matching.Group{
+				ID: matchingID, PrimaryID: current.OperationID, Revision: 1, Kind: matching.Payment, State: matching.Clarification,
+				ActorID: fixture.p.UserID(), At: fixture.now, Reason: "matching_unresolved",
+				Members: []matching.Member{{OperationID: current.OperationID, Revision: current.Revision}}, CandidatesComplete: true,
+			}, 0)
+		}); err != nil {
+			t.Fatal(err)
+		}
+		current.Revision++
+		current.RecordedAt = fixture.now
+		current.Reason = "matching_unresolved"
+		current.Participation = ledger.Participation{GroupID: matchingID, Kind: "payment", State: "waiting"}
+		current, err := current.RefreshAllocation()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = fixture.store.WithinHousehold(testContext, fixture.p, func(ctx context.Context) error {
+			return journal.NewWriter(fixture.store, fixture.store).Append(ctx, fixture.p, current, 1)
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+		fixture.now = instant("2026-09-08T12:02:00Z")
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{
+			"expectedRevision": 2,
+			"reason":           "Classify while matching is unresolved",
+			"category":         map[string]any{"action": "set", "id": category.Result.Id},
+		}, http.StatusAccepted))
+		updated := currentLedgerRevision(t, fixture, created.Result.Id)
+		if updated.Allocation.State != ledger.AllocationNotApplicable || updated.Allocation.Basis == nil || updated.Allocation.Basis.Origin != ledger.AllocationRule || len(updated.Allocation.Basis.RuleRefs) != 1 || updated.Allocation.Basis.RuleRefs[0].ID != rule.Result.Id {
+			t.Fatalf("suspended basis = %+v", updated.Allocation)
+		}
+		updated.Revision++
+		updated.RecordedAt = fixture.now
+		updated.Reason = "matching_resolved_separate"
+		updated.Participation = ledger.Participation{}
+		updated, err = updated.RefreshAllocation()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = fixture.store.WithinHousehold(testContext, fixture.p, func(ctx context.Context) error {
+			return journal.NewWriter(fixture.store, fixture.store).Append(ctx, fixture.p, updated, 3)
+		}); err != nil {
+			t.Fatal(err)
+		}
+		restored := currentLedgerRevision(t, fixture, created.Result.Id)
+		assertStoredMemberAmounts(t, fixture, restored.Allocation, "60", "40")
 	})
 }
 
@@ -537,9 +646,35 @@ func createExpense(t *testing.T, client *client, accountID string, asset money.A
 	return result
 }
 
+func createExpenseWithCategory(t *testing.T, client *client, accountID, amount, categoryID string) generated.CommandSucceeded {
+	t.Helper()
+	input := map[string]any{
+		"type": "expense", "accountId": accountID,
+		"amount":     map[string]any{"amount": amount, "asset": "RUB"},
+		"occurredAt": "2026-09-08T10:00:00Z",
+		"payer":      map[string]any{"state": "known", "memberId": string(client.f.members[0].ID)},
+		"categoryId": categoryID,
+		"allocation": unresolved(),
+	}
+	result := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions", uuid.NewString(), input, http.StatusAccepted))
+	if result.Status != "succeeded" {
+		t.Fatal(result)
+	}
+	return result
+}
+
 func readTransaction(t *testing.T, client *client, id string) generated.Transaction {
 	t.Helper()
 	return decode[generated.Transaction](t, client.call(http.MethodGet, "/transactions/"+id, "", nil, http.StatusOK))
+}
+
+func currentLedgerRevision(t *testing.T, fixture *fixture, id string) ledger.Revision {
+	t.Helper()
+	revision, found, err := fixture.store.CurrentLedgerRevision(testContext, fixture.p, id)
+	if err != nil || !found {
+		t.Fatalf("current ledger revision: found=%v err=%v", found, err)
+	}
+	return revision
 }
 
 func unresolved() map[string]any {
@@ -560,6 +695,13 @@ func assertMemberAmounts(t *testing.T, fixture *fixture, allocation generated.Al
 	}
 	if len(amounts) != 2 || amounts[string(fixture.members[0].ID)] != first || amounts[string(fixture.members[1].ID)] != second {
 		t.Fatalf("member amounts = %v, want %s/%s", amounts, first, second)
+	}
+}
+
+func assertStoredMemberAmounts(t *testing.T, fixture *fixture, allocation ledger.AllocationSnapshot, first, second string) {
+	t.Helper()
+	if storedMemberTotal(allocation, fixture.members[0].ID, money.RUB) != first || storedMemberTotal(allocation, fixture.members[1].ID, money.RUB) != second {
+		t.Fatalf("stored member amounts = %+v, want %s/%s", allocation.Members, first, second)
 	}
 }
 

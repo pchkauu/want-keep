@@ -362,6 +362,16 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 		return r, err
 	}
 	if len(components) == 0 {
+		if r.Allocation.Basis != nil && r.Participation.GroupID != "" && input.Mode != "" {
+			participation := next.Participation
+			next.Participation = Participation{}
+			allocated, allocateErr := next.WithAllocation(input, items, active)
+			if allocateErr != nil {
+				return r, allocateErr
+			}
+			allocated.Participation = participation
+			return allocated.RefreshAllocation()
+		}
 		if input.Mode != "" || len(items) != 0 {
 			return r, ErrInvalidAllocation
 		}

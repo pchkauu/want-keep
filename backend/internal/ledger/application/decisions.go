@@ -224,7 +224,7 @@ func (s *Service) shouldResolveAllocation(revision ledger.Revision, fields []led
 	if _, protected := revision.Protections[ledger.AllocationField]; protected {
 		return false
 	}
-	return revision.Allocation.State == ledger.AllocationUnresolved || revision.Allocation.State == ledger.AllocationPartial
+	return revision.Allocation.State != "" && (revision.Allocation.State != ledger.AllocationNotApplicable || revision.Allocation.Basis != nil)
 }
 
 func (s *Service) resolveAllocationAt(ctx context.Context, p household.Principal, revision ledger.Revision, at calendar.Instant) (ledger.Revision, bool, error) {
@@ -248,12 +248,12 @@ func (s *Service) resolveAllocationAt(ctx context.Context, p household.Principal
 		matched = true
 		items = append(items, ledger.ItemAllocationInput{ItemID: item.ID, Allocation: resolved})
 	}
-	if !matched {
-		return revision, false, nil
-	}
-	members, err := s.allocations.ActiveMemberIDs(ctx, p)
-	if err != nil {
-		return revision, false, err
+	var members []household.MembershipID
+	if matched {
+		members, err = s.allocations.ActiveMemberIDs(ctx, p)
+		if err != nil {
+			return revision, false, err
+		}
 	}
 	resolved, err := revision.WithAllocation(fallback, items, members)
 	if err != nil {
