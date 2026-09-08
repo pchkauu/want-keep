@@ -109,6 +109,64 @@ func TestMerchantAliasesAndFamilyIsolation(t *testing.T) {
 	}
 }
 
+func TestCategoryChangeRejectsNameWithoutAction(t *testing.T) {
+	f := newFixture(t)
+	client := f.client(f.p)
+	categoryID := createCategory(t, client, "Original name", "")
+
+	client.call("POST", "/categories/"+categoryID, uuid.NewString(), map[string]any{"expectedRevision": 1, "name": "Ignored name", "state": "archived"}, 400)
+
+	page := decode[generated.CategoryPage](t, client.call("GET", "/categories?search="+url.QueryEscape("Original name"), "", nil, 200))
+	if len(page.Items) != 1 || page.Items[0].Id != categoryID || page.Items[0].Revision != 1 || page.Items[0].State != "active" {
+		t.Fatalf("invalid category change mutated state: %+v", page.Items)
+	}
+	var commands int
+	if err := f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.command_tombstones`).Scan(&commands); err != nil || commands != 1 {
+		t.Fatalf("commands after invalid category change = %d: %v", commands, err)
+	}
+}
+
+func TestCatalogHistoryOutlivesCommandRetention(t *testing.T) {
+	f := newFixture(t)
+	client := f.client(f.p)
+	createCategory(t, client, "Long-lived category", "")
+	merchant := decode[generated.CommandSucceeded](t, client.call("POST", "/merchants", uuid.NewString(), map[string]any{"name": "Long-lived merchant", "aliases": []string{}}, 202))
+	if merchant.Status != "succeeded" {
+		t.Fatal(merchant)
+	}
+
+	u, err := url.Parse(f.admin.Config().ConnString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.User = url.UserPassword("want_keep_maintenance", "synthetic-maintenance")
+	maintenance, err := storage.Open(testContext, storage.Config{DSN: u.String(), Environment: "test", MaxConnections: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer maintenance.Close()
+	future := instant("2028-01-01T00:00:00Z")
+	if _, err = maintenance.CleanupCommandDetails(testContext, future, 1000); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = maintenance.CleanupCommandTombstones(testContext, future, 1000); err != nil {
+		t.Fatal(err)
+	}
+
+	for table, expected := range map[string]int{"command_tombstones": 0, "category_revisions": 32, "merchant_revisions": 1} {
+		var actual int
+		if err = f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.`+table).Scan(&actual); err != nil || actual != expected {
+			t.Fatalf("%s after retention = %d, want %d: %v", table, actual, expected, err)
+		}
+	}
+	for _, table := range []string{"category_revisions", "merchant_revisions"} {
+		var retained int
+		if err = f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.`+table+` WHERE command_id IS NOT NULL`).Scan(&retained); err != nil || retained != 1 {
+			t.Fatalf("%s command audit references = %d: %v", table, retained, err)
+		}
+	}
+}
+
 func TestMigrationSeedsExistingHouseholdAndProtectsHistory(t *testing.T) {
 	files := fstest.MapFS{}
 	names, err := fs.Glob(migrations.Files, "*.sql")

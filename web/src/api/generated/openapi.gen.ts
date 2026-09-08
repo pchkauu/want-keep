@@ -1987,10 +1987,17 @@ export interface components {
     };
     CategoryChange: {
       expectedRevision: components["schemas"]["Revision"];
+      /** @description A replacement name supplied only with nameAction set. */
       name?: string;
-      /** @enum {string} */
+      /**
+       * @description When set is selected, name is required. restore_default requires name to be omitted.
+       * @enum {string}
+       */
       nameAction?: "set" | "restore_default";
-      /** @enum {string} */
+      /**
+       * @description When set is selected, parentId is required. clear requires parentId to be omitted.
+       * @enum {string}
+       */
       parentAction?: "set" | "clear";
       parentId?: components["schemas"]["ID"];
       /** @enum {string} */

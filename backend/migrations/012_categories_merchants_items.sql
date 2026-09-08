@@ -67,8 +67,7 @@ CREATE TABLE want_keep.category_revisions (
  command_id uuid,
  PRIMARY KEY(household_id,id,revision),
  FOREIGN KEY(household_id,id) REFERENCES want_keep.categories(household_id,id) DEFERRABLE INITIALLY DEFERRED,
- FOREIGN KEY(household_id,actor_id) REFERENCES want_keep.memberships(household_id,user_id),
- FOREIGN KEY(household_id,actor_id,command_id) REFERENCES want_keep.command_tombstones(household_id,actor_id,id)
+ FOREIGN KEY(household_id,actor_id) REFERENCES want_keep.memberships(household_id,user_id)
 );
 CREATE TRIGGER immutable_history BEFORE UPDATE OR DELETE ON want_keep.category_revisions FOR EACH ROW EXECUTE FUNCTION want_keep.reject_history_change();
 
@@ -95,8 +94,7 @@ CREATE TABLE want_keep.merchant_revisions (
  command_id uuid,
  PRIMARY KEY(household_id,id,revision),
  FOREIGN KEY(household_id,id) REFERENCES want_keep.merchants(household_id,id) DEFERRABLE INITIALLY DEFERRED,
- FOREIGN KEY(household_id,actor_id) REFERENCES want_keep.memberships(household_id,user_id),
- FOREIGN KEY(household_id,actor_id,command_id) REFERENCES want_keep.command_tombstones(household_id,actor_id,id)
+ FOREIGN KEY(household_id,actor_id) REFERENCES want_keep.memberships(household_id,user_id)
 );
 CREATE TRIGGER immutable_history BEFORE UPDATE OR DELETE ON want_keep.merchant_revisions FOR EACH ROW EXECUTE FUNCTION want_keep.reject_history_change();
 

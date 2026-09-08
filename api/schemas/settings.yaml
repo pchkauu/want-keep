@@ -123,13 +123,16 @@ CategoryChange:
     nameAction:
       type: string
       enum: [set, restore_default]
+      description: When set is selected, name is required. restore_default requires name to be omitted.
     name:
       type: string
       minLength: 1
       maxLength: 200
+      description: A replacement name supplied only with nameAction set.
     parentAction:
       type: string
       enum: [set, clear]
+      description: When set is selected, parentId is required. clear requires parentId to be omitted.
     parentId:
       "$ref": "./money.yaml#/ID"
     state:

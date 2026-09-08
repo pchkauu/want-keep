@@ -96,6 +96,9 @@ func (s *Server) changeCategory(w http.ResponseWriter, r *http.Request) {
 			s.problem(w, contract.ErrInvalidRequest)
 			return
 		}
+	} else if input.Name != nil {
+		s.problem(w, contract.ErrInvalidRequest)
+		return
 	}
 	if input.ParentAction != nil {
 		change.ParentSet = true
