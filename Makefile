@@ -15,7 +15,7 @@ E2E_WEB_DIR ?= web
 
 .DEFAULT_GOAL := help
 
-.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-household-race test-accounts-race test-ledger-race test-audit-race test-reconciliation-race test-contract e2e eval-ai check-deploy backup-check restore-check
+.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-household-race test-accounts-race test-ledger-race test-audit-race test-reconciliation-race test-jobs-race test-contract e2e eval-ai check-deploy backup-check restore-check
 
 help:
 	@echo "Want Keep repository commands"
@@ -177,3 +177,6 @@ test-audit-race:
 
 test-reconciliation-race:
 	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/reconciliation/...
+
+test-jobs-race:
+	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/jobs/...

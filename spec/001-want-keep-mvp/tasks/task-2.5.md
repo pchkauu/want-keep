@@ -20,7 +20,7 @@
 - `backend/internal/reconciliation/`
 - `backend/internal/storage/`
 - `backend/internal/delivery/reconciliation/`
-- `backend/migrations/010_reconciliation.sql`
+- `backend/migrations/011_reconciliation.sql`
 - `api/`
 - `backend/test/integration/reconciliation/`
 
@@ -162,7 +162,7 @@ For each imported account, owned, available, locked and debt are compared indepe
 - `backend/internal/reconciliation/`
 - `backend/internal/storage/`
 - `backend/internal/delivery/reconciliation/`
-- `backend/migrations/010_reconciliation.sql`
+- `backend/migrations/011_reconciliation.sql`
 - `api/`
 - `backend/test/integration/reconciliation/`
 

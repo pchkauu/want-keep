@@ -1,6 +1,9 @@
 package admission
 
-import "sort"
+import (
+	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
+	"sort"
+)
 
 // WithOmissions preserves gaps discovered by earlier pages or normalization inside the current transaction.
 func (p Page) WithOmissions(omissions []string) Page {
@@ -20,4 +23,11 @@ func (p Page) WithOmissions(omissions []string) Page {
 		p.Coverage = "partial"
 	}
 	return p
+}
+
+func (p Page) Validate() error {
+	if (p.Coverage == "complete") != (len(p.Gaps) == 0) || p.EvidenceRef == "" || len(p.EvidenceRef) > 2000 || (p.Coverage != "complete" && p.Coverage != "partial" && p.Coverage != "unavailable") {
+		return jobs.ErrInvalidJob
+	}
+	return nil
 }

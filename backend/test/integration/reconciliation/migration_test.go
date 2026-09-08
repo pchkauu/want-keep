@@ -25,7 +25,7 @@ func TestMigrationPreservesExistingDataAndProtectsHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range names {
-		if name >= "010_" {
+		if name >= "011_" {
 			continue
 		}
 		data, readErr := fs.ReadFile(migrations.Files, name)
