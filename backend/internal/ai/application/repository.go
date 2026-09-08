@@ -13,11 +13,12 @@ import (
 )
 
 var (
-	ErrBudgetExhausted    = errors.New("AI budget exhausted")
-	ErrBudgetBlocked      = errors.New("AI budget requires reconciliation")
-	ErrConcurrency        = errors.New("AI family concurrency exhausted")
-	ErrRetryExhausted     = errors.New("AI provider retry exhausted")
-	ErrInvalidBudgetQueue = errors.New("invalid AI budget queue")
+	ErrBudgetExhausted     = errors.New("AI budget exhausted")
+	ErrBudgetBlocked       = errors.New("AI budget requires reconciliation")
+	ErrConcurrency         = errors.New("AI family concurrency exhausted")
+	ErrRetryExhausted      = errors.New("AI provider retry exhausted")
+	ErrInvalidBudgetQueue  = errors.New("invalid AI budget queue")
+	ErrInvalidGatewayQueue = errors.New("invalid AI gateway queue")
 )
 
 type Settlement struct {
@@ -63,13 +64,6 @@ type BudgetQueueRepository interface {
 
 type GatewayQueueRepository interface {
 	ResumeWaiting(context.Context, jobs.Kind, jobs.Reason) error
-}
-
-func ResumeGatewayWaiting(ctx context.Context, repository GatewayQueueRepository) error {
-	if repository == nil {
-		return ErrInvalidBudgetQueue
-	}
-	return repository.ResumeWaiting(ctx, jobs.AI, jobs.GatewayUnavailable)
 }
 
 type WaitingHandler struct{}

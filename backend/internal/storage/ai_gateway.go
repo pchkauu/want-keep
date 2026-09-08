@@ -159,7 +159,7 @@ func (s *Store) ReserveAIAttempt(ctx context.Context, p household.Principal, job
 			return s.refuseAIReservation(ctx, scope.tx, p.HouseholdID(), attemptID, current, reservation, "budget_blocked", now)
 		}
 		var generationAttempts int
-		if err = scope.tx.QueryRow(ctx, `SELECT count(*) FROM want_keep.ai_attempts a WHERE a.household_id=$1 AND a.job_id=$2 AND EXISTS(SELECT 1 FROM want_keep.ai_attempt_states s WHERE s.household_id=a.household_id AND s.attempt_id=a.id AND s.state='reserved')`, p.HouseholdID(), job.ID).Scan(&generationAttempts); err != nil {
+		if err = scope.tx.QueryRow(ctx, `SELECT count(*) FROM want_keep.ai_attempts a WHERE a.household_id=$1 AND a.job_id=$2 AND EXISTS(SELECT 1 FROM want_keep.ai_attempt_states s WHERE s.household_id=a.household_id AND s.attempt_id=a.id AND s.external_started)`, p.HouseholdID(), job.ID).Scan(&generationAttempts); err != nil {
 			return err
 		}
 		if generationAttempts >= 2 {
@@ -218,9 +218,9 @@ func (s *Store) AIOutcomeRetryAllowed(ctx context.Context, p household.Principal
 	if err != nil {
 		return false, err
 	}
-	var attempts int
-	err = q.QueryRow(ctx, `SELECT count(*) FROM want_keep.ai_attempts WHERE household_id=$1 AND job_id=$2`, p.HouseholdID(), job.ID).Scan(&attempts)
-	return attempts < 2, err
+	var retryableRejections int
+	err = q.QueryRow(ctx, `SELECT count(*) FROM want_keep.ai_attempts a JOIN LATERAL(SELECT state,code FROM want_keep.ai_attempt_states s WHERE (s.household_id,s.attempt_id)=(a.household_id,a.id) ORDER BY revision DESC LIMIT 1) latest ON true WHERE a.household_id=$1 AND a.job_id=$2 AND latest.state='known_rejection' AND latest.code='provider_retryable_rejection'`, p.HouseholdID(), job.ID).Scan(&retryableRejections)
+	return retryableRejections == 0, err
 }
 
 func (s *Store) SaveAIOutcome(ctx context.Context, p household.Principal, job jobs.Job, attemptID string, settlement aiapp.Settlement, now time.Time) error {

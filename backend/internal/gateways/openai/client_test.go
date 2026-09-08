@@ -145,11 +145,11 @@ func TestGenerationKeepsUnauditableResponseBehindReconciliation(t *testing.T) {
 	}
 }
 
-func TestProviderHTTPFailuresAreKnownAndNeverRetried(t *testing.T) {
+func TestProviderHTTPFailuresPreserveChargeUncertainty(t *testing.T) {
 	testCases := []struct {
 		status    int
 		retryable bool
-	}{{http.StatusUnauthorized, false}, {http.StatusForbidden, false}, {http.StatusTooManyRequests, true}, {http.StatusInternalServerError, true}}
+	}{{http.StatusUnauthorized, false}, {http.StatusForbidden, false}, {http.StatusRequestTimeout, true}, {http.StatusTooManyRequests, true}, {http.StatusInternalServerError, true}}
 	calls := []struct {
 		name string
 		run  func(*Client, ai.Request) error
@@ -174,7 +174,10 @@ func TestProviderHTTPFailuresAreKnownAndNeverRetried(t *testing.T) {
 				client := newTestClientWithHTTP(t, "http://127.0.0.1/v1", httpClient)
 				err := call.run(client, validRequest(client.Contract()))
 				var failure aiapp.GatewayFailure
-				if !errors.As(err, &failure) || failure.Retryable != testCase.retryable || failure.OutcomeUnknown || requests != 1 {
+				wantUnknown := call.name == "generation" && (testCase.status == http.StatusRequestTimeout || testCase.status >= 500)
+				wantRetryable := testCase.retryable && !wantUnknown
+				wantConfirmedNoCharge := call.name == "generation" && testCase.status == http.StatusTooManyRequests
+				if !errors.As(err, &failure) || failure.Retryable != wantRetryable || failure.OutcomeUnknown != wantUnknown || failure.ConfirmedNoCharge != wantConfirmedNoCharge || requests != 1 {
 					t.Fatalf("failure classification: calls=%d failure=%+v err=%v", requests, failure, err)
 				}
 			})

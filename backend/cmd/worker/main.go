@@ -80,6 +80,7 @@ func run() error {
 	reconciliationService := reconciliation.NewService(db, db, ledger.NewWriter(db, db), admissionService, now, uuid.NewString)
 	var aiHandler jobs.Handler = ai.WaitingHandler{}
 	var aiBudgetQueue *ai.BudgetQueue
+	var aiGatewayQueue *ai.GatewayQueue
 	if keyFile := os.Getenv("WANT_KEEP_OPENAI_API_KEY_FILE"); keyFile != "" {
 		gateway, gatewayErr := openaigateway.New(openaigateway.Config{
 			APIKeyFile: keyFile, ProjectID: os.Getenv("WANT_KEEP_OPENAI_PROJECT_ID"),
@@ -87,13 +88,12 @@ func run() error {
 			HTTPClient: &http.Client{Timeout: 2 * time.Minute},
 		})
 		if gatewayErr != nil {
-			return gatewayErr
+			report(jobs.Diagnostic{Kind: domain.AI, Stage: "startup", Code: "gateway_configuration_invalid"})
+		} else {
+			aiHandler = ai.NewHandler(db, gateway, time.Now, uuid.NewString)
+			aiBudgetQueue = ai.NewBudgetQueue(db, time.Now, time.Minute)
+			aiGatewayQueue = ai.NewGatewayQueue(db, time.Minute)
 		}
-		if err = ai.ResumeGatewayWaiting(ctx, db); err != nil {
-			return err
-		}
-		aiHandler = ai.NewHandler(db, gateway, time.Now, uuid.NewString)
-		aiBudgetQueue = ai.NewBudgetQueue(db, time.Now, time.Minute)
 	}
 	var group sync.WaitGroup
 	group.Add(1)
@@ -104,6 +104,16 @@ func run() error {
 			defer group.Done()
 			if err := aiBudgetQueue.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				report(jobs.Diagnostic{Kind: domain.AI, Stage: "budget_queue", Code: "budget_queue_stopped"})
+				stop()
+			}
+		}()
+	}
+	if aiGatewayQueue != nil {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			if err := aiGatewayQueue.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				report(jobs.Diagnostic{Kind: domain.AI, Stage: "gateway_queue", Code: "gateway_queue_stopped"})
 				stop()
 			}
 		}()

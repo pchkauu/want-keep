@@ -21,14 +21,14 @@ CREATE TABLE want_keep.ai_attempt_states (
  household_id uuid NOT NULL, attempt_id uuid NOT NULL, revision want_keep.revision NOT NULL,
  state text NOT NULL CHECK(state IN ('counting','reserved','completed','refused','incomplete','schema_error','known_rejection','unknown')),
  counted_input_tokens bigint CHECK(counted_input_tokens BETWEEN 1 AND 262144),
- reservation_usd numeric CHECK(reservation_usd>=0 AND reservation_usd::text NOT IN ('NaN','Infinity','-Infinity')),
+ reservation_usd numeric CHECK(reservation_usd>=0 AND length(reservation_usd::text)<=128 AND reservation_usd::text NOT IN ('NaN','Infinity','-Infinity')),
  external_started boolean NOT NULL DEFAULT false,
  provider_id text CHECK(provider_id IS NULL OR length(provider_id) BETWEEN 1 AND 200),
  provider_model text CHECK(provider_model IS NULL OR length(provider_model) BETWEEN 1 AND 200),
  input_tokens bigint CHECK(input_tokens>=0), cached_tokens bigint CHECK(cached_tokens>=0),
  cache_write_tokens bigint CHECK(cache_write_tokens>=0), output_tokens bigint CHECK(output_tokens>=0),
  reasoning_tokens bigint CHECK(reasoning_tokens>=0),
- actual_usd numeric CHECK(actual_usd>=0 AND actual_usd::text NOT IN ('NaN','Infinity','-Infinity')),
+ actual_usd numeric CHECK(actual_usd>=0 AND length(actual_usd::text)<=128 AND actual_usd::text NOT IN ('NaN','Infinity','-Infinity')),
  conservative_cost boolean NOT NULL DEFAULT false,
  structured_output jsonb CHECK(structured_output IS NULL OR jsonb_typeof(structured_output)='object'),
  validation_state text NOT NULL DEFAULT '' CHECK(validation_state IN ('','pending_validation')),
@@ -78,7 +78,8 @@ DECLARE
  v_terminal boolean;
 BEGIN
  IF p_attempt_id IS NULL OR p_outcome NOT IN ('charged','not_charged')
-    OR p_actual IS NULL OR p_actual < 0 OR p_actual::text IN ('NaN','Infinity','-Infinity')
+    OR p_actual IS NULL OR p_actual < 0 OR length(p_actual::text) > 128
+    OR p_actual::text IN ('NaN','Infinity','-Infinity')
     OR p_evidence_ref IS NULL OR length(p_evidence_ref) NOT BETWEEN 1 AND 2000
     OR p_evidence_ref !~ '^[A-Za-z0-9][A-Za-z0-9._:/?#=&%+~-]*$'
     OR (p_outcome = 'not_charged' AND p_actual <> 0)

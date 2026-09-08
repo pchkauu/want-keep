@@ -71,8 +71,11 @@ func (h *Handler) Prepare(ctx context.Context, execution jobapp.Execution) (joba
 	if err != nil {
 		return h.handleGatewayFailure(ctx, execution, request.ID, reservation, true, err)
 	}
-	if providerResult.Usage.InputTokens < 1 || providerResult.Usage.InputTokens > counted+ai.InputReservationMargin {
+	if providerResult.Usage.InputTokens < counted || providerResult.Usage.InputTokens > counted+ai.InputReservationMargin {
 		return h.markUnknown(execution, request.ID, "input_count_mismatch", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: &providerResult.Usage})
+	}
+	if providerResult.Usage.OutputTokens < 1 || providerResult.Usage.OutputTokens > request.MaximumOutputTokens {
+		return h.markUnknown(execution, request.ID, "output_count_mismatch", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: &providerResult.Usage})
 	}
 	actual, conservative, err := ai.TerraPricing().Actual(providerResult.Usage)
 	if err != nil {
@@ -104,8 +107,24 @@ func (h *Handler) handleGatewayFailure(ctx context.Context, execution jobapp.Exe
 	if failure.OutcomeUnknown {
 		return h.markUnknown(execution, attemptID, failure.Code, failure.Observation)
 	}
+	if generation && failure.Retryable && !failure.ConfirmedNoCharge {
+		return h.markUnknown(execution, attemptID, "provider_charge_unknown", failure.Observation)
+	}
+	if !generation && failure.Retryable {
+		return h.recordProviderWait(execution, attemptID, failure.Code)
+	}
+	if generation && failure.Retryable {
+		failure.Code = "provider_retryable_rejection"
+	}
 	result := ai.Result{State: ai.KnownRejection, Code: failure.Code}
 	return h.recordKnownFailure(ctx, execution, attemptID, reservation, result.Code, failure.Retryable)
+}
+
+func (h *Handler) recordProviderWait(execution jobapp.Execution, attemptID, code string) (jobapp.Result, error) {
+	settlement := Settlement{Result: ai.Result{State: ai.KnownRejection, Code: code}, Reservation: ai.MustCost("0")}
+	return jobapp.Result{State: jobs.Waiting, Reason: jobs.GatewayUnavailable, Apply: func(ctx context.Context, _ household.Principal) error {
+		return h.repository.SaveAIOutcome(ctx, execution.Principal, execution.Job, attemptID, settlement, h.now().UTC())
+	}}, nil
 }
 
 func (h *Handler) recordKnownFailure(ctx context.Context, execution jobapp.Execution, attemptID string, reservation ai.Cost, code string, retryable bool) (jobapp.Result, error) {

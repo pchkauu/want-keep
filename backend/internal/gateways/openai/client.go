@@ -232,9 +232,15 @@ func classifyError(err error, generation bool) error {
 	var apiError *openaisdk.Error
 	if errors.As(err, &apiError) {
 		status := apiError.StatusCode
+		if generation && (status == http.StatusRequestTimeout || status >= 500) {
+			return aiapp.GatewayFailure{Code: "provider_unknown", OutcomeUnknown: true}
+		}
+		if generation && status == http.StatusTooManyRequests {
+			return aiapp.GatewayFailure{Code: "provider_rejected", Retryable: true, ConfirmedNoCharge: true}
+		}
 		return aiapp.GatewayFailure{
 			Code:      "provider_rejected",
-			Retryable: status == http.StatusTooManyRequests || status >= 500,
+			Retryable: !generation && (status == http.StatusRequestTimeout || status == http.StatusTooManyRequests || status >= 500),
 		}
 	}
 	if generation && (errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || errors.Is(err, io.ErrUnexpectedEOF)) {

@@ -10,10 +10,11 @@ import (
 var ErrGatewayFailure = errors.New("AI gateway failure")
 
 type GatewayFailure struct {
-	Code           string
-	Retryable      bool
-	OutcomeUnknown bool
-	Observation    ProviderObservation
+	Code              string
+	Retryable         bool
+	ConfirmedNoCharge bool
+	OutcomeUnknown    bool
+	Observation       ProviderObservation
 }
 
 func (e GatewayFailure) Error() string { return ErrGatewayFailure.Error() }
