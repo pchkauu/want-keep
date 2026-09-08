@@ -73,11 +73,11 @@ func (h *Handler) Prepare(ctx context.Context, execution jobapp.Execution) (joba
 	}
 	actual, conservative, err := ai.TerraPricing().Actual(providerResult.Usage)
 	if err != nil {
-		return h.markUnknown(ctx, execution, request.ID, "usage_invalid")
+		return h.markUnknown(execution, request.ID, "usage_invalid", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel})
 	}
 	comparison, err := actual.Compare(reservation)
 	if err != nil {
-		return h.markUnknown(ctx, execution, request.ID, "cost_invalid")
+		return h.markUnknown(execution, request.ID, "cost_invalid", ProviderObservation{ID: providerResult.ProviderID, Model: providerResult.ProviderModel, Usage: &providerResult.Usage})
 	}
 	settlement := Settlement{Result: providerResult, Reservation: reservation, Actual: &actual, Conservative: conservative, NeedsReconciliation: comparison > 0}
 	if providerResult.State == ai.Completed {
@@ -85,22 +85,21 @@ func (h *Handler) Prepare(ctx context.Context, execution jobapp.Execution) (joba
 			return h.repository.SaveAICompletion(ctx, execution.Principal, job, request.ID, settlement, h.now().UTC())
 		}}, nil
 	}
-	if _, err = h.repository.RecordAIOutcome(ctx, execution.Principal, job, request.ID, settlement, h.now().UTC()); err != nil {
-		return jobapp.Result{}, err
-	}
-	return jobapp.Result{State: jobs.Failed, Reason: jobs.PermanentFailure}, nil
+	return jobapp.Result{State: jobs.Failed, Reason: jobs.PermanentFailure, Apply: func(ctx context.Context, _ household.Principal) error {
+		return h.repository.SaveAIOutcome(ctx, execution.Principal, job, request.ID, settlement, h.now().UTC())
+	}}, nil
 }
 
 func (h *Handler) handleGatewayFailure(ctx context.Context, execution jobapp.Execution, attemptID string, reservation ai.Cost, generation bool, err error) (jobapp.Result, error) {
 	var failure GatewayFailure
 	if !errors.As(err, &failure) {
 		if generation {
-			return h.markUnknown(ctx, execution, attemptID, "gateway_unknown")
+			return h.markUnknown(execution, attemptID, "gateway_unknown", ProviderObservation{})
 		}
 		failure = GatewayFailure{Code: "gateway_unavailable", Retryable: true}
 	}
 	if failure.OutcomeUnknown {
-		return h.markUnknown(ctx, execution, attemptID, failure.Code)
+		return h.markUnknown(execution, attemptID, failure.Code, failure.Observation)
 	}
 	result := ai.Result{State: ai.KnownRejection, Code: failure.Code}
 	return h.recordKnownFailure(ctx, execution, attemptID, reservation, result.Code, failure.Retryable)
@@ -108,21 +107,28 @@ func (h *Handler) handleGatewayFailure(ctx context.Context, execution jobapp.Exe
 
 func (h *Handler) recordKnownFailure(ctx context.Context, execution jobapp.Execution, attemptID string, reservation ai.Cost, code string, retryable bool) (jobapp.Result, error) {
 	settlement := Settlement{Result: ai.Result{State: ai.KnownRejection, Code: code}, Reservation: reservation}
-	canRetry, recordErr := h.repository.RecordAIOutcome(ctx, execution.Principal, execution.Job, attemptID, settlement, h.now().UTC())
-	if recordErr != nil {
-		return jobapp.Result{}, recordErr
+	canRetry := false
+	if retryable {
+		var err error
+		canRetry, err = h.repository.AIOutcomeRetryAllowed(ctx, execution.Principal, execution.Job)
+		if err != nil {
+			return jobapp.Result{}, err
+		}
 	}
+	result := jobapp.Result{State: jobs.Failed, Reason: jobs.PermanentFailure}
 	if retryable && canRetry {
-		return jobapp.Result{State: jobs.Ready, Reason: jobs.TemporaryFailure}, nil
+		result.State, result.Reason = jobs.Ready, jobs.TemporaryFailure
 	}
-	return jobapp.Result{State: jobs.Failed, Reason: jobs.PermanentFailure}, nil
+	result.Apply = func(ctx context.Context, _ household.Principal) error {
+		return h.repository.SaveAIOutcome(ctx, execution.Principal, execution.Job, attemptID, settlement, h.now().UTC())
+	}
+	return result, nil
 }
 
-func (h *Handler) markUnknown(ctx context.Context, execution jobapp.Execution, attemptID, code string) (jobapp.Result, error) {
-	if err := h.repository.MarkAIUnknown(ctx, execution.Principal, execution.Job, attemptID, code, h.now().UTC()); err != nil {
-		return jobapp.Result{}, err
-	}
-	return jobapp.Result{State: jobs.Unresolved, Reason: jobs.ExternalUnknown}, nil
+func (h *Handler) markUnknown(execution jobapp.Execution, attemptID, code string, observation ProviderObservation) (jobapp.Result, error) {
+	return jobapp.Result{State: jobs.Unresolved, Reason: jobs.ExternalUnknown, Apply: func(ctx context.Context, _ household.Principal) error {
+		return h.repository.MarkAIUnknown(ctx, execution.Principal, execution.Job, attemptID, code, observation, h.now().UTC())
+	}}, nil
 }
 
 func (h *Handler) waitOrFail(err error) (jobapp.Result, error) {

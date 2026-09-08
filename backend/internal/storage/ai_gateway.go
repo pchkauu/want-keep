@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	aiapp "github.com/pchkauu/want-keep/backend/internal/ai/application"
 	ai "github.com/pchkauu/want-keep/backend/internal/ai/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -23,18 +25,16 @@ type aiReviewPosting struct {
 }
 
 type aiReviewItem struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Quantity   string `json:"quantity"`
-	Gross      string `json:"gross"`
-	Discount   string `json:"discount"`
-	Net        string `json:"net"`
-	Asset      string `json:"asset"`
-	CategoryID string `json:"category_id"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Quantity string `json:"quantity"`
+	Gross    string `json:"gross"`
+	Discount string `json:"discount"`
+	Net      string `json:"net"`
+	Asset    string `json:"asset"`
 }
 
 type aiReviewInput struct {
-	OperationID    string            `json:"operation_id"`
 	EconomicType   string            `json:"economic_type"`
 	BankState      string            `json:"bank_state"`
 	OccurredAt     string            `json:"occurred_at"`
@@ -46,10 +46,17 @@ type aiReviewInput struct {
 	Merchant       string            `json:"merchant,omitempty"`
 	Note           string            `json:"note,omitempty"`
 	PayerState     string            `json:"payer_state"`
-	PayerMemberID  string            `json:"payer_member_id,omitempty"`
 	SourceConflict bool              `json:"source_conflict"`
 	Postings       []aiReviewPosting `json:"postings"`
 	ReceiptItems   []aiReviewItem    `json:"receipt_items"`
+}
+
+type aiReviewCase struct {
+	ID      string   `json:"id"`
+	Source  string   `json:"source"`
+	Members []string `json:"members"`
+	ActorID string   `json:"actor_id"`
+	Text    string   `json:"text"`
 }
 
 // ReviewInput is the only storage-to-provider projection. It excludes credentials,
@@ -63,31 +70,39 @@ func (s *Store) ReviewInput(ctx context.Context, p household.Principal, job jobs
 		return nil, err
 	}
 	input := aiReviewInput{
-		OperationID: revision.OperationID, Revision: revision.Revision,
-		EconomicType: string(revision.Type), BankState: string(revision.State),
+		Revision: revision.Revision, EconomicType: string(revision.Type), BankState: string(revision.State),
 		OccurredAt: revision.OccurredAt.String(), PostedAt: revision.PostedAt.String(),
 		Timezone: revision.Timezone.String(), CashDate: revision.CashDate.String(), ExpenseMonth: revision.ExpenseMonth.String(),
-		Merchant: revision.Merchant, Note: revision.Note, PayerState: revision.PayerState,
-		PayerMemberID: string(revision.PayerMemberID), SourceConflict: revision.SourceConflict,
+		Merchant: revision.Merchant, Note: revision.Note, PayerState: revision.PayerState, SourceConflict: revision.SourceConflict,
 		Postings: []aiReviewPosting{}, ReceiptItems: []aiReviewItem{},
 	}
+	accountLabels := map[string]string{}
 	for _, posting := range revision.Postings {
+		label, exists := accountLabels[posting.AccountID]
+		if !exists {
+			label = "account-" + strconv.Itoa(len(accountLabels)+1)
+			accountLabels[posting.AccountID] = label
+		}
 		input.Postings = append(input.Postings, aiReviewPosting{
-			AccountID: posting.AccountID, Amount: posting.Money.Amount(), Asset: string(posting.Money.Asset()),
+			AccountID: label, Amount: posting.Money.Amount(), Asset: string(posting.Money.Asset()),
 			Role: string(posting.Role), Funding: string(posting.Funding), Treatment: string(posting.Treatment),
 		})
 	}
-	for _, item := range revision.ReceiptItems {
+	for index, item := range revision.ReceiptItems {
 		net, err := item.Net()
 		if err != nil {
 			return nil, err
 		}
 		input.ReceiptItems = append(input.ReceiptItems, aiReviewItem{
-			ID: item.ID, Name: item.Name, Quantity: item.Quantity, Gross: item.Gross.Amount(),
-			Discount: item.Discount.Amount(), Net: net.Amount(), Asset: string(item.Gross.Asset()), CategoryID: item.CategoryID,
+			ID: "item-" + strconv.Itoa(index+1), Name: item.Name, Quantity: item.Quantity, Gross: item.Gross.Amount(),
+			Discount: item.Discount.Amount(), Net: net.Amount(), Asset: string(item.Gross.Asset()),
 		})
 	}
-	return json.Marshal(input)
+	text, err := json.Marshal(input)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal([]aiReviewCase{{ID: "case-1", Source: "ledger_revision", Members: []string{"actor"}, ActorID: "actor", Text: string(text)}})
 }
 
 func (s *Store) StartAIAttempt(ctx context.Context, p household.Principal, job jobs.Job, request ai.Request, requestFingerprint string, now time.Time) error {
@@ -122,7 +137,7 @@ func (s *Store) StartAIAttempt(ctx context.Context, p household.Principal, job j
 }
 
 func (s *Store) ReserveAIAttempt(ctx context.Context, p household.Principal, job jobs.Job, attemptID string, counted int64, reservation ai.Cost, now time.Time) error {
-	if counted < 0 || counted > 262144 || reservation.Validate() != nil {
+	if counted < 1 || counted > 262144 || reservation.Validate() != nil {
 		return ai.ErrInvalidAttempt
 	}
 	var gateErr error
@@ -134,6 +149,14 @@ func (s *Store) ReserveAIAttempt(ctx context.Context, p household.Principal, job
 		current, err := s.lockAIState(ctx, scope.tx, p.HouseholdID(), attemptID)
 		if err != nil || current.State != ai.Counting {
 			return errors.Join(err, ai.ErrInvalidAttempt)
+		}
+		blocked, _, err := s.aiBudgetGate(ctx, scope.tx, p.HouseholdID())
+		if err != nil {
+			return err
+		}
+		if blocked {
+			gateErr = aiapp.ErrBudgetBlocked
+			return s.refuseAIReservation(ctx, scope.tx, p.HouseholdID(), attemptID, current, reservation, "budget_blocked", now)
 		}
 		var generationAttempts int
 		if err = scope.tx.QueryRow(ctx, `SELECT count(*) FROM want_keep.ai_attempts a WHERE a.household_id=$1 AND a.job_id=$2 AND EXISTS(SELECT 1 FROM want_keep.ai_attempt_states s WHERE s.household_id=a.household_id AND s.attempt_id=a.id AND s.state='reserved')`, p.HouseholdID(), job.ID).Scan(&generationAttempts); err != nil {
@@ -190,38 +213,46 @@ func (s *Store) BeginAIGeneration(ctx context.Context, p household.Principal, jo
 	})
 }
 
-func (s *Store) RecordAIOutcome(ctx context.Context, p household.Principal, job jobs.Job, attemptID string, settlement aiapp.Settlement, now time.Time) (bool, error) {
-	if err := settlement.Validate(); err != nil {
+func (s *Store) AIOutcomeRetryAllowed(ctx context.Context, p household.Principal, job jobs.Job) (bool, error) {
+	q, err := s.reader(ctx, p)
+	if err != nil {
 		return false, err
 	}
-	canRetry := false
-	err := s.WithinHousehold(ctx, p, func(ctx context.Context) error {
-		if _, err := s.FenceJob(ctx, p, job); err != nil {
-			return err
-		}
-		scope, _ := s.familyScope(ctx)
-		current, err := s.lockAIState(ctx, scope.tx, p.HouseholdID(), attemptID)
-		if err != nil || current.State.Terminal() {
-			return errors.Join(err, ai.ErrInvalidAttempt)
-		}
-		if err = s.writeAISettlement(ctx, scope.tx, p.HouseholdID(), attemptID, current, settlement, now); err != nil {
-			return err
-		}
-		if current.ExternalStarted {
-			tag, updateErr := scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET external_started=false WHERE household_id=$1 AND id=$2 AND state='running' AND lease_token=$3 AND attempt=$4`, p.HouseholdID(), job.ID, job.LeaseToken, job.Attempt)
-			if updateErr != nil {
-				return updateErr
-			}
-			if tag.RowsAffected() != 1 {
-				return jobs.ErrStaleAttempt
-			}
-		}
-		var attempts int
-		err = scope.tx.QueryRow(ctx, `SELECT count(*) FROM want_keep.ai_attempts WHERE household_id=$1 AND job_id=$2`, p.HouseholdID(), job.ID).Scan(&attempts)
-		canRetry = err == nil && attempts < 2
+	var attempts int
+	err = q.QueryRow(ctx, `SELECT count(*) FROM want_keep.ai_attempts WHERE household_id=$1 AND job_id=$2`, p.HouseholdID(), job.ID).Scan(&attempts)
+	return attempts < 2, err
+}
+
+func (s *Store) SaveAIOutcome(ctx context.Context, p household.Principal, job jobs.Job, attemptID string, settlement aiapp.Settlement, now time.Time) error {
+	if err := settlement.Validate(); err != nil {
 		return err
-	})
-	return canRetry, err
+	}
+	if _, err := s.FenceJob(ctx, p, job); err != nil {
+		return err
+	}
+	scope, _ := s.familyScope(ctx)
+	current, err := s.lockAIState(ctx, scope.tx, p.HouseholdID(), attemptID)
+	if err != nil || current.State.Terminal() {
+		return errors.Join(err, ai.ErrInvalidAttempt)
+	}
+	if err = s.writeAISettlement(ctx, scope.tx, p.HouseholdID(), attemptID, current, settlement, now); err != nil {
+		return err
+	}
+	if !current.ExternalStarted {
+		return nil
+	}
+	return s.clearAIJobExternal(ctx, scope.tx, p, job)
+}
+
+func (s *Store) clearAIJobExternal(ctx context.Context, tx pgx.Tx, p household.Principal, job jobs.Job) error {
+	tag, err := tx.Exec(ctx, `UPDATE want_keep.jobs SET external_started=false WHERE household_id=$1 AND id=$2 AND state='running' AND lease_token=$3 AND attempt=$4`, p.HouseholdID(), job.ID, job.LeaseToken, job.Attempt)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return jobs.ErrStaleAttempt
+	}
+	return nil
 }
 
 func (s *Store) SaveAICompletion(ctx context.Context, p household.Principal, job jobs.Job, attemptID string, settlement aiapp.Settlement, now time.Time) error {
@@ -236,28 +267,40 @@ func (s *Store) SaveAICompletion(ctx context.Context, p household.Principal, job
 	if err != nil || current.State != ai.Reserved || !current.ExternalStarted {
 		return errors.Join(err, ai.ErrInvalidAttempt)
 	}
-	return s.writeAISettlement(ctx, scope.tx, p.HouseholdID(), attemptID, current, settlement, now)
+	if err = s.writeAISettlement(ctx, scope.tx, p.HouseholdID(), attemptID, current, settlement, now); err != nil {
+		return err
+	}
+	return s.clearAIJobExternal(ctx, scope.tx, p, job)
 }
 
-func (s *Store) MarkAIUnknown(ctx context.Context, p household.Principal, job jobs.Job, attemptID, code string, now time.Time) error {
-	if code == "" || len(code) > 100 {
+func (s *Store) MarkAIUnknown(ctx context.Context, p household.Principal, job jobs.Job, attemptID, code string, observation aiapp.ProviderObservation, now time.Time) error {
+	if code == "" || len(code) > 100 || len(observation.ID) > 200 || len(observation.Model) > 200 {
 		return ai.ErrInvalidAttempt
 	}
-	return s.WithinHousehold(ctx, p, func(ctx context.Context) error {
-		if _, err := s.FenceJob(ctx, p, job); err != nil {
-			return err
+	if observation.Usage != nil && observation.Usage.Validate() != nil {
+		return ai.ErrInvalidAttempt
+	}
+	if _, err := s.FenceJob(ctx, p, job); err != nil {
+		return err
+	}
+	scope, _ := s.familyScope(ctx)
+	current, err := s.lockAIState(ctx, scope.tx, p.HouseholdID(), attemptID)
+	if err != nil || current.State.Terminal() {
+		return errors.Join(err, ai.ErrInvalidAttempt)
+	}
+	current.Revision++
+	current.State, current.Code = ai.Unknown, code
+	current.Reconciliation = "pending"
+	current.ProviderID, current.ProviderModel, current.Usage = observation.ID, observation.Model, observation.Usage
+	if observation.Usage != nil {
+		actual, conservative, costErr := ai.TerraPricing().Actual(*observation.Usage)
+		if costErr != nil {
+			return costErr
 		}
-		scope, _ := s.familyScope(ctx)
-		current, err := s.lockAIState(ctx, scope.tx, p.HouseholdID(), attemptID)
-		if err != nil || current.State.Terminal() {
-			return errors.Join(err, ai.ErrInvalidAttempt)
-		}
-		current.Revision++
-		current.State, current.Code = ai.Unknown, code
-		current.Reconciliation = "pending"
-		current.RecordedAt = now
-		return s.insertAIState(ctx, scope.tx, p.HouseholdID(), attemptID, current)
-	})
+		current.Actual, current.Conservative = &actual, conservative
+	}
+	current.RecordedAt = now
+	return s.insertAIState(ctx, scope.tx, p.HouseholdID(), attemptID, current)
 }
 
 type aiState struct {
@@ -267,6 +310,7 @@ type aiState struct {
 	Reservation     *ai.Cost
 	ExternalStarted bool
 	ProviderID      string
+	ProviderModel   string
 	Usage           *ai.Usage
 	Actual          *ai.Cost
 	Conservative    bool
@@ -279,7 +323,7 @@ type aiState struct {
 }
 
 func (s *Store) lockAIState(ctx context.Context, tx pgx.Tx, family household.HouseholdID, id string) (aiState, error) {
-	return scanAIState(tx.QueryRow(ctx, `SELECT revision,state,counted_input_tokens,reservation_usd::text,external_started,COALESCE(provider_id,''),input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,actual_usd::text,conservative_cost,structured_output,validation_state,code,reconciliation_state,COALESCE(evidence_ref,''),recorded_at,recorded_ns FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, family, id))
+	return scanAIState(tx.QueryRow(ctx, `SELECT revision,state,counted_input_tokens,reservation_usd::text,external_started,COALESCE(provider_id,''),COALESCE(provider_model,''),input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,actual_usd::text,conservative_cost,structured_output,validation_state,code,reconciliation_state,COALESCE(evidence_ref,''),recorded_at,recorded_ns FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, family, id))
 }
 
 func scanAIState(row pgx.Row) (aiState, error) {
@@ -288,7 +332,7 @@ func scanAIState(row pgx.Row) (aiState, error) {
 	var input, cached, writes, output, reasoning *int64
 	var at time.Time
 	var ns int16
-	err := row.Scan(&state.Revision, &state.State, &state.Counted, &reservation, &state.ExternalStarted, &state.ProviderID, &input, &cached, &writes, &output, &reasoning, &actual, &state.Conservative, &state.Output, &state.Validation, &state.Code, &state.Reconciliation, &state.EvidenceRef, &at, &ns)
+	err := row.Scan(&state.Revision, &state.State, &state.Counted, &reservation, &state.ExternalStarted, &state.ProviderID, &state.ProviderModel, &input, &cached, &writes, &output, &reasoning, &actual, &state.Conservative, &state.Output, &state.Validation, &state.Code, &state.Reconciliation, &state.EvidenceRef, &at, &ns)
 	if err != nil {
 		return state, err
 	}
@@ -339,7 +383,7 @@ func (s *Store) insertAIState(ctx context.Context, tx pgx.Tx, family household.H
 	if len(state.Output) > 0 {
 		structured = state.Output
 	}
-	_, err := tx.Exec(ctx, `INSERT INTO want_keep.ai_attempt_states(household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,external_started,provider_id,input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,actual_usd,conservative_cost,structured_output,validation_state,code,reconciliation_state,evidence_ref,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,NULLIF($8,''),$9,$10,$11,$12,$13,$14::numeric,$15,$16,$17,$18,$19,NULLIF($20,''),$21,$22)`, family, attemptID, state.Revision, state.State, state.Counted, reservation, state.ExternalStarted, state.ProviderID, input, cached, writes, output, reasoning, actual, state.Conservative, structured, state.Validation, state.Code, defaultReconciliation(state.Reconciliation), state.EvidenceRef, at, ns)
+	_, err := tx.Exec(ctx, `INSERT INTO want_keep.ai_attempt_states(household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,external_started,provider_id,provider_model,input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,actual_usd,conservative_cost,structured_output,validation_state,code,reconciliation_state,evidence_ref,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,NULLIF($8,''),NULLIF($9,''),$10,$11,$12,$13,$14,$15::numeric,$16,$17,$18,$19,$20,NULLIF($21,''),$22,$23)`, family, attemptID, state.Revision, state.State, state.Counted, reservation, state.ExternalStarted, state.ProviderID, state.ProviderModel, input, cached, writes, output, reasoning, actual, state.Conservative, structured, state.Validation, state.Code, defaultReconciliation(state.Reconciliation), state.EvidenceRef, at, ns)
 	return err
 }
 
@@ -359,7 +403,7 @@ func (s *Store) writeAISettlement(ctx context.Context, tx pgx.Tx, family househo
 	next := aiState{
 		Revision: current.Revision + 1, State: settlement.Result.State, Counted: current.Counted,
 		Reservation: &settlement.Reservation, ExternalStarted: current.ExternalStarted,
-		ProviderID: settlement.Result.ProviderID, Usage: &settlement.Result.Usage,
+		ProviderID: settlement.Result.ProviderID, ProviderModel: settlement.Result.ProviderModel, Usage: &settlement.Result.Usage,
 		Actual: settlement.Actual, Conservative: settlement.Conservative, Output: settlement.Result.Output,
 		Code: settlement.Result.Code, RecordedAt: now,
 	}
@@ -393,7 +437,7 @@ func (s *Store) aiMonthUsage(ctx context.Context, tx pgx.Tx, family household.Ho
 
 func (s *Store) refuseAIReservation(ctx context.Context, tx pgx.Tx, family household.HouseholdID, attemptID string, current aiState, reservation ai.Cost, code string, now time.Time) error {
 	zero := ai.MustCost("0")
-	settlement := aiapp.Settlement{Result: ai.Result{State: ai.Refused, Code: code, Usage: ai.Usage{}}, Reservation: reservation, Actual: &zero}
+	settlement := aiapp.Settlement{Result: ai.Result{State: ai.KnownRejection, Code: code}, Reservation: reservation, Actual: &zero}
 	return s.writeAISettlement(ctx, tx, family, attemptID, current, settlement, now)
 }
 
@@ -441,7 +485,11 @@ func (s *Store) ResumeAIBudgetWaiting(ctx context.Context, now time.Time) (int64
 }
 
 func (s *Store) releaseSafeInterruptedAttempts(ctx context.Context, tx *transactionScope, p household.Principal, job jobs.Job, now time.Time) error {
-	rows, err := tx.tx.Query(ctx, `SELECT a.id FROM want_keep.ai_attempts a JOIN LATERAL (SELECT state,external_started FROM want_keep.ai_attempt_states s WHERE s.household_id=a.household_id AND s.attempt_id=a.id ORDER BY revision DESC LIMIT 1) l ON true WHERE a.household_id=$1 AND a.job_id=$2 AND l.state IN ('counting','reserved') AND NOT l.external_started ORDER BY a.created_at,a.id`, p.HouseholdID(), job.ID)
+	return s.releaseSafeAIJobAttempts(ctx, tx.tx, p.HouseholdID(), job.ID, "recovered_before_send", now)
+}
+
+func (s *Store) releaseSafeAIJobAttempts(ctx context.Context, tx pgx.Tx, family household.HouseholdID, jobID, code string, now time.Time) error {
+	rows, err := tx.Query(ctx, `SELECT a.id FROM want_keep.ai_attempts a JOIN LATERAL (SELECT state,external_started FROM want_keep.ai_attempt_states s WHERE s.household_id=a.household_id AND s.attempt_id=a.id ORDER BY revision DESC LIMIT 1) l ON true WHERE a.household_id=$1 AND a.job_id=$2 AND l.state IN ('counting','reserved') AND NOT l.external_started ORDER BY a.created_at,a.id`, family, jobID)
 	if err != nil {
 		return err
 	}
@@ -460,21 +508,24 @@ func (s *Store) releaseSafeInterruptedAttempts(ctx context.Context, tx *transact
 		return err
 	}
 	for _, id := range ids {
-		current, err := s.lockAIState(ctx, tx.tx, p.HouseholdID(), id)
-		if err != nil {
-			return err
+		current, stateErr := s.lockAIState(ctx, tx, family, id)
+		if stateErr != nil {
+			return stateErr
 		}
-		zero := ai.MustCost("0")
-		settlement := aiapp.Settlement{Result: ai.Result{State: ai.KnownRejection, Code: "recovered_before_send"}, Reservation: zero}
-		if err = s.writeAISettlement(ctx, tx.tx, p.HouseholdID(), id, current, settlement, now); err != nil {
+		reservation := ai.MustCost("0")
+		if current.Reservation != nil {
+			reservation = *current.Reservation
+		}
+		settlement := aiapp.Settlement{Result: ai.Result{State: ai.KnownRejection, Code: code}, Reservation: reservation}
+		if err = s.writeAISettlement(ctx, tx, family, id, current, settlement, now); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// ReconcileAI is an operator-only path. The Store must be opened with the
-// maintenance role; no request principal or model output can reach this method.
+// ReconcileAI is an operator-only path. The maintenance role can execute only
+// the hardened database transition; it has no direct table privileges.
 func (s *Store) ReconcileAI(ctx context.Context, attemptID string, outcome aiapp.ReconciliationOutcome, actual ai.Cost, evidenceRef string) error {
 	if attemptID == "" || len(evidenceRef) == 0 || len(evidenceRef) > 2000 || actual.Validate() != nil || (outcome != aiapp.Charged && outcome != aiapp.NotCharged) {
 		return aiapp.ErrInvalidReconciliation
@@ -485,58 +536,18 @@ func (s *Store) ReconcileAI(ctx context.Context, attemptID string, outcome aiapp
 			return aiapp.ErrInvalidReconciliation
 		}
 	}
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
-	if err != nil {
-		return err
+	_, err := s.pool.Exec(ctx, `SELECT want_keep.reconcile_ai_attempt($1::uuid,$2,$3::numeric,$4)`, attemptID, outcome, actual.String(), evidenceRef)
+	if err == nil {
+		return nil
 	}
-	defer tx.Rollback(context.Background())
-	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, attemptID); err != nil {
-		return err
-	}
-	var family household.HouseholdID
-	var jobID string
-	if err = tx.QueryRow(ctx, `SELECT household_id,job_id FROM want_keep.ai_attempts WHERE id=$1`, attemptID).Scan(&family, &jobID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	var providerError *pgconn.PgError
+	if errors.As(err, &providerError) {
+		switch providerError.Code {
+		case "P0002":
 			return ErrNotFound
-		}
-		return err
-	}
-	current, err := scanAIState(tx.QueryRow(ctx, `SELECT revision,state,counted_input_tokens,reservation_usd::text,external_started,COALESCE(provider_id,''),input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,actual_usd::text,conservative_cost,structured_output,validation_state,code,reconciliation_state,COALESCE(evidence_ref,''),recorded_at,recorded_ns FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, family, attemptID))
-	if err != nil {
-		return err
-	}
-	if current.Reconciliation != "pending" && !(current.State == ai.Reserved && current.ExternalStarted) {
-		return aiapp.ErrInvalidReconciliation
-	}
-	current.Revision++
-	if current.State == ai.Reserved {
-		current.State = ai.Unknown
-	}
-	current.ExternalStarted = false
-	current.Actual = &actual
-	current.Reconciliation = "resolved"
-	current.EvidenceRef = evidenceRef
-	current.RecordedAt = time.Now().UTC()
-	if err = s.insertAIState(ctx, tx, family, attemptID, current); err != nil {
-		return err
-	}
-	var state jobs.State
-	if err = tx.QueryRow(ctx, `SELECT state FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, family, jobID).Scan(&state); err != nil {
-		return err
-	}
-	if state == jobs.Unresolved {
-		statement := `UPDATE want_keep.jobs SET state='failed',reason='permanent_failure',external_started=false,lease_token=NULL,lease_until=NULL WHERE household_id=$1 AND id=$2 AND state='unresolved'`
-		if outcome == aiapp.NotCharged {
-			statement = `UPDATE want_keep.jobs SET state='ready',reason='temporary_failure',external_started=false,lease_token=NULL,lease_until=NULL,available_at=clock_timestamp(),run_deadline=clock_timestamp()+INTERVAL '24 hours' WHERE household_id=$1 AND id=$2 AND state='unresolved'`
-		}
-		tag, updateErr := tx.Exec(ctx, statement, family, jobID)
-		err = updateErr
-		if err != nil {
-			return err
-		}
-		if tag.RowsAffected() != 1 {
-			return jobs.ErrStaleAttempt
+		case "22023", "55006":
+			return aiapp.ErrInvalidReconciliation
 		}
 	}
-	return tx.Commit(ctx)
+	return err
 }

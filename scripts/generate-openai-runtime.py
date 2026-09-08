@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -29,7 +30,9 @@ def build() -> dict[str, object]:
     if selected.get("reasoning_effort") != "xhigh" or selected.get("max_output_tokens") != 8192:
         raise SystemExit("selected OpenAI qualification changed")
     prompt = selected["prompt"]
-    schema = selected["schema"]
+    schema = copy.deepcopy(selected["schema"])
+    asset_enum = schema["properties"]["results"]["items"]["properties"]["asset"]["enum"]
+    asset_enum.insert(asset_enum.index("BTC"), "USDC")
     routes = {
         "transaction_review": {"maximum_input_tokens": 8192, "maximum_output_tokens": 2048},
         "receipt_page": {"maximum_input_tokens": 16384, "maximum_output_tokens": 4096},
@@ -50,6 +53,7 @@ def build() -> dict[str, object]:
         "global_maximum_input_tokens": 262144,
         "monthly_limit_usd": "50",
         "maximum_family_concurrency": 2,
+        "runtime_input_shape": "qualified_case_list_v1",
         "pricing_per_million_usd": {
             "input": "2",
             "cached_input": "0.2",

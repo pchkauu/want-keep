@@ -7,7 +7,7 @@ CREATE TABLE want_keep.ai_attempts (
  prompt_fingerprint text NOT NULL CHECK(prompt_fingerprint ~ '^[0-9a-f]{64}$'),
  schema_fingerprint text NOT NULL CHECK(schema_fingerprint ~ '^[0-9a-f]{64}$'),
  config_fingerprint text NOT NULL CHECK(config_fingerprint ~ '^[0-9a-f]{64}$'),
- allowed_input jsonb NOT NULL CHECK(jsonb_typeof(allowed_input)='object'),
+ allowed_input jsonb NOT NULL CHECK(jsonb_typeof(allowed_input)='array'),
  maximum_output_tokens bigint NOT NULL CHECK(maximum_output_tokens BETWEEN 1 AND 8192),
  budget_month date NOT NULL CHECK(budget_month=date_trunc('month',budget_month)::date),
  created_at timestamptz NOT NULL, created_ns want_keep.submicro NOT NULL,
@@ -20,10 +20,11 @@ CREATE TABLE want_keep.ai_attempts (
 CREATE TABLE want_keep.ai_attempt_states (
  household_id uuid NOT NULL, attempt_id uuid NOT NULL, revision want_keep.revision NOT NULL,
  state text NOT NULL CHECK(state IN ('counting','reserved','completed','refused','incomplete','schema_error','known_rejection','unknown')),
- counted_input_tokens bigint CHECK(counted_input_tokens BETWEEN 0 AND 262144),
+ counted_input_tokens bigint CHECK(counted_input_tokens BETWEEN 1 AND 262144),
  reservation_usd numeric CHECK(reservation_usd>=0 AND reservation_usd::text NOT IN ('NaN','Infinity','-Infinity')),
  external_started boolean NOT NULL DEFAULT false,
  provider_id text CHECK(provider_id IS NULL OR length(provider_id) BETWEEN 1 AND 200),
+ provider_model text CHECK(provider_model IS NULL OR length(provider_model) BETWEEN 1 AND 200),
  input_tokens bigint CHECK(input_tokens>=0), cached_tokens bigint CHECK(cached_tokens>=0),
  cache_write_tokens bigint CHECK(cache_write_tokens>=0), output_tokens bigint CHECK(output_tokens>=0),
  reasoning_tokens bigint CHECK(reasoning_tokens>=0),
@@ -45,6 +46,7 @@ CREATE TABLE want_keep.ai_attempt_states (
 	CHECK(state IN ('counting','known_rejection','refused') OR reservation_usd IS NOT NULL),
 	CHECK((input_tokens IS NULL AND cached_tokens IS NULL AND output_tokens IS NULL AND reasoning_tokens IS NULL) OR (input_tokens IS NOT NULL AND cached_tokens IS NOT NULL AND output_tokens IS NOT NULL AND reasoning_tokens IS NOT NULL)),
 	CHECK(state NOT IN ('completed','incomplete','schema_error') OR actual_usd IS NOT NULL),
+ CHECK(state NOT IN ('completed','refused','incomplete','schema_error') OR provider_id IS NOT NULL AND provider_model IS NOT NULL),
  CHECK((validation_state='pending_validation')=(state='completed')),
  CHECK((reconciliation_state='resolved')=(evidence_ref IS NOT NULL)),
  CHECK(NOT external_started OR state IN ('reserved','completed','refused','incomplete','schema_error','known_rejection','unknown'))
@@ -59,7 +61,85 @@ CREATE TRIGGER immutable_history BEFORE UPDATE OR DELETE ON want_keep.ai_attempt
 CREATE TRIGGER immutable_history BEFORE UPDATE OR DELETE ON want_keep.ai_attempt_states
  FOR EACH ROW EXECUTE FUNCTION want_keep.reject_history_change();
 
+CREATE FUNCTION want_keep.reconcile_ai_attempt(
+ p_attempt_id uuid, p_outcome text, p_actual numeric, p_evidence_ref text
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+ v_family uuid;
+ v_job_id uuid;
+ v_job record;
+ v_state record;
+ v_now timestamptz := clock_timestamp();
+ v_next_state text;
+BEGIN
+ IF p_attempt_id IS NULL OR p_outcome NOT IN ('charged','not_charged')
+    OR p_actual IS NULL OR p_actual < 0 OR p_actual::text IN ('NaN','Infinity','-Infinity')
+    OR p_evidence_ref IS NULL OR length(p_evidence_ref) NOT BETWEEN 1 AND 2000
+    OR p_evidence_ref !~ '^[A-Za-z0-9][A-Za-z0-9._:/?#=&%+~-]*$'
+    OR (p_outcome = 'not_charged' AND p_actual <> 0) THEN
+  RAISE EXCEPTION 'invalid AI reconciliation' USING ERRCODE = '22023';
+ END IF;
+
+ SELECT a.household_id,a.job_id INTO v_family,v_job_id
+ FROM want_keep.ai_attempts a WHERE a.id=p_attempt_id;
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'AI attempt not found' USING ERRCODE = 'P0002';
+ END IF;
+
+ SELECT j.kind,j.state,j.external_started,j.lease_until INTO v_job
+ FROM want_keep.jobs j
+ WHERE (j.household_id,j.id)=(v_family,v_job_id)
+ FOR UPDATE;
+ IF NOT FOUND OR v_job.kind <> 'ai' OR NOT v_job.external_started
+    OR v_job.state NOT IN ('running','unresolved') THEN
+  RAISE EXCEPTION 'invalid AI reconciliation job' USING ERRCODE = '22023';
+ END IF;
+ IF v_job.state='running' AND v_job.lease_until IS NOT NULL AND v_job.lease_until>v_now THEN
+  RAISE EXCEPTION 'AI provider call lease is live' USING ERRCODE = '55006';
+ END IF;
+
+ SELECT s.* INTO v_state
+ FROM want_keep.ai_attempt_states s
+ WHERE (s.household_id,s.attempt_id)=(v_family,p_attempt_id)
+ ORDER BY s.revision DESC LIMIT 1 FOR UPDATE;
+ IF NOT FOUND OR NOT v_state.external_started
+    OR NOT (v_state.reconciliation_state='pending' OR v_state.state='reserved')
+    OR v_state.state NOT IN ('reserved','unknown') THEN
+  RAISE EXCEPTION 'invalid AI reconciliation state' USING ERRCODE = '22023';
+ END IF;
+
+ INSERT INTO want_keep.ai_attempt_states(
+  household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,
+  external_started,provider_id,provider_model,input_tokens,cached_tokens,
+  cache_write_tokens,output_tokens,reasoning_tokens,actual_usd,conservative_cost,
+  structured_output,validation_state,code,reconciliation_state,evidence_ref,
+  recorded_at,recorded_ns
+ ) VALUES (
+  v_family,p_attempt_id,v_state.revision+1,'unknown',v_state.counted_input_tokens,
+  v_state.reservation_usd,false,v_state.provider_id,v_state.provider_model,
+  v_state.input_tokens,v_state.cached_tokens,v_state.cache_write_tokens,
+  v_state.output_tokens,v_state.reasoning_tokens,p_actual,v_state.conservative_cost,
+  v_state.structured_output,'',v_state.code,'resolved',p_evidence_ref,v_now,0
+ );
+
+ v_next_state := CASE WHEN p_outcome='not_charged' THEN 'ready' ELSE 'failed' END;
+ UPDATE want_keep.jobs SET
+  state=v_next_state,
+  reason=CASE WHEN p_outcome='not_charged' THEN 'temporary_failure' ELSE 'permanent_failure' END,
+  external_started=false,lease_token=NULL,lease_until=NULL,
+  available_at=CASE WHEN p_outcome='not_charged' THEN v_now ELSE available_at END,
+  run_deadline=CASE WHEN p_outcome='not_charged' THEN v_now+INTERVAL '24 hours' ELSE run_deadline END
+ WHERE (household_id,id)=(v_family,v_job_id) AND kind='ai' AND state IN ('running','unresolved');
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'stale AI reconciliation job' USING ERRCODE = '22023';
+ END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION want_keep.reconcile_ai_attempt(uuid,text,numeric,text) FROM PUBLIC;
 GRANT SELECT,INSERT ON want_keep.ai_attempts,want_keep.ai_attempt_states TO want_keep_app;
-GRANT SELECT,INSERT ON want_keep.ai_attempts,want_keep.ai_attempt_states TO want_keep_maintenance;
-GRANT SELECT ON want_keep.jobs TO want_keep_maintenance;
-GRANT UPDATE(state,reason,external_started,lease_token,lease_until,available_at,run_deadline) ON want_keep.jobs TO want_keep_maintenance;
+GRANT EXECUTE ON FUNCTION want_keep.reconcile_ai_attempt(uuid,text,numeric,text) TO want_keep_maintenance;

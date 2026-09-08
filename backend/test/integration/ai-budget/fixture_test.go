@@ -210,6 +210,18 @@ func (f *fixture) maintenanceStore() *storage.Store {
 	return store
 }
 
+func (f *fixture) maintenancePool() *pgxpool.Pool {
+	f.t.Helper()
+	u, _ := url.Parse(f.dsn)
+	u.User = url.UserPassword("want_keep_maintenance", "synthetic-maintenance")
+	pool, err := pgxpool.New(testContext, u.String())
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	f.t.Cleanup(pool.Close)
+	return pool
+}
+
 func mustMoney(value string) money.Money {
 	amount, err := money.NewMoney(value, money.RUB)
 	if err != nil {

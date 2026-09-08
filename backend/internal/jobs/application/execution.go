@@ -47,22 +47,37 @@ type Handler interface {
 type Executor struct{ Repository ExecutionRepository }
 
 func (e Executor) Complete(ctx context.Context, x Execution, apply Effect) error {
+	return e.CommitOutcome(ctx, x, Result{State: jobs.Succeeded, Apply: apply}, 0)
+}
+
+// CommitOutcome binds a transactional effect to the owning job transition.
+// Provider handlers use it so a durable external result can never be observed
+// without the matching queue state.
+func (e Executor) CommitOutcome(ctx context.Context, x Execution, result Result, delay time.Duration) error {
+	if delay < 0 || delay > time.Hour || (result.State != jobs.Ready && result.State != jobs.Failed && result.State != jobs.Waiting && result.State != jobs.Unresolved && result.State != jobs.Succeeded) {
+		return jobs.ErrInvalidJob
+	}
 	return e.Repository.WithinHousehold(ctx, x.Principal, func(ctx context.Context) error {
-		done, err := e.Repository.JobReceipt(ctx, x.Principal, x.Job)
-		if err != nil || done {
-			return err
-		}
-		// Source handlers commit pages through admission, which creates the receipt atomically.
-		if x.Job.Kind == jobs.Sync {
-			return jobs.ErrInvalidJob
-		}
-		if _, err = e.Repository.FenceJob(ctx, x.Principal, x.Job); err != nil {
-			return err
-		}
-		if apply != nil {
-			if err = apply(ctx, x.Principal); err != nil {
+		if result.State == jobs.Succeeded {
+			done, err := e.Repository.JobReceipt(ctx, x.Principal, x.Job)
+			if err != nil || done {
 				return err
 			}
+			// Source handlers commit pages through admission, which creates the receipt atomically.
+			if x.Job.Kind == jobs.Sync {
+				return jobs.ErrInvalidJob
+			}
+		}
+		if _, err := e.Repository.FenceJob(ctx, x.Principal, x.Job); err != nil {
+			return err
+		}
+		if result.Apply != nil {
+			if err := result.Apply(ctx, x.Principal); err != nil {
+				return err
+			}
+		}
+		if result.State != jobs.Succeeded {
+			return e.Repository.SetJobOutcome(ctx, x.Principal, x.Job, result.State, result.Reason, delay)
 		}
 		return e.Repository.FinishJob(ctx, x.Principal, x.Job)
 	})

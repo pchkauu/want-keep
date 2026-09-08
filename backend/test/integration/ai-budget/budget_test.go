@@ -94,6 +94,25 @@ func TestTwoActiveProviderCallsAreAllowed(t *testing.T) {
 	}
 }
 
+func TestReservationRequiresPositiveCountWithoutChangingAttempt(t *testing.T) {
+	f := newFixture(t)
+	job := f.newReviewJobs(1)[0]
+	request := f.request(job)
+	if err := f.store.StartAIAttempt(testContext, f.p, job, request, strings.Repeat("d", 64), f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := ai.TerraPricing().Reservation(1, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = f.store.ReserveAIAttempt(testContext, f.p, job, request.ID, 0, reservation, f.now.Time()); !errors.Is(err, ai.ErrInvalidAttempt) {
+		t.Fatalf("zero count accepted: %v", err)
+	}
+	if err = f.store.ReserveAIAttempt(testContext, f.p, job, request.ID, 1, reservation, f.now.Time()); err != nil {
+		t.Fatalf("rejected reservation changed the attempt: %v", err)
+	}
+}
+
 func TestExpiredExternalCallBlocksUntilReconciliation(t *testing.T) {
 	f := newFixture(t)
 	claimed := f.newReviewJobs(2)
@@ -134,7 +153,9 @@ func TestExactMonthlyLimitAndGlobalUnknownBlock(t *testing.T) {
 	if err := f.store.BeginAIGeneration(testContext, f.p, claimed[0], firstRequest.ID, f.now.Time()); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.store.MarkAIUnknown(testContext, f.p, claimed[0], firstRequest.ID, "provider_timeout", f.now.Time()); err != nil {
+	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
+		return f.store.MarkAIUnknown(ctx, f.p, claimed[0], firstRequest.ID, "provider_timeout", aiapp.ProviderObservation{}, f.now.Time())
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.store.SetJobOutcome(testContext, f.p, claimed[0], jobs.Unresolved, jobs.ExternalUnknown, 0); err != nil {
@@ -170,7 +191,7 @@ func TestExactMonthlyLimitAndGlobalUnknownBlock(t *testing.T) {
 		t.Fatalf("reservation over $50 accepted: %v", err)
 	}
 	var state, code string
-	if err := f.admin.QueryRow(testContext, `SELECT state,code FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, f.family.ID, third.ID).Scan(&state, &code); err != nil || state != "refused" || code != "budget_exhausted" {
+	if err := f.admin.QueryRow(testContext, `SELECT state,code FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, f.family.ID, third.ID).Scan(&state, &code); err != nil || state != "known_rejection" || code != "budget_exhausted" {
 		t.Fatalf("budget refusal not durable: %s/%s %v", state, code, err)
 	}
 	if err := f.store.SetJobOutcome(testContext, f.p, claimed[2], jobs.Waiting, jobs.BudgetWait, 0); err != nil {
@@ -186,6 +207,43 @@ func TestExactMonthlyLimitAndGlobalUnknownBlock(t *testing.T) {
 	}
 	if err := f.admin.QueryRow(testContext, `SELECT state FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, claimed[2].ID).Scan(&state); err != nil || state != "ready" {
 		t.Fatalf("resumed job state: %s, %v", state, err)
+	}
+}
+
+func TestReservationRechecksUnknownOutcomeAfterCounting(t *testing.T) {
+	f := newFixture(t)
+	claimed := f.newReviewJobs(2)
+	counting := f.request(claimed[0])
+	if err := f.store.StartAIAttempt(testContext, f.p, claimed[0], counting, strings.Repeat("d", 64), f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+
+	unknown := f.request(claimed[1])
+	reservation, _ := ai.TerraPricing().Reservation(100, 2048)
+	if err := f.store.StartAIAttempt(testContext, f.p, claimed[1], unknown, strings.Repeat("e", 64), f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.ReserveAIAttempt(testContext, f.p, claimed[1], unknown.ID, 100, reservation, f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.BeginAIGeneration(testContext, f.p, claimed[1], unknown.ID, f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
+		if err := f.store.MarkAIUnknown(ctx, f.p, claimed[1], unknown.ID, "provider_timeout", aiapp.ProviderObservation{}, f.now.Time()); err != nil {
+			return err
+		}
+		return f.store.SetJobOutcome(ctx, f.p, claimed[1], jobs.Unresolved, jobs.ExternalUnknown, 0)
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := f.store.ReserveAIAttempt(testContext, f.p, claimed[0], counting.ID, 100, reservation, f.now.Time()); !errors.Is(err, aiapp.ErrBudgetBlocked) {
+		t.Fatalf("counting attempt crossed a new global block: %v", err)
+	}
+	var state, code string
+	if err := f.admin.QueryRow(testContext, `SELECT state,code FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, f.family.ID, counting.ID).Scan(&state, &code); err != nil || state != "known_rejection" || code != "budget_blocked" {
+		t.Fatalf("blocked reservation state: %s/%s %v", state, code, err)
 	}
 }
 
@@ -205,14 +263,125 @@ func TestWorkerPersistsCompletionAndNeverCallsProviderTwice(t *testing.T) {
 		t.Fatalf("provider called more than once: count=%d generation=%d", gateway.countCalls.Load(), gateway.generateCalls.Load())
 	}
 	var attempts, completed, pendingValidation, receipts int
+	var external bool
 	if err := f.admin.QueryRow(testContext, `SELECT count(*),count(*) FILTER(WHERE state='completed'),count(*) FILTER(WHERE validation_state='pending_validation') FROM want_keep.ai_attempt_states`).Scan(&attempts, &completed, &pendingValidation); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.job_receipts r JOIN want_keep.jobs j ON (j.household_id,j.id)=(r.household_id,r.job_id) WHERE j.kind='ai'`).Scan(&receipts); err != nil {
 		t.Fatal(err)
 	}
-	if attempts != 4 || completed != 1 || pendingValidation != 1 || receipts != 1 {
-		t.Fatalf("atomic completion mismatch: states=%d completed=%d validation=%d receipts=%d", attempts, completed, pendingValidation, receipts)
+	if err := f.admin.QueryRow(testContext, `SELECT external_started FROM want_keep.jobs WHERE kind='ai'`).Scan(&external); err != nil {
+		t.Fatal(err)
+	}
+	if attempts != 4 || completed != 1 || pendingValidation != 1 || receipts != 1 || external {
+		t.Fatalf("atomic completion mismatch: states=%d completed=%d validation=%d receipts=%d external=%t", attempts, completed, pendingValidation, receipts, external)
+	}
+}
+
+func TestProviderOutcomeAndJobTransitionRollBackTogether(t *testing.T) {
+	f := newFixture(t)
+	f.enqueueReviewJobs(1)
+	if _, err := f.admin.Exec(testContext, `CREATE FUNCTION want_keep.reject_ai_failed_transition() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.kind='ai' AND NEW.state='failed' THEN RAISE EXCEPTION 'synthetic terminal failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_ai_failed_transition BEFORE UPDATE ON want_keep.jobs FOR EACH ROW EXECUTE FUNCTION want_keep.reject_ai_failed_transition()`); err != nil {
+		t.Fatal(err)
+	}
+	usage := completedResult().Usage
+	gateway := &fakeGateway{result: ai.Result{ProviderID: "resp_synthetic_refusal", ProviderModel: "gpt-5.6-terra", State: ai.Refused, Code: "policy_refusal", Usage: usage}}
+	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
+	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
+	if err := worker.Step(testContext); err == nil {
+		t.Fatal("terminal job transition failure was hidden")
+	}
+	var jobState, attemptState string
+	var jobExternal, attemptExternal bool
+	if err := f.admin.QueryRow(testContext, `SELECT state,external_started FROM want_keep.jobs WHERE kind='ai'`).Scan(&jobState, &jobExternal); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.admin.QueryRow(testContext, `SELECT state,external_started FROM want_keep.ai_attempt_states ORDER BY revision DESC LIMIT 1`).Scan(&attemptState, &attemptExternal); err != nil {
+		t.Fatal(err)
+	}
+	if jobState != "running" || !jobExternal || attemptState != "reserved" || !attemptExternal {
+		t.Fatalf("partial terminal outcome escaped rollback: job=%s/%t attempt=%s/%t", jobState, jobExternal, attemptState, attemptExternal)
+	}
+}
+
+func TestReconciliationRejectsLiveLeaseAndTransitionsExpiredCall(t *testing.T) {
+	f := newFixture(t)
+	job := f.newReviewJobs(1)[0]
+	request := f.request(job)
+	reservation, _ := ai.TerraPricing().Reservation(100, 2048)
+	if err := f.store.StartAIAttempt(testContext, f.p, job, request, strings.Repeat("d", 64), f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.ReserveAIAttempt(testContext, f.p, job, request.ID, 100, reservation, f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.BeginAIGeneration(testContext, f.p, job, request.ID, f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	service := aiapp.NewReconciliationService(f.maintenanceStore())
+	if err := service.Reconcile(testContext, request.ID, aiapp.Charged, ai.MustCost("0.25"), "provider-dashboard:synthetic-live"); !errors.Is(err, aiapp.ErrInvalidReconciliation) {
+		t.Fatalf("live provider lease was reconciled: %v", err)
+	}
+	if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET lease_until=clock_timestamp()-INTERVAL '1 second' WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Reconcile(testContext, request.ID, aiapp.Charged, ai.MustCost("0.25"), "provider-dashboard:synthetic-expired"); err != nil {
+		t.Fatal(err)
+	}
+	var jobState, attemptState, reconciliation, actual string
+	var external bool
+	if err := f.admin.QueryRow(testContext, `SELECT j.state,s.state,s.reconciliation_state,s.actual_usd::text,j.external_started FROM want_keep.jobs j JOIN LATERAL(SELECT * FROM want_keep.ai_attempt_states s WHERE (s.household_id,s.attempt_id)=($1,$2) ORDER BY revision DESC LIMIT 1) s ON true WHERE (j.household_id,j.id)=($1,$3)`, f.family.ID, request.ID, job.ID).Scan(&jobState, &attemptState, &reconciliation, &actual, &external); err != nil {
+		t.Fatal(err)
+	}
+	if jobState != "failed" || attemptState != "unknown" || reconciliation != "resolved" || actual != "0.25" || external {
+		t.Fatalf("expired reconciliation transition: %s/%s/%s/%s/%t", jobState, attemptState, reconciliation, actual, external)
+	}
+}
+
+func TestMaintenanceRoleCannotReadOrMutateGatewayTables(t *testing.T) {
+	f := newFixture(t)
+	pool := f.maintenancePool()
+	for name, statement := range map[string]string{
+		"read attempts": `SELECT count(*) FROM want_keep.ai_attempts`,
+		"mutate jobs":   `UPDATE want_keep.jobs SET reason='' WHERE false`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := pool.Exec(testContext, statement); err == nil {
+				t.Fatalf("maintenance role executed %q", statement)
+			}
+		})
+	}
+}
+
+func TestRecoveryReleasesOnlyAttemptsThatNeverReachedProvider(t *testing.T) {
+	for _, stage := range []string{"counting", "reserved"} {
+		t.Run(stage, func(t *testing.T) {
+			f := newFixture(t)
+			job := f.newReviewJobs(1)[0]
+			request := f.request(job)
+			if err := f.store.StartAIAttempt(testContext, f.p, job, request, strings.Repeat("d", 64), f.now.Time()); err != nil {
+				t.Fatal(err)
+			}
+			if stage == "reserved" {
+				reservation, _ := ai.TerraPricing().Reservation(100, 2048)
+				if err := f.store.ReserveAIAttempt(testContext, f.p, job, request.ID, 100, reservation, f.now.Time()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET cancel_requested=true WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.store.RecoverJobs(testContext, jobs.AI); err != nil {
+				t.Fatal(err)
+			}
+			var jobState, attemptState, code string
+			if err := f.admin.QueryRow(testContext, `SELECT j.state,s.state,s.code FROM want_keep.jobs j JOIN LATERAL(SELECT state,code FROM want_keep.ai_attempt_states s WHERE (s.household_id,s.attempt_id)=($1,$2) ORDER BY revision DESC LIMIT 1) s ON true WHERE (j.household_id,j.id)=($1,$3)`, f.family.ID, request.ID, job.ID).Scan(&jobState, &attemptState, &code); err != nil {
+				t.Fatal(err)
+			}
+			if jobState != "canceled" || attemptState != "known_rejection" || code != "job_terminated_before_send" {
+				t.Fatalf("orphaned attempt not released: %s/%s/%s", jobState, attemptState, code)
+			}
+		})
 	}
 }
 
@@ -302,7 +471,7 @@ func (g *fakeGateway) Generate(context.Context, ai.Request) (ai.Result, error) {
 func completedResult() ai.Result {
 	writes := int64(10)
 	return ai.Result{
-		ProviderID: "resp_synthetic", State: ai.Completed,
+		ProviderID: "resp_synthetic", ProviderModel: "gpt-5.6-terra", State: ai.Completed,
 		Output: json.RawMessage(`{"results":[{"id":"1","action":"skip","kind":null,"amount":null,"fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":[],"explanation":"ok"}]}`),
 		Usage:  ai.Usage{InputTokens: 100, CachedTokens: 20, CacheWriteTokens: &writes, OutputTokens: 50, ReasoningTokens: 12},
 	}

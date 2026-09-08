@@ -136,21 +136,18 @@ func (w Worker) Step(ctx context.Context) (err error) {
 	if runErr != nil {
 		result = Result{State: jobs.Ready, Reason: jobs.TemporaryFailure}
 	}
-	if result.State == jobs.Succeeded {
-		diagnostic.Stage = "commit"
-		err = (Executor{Repository: w.Repository}).Complete(ctx, execution, result.Apply)
-		// A lost commit acknowledgement leaves reconciliation to receipt readback or lease recovery.
-		return err
-	}
-	if result.Apply != nil {
-		return jobs.ErrInvalidJob
-	}
-	if result.State != jobs.Ready && result.State != jobs.Failed && result.State != jobs.Waiting && result.State != jobs.Unresolved {
-		return jobs.ErrInvalidJob
-	}
 	delay := time.Duration(0)
 	if result.State == jobs.Ready {
 		delay = jobs.DefaultRetryPolicy().Delay(j.Attempt, rand.Float64())
+	}
+	if result.State == jobs.Succeeded || result.Apply != nil {
+		diagnostic.Stage = "commit"
+		err = (Executor{Repository: w.Repository}).CommitOutcome(ctx, execution, result, delay)
+		// A lost commit acknowledgement leaves reconciliation to receipt readback or lease recovery.
+		return err
+	}
+	if result.State != jobs.Ready && result.State != jobs.Failed && result.State != jobs.Waiting && result.State != jobs.Unresolved {
+		return jobs.ErrInvalidJob
 	}
 	diagnostic.Stage = "outcome"
 	err = w.Repository.SetJobOutcome(ctx, p, j, result.State, result.Reason, delay)

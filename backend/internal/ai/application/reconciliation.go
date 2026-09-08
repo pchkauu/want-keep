@@ -3,12 +3,15 @@ package application
 import (
 	"context"
 	"errors"
+	"regexp"
 	"unicode/utf8"
 
 	ai "github.com/pchkauu/want-keep/backend/internal/ai/domain"
 )
 
 var ErrInvalidReconciliation = errors.New("invalid AI reconciliation")
+
+var evidenceReference = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/?#=&%+~-]*$`)
 
 type ReconciliationOutcome string
 
@@ -28,7 +31,7 @@ func NewReconciliationService(repository ReconciliationRepository) *Reconciliati
 }
 
 func (s *ReconciliationService) Reconcile(ctx context.Context, requestID string, outcome ReconciliationOutcome, actual ai.Cost, evidenceRef string) error {
-	if s.repository == nil || requestID == "" || utf8.RuneCountInString(evidenceRef) < 1 || utf8.RuneCountInString(evidenceRef) > 2000 || (outcome != Charged && outcome != NotCharged) {
+	if s.repository == nil || requestID == "" || utf8.RuneCountInString(evidenceRef) < 1 || utf8.RuneCountInString(evidenceRef) > 2000 || !evidenceReference.MatchString(evidenceRef) || (outcome != Charged && outcome != NotCharged) {
 		return ErrInvalidReconciliation
 	}
 	if outcome == NotCharged {

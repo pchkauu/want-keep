@@ -113,7 +113,7 @@ func (c *Client) Count(ctx context.Context, request ai.Request) (int64, error) {
 		return 0, classifyError(err, false)
 	}
 	maximumInput, _ := request.Purpose.Limits()
-	if response.InputTokens < 0 || response.InputTokens > maximumInput || response.InputTokens > c.contract.GlobalMaximumInput {
+	if !response.JSON.InputTokens.Valid() || response.InputTokens <= 0 || response.InputTokens > maximumInput || response.InputTokens > c.contract.GlobalMaximumInput {
 		return 0, aiapp.GatewayFailure{Code: "input_limit", Retryable: false}
 	}
 	return response.InputTokens, nil
@@ -122,6 +122,10 @@ func (c *Client) Count(ctx context.Context, request ai.Request) (int64, error) {
 func (c *Client) Generate(ctx context.Context, request ai.Request) (ai.Result, error) {
 	if err := c.validateRequest(request); err != nil {
 		return ai.Result{}, err
+	}
+	expected, err := proposalExpectation(request.Input)
+	if err != nil {
+		return ai.Result{}, ai.ErrInvalidAttempt
 	}
 	response, err := c.sdk.Responses.New(ctx, responses.ResponseNewParams{
 		Background:         openaisdk.Bool(false),
@@ -140,24 +144,22 @@ func (c *Client) Generate(ctx context.Context, request ai.Request) (ai.Result, e
 	if err != nil {
 		return ai.Result{}, classifyError(err, true)
 	}
-	result := ai.Result{
-		ProviderID: response.ID,
-		State:      ai.Completed,
-		Output:     json.RawMessage(response.OutputText()),
-		Usage: ai.Usage{
-			InputTokens: response.Usage.InputTokens, CachedTokens: response.Usage.InputTokensDetails.CachedTokens,
-			OutputTokens: response.Usage.OutputTokens, ReasoningTokens: response.Usage.OutputTokensDetails.ReasoningTokens,
-		},
+	observation, usageOK := providerObservation(response)
+	if !usageOK {
+		return ai.Result{}, aiapp.GatewayFailure{Code: "usage_invalid", OutcomeUnknown: true, Observation: observation}
 	}
-	if response.Usage.InputTokensDetails.JSON.CacheWriteTokens.Valid() {
-		writes := response.Usage.InputTokensDetails.CacheWriteTokens
-		result.Usage.CacheWriteTokens = &writes
+	if observation.Model != string(request.Model) {
+		return ai.Result{}, aiapp.GatewayFailure{Code: "model_mismatch", OutcomeUnknown: true, Observation: observation}
+	}
+	result := ai.Result{
+		ProviderID: observation.ID, ProviderModel: observation.Model,
+		State: ai.Completed, Output: json.RawMessage(response.OutputText()), Usage: *observation.Usage,
 	}
 	switch response.Status {
 	case responses.ResponseStatusCompleted:
 		if hasRefusal(response.RawJSON()) {
 			result.State, result.Code, result.Output = ai.Refused, "model_refusal", nil
-		} else if err := validateProposal(result.Output); err != nil {
+		} else if err := validateProposal(result.Output, expected); err != nil {
 			result.State, result.Code, result.Output = ai.SchemaError, "invalid_schema", nil
 		}
 	case responses.ResponseStatusIncomplete:
@@ -166,9 +168,41 @@ func (c *Client) Generate(ctx context.Context, request ai.Request) (ai.Result, e
 		result.State, result.Code, result.Output = ai.SchemaError, "unexpected_status", nil
 	}
 	if err := result.Validate(); err != nil {
-		return ai.Result{}, aiapp.GatewayFailure{Code: "invalid_response", Retryable: false}
+		return ai.Result{}, aiapp.GatewayFailure{Code: "invalid_response", OutcomeUnknown: true, Observation: observation}
 	}
 	return result, nil
+}
+
+func providerObservation(response *responses.Response) (aiapp.ProviderObservation, bool) {
+	observation := aiapp.ProviderObservation{}
+	if response.JSON.ID.Valid() {
+		observation.ID = response.ID
+	}
+	if response.JSON.Model.Valid() {
+		observation.Model = string(response.Model)
+	}
+	usage := response.Usage
+	valid := response.JSON.ID.Valid() && response.ID != "" && response.JSON.Model.Valid() && observation.Model != "" &&
+		response.JSON.Status.Valid() && response.JSON.Usage.Valid() && usage.JSON.InputTokens.Valid() &&
+		usage.JSON.InputTokensDetails.Valid() && usage.InputTokensDetails.JSON.CachedTokens.Valid() &&
+		usage.JSON.OutputTokens.Valid() && usage.JSON.OutputTokensDetails.Valid() &&
+		usage.OutputTokensDetails.JSON.ReasoningTokens.Valid() && usage.JSON.TotalTokens.Valid()
+	if !valid {
+		return observation, false
+	}
+	value := ai.Usage{
+		InputTokens: usage.InputTokens, CachedTokens: usage.InputTokensDetails.CachedTokens,
+		OutputTokens: usage.OutputTokens, ReasoningTokens: usage.OutputTokensDetails.ReasoningTokens,
+	}
+	if usage.InputTokensDetails.JSON.CacheWriteTokens.Valid() {
+		writes := usage.InputTokensDetails.CacheWriteTokens
+		value.CacheWriteTokens = &writes
+	}
+	if value.Validate() != nil || usage.TotalTokens != usage.InputTokens+usage.OutputTokens {
+		return observation, false
+	}
+	observation.Usage = &value
+	return observation, true
 }
 
 func (c *Client) textFormat() responses.ResponseFormatTextConfigUnionParam {
@@ -180,6 +214,9 @@ func (c *Client) textFormat() responses.ResponseFormatTextConfigUnionParam {
 func (c *Client) validateRequest(request ai.Request) error {
 	if err := request.Validate(); err != nil {
 		return err
+	}
+	if _, err := proposalExpectation(request.Input); err != nil {
+		return ai.ErrInvalidAttempt
 	}
 	contract := c.Contract()
 	if request.Model != contract.Model || request.Qualification != contract.Qualification || request.PromptFingerprint != contract.PromptFingerprint || request.SchemaFingerprint != contract.SchemaFingerprint || request.ConfigFingerprint != contract.ConfigFingerprint {

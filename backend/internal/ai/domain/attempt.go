@@ -118,25 +118,29 @@ func (r Request) Validate() error {
 }
 
 type Result struct {
-	ProviderID string
-	State      State
-	Output     json.RawMessage
-	Usage      Usage
-	Code       string
+	ProviderID    string
+	ProviderModel string
+	State         State
+	Output        json.RawMessage
+	Usage         Usage
+	Code          string
 }
 
 func (r Result) Validate() error {
-	if !r.State.Terminal() || utf8.RuneCountInString(r.ProviderID) > 200 || utf8.RuneCountInString(r.Code) > 100 || len(r.Output) > 1<<20 {
+	if !r.State.Terminal() || utf8.RuneCountInString(r.ProviderID) > 200 || utf8.RuneCountInString(r.ProviderModel) > 200 || utf8.RuneCountInString(r.Code) > 100 || len(r.Output) > 1<<20 {
 		return ErrInvalidAttempt
 	}
 	if r.State == Completed {
-		if r.ProviderID == "" || !json.Valid(r.Output) || len(r.Output) == 0 {
+		if r.ProviderID == "" || r.ProviderModel == "" || !json.Valid(r.Output) || len(r.Output) == 0 {
 			return ErrInvalidAttempt
 		}
 	} else if len(r.Output) > 0 && !json.Valid(r.Output) {
 		return ErrInvalidAttempt
 	}
 	if r.State != KnownRejection && r.State != Unknown {
+		if r.ProviderID == "" || Model(r.ProviderModel) != Terra {
+			return ErrInvalidAttempt
+		}
 		return r.Usage.Validate()
 	}
 	return nil

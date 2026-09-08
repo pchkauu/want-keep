@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"regexp"
+	"slices"
 )
 
 var (
@@ -37,19 +38,32 @@ type share struct {
 	Amount string `json:"amount"`
 }
 
-func validateProposal(data []byte) error {
+type proposalInputCase struct {
+	ID     string `json:"id"`
+	Source string `json:"source"`
+}
+
+func proposalExpectation(data []byte) (proposalInputCase, error) {
+	var cases []proposalInputCase
+	if err := json.Unmarshal(data, &cases); err != nil || len(cases) != 1 || cases[0].ID == "" || cases[0].Source == "" {
+		return proposalInputCase{}, errors.New("invalid proposal input")
+	}
+	return cases[0], nil
+}
+
+func validateProposal(data []byte, expected proposalInputCase) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var envelope proposalEnvelope
-	if err := decoder.Decode(&envelope); err != nil || decoder.Decode(new(any)) != io.EOF || envelope.Results == nil {
+	if err := decoder.Decode(&envelope); err != nil || decoder.Decode(new(any)) != io.EOF || len(envelope.Results) != 1 {
 		return errors.New("invalid proposal")
 	}
 	for _, result := range envelope.Results {
-		if result.ID == "" || result.Explanation == "" || !oneOf(result.Action, "create", "link", "clarify", "reject", "skip", "explain") || result.Shares == nil || result.Items == nil || result.Evidence == nil {
+		if result.ID != expected.ID || result.Explanation == "" || !oneOf(result.Action, "create", "link", "clarify", "reject", "skip", "explain") || result.Shares == nil || result.Items == nil || result.Evidence == nil || !slices.Contains(result.Evidence, expected.Source) {
 			return errors.New("invalid proposal")
 		}
 		if (result.Kind != nil && !oneOf(*result.Kind, "expense", "income", "refund", "transfer", "exchange")) ||
-			(result.Asset != nil && !oneOf(*result.Asset, "RUB", "USD", "USDT", "BTC", "ETH")) ||
+			(result.Asset != nil && !oneOf(*result.Asset, "RUB", "USD", "USDT", "USDC", "BTC", "ETH")) ||
 			(result.Amount != nil && !amountPattern.MatchString(*result.Amount)) ||
 			(result.Fee != nil && !amountPattern.MatchString(*result.Fee)) ||
 			(result.Month != nil && !monthPattern.MatchString(*result.Month)) {

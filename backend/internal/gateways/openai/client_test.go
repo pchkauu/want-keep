@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -31,13 +32,13 @@ func TestClientUsesQualifiedRequestShapeAndNoSDKRetry(t *testing.T) {
 		case "/v1/responses":
 			generationCalls++
 			decodeRequest(t, r, &generationBody)
-			proposal := `{"results":[{"id":"item-1","action":"clarify","kind":null,"amount":null,"fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":["transaction"],"explanation":"Needs confirmation"}]}`
+			proposal := `{"results":[{"id":"case-1","action":"clarify","kind":null,"amount":null,"fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":["ledger_revision"],"explanation":"Needs confirmation"}]}`
 			return jsonResponse(t, http.StatusOK, map[string]any{
-				"id": "resp_synthetic", "status": "completed",
+				"id": "resp_synthetic", "model": "gpt-5.6-terra", "status": "completed",
 				"output": []any{map[string]any{"type": "message", "content": []any{map[string]any{"type": "output_text", "text": proposal}}}},
 				"usage": map[string]any{
 					"input_tokens": 100, "input_tokens_details": map[string]any{"cached_tokens": 20, "cache_write_tokens": 10},
-					"output_tokens": 50, "output_tokens_details": map[string]any{"reasoning_tokens": 12},
+					"output_tokens": 50, "output_tokens_details": map[string]any{"reasoning_tokens": 12}, "total_tokens": 150,
 				},
 			}), nil
 		default:
@@ -88,6 +89,55 @@ func TestGenerationTimeoutIsUnknown(t *testing.T) {
 	}
 }
 
+func TestCountRejectsMissingOrZeroInputTokens(t *testing.T) {
+	for _, body := range []map[string]any{{"object": "response.input_tokens"}, {"object": "response.input_tokens", "input_tokens": 0}} {
+		httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			return jsonResponse(t, http.StatusOK, body), nil
+		})}
+		client := newTestClientWithHTTP(t, "http://127.0.0.1/v1", httpClient)
+		if _, err := client.Count(context.Background(), validRequest(client.Contract())); err == nil {
+			t.Fatalf("invalid count accepted: %#v", body)
+		}
+	}
+}
+
+func TestGenerationKeepsUnauditableResponseBehindReconciliation(t *testing.T) {
+	proposal := `{"results":[{"id":"case-1","action":"clarify","kind":null,"amount":null,"fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":["ledger_revision"],"explanation":"Needs confirmation"}]}`
+	response := func() map[string]any {
+		return map[string]any{
+			"id": "resp_synthetic", "model": "gpt-5.6-terra", "status": "completed",
+			"output": []any{map[string]any{"type": "message", "content": []any{map[string]any{"type": "output_text", "text": proposal}}}},
+			"usage": map[string]any{
+				"input_tokens": 100, "input_tokens_details": map[string]any{"cached_tokens": 20},
+				"output_tokens": 50, "output_tokens_details": map[string]any{"reasoning_tokens": 12}, "total_tokens": 150,
+			},
+		}
+	}
+	tests := []struct {
+		name   string
+		mutate func(map[string]any)
+	}{
+		{"missing usage", func(body map[string]any) { delete(body, "usage") }},
+		{"contradictory total", func(body map[string]any) { body["usage"].(map[string]any)["total_tokens"] = 149 }},
+		{"model mismatch", func(body map[string]any) { body["model"] = "gpt-5.6-terra-preview" }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			body := response()
+			test.mutate(body)
+			httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return jsonResponse(t, http.StatusOK, body), nil
+			})}
+			client := newTestClientWithHTTP(t, "http://127.0.0.1/v1", httpClient)
+			_, err := client.Generate(context.Background(), validRequest(client.Contract()))
+			var failure aiapp.GatewayFailure
+			if !errors.As(err, &failure) || !failure.OutcomeUnknown || failure.Observation.ID != "resp_synthetic" {
+				t.Fatalf("response was not preserved for reconciliation: %+v, %v", failure, err)
+			}
+		})
+	}
+}
+
 func TestProviderHTTPFailuresAreKnownAndNeverRetried(t *testing.T) {
 	testCases := []struct {
 		status    int
@@ -126,7 +176,7 @@ func TestProviderHTTPFailuresAreKnownAndNeverRetried(t *testing.T) {
 }
 
 func TestGenerationPreservesRefusalIncompleteAndSchemaError(t *testing.T) {
-	validProposal := "{\"results\":[{\"id\":\"1\",\"action\":\"skip\",\"kind\":null,\"amount\":null,\"fee\":null,\"asset\":null,\"target\":null,\"month\":null,\"shares\":[],\"items\":[],\"evidence\":[],\"explanation\":\"ok\"}]}"
+	validProposal := "{\"results\":[{\"id\":\"case-1\",\"action\":\"skip\",\"kind\":null,\"amount\":null,\"fee\":null,\"asset\":null,\"target\":null,\"month\":null,\"shares\":[],\"items\":[],\"evidence\":[\"ledger_revision\"],\"explanation\":\"ok\"}]}"
 	testCases := []struct {
 		name, status string
 		content      []any
@@ -140,11 +190,11 @@ func TestGenerationPreservesRefusalIncompleteAndSchemaError(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			httpClient := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 				return jsonResponse(t, http.StatusOK, map[string]any{
-					"id": "resp_synthetic", "status": testCase.status,
+					"id": "resp_synthetic", "model": "gpt-5.6-terra", "status": testCase.status,
 					"output": []any{map[string]any{"type": "message", "content": testCase.content}},
 					"usage": map[string]any{
 						"input_tokens": 10, "input_tokens_details": map[string]any{"cached_tokens": 0, "cache_write_tokens": 0},
-						"output_tokens": 5, "output_tokens_details": map[string]any{"reasoning_tokens": 1},
+						"output_tokens": 5, "output_tokens_details": map[string]any{"reasoning_tokens": 1}, "total_tokens": 15,
 					},
 				}), nil
 			})}
@@ -158,8 +208,9 @@ func TestGenerationPreservesRefusalIncompleteAndSchemaError(t *testing.T) {
 }
 
 func TestProposalValidationRejectsUnknownOrTrailingData(t *testing.T) {
-	valid := []byte(`{"results":[{"id":"1","action":"skip","kind":null,"amount":null,"fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":[],"explanation":"ok"}]}`)
-	if err := validateProposal(valid); err != nil {
+	valid := []byte(`{"results":[{"id":"case-1","action":"skip","kind":null,"amount":null,"fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":["ledger_revision"],"explanation":"ok"}]}`)
+	expected := proposalInputCase{ID: "case-1", Source: "ledger_revision"}
+	if err := validateProposal(valid, expected); err != nil {
 		t.Fatal(err)
 	}
 	for _, data := range [][]byte{
@@ -167,9 +218,21 @@ func TestProposalValidationRejectsUnknownOrTrailingData(t *testing.T) {
 		[]byte(`{"results":[],"unknown":true}`),
 		[]byte(`{"results":[{"id":"1","action":"skip","kind":null,"amount":"1e3","fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":[],"explanation":"bad"}]}`),
 	} {
-		if err := validateProposal(data); err == nil {
+		if err := validateProposal(data, expected); err == nil {
 			t.Fatalf("invalid proposal accepted: %s", data)
 		}
+	}
+}
+
+func TestProposalValidationSupportsUSDCAndBindsSource(t *testing.T) {
+	expected := proposalInputCase{ID: "case-1", Source: "ledger_revision"}
+	valid := []byte(`{"results":[{"id":"case-1","action":"create","kind":"income","amount":"0.01","fee":null,"asset":"USDC","target":null,"month":"2026-09","shares":[],"items":[],"evidence":["ledger_revision"],"explanation":"Confirmed"}]}`)
+	if err := validateProposal(valid, expected); err != nil {
+		t.Fatal(err)
+	}
+	missingSource := bytes.Replace(valid, []byte(`"ledger_revision"`), []byte(`"other"`), 1)
+	if err := validateProposal(missingSource, expected); err == nil {
+		t.Fatal("proposal without the bound source was accepted")
 	}
 }
 
@@ -192,7 +255,7 @@ func validRequest(contract ai.RuntimeContract) ai.Request {
 		HouseholdID: household.HouseholdID("household"), ActorID: household.UserID("actor"), ResourceRevision: 1,
 		Purpose: ai.TransactionReview, Model: contract.Model, Qualification: contract.Qualification,
 		PromptFingerprint: contract.PromptFingerprint, SchemaFingerprint: contract.SchemaFingerprint,
-		ConfigFingerprint: contract.ConfigFingerprint, Input: json.RawMessage(`{"transaction":"synthetic"}`), MaximumOutputTokens: 2048,
+		ConfigFingerprint: contract.ConfigFingerprint, Input: json.RawMessage(`[{"id":"case-1","source":"ledger_revision","members":["actor"],"actor_id":"actor","text":"synthetic"}]`), MaximumOutputTokens: 2048,
 	}
 }
 
@@ -237,6 +300,14 @@ func assertGenerationShape(t *testing.T, body map[string]any) {
 	cache, _ := body["prompt_cache_options"].(map[string]any)
 	if cache["mode"] != "explicit" {
 		t.Fatalf("cache mode mismatch: %#v", cache)
+	}
+	input, ok := body["input"].(string)
+	if !ok {
+		t.Fatalf("runtime input is not the qualified case list: %#v", body["input"])
+	}
+	var cases []map[string]any
+	if err := json.Unmarshal([]byte(input), &cases); err != nil || len(cases) != 1 || cases[0]["id"] != "case-1" || cases[0]["source"] != "ledger_revision" || cases[0]["actor_id"] != "actor" {
+		t.Fatalf("runtime case binding mismatch: %#v, %v", cases, err)
 	}
 	assertReasoningAndSchema(t, body)
 }

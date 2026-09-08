@@ -51,9 +51,10 @@ type Repository interface {
 	StartAIAttempt(context.Context, household.Principal, jobs.Job, ai.Request, string, time.Time) error
 	ReserveAIAttempt(context.Context, household.Principal, jobs.Job, string, int64, ai.Cost, time.Time) error
 	BeginAIGeneration(context.Context, household.Principal, jobs.Job, string, time.Time) error
-	RecordAIOutcome(context.Context, household.Principal, jobs.Job, string, Settlement, time.Time) (bool, error)
+	AIOutcomeRetryAllowed(context.Context, household.Principal, jobs.Job) (bool, error)
+	SaveAIOutcome(context.Context, household.Principal, jobs.Job, string, Settlement, time.Time) error
 	SaveAICompletion(context.Context, household.Principal, jobs.Job, string, Settlement, time.Time) error
-	MarkAIUnknown(context.Context, household.Principal, jobs.Job, string, string, time.Time) error
+	MarkAIUnknown(context.Context, household.Principal, jobs.Job, string, string, ProviderObservation, time.Time) error
 }
 
 type BudgetQueueRepository interface {
