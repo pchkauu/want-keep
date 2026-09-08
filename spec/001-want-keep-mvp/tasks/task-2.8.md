@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Ledger хранит неизменяемые снимки распределения по MembershipID отдельно от payer, owner и actor; allocation/domain выбирает версионные merchant/category rules. Поддержаны точные суммы, доли и equal с largest-remainder и MembershipID tie-break, personal/shared, item override и сохраняемое основание transaction fallback для перерасчёта. Неизвестное назначение остаётся unallocated; равные конфликтующие правила требуют решения. При поздней доверенной классификации применяется только revision правила, действовавшая в момент первого финансового факта; более поздние правила и revisions не переписывают историю. Source import применяет merchant rule только через подтверждённый alias, source update не стирает пользовательское распределение, а matching сохраняет один семейный и один персональный эффект с учётом carrier/contribution.
+Ledger хранит неизменяемые снимки распределения по MembershipID отдельно от payer, owner и actor; allocation/domain выбирает версионные merchant/category rules. Поддержаны точные суммы, доли и equal с largest-remainder и MembershipID tie-break, personal/shared, item override, сохраняемое основание transaction fallback и точный basis rule-derived позиции для перерасчёта. Неизвестное назначение остаётся unallocated; равные конфликтующие правила требуют решения. При поздней доверенной классификации применяется только revision правила, действовавшая в момент первого финансового факта; более поздние правила и revisions не переписывают историю. Source import применяет merchant rule только через подтверждённый alias, source update не стирает пользовательское распределение, а matching сохраняет один семейный и один персональный эффект с учётом carrier/contribution; waiting хранит basis без member-effect и separate восстанавливает его.
 
 ### Границы изменений
 
@@ -246,7 +246,7 @@ make test-integration AREA=privacy
 git diff --check
 ```
 
-Смешанный чек 1000 даёт семье 1000, A 400 и B 600; шесть активов и произвольная точность сохраняются. Проверяются перерасчёт share/equal, неизменность amount-based, carrier/contribution matching, полный hash review, подтверждённые merchant aliases, fact-time revisions правил при поздней классификации операции и позиции, preview, replay, concurrent revision, миграция и права без изменения проводок.
+Смешанный чек 1000 даёт семье 1000, A 400 и B 600; шесть активов и произвольная точность сохраняются. Проверяются перерасчёт share/equal, неизменность amount-based, carrier/contribution matching с восстановлением basis после waiting → separate, полный hash review, подтверждённые merchant aliases, fact-time revisions правил при поздней классификации операции и позиции, preview, replay, concurrent revision, миграция и права без изменения проводок.
 
 Task-1.6 и task-2.6 включены в базу; команды реализованы. Доказательства и границы: evidence/task-2.8-family-allocation.md. Доказаны backend-части AC-078/079/080/081/086/093; возвратные части AC-065/091 остаются task-2.7. UI, бюджеты, реальный OpenAI, банки и production не подтверждаются.
 
@@ -268,7 +268,7 @@ Allocate household expenses and items to members.
 
 ### Change and contracts
 
-Ledger stores immutable allocation snapshots by MembershipID independently from payer, owner and actor; allocation/domain selects versioned merchant/category rules. Exact amounts, shares and equal mode use largest remainder with MembershipID tie-break; personal/shared, item override and a retained transaction-fallback basis support recalculation. Unknown purpose remains unallocated and conflicting equal-priority rules require resolution. When trusted classification arrives later, only the rule revision effective at the first financial fact may apply; later rules and revisions never rewrite history. Source import applies a merchant rule only through a confirmed alias, source updates cannot erase a user allocation, and matching retains one household and one member effect according to carrier/contribution.
+Ledger stores immutable allocation snapshots by MembershipID independently from payer, owner and actor; allocation/domain selects versioned merchant/category rules. Exact amounts, shares and equal mode use largest remainder with MembershipID tie-break; personal/shared, item override, a retained transaction-fallback basis and the exact basis of a rule-derived item support recalculation. Unknown purpose remains unallocated and conflicting equal-priority rules require resolution. When trusted classification arrives later, only the rule revision effective at the first financial fact may apply; later rules and revisions never rewrite history. Source import applies a merchant rule only through a confirmed alias, source updates cannot erase a user allocation, and matching retains one household and one member effect according to carrier/contribution; waiting retains the basis without a member effect and separate restores it.
 
 ### Change boundaries
 
@@ -501,7 +501,7 @@ make test-integration AREA=privacy
 git diff --check
 ```
 
-A mixed 1,000 receipt yields household 1,000, A 400 and B 600; all six assets and arbitrary precision are retained. Share/equal recalculation, amount-based immutability, matching carrier/contribution, the complete review hash, confirmed merchant aliases, fact-time rule revisions for late transaction and item classification, preview, replay, concurrent revision, migration and permissions are checked without changing postings.
+A mixed 1,000 receipt yields household 1,000, A 400 and B 600; all six assets and arbitrary precision are retained. Share/equal recalculation, amount-based immutability, matching carrier/contribution with basis restoration after waiting → separate, the complete review hash, confirmed merchant aliases, fact-time rule revisions for late transaction and item classification, preview, replay, concurrent revision, migration and permissions are checked without changing postings.
 
 Task-1.6 and task-2.6 are included in the base; commands exist. Evidence and boundaries: evidence/task-2.8-family-allocation.en.md. Backend portions of AC-078/079/080/081/086/093 are proven; refund portions of AC-065/091 remain with task-2.7. UI, budgets, real OpenAI, banks and production are not verified.
 
