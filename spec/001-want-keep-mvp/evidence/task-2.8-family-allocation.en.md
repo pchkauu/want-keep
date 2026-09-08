@@ -1,0 +1,28 @@
+# Task-2.8 — household expense allocation
+
+Implemented the household-expense allocation backend/API. Original base: `cedbe3ba8384071e0e958167d37899ade557c0bc`; branch: `feat/task-2.8-family-allocation`; task-1.6 and task-2.6 are included. The [contract](../contracts.en.md#task-28--household-expense-allocation) retains one household financial fact and an exact member view. No new dependencies; migrations 001–015 and production remain unchanged.
+
+Ledger stores an immutable allocation snapshot by `MembershipID`, independently from payer, account owner and actor. `personal|shared`, exact amount, share and equal modes are supported. Largest remainder operates at each asset's source precision with `MembershipID` as stable tie-break. Allocation covers items, fallback principal, fees and interest in native assets; internal transfer or exchange principal does not become an expense. Unknown remains unallocated and never turns into zero or 50/50.
+
+`allocation/domain/application` owns merchant/category rules. Conditions in one rule use AND and lower priority wins. Compatible equal-priority rules retain every reference; different outcomes yield `rule_conflict`. Preview performs no write. A new rule revision affects only new facts. Correction, compound decision, selective undo, field protection and source merge use the independent `allocation` field; a source cannot erase the user decision. Matching retains one household and member-effect carrier.
+
+Migration 016 adds rules/revisions/shares and immutable transaction/item snapshots with compound household FKs, exact `NUMERIC`, immutable triggers and least-privilege grants. Existing operations receive only provable `unresolved` or `not_applicable`, with no invented beneficiary. OpenAPI activates transaction allocations and rule CRUD/preview; Go/TypeScript are generated from one source. Mutation routes use the session actor, Origin/CSRF, idempotency, expected revision and command recovery.
+
+## Verification matrix
+
+Required commands: `make check`; `make test-integration AREA=all`; `make test-family-allocation-race`; affected race suites; `make test-integration AREA=privacy`; `git diff --check`. PostgreSQL 17.11 is digest-pinned; missing DB fails the suite. Family-allocation integration/race are included in CI. Exact results for the published candidate are recorded in the PR and Issue.
+
+The suite checks RUB, USD, USDT, USDC, BTC and ETH at arbitrary precision; 50/50, 60/40, exact amounts, deterministic remainder and mixed receipt `1000 → A 400 + B 600`. Item override, purchase fallback, third-asset fee, unallocated, rule precedence/conflict/preview, no retrospective change, correction/undo/source protection and one effect across matching evidence are covered.
+
+PostgreSQL scenarios verify concurrent revisions by both members, replay, rollback, lost response after commit, household isolation, session-bound cursor, CSRF, command visibility, migration-over-015, immutable history and unprivileged-role grants. Allocation changes neither postings nor account projections.
+
+## Acceptance boundaries
+
+| Criteria | Proven by task-2.8 | Downstream verification |
+| --- | --- | --- |
+| AC-078/079 | Either active member changes a household expense; actor/payer/owner/beneficiary remain separate and a foreign household is hidden | Personal goals/plan, bank MFA and UI |
+| AC-080/081 | One household fact, exact member amounts, unallocated and mixed receipt 400/600 | Budget reports and AI clarification |
+| AC-086/093 | Revision/replay, compound undo and matching evidence do not duplicate member effect | Chat/receipt lifecycle and browser acceptance |
+| AC-065/091 | Snapshot and historical rule references are ready for proportional refund | Task-2.7 implements the complete refund lifecycle |
+
+SDD remains **Ready for development**. This task does not verify UI, budgets, live receipts/OpenAI, bank IO, refunds or production.

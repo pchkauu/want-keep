@@ -40,7 +40,7 @@
 
 **Следующее действие:** Открыть SCR-010; занести FORM-04 или чек в SCR-024.
 
-**Объяснение и детализация:** Фильтры category, merchant и item независимы; некатегоризированный расход остаётся видимым. Позиции образуют одну оплату без повторного итога. Переводы/обмены помечены как движения, исключённые из доходов/расходов; фильтр не меняет расчётную семантику.
+**Объяснение и детализация:** Фильтры category, merchant и item независимы; некатегоризированный расход остаётся видимым. Позиции образуют одну оплату без повторного итога. Личные суммы и unallocated являются разрезом одного семейного факта по MembershipID; payer, owner и actor показаны отдельно. Переводы/обмены помечены как движения, исключённые из доходов/расходов; фильтр не меняет расчётную семантику.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -60,7 +60,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Следующее действие:** Исправить FORM-06/07, вернуть FORM-08, явный долг FORM-09; чек → SCR-011.
 
-**Объяснение и детализация:** История до/после с автором, временем, decisionId и основаниями; отдельные банковское и учётное состояния. Защищённые поля сравниваются с нормализованным источником; review показывает безопасное обоснование и ссылки на evidence. Для выбранного решения видны возможность undo и причина отказа. Группа показывает участников, evidence, носителей эффекта, отдельное ожидание matching_unresolved и конфликт. Список кандидатов сообщает полноту; основная запись не означает приоритет правок. Link/resolve и составные исправления используют версии всех участников; undo сохраняет независимые правки и состояния банка. Классификация хранит категорию, merchantId и позиции чека отдельно от текста продавца источника; AI proposal не меняет факт без команды.
+**Объяснение и детализация:** История до/после показывает автора, decisionId, источник и защищённые поля. Распределение показывает personal/shared, точные суммы каждого участника, unallocated, применённые rule revisions и позиции. Явное значение позиции важнее покупки, затем merchant/category rule и equal для явно совместной траты. Source update не стирает пользовательский выбор; изменение amount-based распределения требует согласованной правки, share-based пересчитывается. Matching сохраняет один носитель семейного и персонального эффекта; undo проверяет revisions всех участников.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -100,7 +100,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Следующее действие:** Создать/исправить FORM-15; проверить затронутые операции SCR-009.
 
-**Объяснение и детализация:** Starter labels имеют стабильные RU/EN-ключи, custom name не переводится. Продавец не становится подкатегорией; архив сохраняет историю. AI proposal требует пользовательского подтверждения; правило personal/shared не меняет чужой личный план.
+**Объяснение и детализация:** Starter labels имеют стабильные RU/EN-ключи, custom name не переводится. Продавец не становится подкатегорией; архив сохраняет историю. Правила используют merchant/category AND, priority и доли активных участников; preview объясняет выбранные revisions или rule_conflict. Новое правило действует только на новые факты. AI proposal требует пользовательского подтверждения; правило personal/shared не меняет чужой личный план.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -112,7 +112,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Поля:** Тип, счёт, дата/время, сумма/валюта, категория/подкатегория, продавец, назначение и доли, комментарий/чек.
 
-**Проверки и права:** Оба участника заносят факт на любой счёт семьи; actor из сессии, payer отдельно. Сумма >0, актив совпадает со счётом. Для расхода можно назначить активные category и merchant своей семьи; allocation остаётся unresolved до task-2.8. Подтверждённые счёт/сумма/дата дают posted и семейный факт даже без классификации.
+**Проверки и права:** Оба участника заносят факт на любой счёт семьи; actor из сессии, payer отдельно. Сумма >0, актив совпадает со счётом. Расход может содержать активные category/merchant и typed allocation по текущим MembershipID; неизвестное назначение остаётся unallocated. Доход не принимает allocation. Подтверждённые счёт/сумма/дата дают posted и один семейный факт даже без классификации.
 
 **Результат:** Одна операция, видимые назначения и AI-статус, связь чека; подтверждённый результат и ссылка.
 
@@ -166,11 +166,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-15 — Категории и правила
 
-**Поля:** Название категории/подкатегории, родитель и состояние; имя продавца, состояние и подтверждённые алиасы. Правила/условия и массовое применение остаются отдельным контрактом.
+**Поля:** Название категории/подкатегории, родитель и состояние; имя продавца, состояние и подтверждённые алиасы; условия правила merchant/category, priority 1–1000, состояние и точные доли по участникам; preview без сохранения.
 
-**Проверки и права:** Оба участника управляют семейным каталогом. Допустимы два уровня без циклов, уникальные активные имена и один активный подтверждённый алиас на продавца семьи. Архив сохраняет историю; восстановление повторно проверяет конфликты. Предложение AI не применяется без пользовательской команды.
+**Проверки и права:** Оба участника управляют семейным каталогом и правилами. Условия одного правила объединяются AND; меньшее priority важнее. Одинаковые результаты равного приоритета совместимы, разные дают rule_conflict. Доли дают ровно 100% активных участников; expectedRevision, CSRF и actor из сессии обязательны. Правило применяется только к новым фактам и не меняет историю.
 
-**Результат:** Версионированная категория или продавец сохранены; no_change/conflict не создают эффекта. Исторические ссылки остаются доступны.
+**Результат:** Версионированная категория, продавец или правило сохранены; preview показывает применённые revisions либо безопасную unresolved-причину. no_change/conflict не создают эффекта, исторические ссылки остаются доступны.
 
 - **UISTATE-01 — Загрузка:** Скелетон структуры и подпись загрузки; суммы не подменяются нулями.
 - **UISTATE-02 — Обновление:** Сохранить предыдущие данные и контекст, показать время последнего успеха; блокировать только конфликтующие действия.
@@ -277,7 +277,7 @@ The household catalog contains two-level starter/custom categories with stable R
 
 **Next action:** Open SCR-010; enter FORM-04 or receipt in SCR-024.
 
-**Explanation and details:** Category, merchant and item filters are independent; uncategorized expense remains visible. Items form one payment without a duplicate total. Transfers/exchanges are marked as movements excluded from income/expense; filters never change accounting semantics.
+**Explanation and details:** Category, merchant and item filters are independent; uncategorized expense remains visible. Items form one payment without a duplicate total. Member amounts and unallocated are a MembershipID view of one household fact; payer, owner and actor are separate. Transfers/exchanges are marked as movements excluded from income/expense; filters never change accounting semantics.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -297,7 +297,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
 
-**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason. A group exposes participants, evidence, effect carriers, matching_unresolved waiting and conflicts. Candidate completeness is explicit; primary does not imply override priority. Link/resolve and compound corrections use all participant revisions; undo preserves independent edits and bank states. Classification retains category, merchantId and receipt items separately from source merchant text; an AI proposal cannot change the fact without a command.
+**Explanation and details:** Before/after history exposes actor, decisionId, source and protected fields. Allocation shows personal/shared purpose, exact member amounts, unallocated, applied rule revisions and items. Explicit item value wins over purchase, then merchant/category rule and equal for an explicitly shared expense. A source update cannot erase the user choice; changing an amount-based allocation requires a consistent correction while share-based allocation recalculates. Matching retains one household and member effect carrier; undo checks every participant revision.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -337,7 +337,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Next action:** Create/correct FORM-15; inspect affected transactions SCR-009.
 
-**Explanation and details:** Starter labels use stable RU/EN keys and a custom name is not translated. A merchant never becomes a subcategory; archival preserves history. An AI proposal requires user confirmation; a personal/shared rule never edits a partner personal plan.
+**Explanation and details:** Starter labels use stable RU/EN keys and a custom name is not translated. A merchant never becomes a subcategory; archival preserves history. Rules use merchant/category AND, priority and active-member shares; preview explains selected revisions or rule_conflict. A new rule affects only new facts. An AI proposal requires user confirmation; a personal/shared rule never edits a partner personal plan.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -349,7 +349,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Fields:** Type, account, date/time, amount/currency, category/subcategory, merchant, purpose/shares, note/receipt.
 
-**Validation and permissions:** Either member records on any household account; actor comes from session and payer is independent. Amount >0 and asset matches the account. An expense may reference active household category and merchant; allocation remains unresolved until task-2.8. Confirmed account/amount/date produce a posted household fact even without classification.
+**Validation and permissions:** Either member records on any household account; actor comes from session and payer is independent. Amount >0 and asset matches the account. An expense may contain active category/merchant references and typed allocation by current MembershipID; unknown purpose remains unallocated. Income rejects allocation. Confirmed account/amount/date produce posted and one household fact even without classification.
 
 **Outcome:** One transaction, visible allocation and AI status, linked receipt; confirmed outcome and link.
 
@@ -403,11 +403,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-15 — Categories and rules
 
-**Fields:** Category/subcategory name, parent and state; merchant name, state and confirmed aliases. Rules/conditions and bulk application remain a separate contract.
+**Fields:** Category/subcategory name, parent and state; merchant name, state and confirmed aliases; merchant/category rule conditions, priority 1–1000, state and exact member shares; preview without persistence.
 
-**Validation and permissions:** Either member manages the household catalog. Two acyclic levels, unique active names and one active confirmed alias owner per household are enforced. Archival preserves history; restore rechecks conflicts. An AI proposal is not applied without a user command.
+**Validation and permissions:** Either member manages the household catalog and rules. Conditions within one rule use AND and lower priority wins. Equal-priority identical outcomes are compatible; different outcomes yield rule_conflict. Shares total exactly 100% across active members; expectedRevision, CSRF and the session actor are mandatory. A rule applies only to new facts and never rewrites history.
 
-**Outcome:** A versioned category or merchant is saved; no_change/conflict creates no effect. Historical references remain available.
+**Outcome:** A versioned category, merchant or rule is stored; preview exposes applied revisions or a safe unresolved reason. no_change/conflict creates no effect and historical references remain available.
 
 - **UISTATE-01 — Loading:** Structural skeleton and loading label; amounts are never replaced by zero.
 - **UISTATE-02 — Refreshing:** Keep previous data/context and last-success time; block only conflicting actions.

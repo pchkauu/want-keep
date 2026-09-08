@@ -5,7 +5,7 @@
 
 Распределять семейные расходы и позиции по участникам.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализованы backend/API семейного распределения операций и позиций, версионные правила и точная персональная аналитика без повторного финансового эффекта. UI, возвраты, бюджеты и реальный OpenAI остаются профильным задачам.
 
 **Зависимости:** `task-2.6`, `task-1.6`.
 
@@ -13,14 +13,153 @@
 
 ### Изменение и контракты
 
-Разделить payer/account owner/actor/beneficiary; распределения позиций личные или общие. Приоритет: явное распределение позиции/покупки, правило статьи, 50/50; неизвестное назначение требует уточнения. Хранить revision распределения, точную сумму и детерминированное округление. Правила по продавцу/категории применяются к новым фактам, не переписывают историю.
+Ledger хранит неизменяемые снимки распределения по MembershipID отдельно от payer, owner и actor; allocation/domain выбирает версионные merchant/category rules. Поддержаны точные суммы, доли и equal с largest-remainder и MembershipID tie-break, personal/shared, item override и transaction fallback для оставшихся расходов. Неизвестное назначение остаётся unallocated; равные конфликтующие правила требуют решения. Новые правила не переписывают историю, source update не стирает пользовательское распределение, а matching сохраняет один семейный и один персональный эффект.
 
 ### Границы изменений
 
+- `backend/internal/allocation/`
 - `backend/internal/ledger/`
-- `backend/internal/categories/`
-- `backend/internal/household/`
-- `api/openapi.yaml`
+- `backend/internal/storage/`
+- `backend/internal/delivery/allocation/`
+- `backend/internal/delivery/ledger/`
+- `backend/migrations/016_family_allocations.sql`
+- `api/`
+- `backend/test/integration/family-allocation/`
+
+### Экранный контракт
+
+### SCR-009 — Операции
+
+`/transactions`
+
+**Вопрос:** На что потрачено и всё ли учтено?
+
+**Главный ответ:** Назначение операций с понятным итогом выбранного периода.
+
+**Структура сверху вниз:** Поиск/месяц/счёт/плательщик/назначение/category/merchant/item/status → итоги → строки дата/продавец/сумма/доли.
+
+**Следующее действие:** Открыть SCR-010; занести FORM-04 или чек в SCR-024.
+
+**Объяснение и детализация:** Фильтры category, merchant и item независимы; некатегоризированный расход остаётся видимым. Позиции образуют одну оплату без повторного итога. Личные суммы и unallocated являются разрезом одного семейного факта по MembershipID; payer, owner и actor показаны отдельно. Переводы/обмены помечены как движения, исключённые из доходов/расходов; фильтр не меняет расчётную семантику.
+
+**Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
+
+Forms: FORM-04, FORM-05.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-04, UISTATE-14.
+
+### SCR-010 — Карточка операции
+
+`/transactions/:id`
+
+**Вопрос:** Правильно ли учтена эта покупка?
+
+**Главный ответ:** Сумма, категория, продавец, позиции, назначение и плательщик одной операции.
+
+**Структура сверху вниз:** Результат учёта → счёт/дата/статус → category/merchant → позиции gross/discount/net → доли → чек → исправить/отменить/возврат.
+
+**Следующее действие:** Исправить FORM-06/07, вернуть FORM-08, явный долг FORM-09; чек → SCR-011.
+
+**Объяснение и детализация:** История до/после показывает автора, decisionId, источник и защищённые поля. Распределение показывает personal/shared, точные суммы каждого участника, unallocated, применённые rule revisions и позиции. Явное значение позиции важнее покупки, затем merchant/category rule и equal для явно совместной траты. Source update не стирает пользовательский выбор; изменение amount-based распределения требует согласованной правки, share-based пересчитывается. Matching сохраняет один носитель семейного и персонального эффекта; undo проверяет revisions всех участников.
+
+**Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
+
+Forms: FORM-06, FORM-07, FORM-08, FORM-09, FORM-05.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-14.
+
+### SCR-034 — Категории и правила
+
+`/settings/categories`
+
+**Вопрос:** Как уменьшить ручные уточнения?
+
+**Главный ответ:** Понятные категории, продавцы и правила назначения расходов.
+
+**Структура сверху вниз:** Категории/подкатегории и архив → продавцы/подтверждённые алиасы → правила/приоритет → preview примеров.
+
+**Следующее действие:** Создать/исправить FORM-15; проверить затронутые операции SCR-009.
+
+**Объяснение и детализация:** Starter labels имеют стабильные RU/EN-ключи, custom name не переводится. Продавец не становится подкатегорией; архив сохраняет историю. Правила используют merchant/category AND, priority и доли активных участников; preview объясняет выбранные revisions или rule_conflict. Новое правило действует только на новые факты. AI proposal требует пользовательского подтверждения; правило personal/shared не меняет чужой личный план.
+
+**Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
+
+Forms: FORM-15.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-04.
+
+#### FORM-04 — Доход или расход
+
+**Поля:** Тип, счёт, дата/время, сумма/валюта, категория/подкатегория, продавец, назначение и доли, комментарий/чек.
+
+**Проверки и права:** Оба участника заносят факт на любой счёт семьи; actor из сессии, payer отдельно. Сумма >0, актив совпадает со счётом. Расход может содержать активные category/merchant и typed allocation по текущим MembershipID; неизвестное назначение остаётся unallocated. Доход не принимает allocation. Подтверждённые счёт/сумма/дата дают posted и один семейный факт даже без классификации.
+
+**Результат:** Одна операция, видимые назначения и AI-статус, связь чека; подтверждённый результат и ссылка.
+
+#### FORM-05 — Учесть перевод или обмен
+
+**Поля:** Откуда/куда, даты, обе суммы/валюты, комиссии и счёт комиссии, существующие движения.
+
+**Проверки и права:** Оба участника; разные счета семьи; одна исходящая и одна входящая сторона. Principal не входит в доходы/расходы; отдельные комиссии, включая третий актив. Пустой existingTransactions создаёт новое движение. Непустой список содержит ID/revisions всех участников (до 100); суммы, комиссии и дата основной записи проверяются без создания недостающих сторон. Связь переводов/обменов/оплаты подтверждается по версиям, неоднозначность остаётся в matching; отдельная покупка снимает ожидание один раз.
+
+**Результат:** Связано движение денег в журнале; никакой реальной отправки или покупки актива.
+
+#### FORM-06 — Исправление, сопоставление и отмена
+
+**Поля:** Операция, expectedRevision, основание; полный principal и fees, дата, payer, raw merchant/note; category и merchant identity через set|clear, позиции через replace|clear. Undo: decisionId и expectedRevisions; сравнение до/после и с источником.
+
+**Проверки и права:** Оба участника исправляют семейные факты. Сервер сохраняет actor, счета/активы principal и происхождение, проверяет активные категории/продавцов и меняет полный item set атомарно. Позиции и скидки точно равны principal; top-level category с позициями запрещена. Undo сохраняет поздние независимые поля. Сопоставление и доли остаются профильным задачам.
+
+**Результат:** Новое решение и финансовые revisions с историей, либо no_change/conflict без эффекта и потери ввода. Исключение не меняет банковский статус; undo пересчитывает текущий эффект.
+
+#### FORM-07 — Чек и распределение позиций
+
+**Поля:** Фото/PDF, обязательный счёт списания включая наличные; позиции, скидки, категории, personal/shared и доли % или суммы.
+
+**Проверки и права:** Оба участника; лимиты файлов по контракту. Task-2.6 атомарно проверяет позиции, активы и скидки против одной оплаты, распределяет известную общую скидку детерминированно и требует уточнение при неполных данных. OCR/PDF, сопоставление и personal/shared доли выполняют task-5.3/2.4/2.8.
+
+**Результат:** Создано/связано с существующим/ожидает уточнения/документ не подходит с причиной. Одно подтверждённое списание.
+
+#### FORM-08 — Возврат покупки
+
+**Поля:** Исходная покупка, возвращаемые позиции/доли/сумма, счёт поступления и фактическая дата.
+
+**Проверки и права:** Оба member; совокупный возврат не больше покупки; исходные исторические FX и распределение по возвращённой части сохраняются.
+
+**Результат:** Исходный месяц покупки пересчитан; деньги поступили текущей датой; FX отдельно.
+
+#### FORM-09 — Явный долг и возмещение
+
+**Поля:** Кто кому, сумма/валюта, основание/расход; при погашении существующий семейный перевод и сумма связи.
+
+**Проверки и права:** Только явное действие member; не выводить долг из долей. Нельзя повторно погасить одним переводом сверх его суммы; долг не капитал семьи.
+
+**Результат:** Непогашенный остаток обновлён без нового семейного расхода.
+
+#### FORM-15 — Категории и правила
+
+**Поля:** Название категории/подкатегории, родитель и состояние; имя продавца, состояние и подтверждённые алиасы; условия правила merchant/category, priority 1–1000, состояние и точные доли по участникам; preview без сохранения.
+
+**Проверки и права:** Оба участника управляют семейным каталогом и правилами. Условия одного правила объединяются AND; меньшее priority важнее. Одинаковые результаты равного приоритета совместимы, разные дают rule_conflict. Доли дают ровно 100% активных участников; expectedRevision, CSRF и actor из сессии обязательны. Правило применяется только к новым фактам и не меняет историю.
+
+**Результат:** Версионированная категория, продавец или правило сохранены; preview показывает применённые revisions либо безопасную unresolved-причину. no_change/conflict не создают эффекта, исторические ссылки остаются доступны.
+
+- **UISTATE-01 — Загрузка:** Скелетон структуры и подпись загрузки; суммы не подменяются нулями.
+- **UISTATE-02 — Обновление:** Сохранить предыдущие данные и контекст, показать время последнего успеха; блокировать только конфликтующие действия.
+- **UISTATE-03 — Пусто:** Объяснить полезный результат и предложить первое действие: счёт, чек, план или цель.
+- **UISTATE-04 — Нет совпадений:** Сохранить фильтры, объяснить отсутствие результатов, предложить очистить условия.
+- **UISTATE-05 — Частичные данные:** Назвать отсутствующий источник/период и последствия для суммы; доступные блоки работают; неизвестное обозначить отдельно.
+- **UISTATE-06 — Устаревшие данные:** Показать дату последнего успеха и влияние на решение; дать обновить или перейти к подключению.
+- **UISTATE-07 — Ошибка:** Понятная причина и следующий шаг у проблемного блока; ввод и исправные данные сохранить, диагностику раскрывать отдельно.
+- **UISTATE-08 — Offline:** Показать отсутствие связи; не обещать сохранение. Чувствительные черновики только в памяти текущей вкладки, без новой offline-очереди.
+- **UISTATE-09 — Сохранение:** Немедленно показать прогресс текущего действия и не допускать дублирующую отправку команды.
+- **UISTATE-10 — Исход неизвестен:** Сохранить ID команды/ввод, запросить её результат; не создавать новую финансовую команду вслепую. После перезагрузки сверять серверный список недавних команд.
+- **UISTATE-11 — Конфликт версии:** Показать авторов и различия, сохранить мой ввод; загрузить актуальную версию и дать повторно применить выбранные изменения после проверки.
+- **UISTATE-12 — Недостаточно прав:** Финансовые данные доступны семье; запрещённое изменение объясняет владельца. Сервер отклоняет команду независимо от видимости кнопки.
+- **UISTATE-13 — Сессия истекла:** Закрыть защищённое содержимое; вход для того же участника, безопасный возврат по внутреннему маршруту. Чужой вход не получает прежний черновик.
+- **UISTATE-14 — Ожидание AI:** Отличать очередь, обработку, уточнение и паузу из-за лимита/API; обычный учёт доступен, результат не выдумывать.
+- **UISTATE-16 — Подтверждено:** После подтверждённого сервером результата показать что изменилось, ссылку на объект и доступное исправление; не полагаться на исчезающий toast.
+
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -100,13 +239,16 @@
 ### Проверка результата
 
 ```sh
-make test-go PKG=./internal/ledger/...
-make test-integration AREA=family-allocation
+make check
+make test-integration AREA=all
+make test-family-allocation-race
+make test-integration AREA=privacy
+git diff --check
 ```
 
-Смешанный чек 1000 даёт 400/600 без дублей; перераспределение версионно, дробные доли сохраняют итог; контракт исторического возврата передан task-2.7.
+Смешанный чек 1000 даёт семье 1000, A 400 и B 600; шесть активов и произвольная точность сохраняются. Правила, preview, приоритеты, конфликт, replay, concurrent revision, миграция и права проверяются на PostgreSQL без изменения проводок.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Task-1.6 и task-2.6 включены в базу; команды реализованы. Доказательства и границы: evidence/task-2.8-family-allocation.md. Доказаны backend-части AC-078/079/080/081/086/093; возвратные части AC-065/091 остаются task-2.7. UI, бюджеты, реальный OpenAI, банки и production не подтверждаются.
 
 ### Передача следующему агенту
 
@@ -118,7 +260,7 @@ make test-integration AREA=family-allocation
 
 Allocate household expenses and items to members.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Household transaction and item allocation backend/API, versioned rules and exact member analytics without a duplicate financial effect are implemented. UI, refunds, budgets and real OpenAI remain with their owning tasks.
 
 **Dependencies:** `task-2.6`, `task-1.6`.
 
@@ -126,14 +268,153 @@ Allocate household expenses and items to members.
 
 ### Change and contracts
 
-Separate payer/account owner/actor/beneficiary; item allocations are personal or joint. Precedence: explicit item/purchase allocation, plan-line rule, 50/50; unknown attribution requires clarification. Retain allocation revision, exact total and deterministic rounding. Merchant/category rules apply to new facts and do not rewrite history.
+Ledger stores immutable allocation snapshots by MembershipID independently from payer, owner and actor; allocation/domain selects versioned merchant/category rules. Exact amounts, shares and equal mode use largest remainder with MembershipID tie-break; personal/shared, item override and transaction fallback cover remaining expenses. Unknown purpose remains unallocated and conflicting equal-priority rules require resolution. New rules do not rewrite history, source updates cannot erase a user allocation, and matching retains one household and one member effect.
 
 ### Change boundaries
 
+- `backend/internal/allocation/`
 - `backend/internal/ledger/`
-- `backend/internal/categories/`
-- `backend/internal/household/`
-- `api/openapi.yaml`
+- `backend/internal/storage/`
+- `backend/internal/delivery/allocation/`
+- `backend/internal/delivery/ledger/`
+- `backend/migrations/016_family_allocations.sql`
+- `api/`
+- `backend/test/integration/family-allocation/`
+
+### Screen contract
+
+### SCR-009 — Transactions
+
+`/transactions`
+
+**Question:** Where did money go and is everything recorded?
+
+**Primary answer:** Transaction purpose and a meaningful selected-period total.
+
+**Top-down structure:** Search/month/account/payer/allocation/category/merchant/item/status → totals → date/merchant/amount/share rows.
+
+**Next action:** Open SCR-010; enter FORM-04 or receipt in SCR-024.
+
+**Explanation and details:** Category, merchant and item filters are independent; uncategorized expense remains visible. Items form one payment without a duplicate total. Member amounts and unallocated are a MembershipID view of one household fact; payer, owner and actor are separate. Transfers/exchanges are marked as movements excluded from income/expense; filters never change accounting semantics.
+
+**Permissions:** Both members read/correct facts for any household account; actor from session.
+
+Forms: FORM-04, FORM-05.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-04, UISTATE-14.
+
+### SCR-010 — Transaction details
+
+`/transactions/:id`
+
+**Question:** Is this purchase accounted for correctly?
+
+**Primary answer:** Amount, category, merchant, items, allocation and payer for one transaction.
+
+**Top-down structure:** Accounting outcome → account/date/status → category/merchant → item gross/discount/net → shares → receipt → correct/undo/refund.
+
+**Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
+
+**Explanation and details:** Before/after history exposes actor, decisionId, source and protected fields. Allocation shows personal/shared purpose, exact member amounts, unallocated, applied rule revisions and items. Explicit item value wins over purchase, then merchant/category rule and equal for an explicitly shared expense. A source update cannot erase the user choice; changing an amount-based allocation requires a consistent correction while share-based allocation recalculates. Matching retains one household and member effect carrier; undo checks every participant revision.
+
+**Permissions:** Both members read/correct facts for any household account; actor from session.
+
+Forms: FORM-06, FORM-07, FORM-08, FORM-09, FORM-05.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-14.
+
+### SCR-034 — Categories and rules
+
+`/settings/categories`
+
+**Question:** How do we reduce manual clarifications?
+
+**Primary answer:** Clear categories, merchants and expense-allocation rules.
+
+**Top-down structure:** Categories/subcategories and archive → merchants/confirmed aliases → rules/priority → example preview.
+
+**Next action:** Create/correct FORM-15; inspect affected transactions SCR-009.
+
+**Explanation and details:** Starter labels use stable RU/EN keys and a custom name is not translated. A merchant never becomes a subcategory; archival preserves history. Rules use merchant/category AND, priority and active-member shares; preview explains selected revisions or rule_conflict. A new rule affects only new facts. An AI proposal requires user confirmation; a personal/shared rule never edits a partner personal plan.
+
+**Permissions:** Both members read/correct facts for any household account; actor from session.
+
+Forms: FORM-15.
+
+States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-04.
+
+#### FORM-04 — Income or expense
+
+**Fields:** Type, account, date/time, amount/currency, category/subcategory, merchant, purpose/shares, note/receipt.
+
+**Validation and permissions:** Either member records on any household account; actor comes from session and payer is independent. Amount >0 and asset matches the account. An expense may contain active category/merchant references and typed allocation by current MembershipID; unknown purpose remains unallocated. Income rejects allocation. Confirmed account/amount/date produce posted and one household fact even without classification.
+
+**Outcome:** One transaction, visible allocation and AI status, linked receipt; confirmed outcome and link.
+
+#### FORM-05 — Record transfer or exchange
+
+**Fields:** From/to accounts, dates, both amounts/currencies, fees/fee account, existing movements.
+
+**Validation and permissions:** Either member; distinct household accounts; one outgoing and one incoming side. Principal is excluded from income/expenses; separate fees may use a third asset. Empty existingTransactions creates new movement. A nonempty list supplies all participant IDs/revisions (up to 100); amounts, fees and primary date are checked without creating missing sides. Transfer/exchange/payment links require version checks; ambiguity remains in matching; separate-purchase confirmation releases waiting once.
+
+**Outcome:** Ledger movements linked; no actual transfer or asset purchase.
+
+#### FORM-06 — Correction, matching and undo
+
+**Fields:** Transaction, expectedRevision and reason; complete principal and fees, date, payer, raw merchant/note; category and merchant identity via set|clear, items via replace|clear. Undo uses decisionId and expectedRevisions; compare before/after and source.
+
+**Validation and permissions:** Both members correct household facts. The server retains actor, principal accounts/assets and provenance, validates active categories/merchants and replaces the complete item set atomically. Items and discounts equal principal exactly; top-level category with items is forbidden. Undo preserves later independent fields. Matching and shares remain with their owning tasks.
+
+**Outcome:** New decision and financial revisions with history, or no_change/conflict without effect or lost input. Exclusion does not change bank state; undo recomputes the current effect.
+
+#### FORM-07 — Receipt and item allocation
+
+**Fields:** Photo/PDF, required debit account including cash; items, discounts, categories, personal/shared and percentage or amount shares.
+
+**Validation and permissions:** Either member; file limits follow the contract. Task-2.6 atomically validates items, assets and discounts against one payment, allocates a known receipt-wide discount deterministically and requires clarification for incomplete data. Task-5.3/2.4/2.8 own OCR/PDF, matching and personal/shared shares.
+
+**Outcome:** Created/linked to existing/awaiting clarification/document unsuitable with reason. One confirmed debit.
+
+#### FORM-08 — Purchase refund
+
+**Fields:** Original purchase, returned items/shares/amount, receiving account and actual date.
+
+**Validation and permissions:** Either member; cumulative refund cannot exceed purchase; original historical FX and refunded-part allocation are retained.
+
+**Outcome:** Original purchase month recalculated; cash arrives on actual date; FX separate.
+
+#### FORM-09 — Explicit debt and reimbursement
+
+**Fields:** Debtor/creditor, amount/currency, reason/expense; for settlement an existing household transfer and linked amount.
+
+**Validation and permissions:** Explicit member action only; never infer debt from shares. One transfer cannot settle beyond its amount; debt is not household wealth.
+
+**Outcome:** Outstanding balance updated without another household expense.
+
+#### FORM-15 — Categories and rules
+
+**Fields:** Category/subcategory name, parent and state; merchant name, state and confirmed aliases; merchant/category rule conditions, priority 1–1000, state and exact member shares; preview without persistence.
+
+**Validation and permissions:** Either member manages the household catalog and rules. Conditions within one rule use AND and lower priority wins. Equal-priority identical outcomes are compatible; different outcomes yield rule_conflict. Shares total exactly 100% across active members; expectedRevision, CSRF and the session actor are mandatory. A rule applies only to new facts and never rewrites history.
+
+**Outcome:** A versioned category, merchant or rule is stored; preview exposes applied revisions or a safe unresolved reason. no_change/conflict creates no effect and historical references remain available.
+
+- **UISTATE-01 — Loading:** Structural skeleton and loading label; amounts are never replaced by zero.
+- **UISTATE-02 — Refreshing:** Keep previous data/context and last-success time; block only conflicting actions.
+- **UISTATE-03 — Empty:** Explain the useful outcome and offer a first account, receipt, plan or goal action.
+- **UISTATE-04 — No matches:** Keep filters, explain no results and offer to clear conditions.
+- **UISTATE-05 — Partial data:** Name the missing source/period and its effect on the amount; available sections work and unknowns stay explicit.
+- **UISTATE-06 — Stale data:** Show last-success date and impact on the decision; offer refresh or connection details.
+- **UISTATE-07 — Error:** Plain cause and next step beside the affected section; preserve input/healthy data and expand diagnostics separately.
+- **UISTATE-08 — Offline:** Show missing connectivity and do not promise saved data. Sensitive drafts remain only in current-tab memory, without a new offline queue.
+- **UISTATE-09 — Saving:** Immediately show current-action progress and prevent duplicate command submission.
+- **UISTATE-10 — Unknown outcome:** Keep command ID/input and query its result; never blindly create another financial command. After reload reconcile the server list of recent commands.
+- **UISTATE-11 — Version conflict:** Show authors/differences and keep my input; load current version and allow chosen changes to be reapplied after validation.
+- **UISTATE-12 — Insufficient permission:** Household can read financial data; forbidden edits explain ownership. Server rejects the command regardless of button visibility.
+- **UISTATE-13 — Session expired:** Hide protected contents; require the same member to sign in and return through a safe internal route. Another identity never receives the prior draft.
+- **UISTATE-14 — AI waiting:** Distinguish queued, processing, clarification and budget/API pause; ordinary accounting remains available and results are not invented.
+- **UISTATE-16 — Confirmed:** After server-confirmed outcome show what changed, an object link and available correction; do not rely on a disappearing toast.
+
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -213,13 +494,16 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make test-go PKG=./internal/ledger/...
-make test-integration AREA=family-allocation
+make check
+make test-integration AREA=all
+make test-family-allocation-race
+make test-integration AREA=privacy
+git diff --check
 ```
 
-A mixed 1,000 receipt yields 400/600 without duplicates; reallocation is versioned, fractional shares preserve total and the historical-refund contract is handed to task-2.7.
+A mixed 1,000 receipt yields household 1,000, A 400 and B 600; all six assets and arbitrary precision are retained. Rules, preview, priorities, conflict, replay, concurrent revision, migration and permissions are checked on PostgreSQL without changing postings.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Task-1.6 and task-2.6 are included in the base; commands exist. Evidence and boundaries: evidence/task-2.8-family-allocation.en.md. Backend portions of AC-078/079/080/081/086/093 are proven; refund portions of AC-065/091 remain with task-2.7. UI, budgets, real OpenAI, banks and production are not verified.
 
 ### Handoff to the next agent
 
