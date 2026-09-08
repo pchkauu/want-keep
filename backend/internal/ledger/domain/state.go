@@ -99,6 +99,16 @@ const (
 	UnknownFunds FundingKind = "unknown"
 )
 
+func (f FundingKind) SameBasis(other FundingKind) bool {
+	if f == "" {
+		f = OwnFunds
+	}
+	if other == "" {
+		other = OwnFunds
+	}
+	return f == other
+}
+
 type Treatment string
 
 const (

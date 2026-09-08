@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-D-39 остаётся идентичностью источника. Проверенная структурированная связь с namespace, сетью/движением и точными суммами допускает автоматическое сопоставление; сумма, дата и hash файла дают только кандидата. Поиск ID охватывает сохранённую историю; вероятные совпадения — ±7 календарных дней, полнота явная. Возможный дубль сохраняется со статусом банка, но без дополнительного эффекта до решения. Связь содержит одну исходящую и одну входящую сторону, отдельные комиссии и одного носителя каждого эффекта. Собственные стороны без пары не становятся доходом/расходом. Выбор основной записи для показа не назначает носителя эффекта или приоритет правок. Link/resolve, полевые исправления и undo проверяют все revisions; история, проекции, review/outbox и команда атомарны. CommitPage сохраняет checkpoint с matching_unresolved и отвергает устаревшие jobs.
+D-39 остаётся идентичностью источника. Проверенная структурированная связь с namespace, сетью/движением и точными суммами допускает автоматическое сопоставление; сумма, дата и hash файла дают только кандидата. Поиск ID охватывает сохранённую историю; вероятные совпадения — ±7 календарных дней, полнота явная. Возможный дубль сохраняется со статусом банка, но без дополнительного эффекта до решения. Связь содержит одну исходящую и одну входящую сторону, отдельные комиссии и одного носителя каждого эффекта. Собственные стороны без пары не становятся доходом/расходом. Выбор основной записи для показа не назначает носителя эффекта или приоритет правок. Link/resolve, полевые исправления и undo проверяют все revisions; история, проекции, review/outbox и команда атомарны. CommitPage сохраняет checkpoint с matching_unresolved и отвергает устаревшие jobs. Undo сохраняет основание прежнего случая и полноту кандидатов; производный пересчёт не заменяет происхождение связи. Комиссия до principal сохраняется без повторного расхода.
 
 ### Границы изменений
 
@@ -23,6 +23,7 @@ D-39 остаётся идентичностью источника. Прове�
 - `backend/internal/storage/`
 - `backend/internal/delivery/ledger/`
 - `backend/migrations/010_transaction_matching.sql`
+- `backend/migrations/011_matching_decision_basis.sql`
 - `api/`
 - `backend/test/integration/matching/`
 
@@ -217,7 +218,7 @@ Link evidence of one transaction without merging different purchases.
 
 ### Change and contracts
 
-D-39 remains source identity. Verified structured correspondence with namespace, network/movement and exact amounts permits automatic matching; amount, date and file hash only yield candidates. Identifier search spans retained history; probable matching uses ±7 calendar days with explicit completeness. A possible duplicate retains bank status without an additional effect until resolution. A link has one outgoing and one incoming principal, separate fees and one carrier per effect. A known internal side without its counterpart is not income/expense. Display primary does not select effect ownership or override priority. Link/resolve, field corrections and undo check all revisions; history, projections, review/outbox and command outcome are atomic. CommitPage retains a checkpoint with matching_unresolved and rejects stale jobs.
+D-39 remains source identity. Verified structured correspondence with namespace, network/movement and exact amounts permits automatic matching; amount, date and file hash only yield candidates. Identifier search spans retained history; probable matching uses ±7 calendar days with explicit completeness. A possible duplicate retains bank status without an additional effect until resolution. A link has one outgoing and one incoming principal, separate fees and one carrier per effect. A known internal side without its counterpart is not income/expense. Display primary does not select effect ownership or override priority. Link/resolve, field corrections and undo check all revisions; history, projections, review/outbox and command outcome are atomic. CommitPage retains a checkpoint with matching_unresolved and rejects stale jobs. Undo retains the prior case basis and candidate completeness; derived recalculation does not replace association provenance. Fee-before-principal is retained without a repeated expense.
 
 ### Change boundaries
 
@@ -227,6 +228,7 @@ D-39 remains source identity. Verified structured correspondence with namespace,
 - `backend/internal/storage/`
 - `backend/internal/delivery/ledger/`
 - `backend/migrations/010_transaction_matching.sql`
+- `backend/migrations/011_matching_decision_basis.sql`
 - `api/`
 - `backend/test/integration/matching/`
 

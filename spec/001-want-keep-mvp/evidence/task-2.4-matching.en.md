@@ -1,6 +1,6 @@
 # Task-2.4 — transfer links and one payment
 
-The backend/API implements matching cases, links, effect participation and compound undo. Base: `ff9dcc79eff6c8d35a38aedb39b95532b48672b6`; branch: `feat/task-2.4-transfer-matching`. Task-2.3 is included. Contract version 10 is extended in [contracts.en.md](../contracts.en.md); migration 010 is additive. No dependencies are added.
+The backend/API implements matching cases, links, effect participation and compound undo. Base: `ff9dcc79eff6c8d35a38aedb39b95532b48672b6`; branch: `feat/task-2.4-transfer-matching`. Task-2.3 is included. Contract version 10 is extended in [contracts.en.md](../contracts.en.md); migrations 010 and 011 are additive. No dependencies are added.
 
 Matching owns search/composition, ledger owns monetary effects/decisions, accounts owns projections. Proven correspondence requires complete namespace/ID and compatible monetary sides; amount/date/file hash alone create clarification. A waiting possible duplicate adds no second effect. Original records remain independent. User confirmation, group corrections and undo use all revisions and the existing authenticated command transaction. Bank facts use the same JournalWriter inside CommitPage. Normalized input contains verified structured data only; this task does not implement real parsers, collectors or OpenAI.
 
@@ -28,3 +28,5 @@ SDD remains **Ready for development**. Production, bank IO, Chrome/Arc, recognit
 Review regressions cover per-component carrier/date stability on note edits, date correction and undo, exclusion of a mixed included/excluded group, source conflict projection/review/outbox refresh, recovery of the former amount and coordinated updates of both sides. They also cover rejection of distinct verified payment IDs/blockchain movements and Russian reasons at the 2000-character boundary. These are HTTP and isolated PostgreSQL checks with no external IO.
 
 Additional HTTP/PostgreSQL race regressions cover automatic-link undo after posted/cancelled/reversed, retained postings and holds, restored waiting cases and a separately confirmed transfer followed by its late counterpart. The rejected duplicate persists until explicit undo; source replay adds no effect.
+
+Regressions also cover independent date changes after linking and their later undo, fee-before-principal and replay, a separate fee, restoring two candidates and 100 candidates with incomplete coverage. Migration checks cover pre-funding records, immutable matching decision bases and retention after command cleanup. The derived contribution field cannot become a protected user override.

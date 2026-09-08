@@ -62,6 +62,8 @@ func (r Revision) FieldEqual(other Revision, field Field) bool {
 	case MatchingField:
 		a, b := r.Participation, other.Participation
 		return a.GroupID == b.GroupID && a.Kind == b.Kind && a.State == b.State && slices.Equal(a.Parts, b.Parts)
+	case ContributionField:
+		return slices.Equal(r.Participation.Parts, other.Participation.Parts)
 	case AccountingField:
 		return r.Accounting() == other.Accounting()
 	}

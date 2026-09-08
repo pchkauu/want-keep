@@ -155,7 +155,7 @@ func (a *effectAssignment) observe(r ledger.Revision) error {
 		if len(matches) == 1 {
 			id = matches[0]
 			c := a.components[id]
-			if !c.posting.SameMoney(p) || c.posting.Funding != p.Funding || c.carrier.OperationID == r.OperationID && c.position != i {
+			if !c.posting.SameMoney(p) || !c.posting.Funding.SameBasis(p.Funding) || c.carrier.OperationID == r.OperationID && c.position != i {
 				return ErrConflict
 			}
 			for _, f := range []ledger.Field{ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField} {
@@ -208,7 +208,7 @@ func (a *effectAssignment) validatePrincipal(allowPartial bool) error {
 		}
 		return nil
 	}
-	if len(principal) == 1 && allowPartial {
+	if len(principal) < 2 && allowPartial {
 		a.group.State = WaitingSide
 		return nil
 	}

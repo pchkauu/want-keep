@@ -139,3 +139,52 @@ func TestTruncatedCandidatesStayUnresolved(t *testing.T) {
 		t.Fatal("truncated candidates created second effect")
 	}
 }
+
+func TestUndoRetainsCandidateSelection(t *testing.T) {
+	for _, mode := range []struct {
+		name  string
+		count int
+	}{{"complete", 2}, {"truncated", 101}} {
+		t.Run(mode.name, func(t *testing.T) {
+			f := newFixture(t)
+			account := f.create(money.RUB, "100000")
+			_, err := f.admin.Exec(testContext, `WITH ids AS (SELECT gen_random_uuid() id FROM generate_series(1,$2::int)) INSERT INTO want_keep.operations(household_id,id,revision) SELECT $1,id,1 FROM ids`, f.family.ID, mode.count)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = f.admin.Exec(testContext, `INSERT INTO want_keep.operation_revisions(household_id,operation_id,revision,actor_id,reason,economic_type,state,occurred_at,occurred_ns,cash_date,payer_state,human_override) SELECT $1,id,1,$2,'Distinct retained expense','expense','posted','2026-09-07T12:00:00Z',0,'2026-09-07','unknown',false FROM want_keep.operations WHERE household_id=$1 AND NOT EXISTS(SELECT 1 FROM want_keep.operation_revisions r WHERE r.household_id=$1 AND r.operation_id=operations.id)`, f.family.ID, f.p.UserID())
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = f.admin.Exec(testContext, `INSERT INTO want_keep.postings(household_id,operation_id,revision,position,account_id,amount,asset,role,funding) SELECT $1,operation_id,1,0,$2,-300,'RUB','principal','own' FROM want_keep.operation_revisions r WHERE household_id=$1 AND reason='Distinct retained expense'`, f.family.ID, account)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := f.revision(uuid.NewString(), account, "-300", money.RUB, 1)
+			if _, err = f.write(r, request()); err != nil {
+				t.Fatal(err)
+			}
+			before, found, err := f.store.MatchingForOperation(testContext, f.p, r.OperationID)
+			expectedCount := mode.count
+			if expectedCount > 100 {
+				expectedCount = 100
+			}
+			if err != nil || !found || len(before.Candidates) != expectedCount || before.CandidatesComplete != (mode.count <= 100) {
+				t.Fatal("setup", before, err)
+			}
+			selected := before.Candidates[0].OperationID
+			f.link(matching.Payment, selected, selected, r.OperationID)
+			linked := f.current(r.OperationID)
+			c := f.client(f.p)
+			c.result("/transactions/"+r.OperationID+"/undo", map[string]any{"decisionId": linked.DecisionID, "expectedRevisions": f.versions(selected, r.OperationID), "reason": "Undo candidate selection"})
+			after, found, err := f.store.MatchingForOperation(testContext, f.p, r.OperationID)
+			if err != nil || !found || after.State != matching.Clarification {
+				t.Fatal("undo", after, err)
+			}
+			t.Logf("before candidates=%d complete=%v; after candidates=%d complete=%v", len(before.Candidates), before.CandidatesComplete, len(after.Candidates), after.CandidatesComplete)
+			if len(after.Candidates) != len(before.Candidates) || after.CandidatesComplete != before.CandidatesComplete {
+				t.Fatalf("undo discarded original candidates/completeness")
+			}
+		})
+	}
+}

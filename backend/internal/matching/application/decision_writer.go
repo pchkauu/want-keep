@@ -97,12 +97,16 @@ func (s *Service) AppendDecision(ctx context.Context, p household.Principal, d l
 				index := slices.IndexFunc(next, func(v ledger.Revision) bool { return v.OperationID == r.OperationID })
 				if index >= 0 {
 					if !next[index].FieldEqual(r, ledger.MatchingField) {
+						field := ledger.ContributionField
+						if !next[index].Participation.SameCarriers(r.Participation) {
+							field = ledger.MatchingField
+						}
 						for i, e := range d.Entries {
-							if e.OperationID == r.OperationID && !slices.Contains(e.Fields, ledger.MatchingField) {
-								d.Entries[i].Fields = append(d.Entries[i].Fields, ledger.MatchingField)
+							if e.OperationID == r.OperationID && !slices.Contains(e.Fields, field) {
+								d.Entries[i].Fields = append(d.Entries[i].Fields, field)
 							}
 						}
-						r.FieldVersions[ledger.MatchingField] = r.Revision
+						r.FieldVersions[field] = r.Revision
 					}
 					next[index] = r
 				} else {
@@ -111,8 +115,12 @@ func (s *Service) AppendDecision(ctx context.Context, p household.Principal, d l
 						return err
 					}
 					if !r.FieldEqual(old, ledger.MatchingField) {
-						d.Entries = append(d.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: []ledger.Field{ledger.MatchingField}})
-						r = r.WithDecision(d, []ledger.Field{ledger.MatchingField})
+						field := ledger.ContributionField
+						if !old.Participation.SameCarriers(r.Participation) {
+							field = ledger.MatchingField
+						}
+						d.Entries = append(d.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: []ledger.Field{field}})
+						r = r.WithDecision(d, []ledger.Field{field})
 						next = append(next, r)
 					}
 				}

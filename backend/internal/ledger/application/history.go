@@ -85,7 +85,7 @@ func (q *Queries) undoAvailability(ctx context.Context, p household.Principal, d
 		}
 		affected = append(affected, ExpectedRevision{e.OperationID, r.Revision})
 		for _, f := range e.Fields {
-			if r.FieldVersions[f] != e.After {
+			if f != ledger.ContributionField && r.FieldVersions[f] != e.After {
 				return "superseded", affected, nil
 			}
 		}

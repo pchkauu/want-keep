@@ -56,12 +56,14 @@ func (s *Service) Link(ctx context.Context, p household.Principal, in LinkInput)
 		g = current
 	}
 	ids := []string{}
+	priorGroups := []matching.Group{}
 	for id := range groups {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
 	for _, id := range ids {
 		candidate := groups[id]
+		priorGroups = append(priorGroups, candidate)
 		if candidate.State == matching.Separate || candidate.State == matching.Unlinked {
 			return result, matching.ErrConflict
 		}
@@ -121,7 +123,7 @@ func (s *Service) Link(ctx context.Context, p household.Principal, in LinkInput)
 		}
 	}
 
-	return s.link(ctx, p, g, facts, in.Reason, false, nil)
+	return s.link(ctx, p, g, facts, in.Reason, false, nil, priorGroups)
 }
 
 func (s *Service) expected(ctx context.Context, p household.Principal, members []matching.Member) ([]ledger.Revision, error) {
@@ -149,7 +151,7 @@ func (s *Service) expected(ctx context.Context, p household.Principal, members [
 	return facts, nil
 }
 
-func (s *Service) link(ctx context.Context, p household.Principal, g matching.Group, facts []ledger.Revision, reason string, automatic bool, evidence []ledger.Evidence) (command.Result, error) {
+func (s *Service) link(ctx context.Context, p household.Principal, g matching.Group, facts []ledger.Revision, reason string, automatic bool, evidence []ledger.Evidence, priorGroups []matching.Group) (command.Result, error) {
 	assigned, revisions, err := g.Assign(facts, automatic)
 	if err != nil {
 		return command.Result{}, err
@@ -186,6 +188,9 @@ func (s *Service) link(ctx context.Context, p household.Principal, g matching.Gr
 	if err = s.repository.ReleaseMatchingCarriers(ctx, g.ID); err != nil {
 		return command.Result{}, err
 	}
+	if err = s.repository.SaveMatchingDecisionGroups(ctx, d.ID, priorGroups); err != nil {
+		return command.Result{}, err
+	}
 	if err = s.writer.AppendDecision(ctx, p, d, next); err != nil {
 		return command.Result{}, err
 	}
@@ -213,6 +218,7 @@ func (s *Service) Separate(ctx context.Context, p household.Principal, id string
 	if err != nil {
 		return command.Result{}, err
 	}
+	priorGroups := []matching.Group{g}
 	g, err = g.Next(p.UserID(), s.now(), reason)
 	if err != nil {
 		return command.Result{}, err
@@ -228,7 +234,7 @@ func (s *Service) Separate(ctx context.Context, p household.Principal, id string
 	if err = s.repository.SaveMatchingGroup(ctx, g, g.Revision-1); err != nil {
 		return command.Result{}, err
 	}
-	if r.Correspondence != nil && r.Correspondence.Kind != "payment" {
+	if r.Correspondence != nil && r.Correspondence.Kind != "payment" && !r.FeeOnly() {
 		// Rejecting a duplicate does not supply the missing internal side. Keep
 		// that movement separate from the retained rejection and its candidates.
 		movement := s.newGroup(p, r, matching.Kind(r.Correspondence.Kind), matching.WaitingSide, "confirmed_separate_internal_movement")
@@ -244,6 +250,9 @@ func (s *Service) Separate(ctx context.Context, p household.Principal, id string
 		}
 	}
 	if err = s.writer.AppendDecision(ctx, p, d, []ledger.Revision{r}); err != nil {
+		return command.Result{}, err
+	}
+	if err = s.repository.SaveMatchingDecisionGroups(ctx, d.ID, priorGroups); err != nil {
 		return command.Result{}, err
 	}
 	return command.Result{ResourceType: "transaction", ResourceID: r.OperationID, Revision: r.Revision}, nil

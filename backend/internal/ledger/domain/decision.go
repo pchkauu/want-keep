@@ -16,19 +16,20 @@ var ErrNoChange = errors.New("correction has no effect")
 type Field string
 
 const (
-	PrincipalField  Field = "principal"
-	FeesField       Field = "fees"
-	DateField       Field = "occurred_at"
-	PayerField      Field = "payer"
-	MerchantField   Field = "merchant"
-	NoteField       Field = "note"
-	AccountingField Field = "accounting"
-	LegacyField     Field = "legacy_all"
-	MatchingField   Field = "matching"
+	PrincipalField    Field = "principal"
+	FeesField         Field = "fees"
+	DateField         Field = "occurred_at"
+	PayerField        Field = "payer"
+	MerchantField     Field = "merchant"
+	NoteField         Field = "note"
+	AccountingField   Field = "accounting"
+	LegacyField       Field = "legacy_all"
+	MatchingField     Field = "matching"
+	ContributionField Field = "contribution"
 )
 
 func (f Field) Valid() bool {
-	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, LegacyField, MatchingField}, f)
+	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, LegacyField, MatchingField, ContributionField}, f)
 }
 
 type AccountingState string
@@ -148,7 +149,7 @@ func (r Revision) WithDecision(d Decision, fields []Field) Revision {
 	}
 	for _, f := range fields {
 		r.FieldVersions[f] = r.Revision
-		if d.Kind != "automated" && d.Kind != "undo" {
+		if d.Kind != "automated" && d.Kind != "undo" && f != ContributionField {
 			r.Protections[f] = Protection{d.ID, r.Revision}
 		}
 	}
@@ -162,6 +163,11 @@ func (r Revision) UndoFields(entry DecisionEntry, before Revision, source *Revis
 	}
 	next := r.Clone()
 	for _, f := range entry.Fields {
+		// Derived contribution state/time is rebuilt by its owner from current
+		// facts. It cannot supersede an independent association or date decision.
+		if f == ContributionField {
+			continue
+		}
 		if r.FieldVersions[f] != entry.After {
 			return r, ErrDecisionConflict
 		}

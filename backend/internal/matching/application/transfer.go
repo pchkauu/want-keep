@@ -66,7 +66,7 @@ func (s *Service) LinkTransfer(ctx context.Context, p household.Principal, in jo
 			count++
 			found := false
 			for j, e := range expected {
-				if !seen[j] && p.AccountID == e.AccountID && p.Role == e.Role && p.SameMoney(e) && (e.Funding == "" || p.Funding == e.Funding) {
+				if !seen[j] && p.AccountID == e.AccountID && p.Role == e.Role && p.SameMoney(e) && (e.Funding == "" || p.Funding.SameBasis(e.Funding)) {
 					seen[j] = true
 					found = true
 					break

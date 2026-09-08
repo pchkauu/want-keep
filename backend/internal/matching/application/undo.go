@@ -11,6 +11,14 @@ import (
 )
 
 func (s *Service) undoMatching(ctx context.Context, p household.Principal, d ledger.Decision, next []ledger.Revision) error {
+	prior, err := s.repository.MatchingDecisionGroups(ctx, p, d.UndoOf)
+	if err != nil {
+		return err
+	}
+	basis := map[string]matching.Group{}
+	for _, g := range prior {
+		basis[g.ID] = g
+	}
 	groups := map[string]matching.Group{}
 	restored := map[string][]ledger.Revision{}
 	for _, r := range next {
@@ -22,6 +30,9 @@ func (s *Service) undoMatching(ctx context.Context, p household.Principal, d led
 			groups[g.ID] = g
 		}
 		if id := r.Participation.GroupID; id != "" {
+			if _, known := basis[id]; !known {
+				return matching.ErrConflict
+			}
 			if _, found := groups[id]; !found {
 				g, err = s.repository.MatchingGroup(ctx, p, id)
 				if err != nil {
@@ -93,6 +104,9 @@ func (s *Service) undoMatching(ctx context.Context, p household.Principal, d led
 			}
 		}
 		groups[g.ID], restored[g.ID] = g, waiting
+		if original, ok := basis[id]; ok {
+			basis[g.ID] = original
+		}
 		ids = append(ids, g.ID)
 	}
 	for _, id := range ids {
@@ -101,6 +115,11 @@ func (s *Service) undoMatching(ctx context.Context, p household.Principal, d led
 			continue
 		}
 		g := groups[id]
+		if original, ok := basis[id]; ok {
+			g.Candidates = slices.Clone(original.Candidates)
+			g.CandidatesComplete = original.CandidatesComplete
+			g.Kind = original.Kind
+		}
 		var err error
 		if facts[0].Participation.State == "waiting" {
 			g.State = matching.Clarification
@@ -132,6 +151,10 @@ func (s *Service) undoMatching(ctx context.Context, p household.Principal, d led
 				}
 				c.Revision = current.Revision
 				g.Candidates = append(g.Candidates, c)
+			}
+			if len(g.Candidates) > 100 {
+				g.Candidates = g.Candidates[:100]
+				g.CandidatesComplete = false
 			}
 		} else {
 			if !slices.ContainsFunc(facts, func(v ledger.Revision) bool { return v.OperationID == g.PrimaryID }) {

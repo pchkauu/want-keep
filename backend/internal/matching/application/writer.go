@@ -214,7 +214,7 @@ func (s *Service) acceptProven(ctx context.Context, p household.Principal, r led
 	if err = s.writer.Append(ctx, p, r, 0); err != nil {
 		return err
 	}
-	_, err = s.link(ctx, p, proposal, facts, "proven_correspondence", true, evidence)
+	_, err = s.link(ctx, p, proposal, facts, "proven_correspondence", true, evidence, []matching.Group{g})
 	return err
 }
 

@@ -8,6 +8,18 @@ type Hold struct {
 	Funding   FundingKind
 }
 
+func (r Revision) FeeOnly() bool {
+	if len(r.Postings) == 0 {
+		return false
+	}
+	for _, p := range r.Postings {
+		if p.Role != Fee || !p.MovesMoney() {
+			return false
+		}
+	}
+	return true
+}
+
 func (r Revision) Holds() ([]Hold, error) {
 	if err := r.Validate(); err != nil {
 		return nil, err

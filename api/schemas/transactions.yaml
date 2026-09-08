@@ -459,7 +459,7 @@ DecisionRevision:
   required: [transactionId, expectedRevision]
 LedgerField:
   type: string
-  enum: [principal, fees, occurred_at, payer, merchant, note, accounting, legacy_all, matching]
+  enum: [principal, fees, occurred_at, payer, merchant, note, accounting, legacy_all, matching, contribution]
 FieldProtection:
   type: object
   additionalProperties: false

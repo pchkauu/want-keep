@@ -2487,7 +2487,8 @@ export interface components {
       | "note"
       | "accounting"
       | "legacy_all"
-      | "matching";
+      | "matching"
+      | "contribution";
     /** @enum {string} */
     Locale: "ru" | "en";
     LoginOptions: {

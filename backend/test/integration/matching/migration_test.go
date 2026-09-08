@@ -55,7 +55,7 @@ func TestMigrationDoesNotInventMatchingAndProtectsHistory(t *testing.T) {
 	if f.count("matching_cases") != 0 {
 		t.Fatal("migration invented matching")
 	}
-	for _, table := range []string{"matching_revisions", "matching_members", "matching_candidates", "ledger_participations", "ledger_contributions", "ledger_correspondences", "ledger_fee_ids"} {
+	for _, table := range []string{"matching_decision_groups", "matching_revisions", "matching_members", "matching_candidates", "ledger_participations", "ledger_contributions", "ledger_correspondences", "ledger_fee_ids"} {
 		var allowed bool
 		if err = f.admin.QueryRow(testContext, `SELECT has_table_privilege('want_keep_app',$1,'UPDATE') OR has_table_privilege('want_keep_app',$1,'DELETE')`, "want_keep."+table).Scan(&allowed); err != nil || allowed {
 			t.Fatal("mutable history", table, err)
@@ -74,6 +74,10 @@ func TestMatchingHistorySurvivesCommandRetention(t *testing.T) {
 	}
 	f.link(matching.Payment, a, a, b)
 	before := f.count("matching_revisions")
+	basis := f.count("matching_decision_groups")
+	if basis == 0 {
+		t.Fatal("missing immutable decision basis")
+	}
 	u, err := url.Parse(f.dsn)
 	if err != nil {
 		t.Fatal(err)
@@ -91,7 +95,7 @@ func TestMatchingHistorySurvivesCommandRetention(t *testing.T) {
 	if _, err = m.CleanupCommandTombstones(testContext, future, 1000); err != nil {
 		t.Fatal(err)
 	}
-	if f.count("matching_revisions") != before || f.count("command_details") != 0 {
+	if f.count("matching_revisions") != before || f.count("matching_decision_groups") != basis || f.count("command_details") != 0 {
 		t.Fatal("cleanup removed matching history")
 	}
 	g, found, err := f.store.MatchingForOperation(testContext, f.p, a)
@@ -102,4 +106,45 @@ func TestMatchingHistorySurvivesCommandRetention(t *testing.T) {
 		t.Fatal("immutable matching history rewritten")
 	}
 	f.balance(account, "owned", "4700")
+}
+
+func TestMatchingRetainedPreFundingExpense(t *testing.T) {
+	files := fstest.MapFS{}
+	names, err := fs.Glob(migrations.Files, "*.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		if name >= "008_" {
+			continue
+		}
+		data, err := fs.ReadFile(migrations.Files, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[name] = &fstest.MapFile{Data: data}
+	}
+	f := newFixtureUsingMigrations(t, files)
+	account := f.account(money.RUB, "5000")
+	legacy := uuid.NewString()
+	if _, err = f.admin.Exec(testContext, `INSERT INTO want_keep.operations(household_id,id,revision) VALUES($1,$2,1)`, f.family.ID, legacy); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = f.admin.Exec(testContext, `INSERT INTO want_keep.operation_revisions(household_id,operation_id,revision,actor_id,reason,economic_type,state,occurred_at,occurred_ns,cash_date,payer_state,human_override) VALUES($1,$2,1,$3,'Retained payment','expense','posted','2026-09-07T12:00:00Z',0,'2026-09-07','unknown',false)`, f.family.ID, legacy, f.p.UserID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = f.admin.Exec(testContext, `INSERT INTO want_keep.postings(household_id,operation_id,revision,position,account_id,amount,asset,role) VALUES($1,$2,1,0,$3,-300,'RUB','principal')`, f.family.ID, legacy, account); err != nil {
+		t.Fatal(err)
+	}
+	if err = storage.Migrate(testContext, f.admin, migrations.Files); err != nil {
+		t.Fatal(err)
+	}
+	incoming := f.revision(uuid.NewString(), account, "-300", money.RUB, 1)
+	if _, err = f.write(incoming, request()); err != nil {
+		t.Fatal(err)
+	}
+	old, newer := f.current(legacy), f.current(incoming.OperationID)
+	t.Logf("retained cash funding=%q; incoming cash funding=%q", old.Postings[0].Funding, newer.Postings[0].Funding)
+	c := f.client(f.p)
+	c.result("/transactions/"+legacy+"/links", map[string]any{"kind": "receipt_match", "expectedRevisions": f.versions(legacy, incoming.OperationID), "reason": "Same retained payment"})
 }

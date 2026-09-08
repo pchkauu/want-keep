@@ -22,6 +22,8 @@ type Repository interface {
 	MatchingRejected(context.Context, household.Principal, []string) (bool, error)
 	MatchingForOperation(context.Context, household.Principal, string) (matching.Group, bool, error)
 	SaveMatchingGroup(context.Context, matching.Group, uint64) error
+	SaveMatchingDecisionGroups(context.Context, string, []matching.Group) error
+	MatchingDecisionGroups(context.Context, household.Principal, string) ([]matching.Group, error)
 	MatchingReferences(context.Context, household.Principal, ledger.Revision, bool, int) ([]ledger.Revision, bool, error)
 	MatchingPage(context.Context, household.Principal, matching.State, Cursor, int) ([]matching.Group, *Cursor, error)
 	ReleaseMatchingCarriers(context.Context, string) error

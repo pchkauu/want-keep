@@ -61,7 +61,7 @@ func (r Revision) Validate() error {
 		return ErrInvalidRevision
 	}
 	for f, p := range r.Protections {
-		if !f.Valid() || p.Revision < 1 || p.Revision > r.Revision {
+		if !f.Valid() || f == ContributionField || p.Revision < 1 || p.Revision > r.Revision {
 			return ErrInvalidRevision
 		}
 	}

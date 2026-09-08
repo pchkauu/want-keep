@@ -12,6 +12,10 @@ import (
 )
 
 func (s *Store) MatchingGroup(ctx context.Context, p household.Principal, id string) (matching.Group, error) {
+	return s.matchingGroupRevision(ctx, p, id, 0)
+}
+
+func (s *Store) matchingGroupRevision(ctx context.Context, p household.Principal, id string, revision uint64) (matching.Group, error) {
 	q, err := s.reader(ctx, p)
 	if err != nil {
 		return matching.Group{}, err
@@ -19,7 +23,7 @@ func (s *Store) MatchingGroup(ctx context.Context, p household.Principal, id str
 	g := matching.Group{ID: id, Members: []matching.Member{}, Candidates: []matching.Candidate{}}
 	var at time.Time
 	var ns int16
-	err = q.QueryRow(ctx, `SELECT r.revision,r.primary_id,r.kind,r.state,r.actor_id,r.at,r.at_ns,r.reason,COALESCE(r.decision_id::text,''),r.candidates_complete FROM want_keep.matching_cases c JOIN want_keep.matching_revisions r ON (r.household_id,r.id,r.revision)=(c.household_id,c.id,c.revision) WHERE c.household_id=$1 AND c.id=$2`, p.HouseholdID(), id).Scan(&g.Revision, &g.PrimaryID, &g.Kind, &g.State, &g.ActorID, &at, &ns, &g.Reason, &g.DecisionID, &g.CandidatesComplete)
+	err = q.QueryRow(ctx, `SELECT r.revision,r.primary_id,r.kind,r.state,r.actor_id,r.at,r.at_ns,r.reason,COALESCE(r.decision_id::text,''),r.candidates_complete FROM want_keep.matching_cases c JOIN want_keep.matching_revisions r ON (r.household_id,r.id)=(c.household_id,c.id) AND r.revision=CASE WHEN $3::bigint=0 THEN c.revision ELSE $3 END WHERE c.household_id=$1 AND c.id=$2`, p.HouseholdID(), id, revision).Scan(&g.Revision, &g.PrimaryID, &g.Kind, &g.State, &g.ActorID, &at, &ns, &g.Reason, &g.DecisionID, &g.CandidatesComplete)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return g, matching.ErrNotFound
 	}
