@@ -102,7 +102,14 @@ func (s *Service) Resolve(ctx context.Context, principal household.Principal, me
 		return ledger.AllocationInput{}, false, err
 	}
 	if resolution.State != "resolved" {
-		return ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: resolution.Reason}, false, nil
+		input := ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: resolution.Reason}
+		if resolution.Reason != "rule_conflict" {
+			return input, false, nil
+		}
+		for _, rule := range resolution.Rules {
+			input.RuleRefs = append(input.RuleRefs, ledger.AllocationRuleRef{ID: rule.ID, Revision: rule.Revision})
+		}
+		return input, true, nil
 	}
 	input := ledger.AllocationInput{Mode: ledger.AllocationByShares, Purpose: ledger.AllocationShared, Origin: ledger.AllocationRule, Reason: "allocation_rule"}
 	if len(resolution.Shares) == 1 {

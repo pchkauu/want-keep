@@ -66,6 +66,11 @@ func TestFamilyAllocationHTTPRulesAndExactAssets(t *testing.T) {
 	if preview.State != "unresolved" || preview.Reason != "rule_conflict" || len(preview.Rules) != 2 {
 		t.Fatalf("tie conflict: %+v", preview)
 	}
+	conflicted := createExpense(t, first, accountID, money.RUB, "100", merchant.Result.Id, unresolved())
+	conflictedTransaction := readTransaction(t, second, conflicted.Result.Id)
+	if conflictedTransaction.Allocation.State != "unresolved" || conflictedTransaction.Allocation.Reason != "rule_conflict" || len(conflictedTransaction.Allocation.Rules) != 2 {
+		t.Fatalf("persisted rule conflict: %+v", conflictedTransaction.Allocation)
+	}
 	page := decode[generated.AllocationRulePage](t, first.call(http.MethodGet, "/allocation-rules?limit=1", "", nil, http.StatusOK))
 	if len(page.Items) != 1 || page.NextCursor == nil {
 		t.Fatalf("rule page: %+v", page)
@@ -104,6 +109,27 @@ func TestNewImportedFactUsesConfirmedMerchantAliasRule(t *testing.T) {
 	}
 	if storedMemberTotal(stored.Allocation, fixture.members[0].ID, money.RUB) != "60" || storedMemberTotal(stored.Allocation, fixture.members[1].ID, money.RUB) != "40" {
 		t.Fatalf("source allocation members = %+v", stored.Allocation.Members)
+	}
+
+	createRule(t, first, merchant.Result.Id, 20, "40", "60")
+	conflictedRevision := revision.Clone()
+	conflictedRevision.OperationID = uuid.NewString()
+	conflictedInput := input
+	conflictedInput.Key.RecordID = uuid.NewString()
+	conflictedInput.Operation = &conflictedRevision
+	conflictedIssued := fixture.issuedImport(gate, connectionID)
+	conflictedInput.JobID = conflictedIssued.ID
+	conflictedInput.PayloadHash = strings.Repeat("b", 64)
+	applied, err = gate.CommitPage(testContext, fixture.p, conflictedIssued, admission.Page{EvidenceRef: conflictedInput.EvidenceRef, Coverage: "complete", Complete: true}, func(ctx context.Context) error {
+		_, applyErr := sources.Apply(ctx, fixture.p, conflictedInput)
+		return applyErr
+	})
+	if err != nil || !applied {
+		t.Fatal(err)
+	}
+	stored, found, err = fixture.store.CurrentLedgerRevision(testContext, fixture.p, conflictedRevision.OperationID)
+	if err != nil || !found || stored.Allocation.State != ledger.AllocationUnresolved || stored.Allocation.Reason != "rule_conflict" || len(stored.Allocation.RuleRefs) != 2 {
+		t.Fatalf("source rule conflict: found=%v allocation=%+v err=%v", found, stored.Allocation, err)
 	}
 }
 

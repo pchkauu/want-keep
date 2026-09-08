@@ -211,6 +211,70 @@ func TestCompositeShareAllocationRefreshesAndAmountBasisRejectsChanges(t *testin
 	}
 }
 
+func TestCompositeAmountFallbackRefreshesOnlyExplicitItemBases(t *testing.T) {
+	paid := mustAllocationMoney(t, "100", money.RUB)
+	revision := expenseRevision(paid)
+	revision.ReceiptItems = []ReceiptItem{
+		{ID: "explicit", Name: "Explicit", Quantity: "1", Gross: mustAllocationMoney(t, "40", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)},
+		{ID: "fallback-a", Name: "Fallback A", Quantity: "1", Gross: mustAllocationMoney(t, "20", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)},
+		{ID: "fallback-b", Name: "Fallback B", Quantity: "1", Gross: mustAllocationMoney(t, "40", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)},
+	}
+	members := []household.MembershipID{"member-a", "member-b"}
+	fallback := AllocationInput{Mode: AllocationByAmounts, Purpose: AllocationShared, Members: []AllocationMemberInput{
+		{MemberID: members[0], Amount: allocationMoneyPtr(t, "30", money.RUB)},
+		{MemberID: members[1], Amount: allocationMoneyPtr(t, "30", money.RUB)},
+	}}
+	override := AllocationInput{Mode: AllocationByAmounts, Purpose: AllocationShared, Members: []AllocationMemberInput{
+		{MemberID: members[0], Amount: allocationMoneyPtr(t, "10", money.RUB)},
+		{MemberID: members[1], Amount: allocationMoneyPtr(t, "30", money.RUB)},
+	}}
+	allocated, err := revision.WithAllocation(fallback, []ItemAllocationInput{{ItemID: "explicit", Allocation: override}}, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zero := mustAllocationMoney(t, "0", money.RUB)
+	items := ReceiptItemsCorrection{Items: []ReceiptItemInput{
+		{ID: "explicit", Name: "Explicit", Quantity: "1", Gross: mustAllocationMoney(t, "40", money.RUB)},
+		{ID: "fallback-a", Name: "Fallback A changed", Quantity: "1", Gross: mustAllocationMoney(t, "30", money.RUB)},
+		{ID: "fallback-b", Name: "Fallback B changed", Quantity: "1", Gross: mustAllocationMoney(t, "30", money.RUB)},
+	}, TotalDiscount: zero}
+	corrected, _, err := allocated.Correct(Correction{ReceiptItems: &items})
+	if err != nil || corrected.Validate() != nil {
+		t.Fatalf("refreshed composite amount allocation = %+v, err=%v", corrected.Allocation, err)
+	}
+	if allocationMemberTotal(corrected.Allocation, members[0], money.RUB) != "40" || allocationMemberTotal(corrected.Allocation, members[1], money.RUB) != "60" {
+		t.Fatalf("refreshed member totals = %+v", corrected.Allocation.Members)
+	}
+	if corrected.ReceiptItems[0].Allocation.Origin != AllocationExplicitItem || corrected.ReceiptItems[1].Allocation.Origin == AllocationExplicitItem || corrected.ReceiptItems[2].Allocation.Origin == AllocationExplicitItem {
+		t.Fatalf("item origins = %+v", corrected.ReceiptItems)
+	}
+}
+
+func TestMultiAssetAmountAllocationRefreshUsesUniqueMembers(t *testing.T) {
+	revision := expenseRevision(mustAllocationMoney(t, "100", money.RUB))
+	revision.ReceiptItems = []ReceiptItem{{ID: "item", Name: "Original", Quantity: "1", Gross: mustAllocationMoney(t, "100", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)}}
+	revision.Postings = append(revision.Postings, Posting{AccountID: "eth", Money: mustAllocationMoney(t, "-0.003", money.ETH), Role: Fee, Funding: OwnFunds, Treatment: Movement})
+	members := []household.MembershipID{"member-a", "member-b"}
+	input := AllocationInput{Mode: AllocationByAmounts, Purpose: AllocationShared, Members: []AllocationMemberInput{
+		{MemberID: members[0], Amount: allocationMoneyPtr(t, "60", money.RUB)},
+		{MemberID: members[1], Amount: allocationMoneyPtr(t, "40", money.RUB)},
+		{MemberID: members[0], Amount: allocationMoneyPtr(t, "0.002", money.ETH)},
+		{MemberID: members[1], Amount: allocationMoneyPtr(t, "0.001", money.ETH)},
+	}}
+	allocated, err := revision.WithAllocation(input, nil, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := ReceiptItemsCorrection{Items: []ReceiptItemInput{{ID: "item", Name: "Renamed", Quantity: "1", Gross: mustAllocationMoney(t, "100", money.RUB)}}, TotalDiscount: mustAllocationMoney(t, "0", money.RUB)}
+	corrected, _, err := allocated.Correct(Correction{ReceiptItems: &items})
+	if err != nil || corrected.Validate() != nil {
+		t.Fatalf("multi-asset refresh = %+v, err=%v", corrected.Allocation, err)
+	}
+	if allocationMemberTotal(corrected.Allocation, members[0], money.RUB) != "60" || allocationMemberTotal(corrected.Allocation, members[0], money.ETH) != "0.002" {
+		t.Fatalf("multi-asset member totals = %+v", corrected.Allocation.Members)
+	}
+}
+
 func TestAllocationInputOrderIsSemanticNoChange(t *testing.T) {
 	revision := expenseRevision(mustAllocationMoney(t, "100", money.RUB))
 	members := []household.MembershipID{"member-a", "member-b"}

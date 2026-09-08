@@ -160,9 +160,14 @@ func allocationInput(snapshot AllocationSnapshot) AllocationInput {
 }
 
 func allocationMembers(snapshot AllocationSnapshot) []household.MembershipID {
-	result := make([]household.MembershipID, 0, len(snapshot.Inputs))
+	unique := make(map[household.MembershipID]struct{}, len(snapshot.Inputs))
 	for _, member := range snapshot.Inputs {
-		result = append(result, member.MemberID)
+		unique[member.MemberID] = struct{}{}
 	}
+	result := make([]household.MembershipID, 0, len(unique))
+	for memberID := range unique {
+		result = append(result, memberID)
+	}
+	slices.Sort(result)
 	return result
 }

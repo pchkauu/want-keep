@@ -144,9 +144,12 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 					return result, fmt.Errorf("resolve source allocation: %w", resolveErr)
 				}
 				if matched {
-					members, membersErr := s.allocations.ActiveMemberIDs(ctx, p)
-					if membersErr != nil {
-						return result, fmt.Errorf("load source allocation members: %w", membersErr)
+					var members []household.MembershipID
+					if allocation.Mode != ledger.AllocationUnknown {
+						members, resolveErr = s.allocations.ActiveMemberIDs(ctx, p)
+						if resolveErr != nil {
+							return result, fmt.Errorf("load source allocation members: %w", resolveErr)
+						}
 					}
 					raw, resolveErr = raw.WithAllocation(allocation, nil, members)
 					if resolveErr != nil {

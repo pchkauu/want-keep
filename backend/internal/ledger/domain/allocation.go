@@ -494,9 +494,8 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 	return next, nil
 }
 
-// RefreshAllocation rebuilds a non-composite snapshot after its financial
-// components changed. Composite item overrides require an explicit replacement
-// because their transaction fallback cannot be inferred from aggregate totals.
+// RefreshAllocation rebuilds a snapshot from its persisted purchase fallback
+// and explicit item-level bases after its financial components changed.
 func (r Revision) RefreshAllocation() (Revision, error) {
 	components, _, err := r.allocationComponents()
 	if err != nil {
@@ -518,7 +517,7 @@ func (r Revision) RefreshAllocation() (Revision, error) {
 			members[member.MemberID] = true
 		}
 		for _, item := range r.ReceiptItems {
-			if item.Allocation.State == "" || item.Allocation.State == AllocationNotApplicable {
+			if item.Allocation.State == "" || item.Allocation.State == AllocationNotApplicable || item.Allocation.Origin != AllocationExplicitItem {
 				continue
 			}
 			basis := allocationInput(item.Allocation)
@@ -725,7 +724,7 @@ func allocateComponent(total money.Money, input AllocationInput, active map[hous
 		if strings.TrimSpace(input.Reason) == "" {
 			input.Reason = "allocation_unresolved"
 		}
-		return AllocationSnapshot{State: AllocationUnresolved, Mode: AllocationUnknown, Origin: AllocationUnknownOrigin, Reason: input.Reason, Unallocated: []money.Money{total}}, nil
+		return AllocationSnapshot{State: AllocationUnresolved, Mode: AllocationUnknown, Origin: AllocationUnknownOrigin, Reason: input.Reason, Unallocated: []money.Money{total}, RuleRefs: slices.Clone(input.RuleRefs)}, nil
 	}
 	if input.Origin == "" {
 		input.Origin = AllocationExplicitPurchase
