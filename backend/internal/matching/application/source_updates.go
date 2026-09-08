@@ -93,10 +93,15 @@ func (s *Service) saveSourceUpdate(ctx context.Context, p household.Principal, g
 			if r.FieldVersions == nil {
 				r.FieldVersions = map[ledger.Field]uint64{}
 			}
-			for _, f := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.MatchingField} {
-				if !old.FieldEqual(r, f) || material && f == ledger.MatchingField {
+			for _, f := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField} {
+				if !old.FieldEqual(r, f) {
 					r.FieldVersions[f] = r.Revision
 				}
+			}
+			// Bank lifecycle/time refreshes the contribution without replacing the
+			// association decision. Real composition changes and conflicts still do.
+			if material || !old.Participation.SameCarriers(r.Participation) {
+				r.FieldVersions[ledger.MatchingField] = r.Revision
 			}
 			changes = append(changes, r)
 		}

@@ -228,6 +228,21 @@ func (s *Service) Separate(ctx context.Context, p household.Principal, id string
 	if err = s.repository.SaveMatchingGroup(ctx, g, g.Revision-1); err != nil {
 		return command.Result{}, err
 	}
+	if r.Correspondence != nil && r.Correspondence.Kind != "payment" {
+		// Rejecting a duplicate does not supply the missing internal side. Keep
+		// that movement separate from the retained rejection and its candidates.
+		movement := s.newGroup(p, r, matching.Kind(r.Correspondence.Kind), matching.WaitingSide, "confirmed_separate_internal_movement")
+		var assigned []ledger.Revision
+		movement, assigned, err = movement.Assign([]ledger.Revision{r}, true)
+		if err != nil {
+			return command.Result{}, err
+		}
+		movement.DecisionID = d.ID
+		r = assigned[0]
+		if err = s.repository.SaveMatchingGroup(ctx, movement, 0); err != nil {
+			return command.Result{}, err
+		}
+	}
 	if err = s.writer.AppendDecision(ctx, p, d, []ledger.Revision{r}); err != nil {
 		return command.Result{}, err
 	}

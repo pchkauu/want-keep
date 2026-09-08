@@ -26,3 +26,5 @@ Additional checks passed for the existing-transfer API: RUB 1000 + fee 10 and RU
 SDD remains **Ready for development**. Production, bank IO, Chrome/Arc, recognition, chat/OpenAI, refunds, debt and reports are not claimed verified. Working-app acceptance and operational readiness remain separate stages.
 
 Review regressions cover per-component carrier/date stability on note edits, date correction and undo, exclusion of a mixed included/excluded group, source conflict projection/review/outbox refresh, recovery of the former amount and coordinated updates of both sides. They also cover rejection of distinct verified payment IDs/blockchain movements and Russian reasons at the 2000-character boundary. These are HTTP and isolated PostgreSQL checks with no external IO.
+
+Additional HTTP/PostgreSQL race regressions cover automatic-link undo after posted/cancelled/reversed, retained postings and holds, restored waiting cases and a separately confirmed transfer followed by its late counterpart. The rejected duplicate persists until explicit undo; source replay adds no effect.

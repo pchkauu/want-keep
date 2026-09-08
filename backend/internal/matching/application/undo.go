@@ -61,6 +61,40 @@ func (s *Service) undoMatching(ctx context.Context, p household.Principal, d led
 		groups[id] = g
 	}
 	next = slices.Clone(next)
+	// Automatic matching may stage new evidence as waiting inside the existing
+	// movement's case. Undo restores those two independent questions separately.
+	for _, id := range ids {
+		facts := restored[id]
+		waiting, accepted := []ledger.Revision{}, []ledger.Revision{}
+		for _, r := range facts {
+			if r.Participation.State == "waiting" {
+				waiting = append(waiting, r)
+			} else {
+				accepted = append(accepted, r)
+			}
+		}
+		if len(waiting) == 0 || len(accepted) == 0 {
+			continue
+		}
+		restored[id] = accepted
+		g := groups[id].Clone()
+		if !slices.ContainsFunc(accepted, func(r ledger.Revision) bool { return r.OperationID == g.PrimaryID }) {
+			g.PrimaryID = accepted[0].OperationID
+			groups[id] = g
+		}
+		g.ID, g.PrimaryID, g.Revision = s.newID(), waiting[0].OperationID, 0
+		for i := range waiting {
+			waiting[i] = waiting[i].Clone()
+			waiting[i].Participation.GroupID = g.ID
+			for j := range next {
+				if next[j].OperationID == waiting[i].OperationID {
+					next[j] = waiting[i]
+				}
+			}
+		}
+		groups[g.ID], restored[g.ID] = g, waiting
+		ids = append(ids, g.ID)
+	}
 	for _, id := range ids {
 		facts := restored[id]
 		if len(facts) == 0 {
