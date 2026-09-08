@@ -97,6 +97,11 @@ func TestReplayBoundsDeduplicationAndOwnedAdjustment(t *testing.T) {
 	if resolved.Lifecycle != reconciliation.Resolved || resolved.Resolution == nil {
 		t.Fatalf("resolution was not recorded: %#v", resolved)
 	}
+	for _, explanation := range resolved.Explanations {
+		if explanation.Code == "balance_difference" {
+			t.Fatalf("resolved balance kept a discrepancy explanation: %#v", resolved.Explanations)
+		}
+	}
 	balance, err := f.store.Balance(testContext, f.p, id, "owned")
 	if err != nil {
 		t.Fatal(err)
@@ -120,6 +125,26 @@ func TestReplayBoundsDeduplicationAndOwnedAdjustment(t *testing.T) {
 	}
 	if f.count("account_observations") != 1 {
 		t.Fatal("adjustment mutated source evidence")
+	}
+}
+
+func TestDurableOutboxDispatchesReplayAfterFinancialCommit(t *testing.T) {
+	f := newFixture(t)
+	accountID := f.importAccount(money.RUB, "current", exactAmounts(money.RUB, "1000", "1000", "0", "0"), completeCoverage(), reporting.Fresh)
+	f.correctOpening(accountID, exactAmounts(money.RUB, "900", "900", "0", "0"))
+	current := f.active(accountID)
+	if current.Replay.Status != reconciliation.ReplayPending || current.Replay.JobID != "" {
+		t.Fatalf("financial commit should persist only the replay intent: %#v", current.Replay)
+	}
+	f.dispatchReplayEvent(current.ID)
+	dispatched := f.active(accountID)
+	if dispatched.Revision != current.Revision+1 || dispatched.Replay.Status != reconciliation.ReplayPending || dispatched.Replay.JobID == "" {
+		t.Fatalf("outbox did not attach the replay job: before=%#v after=%#v", current.Replay, dispatched.Replay)
+	}
+	f.dispatchReplayEvent(current.ID)
+	again := f.active(accountID)
+	if again.Revision != dispatched.Revision || again.Replay.JobID != dispatched.Replay.JobID {
+		t.Fatalf("replayed outbox event dispatched twice: before=%#v after=%#v", dispatched.Replay, again.Replay)
 	}
 }
 

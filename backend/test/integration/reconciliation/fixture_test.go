@@ -23,6 +23,7 @@ import (
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	jobsapp "github.com/pchkauu/want-keep/backend/internal/jobs/application"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	ledgerapp "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
@@ -336,9 +337,7 @@ func (f *fixture) completeReplay(accountID string) reconciliation.Reconciliation
 	f.t.Helper()
 	current := f.active(accountID)
 	if current.Replay.Status == reconciliation.ReplayPending && current.Replay.JobID == "" {
-		if err := f.reconciler.DispatchReplay(testContext, f.p, current.ID); err != nil {
-			f.t.Fatal(err)
-		}
+		f.dispatchReplayEvent(current.ID)
 		current = f.active(accountID)
 	}
 	issued := f.claim(current.Replay.JobID)
@@ -349,6 +348,25 @@ func (f *fixture) completeReplay(accountID string) reconciliation.Reconciliation
 		f.t.Fatalf("replay page failed: %v", err)
 	}
 	return f.active(accountID)
+}
+
+func (f *fixture) dispatchReplayEvent(reconciliationID string) {
+	f.t.Helper()
+	worker := jobsapp.Worker{
+		Repository: f.store,
+		Handler:    jobsapp.OutboxHandler{Repository: f.store, Reconciliation: f.reconciler},
+		Config:     jobsapp.DefaultWorkerConfig(jobs.Outbox),
+	}
+	for range 20 {
+		current := f.read(reconciliationID)
+		if current.Replay.Status != reconciliation.ReplayPending || current.Replay.JobID != "" {
+			return
+		}
+		if err := worker.Step(testContext); err != nil {
+			f.t.Fatal(err)
+		}
+	}
+	f.t.Fatal("durable reconciliation event did not dispatch replay")
 }
 
 func (f *fixture) resolve(value reconciliation.Reconciliation, components ...reconciliation.ComponentName) command.Command {

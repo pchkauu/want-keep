@@ -147,6 +147,15 @@ func TestHTTPListReadResolveRecoveryAndCSRF(t *testing.T) {
 	if succeeded.Result.Id != current.ID {
 		t.Fatalf("wrong command result: %#v", succeeded)
 	}
+	resolved := decode[generated.Reconciliation](t, client.call("GET", "/reconciliations/"+current.ID, "", nil, http.StatusOK))
+	if resolved.Result != generated.ReconciliationResultBalanced {
+		t.Fatalf("resolved reconciliation is not balanced: %#v", resolved)
+	}
+	for _, explanation := range resolved.Explanations {
+		if explanation.Code == "balance_difference" {
+			t.Fatalf("resolved HTTP read kept a discrepancy explanation: %#v", resolved.Explanations)
+		}
+	}
 	stale := decode[generated.CommandFailed](t, client.call("POST", "/reconciliations/"+current.ID+"/resolve", uuid.NewString(), input, http.StatusAccepted))
 	if stale.Error.CurrentRevision == nil || int64(*stale.Error.CurrentRevision) != succeeded.Result.Revision {
 		t.Fatalf("stale command did not expose the authorized current revision: %#v", stale)

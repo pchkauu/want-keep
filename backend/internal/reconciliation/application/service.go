@@ -294,14 +294,13 @@ func (s *Service) Resolve(ctx context.Context, principal household.Principal, id
 	if err = s.writer.Append(ctx, principal, revision, 0); err != nil {
 		return command.Result{}, s.reject(err)
 	}
-	resolved := current
-	resolved.Revision++
-	resolved.Lifecycle = reconciliation.Resolved
-	resolved.Result = reconciliation.Balanced
-	resolved.EvaluatedAt = now
-	resolved.RelatedOperationIDs = append(resolved.RelatedOperationIDs, adjustmentID)
-	resolved.Resolution = &reconciliation.Resolution{ActorID: string(principal.UserID()), Reason: input.Reason, AdjustmentTransactionID: adjustmentID, At: now, Components: append([]reconciliation.ComponentName(nil), input.Components...)}
-	resolved.Components = resolvedComponents
+	resolved, err := current.Resolve(resolvedComponents, reconciliation.Resolution{
+		ActorID: string(principal.UserID()), Reason: input.Reason, AdjustmentTransactionID: adjustmentID,
+		At: now, Components: append([]reconciliation.ComponentName(nil), input.Components...),
+	}, now)
+	if err != nil {
+		return command.Result{}, err
+	}
 	if err = s.repository.SaveResolution(ctx, principal, resolved); err != nil {
 		return command.Result{}, err
 	}
@@ -392,8 +391,35 @@ func (s *Service) applyResolutionEffects(current reconciliation.Reconciliation, 
 }
 
 func (s *Service) DispatchReplay(ctx context.Context, principal household.Principal, id string) error {
-	if s.scheduler == nil || s.transactions == nil {
+	current, err := s.reconciliationForDispatch(ctx, principal, id)
+	if err != nil {
+		return err
+	}
+	if current.Lifecycle != reconciliation.Open || current.Replay.Status != reconciliation.ReplayPending || current.Replay.JobID != "" {
 		return reconciliation.ErrNotReady
+	}
+	return s.dispatchReplay(ctx, principal, current)
+}
+
+// DispatchReplayRevision consumes the durable event for one exact reconciliation
+// revision. A later revision or an already dispatched replay makes the event a no-op.
+func (s *Service) DispatchReplayRevision(ctx context.Context, principal household.Principal, id string, revision uint64) error {
+	current, err := s.reconciliationForDispatch(ctx, principal, id)
+	if err != nil {
+		return err
+	}
+	if current.Revision != revision || current.Lifecycle != reconciliation.Open || current.Replay.Status != reconciliation.ReplayPending || current.Replay.JobID != "" {
+		return nil
+	}
+	if err = s.dispatchReplay(ctx, principal, current); errors.Is(err, reconciliation.ErrNotReady) {
+		return nil
+	}
+	return err
+}
+
+func (s *Service) reconciliationForDispatch(ctx context.Context, principal household.Principal, id string) (reconciliation.Reconciliation, error) {
+	if s.scheduler == nil || s.transactions == nil {
+		return reconciliation.Reconciliation{}, reconciliation.ErrNotReady
 	}
 	var current reconciliation.Reconciliation
 	err := s.transactions.WithinHousehold(ctx, principal, func(ctx context.Context) error {
@@ -401,12 +427,10 @@ func (s *Service) DispatchReplay(ctx context.Context, principal household.Princi
 		current, readErr = s.repository.Reconciliation(ctx, principal, id)
 		return readErr
 	})
-	if err != nil {
-		return err
-	}
-	if current.Lifecycle != reconciliation.Open || current.Replay.Status != reconciliation.ReplayPending || current.Replay.JobID != "" {
-		return reconciliation.ErrNotReady
-	}
+	return current, err
+}
+
+func (s *Service) dispatchReplay(ctx context.Context, principal household.Principal, current reconciliation.Reconciliation) error {
 	job, err := s.scheduler.RequestReplay(ctx, principal, current.Replay.ConnectionID, current.Replay.Binding, current.Replay.AdmissionRevision, current.Replay.ConnectionGeneration, s.now().Time().Add(23*time.Hour), current.Replay.RequestID, current.Replay.From.Time(), current.Replay.To.Time(), func(ctx context.Context, issued jobs.Job) error {
 		latest, readErr := s.repository.Reconciliation(ctx, principal, current.ID)
 		if readErr != nil {

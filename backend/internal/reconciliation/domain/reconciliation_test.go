@@ -188,3 +188,41 @@ func TestReplayTransitionsAreMonotonicAndFullySpecified(t *testing.T) {
 		t.Fatal("not-required replay retained hidden state")
 	}
 }
+
+func TestResolutionRemovesDifferenceExplanationAndPreservesQuality(t *testing.T) {
+	input := evaluation(money.RUB, "1000", "900")
+	input.Freshness = reporting.Stale
+	input.Replay = reconciliation.Replay{
+		RequestID: "request", ConnectionID: "connection", JobID: "job", Status: reconciliation.ReplayCompleted,
+		Reason: "history_replayed", From: instant("2026-09-01T09:00:00Z"), To: input.SourceAsOf,
+		Binding: binding(), AdmissionRevision: 1, ConnectionGeneration: 1,
+	}
+	current, err := reconciliation.Evaluate(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	balancedInput := evaluation(money.RUB, "1000", "1000")
+	balanced, err := reconciliation.Evaluate(balancedInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := current.Resolve(balanced.Components, reconciliation.Resolution{
+		ActorID: "member", Reason: "Confirmed adjustment", AdjustmentTransactionID: "adjustment",
+		At: instant("2026-09-08T11:00:00Z"), Components: []reconciliation.ComponentName{reconciliation.Owned},
+	}, instant("2026-09-08T11:00:00Z"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Result != reconciliation.Balanced || resolved.Lifecycle != reconciliation.Resolved || len(resolved.Explanations) != 1 || resolved.Explanations[0].Code != "source_stale" {
+		t.Fatalf("resolved explanations are contradictory: %#v", resolved)
+	}
+	if len(current.Explanations) != 2 || current.Explanations[0].Code != "balance_difference" {
+		t.Fatalf("resolution mutated the source revision: %#v", current)
+	}
+
+	invalid := balanced
+	invalid.Explanations = append(invalid.Explanations, reconciliation.Explanation{Code: "balance_difference", Message: "Contradictory explanation"})
+	if err = invalid.Validate(money.RUB); !errors.Is(err, reconciliation.ErrInvalidReconciliation) {
+		t.Fatalf("balanced reconciliation accepted a difference explanation: %v", err)
+	}
+}

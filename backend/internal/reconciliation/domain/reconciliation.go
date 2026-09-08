@@ -206,6 +206,8 @@ type Reconciliation struct {
 	Resolution                   *Resolution
 }
 
+const maxRevision = 9007199254740991
+
 type Evaluation struct {
 	ID, AccountID, ObservationID string
 	Revision                     uint64
@@ -288,7 +290,7 @@ func subtract(source, ledger reporting.Amount) (reporting.Amount, error) {
 }
 
 func (r Reconciliation) Validate(asset money.Asset) error {
-	if r.ID == "" || r.AccountID == "" || r.ObservationID == "" || r.Revision < 1 || r.Revision > 9007199254740991 || !r.Lifecycle.Valid() || !r.Result.Valid() || r.SourceAsOf.String() == "" || r.EvaluatedAt.String() == "" || r.SourceAsOf.Time().After(r.EvaluatedAt.Time()) || len(r.Components) != 4 {
+	if r.ID == "" || r.AccountID == "" || r.ObservationID == "" || r.Revision < 1 || r.Revision > maxRevision || !r.Lifecycle.Valid() || !r.Result.Valid() || r.SourceAsOf.String() == "" || r.EvaluatedAt.String() == "" || r.SourceAsOf.Time().After(r.EvaluatedAt.Time()) || len(r.Components) != 4 {
 		return ErrInvalidReconciliation
 	}
 	if _, err := reporting.NewCoverage(r.Coverage.State(), r.Coverage.Reasons()); err != nil {
@@ -308,6 +310,11 @@ func (r Reconciliation) Validate(asset money.Asset) error {
 		if err := explanation.Validate(); err != nil {
 			return err
 		}
+		contradictsResult := explanation.Code == "balance_difference" && r.Result != Discrepant ||
+			explanation.Code == "history_incomplete" && r.Result != Incomplete
+		if contradictsResult {
+			return ErrInvalidReconciliation
+		}
 	}
 	if err := r.Replay.Validate(); err != nil {
 		return err
@@ -323,6 +330,67 @@ func (r Reconciliation) Validate(asset money.Asset) error {
 		return ErrInvalidReconciliation
 	}
 	return nil
+}
+
+func (r Reconciliation) Resolve(components []Component, resolution Resolution, at calendar.Instant) (Reconciliation, error) {
+	if err := resolution.Validate(); err != nil {
+		return Reconciliation{}, err
+	}
+	if r.Lifecycle != Open || r.Result != Discrepant || r.Coverage.State() != reporting.Complete || r.Revision >= maxRevision || at.String() == "" || at.Time().Before(r.SourceAsOf.Time()) || len(components) != len(r.Components) {
+		return Reconciliation{}, ErrNotReady
+	}
+	if r.Replay.Status != ReplayCompleted && r.Replay.Status != ReplayUnavailable {
+		return Reconciliation{}, ErrNotReady
+	}
+	seen := make(map[ComponentName]bool, len(components))
+	var asset money.Asset
+	for _, component := range components {
+		componentAsset := money.Asset("")
+		for _, amount := range []reporting.Amount{component.Source, component.Ledger, component.Difference} {
+			if value, known := amount.Value(); known {
+				componentAsset = value.Asset()
+				break
+			}
+		}
+		if seen[component.Name] || componentAsset == "" || component.Validate(componentAsset) != nil {
+			return Reconciliation{}, ErrInvalidReconciliation
+		}
+		seen[component.Name] = true
+		difference, known := component.Difference.Value()
+		if !known || difference.Sign() != 0 {
+			return Reconciliation{}, ErrNotReady
+		}
+		if asset == "" {
+			asset = difference.Asset()
+		} else if asset != difference.Asset() {
+			return Reconciliation{}, money.ErrAssetMismatch
+		}
+	}
+	for _, component := range r.Components {
+		if !seen[component.Name] {
+			return Reconciliation{}, ErrInvalidReconciliation
+		}
+	}
+
+	next := r
+	next.Revision++
+	next.Lifecycle = Resolved
+	next.Result = Balanced
+	next.EvaluatedAt = at
+	next.Components = append([]Component(nil), components...)
+	next.RelatedOperationIDs = append(append([]string(nil), r.RelatedOperationIDs...), resolution.AdjustmentTransactionID)
+	resolution.Components = append([]ComponentName(nil), resolution.Components...)
+	next.Resolution = &resolution
+	next.Explanations = make([]Explanation, 0, len(r.Explanations))
+	for _, explanation := range r.Explanations {
+		if explanation.Code != "balance_difference" {
+			next.Explanations = append(next.Explanations, explanation)
+		}
+	}
+	if err := next.Validate(asset); err != nil {
+		return Reconciliation{}, err
+	}
+	return next, nil
 }
 
 func (r Reconciliation) Component(name ComponentName) (Component, bool) {
