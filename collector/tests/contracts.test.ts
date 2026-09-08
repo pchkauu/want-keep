@@ -146,6 +146,31 @@ describe("collector ingestion contract v10", () => {
     });
   });
 
+  it("keeps manifest and coverage limits identical across runtimes", () => {
+    const zeroLookback = structuredClone(manifest) as {
+      history: { maximumLookbackDays?: number };
+    };
+    zeroLookback.history.maximumLookbackDays = 0;
+    expect(() => parseCapabilityManifest(zeroLookback)).toThrow();
+    delete zeroLookback.history.maximumLookbackDays;
+    expect(() => parseCapabilityManifest(zeroLookback)).not.toThrow();
+
+    for (const gaps of [
+      ["gap", "gap"],
+      Array.from({ length: 101 }, (_, index) => `gap-${index}`),
+      ["invalid\u0000gap"],
+      ["ё".repeat(2_001)],
+    ]) {
+      const invalid = structuredClone(golden) as {
+        page: { coverage: { gaps: string[] } };
+      };
+      invalid.page.coverage.gaps = gaps;
+      expect(() =>
+        parseSyncResult(invalid, parseSyncRequest(request)),
+      ).toThrow();
+    }
+  });
+
   it("rejects unknown fields, numeric money, malformed base64 and trailing JSON", () => {
     const extra = structuredClone(golden) as { page: Record<string, unknown> };
     extra.page.householdId = "forged";
@@ -244,6 +269,22 @@ describe("collector ingestion contract v10", () => {
     invalidEvidenceIdentity.page.evidence[0]!.id = "invalid\ud800id";
     expect(() =>
       parseSyncResult(invalidEvidenceIdentity, parseSyncRequest(request)),
+    ).toThrow();
+
+    const unsupportedFeeID = structuredClone(golden) as {
+      page: {
+        records: Array<{
+          transaction?: { postings: Array<Record<string, unknown>> };
+        }>;
+      };
+    };
+    const posting = unsupportedFeeID.page.records.find(
+      (record) => record.transaction?.postings[0] !== undefined,
+    )?.transaction?.postings[0];
+    if (posting === undefined) throw new Error("invalid test fixture");
+    posting.feeId = "fee-1";
+    expect(() =>
+      parseSyncResult(unsupportedFeeID, parseSyncRequest(request)),
     ).toThrow();
 
     expect(() =>

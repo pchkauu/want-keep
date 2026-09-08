@@ -192,7 +192,7 @@ func (f *fixture) gatewayWithMutation(job jobs.Job, mutate func(map[string]any))
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	return &fixtureGateway{manifestValue: manifest, result: result}
+	return &fixtureGateway{bindingValue: job.Binding, manifestValue: manifest, result: result}
 }
 
 func readFixture(t *testing.T, name string) []byte {
@@ -206,10 +206,13 @@ func readFixture(t *testing.T, name string) []byte {
 }
 
 type fixtureGateway struct {
+	bindingValue  connections.Binding
 	manifestValue ingestion.Manifest
 	result        ingestion.Result
 	read          func()
 }
+
+func (g *fixtureGateway) Binding() connections.Binding { return g.bindingValue }
 
 func (g *fixtureGateway) Manifest(context.Context) (ingestion.Manifest, error) {
 	return g.manifestValue, nil

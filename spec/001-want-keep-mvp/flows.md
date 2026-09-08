@@ -138,16 +138,24 @@ sequenceDiagram
   participant G as Admission gate
   participant A as Accounts/Ledger
   participant Q as Quarantine
+  J->>G: Проверить exact gateway binding
   J->>G: BeforeRead(binding, revision, generation, lease)
   G->>C: Server-issued request без household/actor/internal IDs
   C-->>G: Exact echo + evidence + typed records/coverage
   G->>E: Сохранить raw evidence до финансовой транзакции
-  alt binding/revision/generation/lease/cursor актуальны
+  alt provider failure
+    G->>Q: Связать evidence с household/job
+    G->>G: Атомарно сохранить waiting/retry/failed
+  else binding/revision/generation/lease/cursor актуальны
     G->>A: CommitPage: resolve accounts + source revisions + observations/postings
     A-->>G: Audit/outbox/checkpoint атомарно
+    opt account/source ambiguity
+      A->>Q: Evidence + source_ambiguous/transaction_unresolved
+      A-->>G: Partial coverage без неподтверждённого эффекта
+    end
   else результат устарел
     G->>Q: Evidence reference + safe reason
   end
 ```
 
-Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage.
+Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи.

@@ -110,6 +110,19 @@ func TestReadFencePrecedesEveryGatewayCall(t *testing.T) {
 	}
 }
 
+func TestGatewayBindingMatchesTheAdmittedBuildBeforeIO(t *testing.T) {
+	job := issued()
+	other := job.Binding
+	other.AdapterBuildDigest = "sha256:" + strings.Repeat("c", 64)
+	gateway := &gatewayFake{bindingValue: other}
+	service, _ := application.NewService(&gateFake{}, evidenceFake{save: func(context.Context, ingestion.EvidenceBatch) error { return nil }}, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+
+	applied, failure, err := service.Ingest(context.Background(), principal(), job, gateway)
+	if applied || failure != nil || !errors.Is(err, connections.ErrProviderNotAdmitted) || gateway.calls != 0 {
+		t.Fatal("misbound gateway reached provider IO", applied, failure, err, gateway.calls)
+	}
+}
+
 func TestManifestCapabilitiesFencePageBeforeEvidence(t *testing.T) {
 	token, _ := application.TokenFromJob(issued())
 	coverage, _ := reporting.NewCoverage(reporting.Complete, nil)
@@ -196,9 +209,17 @@ func (sourceFake) Apply(context.Context, household.Principal, ledger.SourceInput
 }
 
 type gatewayFake struct {
-	result   ingestion.Result
-	manifest *ingestion.Manifest
-	calls    int
+	result       ingestion.Result
+	manifest     *ingestion.Manifest
+	bindingValue connections.Binding
+	calls        int
+}
+
+func (g *gatewayFake) Binding() connections.Binding {
+	if g.bindingValue.Provider != "" {
+		return g.bindingValue
+	}
+	return binding()
 }
 
 func (g *gatewayFake) Manifest(context.Context) (ingestion.Manifest, error) {

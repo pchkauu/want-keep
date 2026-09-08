@@ -458,7 +458,6 @@ function transactionRecord(
       "role",
       "funding",
       "treatment",
-      "feeId",
     ]),
   );
   postings.forEach(posting);
@@ -475,7 +474,6 @@ function posting(value: unknown): void {
     "role",
     "funding",
     "treatment",
-    "feeId",
   ]);
   requiredKeys(object, [
     "externalAccountId",
@@ -494,7 +492,6 @@ function posting(value: unknown): void {
     oneOf(object.funding, new Set(["own", "credit", "unknown"]));
   if (object.treatment !== undefined)
     oneOf(object.treatment, new Set(["movement", "included", "valuation"]));
-  optionalTextOrEmpty(object.feeId);
 }
 
 function evidence(value: unknown): Set<string> {

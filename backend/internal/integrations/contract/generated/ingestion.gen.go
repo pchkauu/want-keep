@@ -715,7 +715,6 @@ type SyncResultOutcome string
 type TransactionPosting struct {
 	AssetCode         AssetCode                    `json:"assetCode"`
 	ExternalAccountId string                       `json:"externalAccountId"`
-	FeeId             *string                      `json:"feeId,omitempty"`
 	Funding           *TransactionPostingFunding   `json:"funding,omitempty"`
 	Money             DecimalString                `json:"money"`
 	Network           *string                      `json:"network,omitempty"`

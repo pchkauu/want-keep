@@ -414,9 +414,6 @@ components:
         treatment:
           type: string
           enum: [movement, included, valuation]
-        feeId:
-          type: string
-          maxLength: 2000
     TransactionRecord:
       type: object
       additionalProperties: false

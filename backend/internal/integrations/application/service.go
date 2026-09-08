@@ -13,6 +13,7 @@ import (
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
+	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ingestion "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
@@ -23,6 +24,7 @@ import (
 )
 
 type ProviderGateway interface {
+	Binding() connections.Binding
 	Manifest(context.Context) (ingestion.Manifest, error)
 	Read(context.Context, ingestion.JobToken) (ingestion.Result, error)
 }
@@ -73,6 +75,9 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 	token, err := TokenFromJob(issued)
 	if err != nil {
 		return false, nil, err
+	}
+	if gateway.Binding() != issued.Binding {
+		return false, nil, connections.ErrProviderNotAdmitted
 	}
 	if err = s.gate.BeforeRead(ctx, p, issued); err != nil {
 		return false, nil, err
@@ -186,6 +191,7 @@ func (s *Service) applyPage(ctx context.Context, p household.Principal, issued j
 	}
 	sort.Strings(keys)
 	resolved := map[string]string{}
+	unresolved := map[string]string{}
 	for _, key := range keys {
 		record := accountsByKey[key]
 		input, err := s.accountDescriptorInput(issued, record, evidence)
@@ -198,7 +204,17 @@ func (s *Service) applyPage(ctx context.Context, p household.Principal, issued j
 		}
 		if outcome.Account != nil {
 			resolved[key] = outcome.Account.ID
-		} else if outcome.Reason != "unsupported_asset" || !hasGap(page.Coverage, outcome.Reason) {
+			continue
+		}
+		switch outcome.Reason {
+		case "source_ambiguous":
+			unresolved[key] = outcome.Reason
+		case "unsupported_asset":
+			if !hasGap(page.Coverage, outcome.Reason) {
+				return ingestion.ErrInvalidContract
+			}
+			unresolved[key] = outcome.Reason
+		default:
 			return ingestion.ErrInvalidContract
 		}
 	}
@@ -232,7 +248,7 @@ func (s *Service) applyPage(ctx context.Context, p household.Principal, issued j
 		if record.Transaction == nil {
 			continue
 		}
-		if err := s.applyTransaction(ctx, p, issued, *record.Transaction, record.CanonicalPayload, fetchedAt, evidence, resolved); err != nil {
+		if err := s.applyTransaction(ctx, p, issued, *record.Transaction, record.CanonicalPayload, fetchedAt, evidence, resolved, unresolved); err != nil {
 			return err
 		}
 	}
@@ -315,7 +331,7 @@ func (s *Service) accountDescriptorInput(issued jobs.Job, record ingestion.Accou
 	}, nil
 }
 
-func (s *Service) applyTransaction(ctx context.Context, p household.Principal, issued jobs.Job, record ingestion.TransactionRecord, canonical []byte, fetchedAt calendar.Instant, evidence map[string]ingestion.StoredEvidence, resolved map[string]string) error {
+func (s *Service) applyTransaction(ctx context.Context, p household.Principal, issued jobs.Job, record ingestion.TransactionRecord, canonical []byte, fetchedAt calendar.Instant, evidence map[string]ingestion.StoredEvidence, resolved, unresolved map[string]string) error {
 	stored, found := evidence[record.EvidenceID]
 	if !found {
 		return ingestion.ErrInvalidContract
@@ -342,6 +358,17 @@ func (s *Service) applyTransaction(ctx context.Context, p household.Principal, i
 		input.UnresolvedReason = "provider_state_unknown"
 		_, err = s.sources.Apply(ctx, p, input)
 		return err
+	}
+	for _, posting := range record.Postings {
+		key := posting.Reference.Key()
+		if _, missing := unresolved[key]; missing {
+			input.UnresolvedReason = "transaction_unresolved"
+			_, err = s.sources.Apply(ctx, p, input)
+			return err
+		}
+		if _, ok := resolved[key]; !ok {
+			return ingestion.ErrInvalidContract
+		}
 	}
 	zone, err := s.sources.AccountTimezone(ctx, p)
 	if err != nil {
@@ -372,7 +399,7 @@ func (s *Service) applyTransaction(ctx context.Context, p household.Principal, i
 		if !ok {
 			return ingestion.ErrInvalidContract
 		}
-		revision.Postings = append(revision.Postings, ledger.Posting{FeeID: posting.FeeID, AccountID: accountID, Money: amount, Role: ledger.Role(posting.Role), Funding: ledger.FundingKind(posting.Funding), Treatment: ledger.Treatment(posting.Treatment)})
+		revision.Postings = append(revision.Postings, ledger.Posting{AccountID: accountID, Money: amount, Role: ledger.Role(posting.Role), Funding: ledger.FundingKind(posting.Funding), Treatment: ledger.Treatment(posting.Treatment)})
 	}
 	input.Operation = &revision
 	_, err = s.sources.Apply(ctx, p, input)

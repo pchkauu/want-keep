@@ -92,11 +92,11 @@ type Manifest struct {
 	Products            []string
 	Logs                []CapabilityLog
 	Paginated           bool
-	MaximumLookbackDays int
+	MaximumLookbackDays *int
 }
 
 func (m Manifest) Validate(provider string) error {
-	if m.Provider != provider || m.Version != ContractVersion || len(m.Actions) < 1 || len(m.Actions) > 5 || len(m.Products) < 1 || len(m.Products) > 32 || len(m.Logs) < 1 || len(m.Logs) > 64 || m.MaximumLookbackDays < 0 || m.MaximumLookbackDays > 36500 {
+	if m.Provider != provider || m.Version != ContractVersion || len(m.Actions) < 1 || len(m.Actions) > 5 || len(m.Products) < 1 || len(m.Products) > 32 || len(m.Logs) < 1 || len(m.Logs) > 64 || m.MaximumLookbackDays != nil && (*m.MaximumLookbackDays < 1 || *m.MaximumLookbackDays > 36500) {
 		return ErrInvalidContract
 	}
 	actions := map[ReadAction]bool{}
@@ -153,7 +153,7 @@ func (m Manifest) RequirePage(page Page) error {
 		}
 	}
 	if !page.Token.ReplayFrom.IsZero() {
-		if !actions[ReadHistory] || m.MaximumLookbackDays > 0 && page.Token.ReplayTo.Sub(page.Token.ReplayFrom) > time.Duration(m.MaximumLookbackDays)*24*time.Hour {
+		if !actions[ReadHistory] || m.MaximumLookbackDays != nil && page.Token.ReplayTo.Sub(page.Token.ReplayFrom) > time.Duration(*m.MaximumLookbackDays)*24*time.Hour {
 			return ErrInvalidContract
 		}
 	}
@@ -308,10 +308,10 @@ type BalanceSnapshot struct {
 }
 
 type Posting struct {
-	Reference        AccountReference
-	Amount           string
-	Role, Funding    string
-	Treatment, FeeID string
+	Reference     AccountReference
+	Amount        string
+	Role, Funding string
+	Treatment     string
 }
 
 type TransactionRecord struct {
@@ -345,7 +345,7 @@ func (p Page) Validate() error {
 	if err := p.Token.Validate(); err != nil || !validBoundedText(p.NextCursor, false) || len(p.Evidence) < 1 || len(p.Evidence) > MaxEvidencePerPage || len(p.Records) > MaxRecordsPerPage {
 		return ErrInvalidContract
 	}
-	if _, err := reporting.NewCoverage(p.Coverage.State(), p.Coverage.Reasons()); err != nil {
+	if _, err := reporting.NewCoverage(p.Coverage.State(), p.Coverage.Reasons()); err != nil || !ValidGapReasons(p.Coverage.Reasons()) {
 		return ErrInvalidContract
 	}
 	if p.Complete && p.NextCursor != "" || !p.Complete && (p.NextCursor == "" || p.NextCursor == p.Token.Cursor) {
@@ -534,6 +534,20 @@ func SortedGapReasons(coverage reporting.Coverage, extra ...string) []string {
 	}
 	sort.Strings(result)
 	return result
+}
+
+func ValidGapReasons(reasons []string) bool {
+	if len(reasons) > 100 {
+		return false
+	}
+	seen := make(map[string]bool, len(reasons))
+	for _, reason := range reasons {
+		if !validTextLimit(reason, MaxTextLength) || seen[reason] {
+			return false
+		}
+		seen[reason] = true
+	}
+	return true
 }
 
 func validText(value string) bool {

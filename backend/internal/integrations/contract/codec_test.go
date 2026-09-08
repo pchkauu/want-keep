@@ -1,6 +1,7 @@
 package contract_test
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -69,6 +70,53 @@ func TestGoldenContractPreservesMeaningAndPrecision(t *testing.T) {
 	}
 }
 
+func TestGatewayCarriesTrustedDeploymentBinding(t *testing.T) {
+	binding := goldenToken().Binding
+	raw := &rawGateway{manifest: fixture(t, "manifest.json"), result: fixture(t, "golden-page.json")}
+	gateway, err := contract.NewGateway(binding, raw)
+	if err != nil || gateway.Binding() != binding {
+		t.Fatal("gateway lost its trusted binding", err)
+	}
+	changed := goldenToken()
+	changed.Binding.AllowlistRevision = "allowlist-2"
+	if _, err = gateway.Read(context.Background(), changed); err == nil || raw.reads != 0 {
+		t.Fatal("misbound request reached the raw gateway", err, raw.reads)
+	}
+}
+
+func TestManifestDistinguishesOmittedLookbackFromExplicitZero(t *testing.T) {
+	var value map[string]any
+	if err := json.Unmarshal(fixture(t, "manifest.json"), &value); err != nil {
+		t.Fatal(err)
+	}
+	history := value["history"].(map[string]any)
+	history["maximumLookbackDays"] = 0
+	invalid, _ := json.Marshal(value)
+	if _, err := contract.DecodeManifest(invalid, "bybit"); err == nil {
+		t.Fatal("explicit zero lookback was accepted")
+	}
+	delete(history, "maximumLookbackDays")
+	withoutLimit, _ := json.Marshal(value)
+	manifest, err := contract.DecodeManifest(withoutLimit, "bybit")
+	if err != nil || manifest.MaximumLookbackDays != nil {
+		t.Fatal("omitted lookback did not remain unlimited", err)
+	}
+}
+
+type rawGateway struct {
+	manifest, result []byte
+	reads            int
+}
+
+func (g *rawGateway) CapabilityManifest(context.Context) ([]byte, error) {
+	return g.manifest, nil
+}
+
+func (g *rawGateway) Read(context.Context, []byte) ([]byte, error) {
+	g.reads++
+	return g.result, nil
+}
+
 func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 	original := fixture(t, "golden-page.json")
 	var value map[string]any
@@ -134,6 +182,32 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 			page := root["page"].(map[string]any)
 			records := page["records"].([]any)
 			page["records"] = records[1:]
+		},
+		"duplicate coverage gap": func(root map[string]any) {
+			root["page"].(map[string]any)["coverage"].(map[string]any)["gaps"] = []any{"gap", "gap"}
+		},
+		"too many coverage gaps": func(root map[string]any) {
+			gaps := make([]any, 101)
+			for index := range gaps {
+				gaps[index] = "gap-" + strings.Repeat("x", index+1)
+			}
+			root["page"].(map[string]any)["coverage"].(map[string]any)["gaps"] = gaps
+		},
+		"coverage gap with NUL": func(root map[string]any) {
+			root["page"].(map[string]any)["coverage"].(map[string]any)["gaps"] = []any{"invalid\x00gap"}
+		},
+		"coverage gap over Unicode limit": func(root map[string]any) {
+			root["page"].(map[string]any)["coverage"].(map[string]any)["gaps"] = []any{strings.Repeat("ё", 2001)}
+		},
+		"unsupported fee identifier": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			for _, item := range records {
+				transaction, ok := item.(map[string]any)["transaction"].(map[string]any)
+				if ok && len(transaction["postings"].([]any)) > 0 {
+					transaction["postings"].([]any)[0].(map[string]any)["feeId"] = "fee-1"
+					return
+				}
+			}
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

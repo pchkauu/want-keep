@@ -4,12 +4,14 @@ package ingestion_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	application "github.com/pchkauu/want-keep/backend/internal/integrations/application"
 	ingestion "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
@@ -54,8 +56,83 @@ func TestProviderFailuresPersistRecoverableJobOutcomes(t *testing.T) {
 			if test.wantDelay && time.Until(availableAt) < 50*time.Second {
 				t.Fatal("provider retry delay was discarded", availableAt)
 			}
+			var evidenceRef, evidenceReason string
+			if err = f.admin.QueryRow(testContext, `SELECT evidence_ref,reason FROM want_keep.quarantine WHERE household_id=$1 AND job_id=$2`, f.family.ID, job.ID).Scan(&evidenceRef, &evidenceReason); err != nil || evidenceRef == "" || evidenceReason != "provider_outcome" {
+				t.Fatal("provider outcome evidence was not associated with the job", evidenceRef, evidenceReason, err)
+			}
 		})
 	}
+}
+
+func TestAmbiguousAccountCommitsTheRestOfThePageAsPartial(t *testing.T) {
+	f := newFixture(t)
+	partner := uuid.NewString()
+	membership := uuid.NewString()
+	external := uuid.NewString()
+	digest := sha256.Sum256([]byte("acct-rub"))
+	tx, err := f.admin.Begin(testContext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(testContext)
+	if _, err = tx.Exec(testContext, `INSERT INTO want_keep.users(id,name) VALUES($1,'Synthetic partner')`, partner); err == nil {
+		_, err = tx.Exec(testContext, `INSERT INTO want_keep.memberships(household_id,id,user_id,active) VALUES($1,$2,$3,true)`, f.family.ID, membership, partner)
+	}
+	if err == nil {
+		_, err = tx.Exec(testContext, `INSERT INTO want_keep.external_accounts(household_id,id,provider,stable_id,identity_digest,external_owner_id) VALUES($1,$2,'bybit','acct-rub',$3,$4)`, f.family.ID, external, digest[:], partner)
+	}
+	if err == nil {
+		err = tx.Commit(testContext)
+	}
+	if err != nil {
+		t.Fatal("prepare ambiguous external account", err)
+	}
+	job := f.issued()
+	applied, failure, err := f.service.Ingest(testContext, f.p, job, f.gateway(job))
+	if err != nil || !applied || failure != nil {
+		t.Fatal("mixed ambiguous page did not commit", applied, failure, err)
+	}
+	accounts, sources, postings := f.count("accounts"), f.count("source_records"), f.count("postings")
+	if accounts != 5 || sources != 2 || postings != 4 {
+		t.Fatalf("valid records were lost with the ambiguous account: accounts=%d sources=%d postings=%d", accounts, sources, postings)
+	}
+	var gaps []string
+	if err = f.admin.QueryRow(testContext, `SELECT gaps FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID).Scan(&gaps); err != nil || !contains(gaps, "source_ambiguous") || !contains(gaps, "transaction_unresolved") {
+		t.Fatal("ambiguity omissions were not retained", gaps, err)
+	}
+}
+
+func TestDeclaredAmbiguityCannotCompleteTheCheckpoint(t *testing.T) {
+	f := newFixture(t)
+	job := f.issued()
+	gateway := f.gatewayWithMutation(job, func(root map[string]any) {
+		records := root["page"].(map[string]any)["records"].([]any)
+		for _, item := range records {
+			transaction, ok := item.(map[string]any)["transaction"].(map[string]any)
+			if ok {
+				transaction["classification"] = "ambiguous"
+				return
+			}
+		}
+	})
+	applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
+	if err != nil || !applied || failure != nil {
+		t.Fatal("declared ambiguity did not commit safely", applied, failure, err)
+	}
+	var coverage string
+	var gaps []string
+	if err = f.admin.QueryRow(testContext, `SELECT coverage,gaps FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID).Scan(&coverage, &gaps); err != nil || coverage != "partial" || !contains(gaps, "source_ambiguous") {
+		t.Fatal("declared ambiguity escaped checkpoint coverage", coverage, gaps, err)
+	}
+}
+
+func contains(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func TestGoldenPageRoundTripsThroughPostgreSQLWithoutDuplicateEffects(t *testing.T) {

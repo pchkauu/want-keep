@@ -138,16 +138,24 @@ sequenceDiagram
   participant G as Admission gate
   participant A as Accounts/Ledger
   participant Q as Quarantine
+  J->>G: Verify exact gateway binding
   J->>G: BeforeRead(binding, revision, generation, lease)
   G->>C: Server-issued request without household/actor/internal IDs
   C-->>G: Exact echo + evidence + typed records/coverage
   G->>E: Persist raw evidence before financial transaction
-  alt binding/revision/generation/lease/cursor are current
+  alt provider failure
+    G->>Q: Associate evidence with household/job
+    G->>G: Atomically retain waiting/retry/failed
+  else binding/revision/generation/lease/cursor are current
     G->>A: CommitPage: resolve accounts + source revisions + observations/postings
     A-->>G: Audit/outbox/checkpoint atomically
+    opt account/source ambiguity
+      A->>Q: Evidence + source_ambiguous/transaction_unresolved
+      A-->>G: Partial coverage without an unconfirmed effect
+    end
   else result is stale
     G->>Q: Evidence reference + safe reason
   end
 ```
 
-A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage.
+A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records.

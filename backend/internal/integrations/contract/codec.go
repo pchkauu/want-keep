@@ -37,7 +37,11 @@ func DecodeManifest(data []byte, provider string) (ingestion.Manifest, error) {
 	}
 	result := ingestion.Manifest{Provider: string(source.Provider), Version: string(source.ContractVersion), Paginated: source.History.Paginated}
 	if source.History.MaximumLookbackDays != nil {
-		result.MaximumLookbackDays = *source.History.MaximumLookbackDays
+		value := *source.History.MaximumLookbackDays
+		if value < 1 || value > 36500 {
+			return ingestion.Manifest{}, ingestion.ErrInvalidContract
+		}
+		result.MaximumLookbackDays = &value
 	}
 	for _, action := range source.Actions {
 		result.Actions = append(result.Actions, ingestion.ReadAction(action))
@@ -212,6 +216,9 @@ func evidenceFromGenerated(source []generated.EvidenceBlob) ([]ingestion.Evidenc
 }
 
 func coverageFromGenerated(source generated.Coverage) (reporting.Coverage, error) {
+	if !ingestion.ValidGapReasons(source.Gaps) {
+		return reporting.Coverage{}, ingestion.ErrInvalidContract
+	}
 	return reporting.NewCoverage(reporting.CoverageState(source.State), source.Gaps)
 }
 
@@ -365,7 +372,7 @@ func transactionFromGenerated(source generated.TransactionRecord) (ingestion.Tra
 		if convertErr != nil || !validDecimal(posting.Money) {
 			return ingestion.TransactionRecord{}, ingestion.ErrInvalidContract
 		}
-		p := ingestion.Posting{Reference: ref, Amount: posting.Money, Role: string(posting.Role), Funding: optionalEnum(posting.Funding), Treatment: optionalEnum(posting.Treatment), FeeID: optional(posting.FeeId)}
+		p := ingestion.Posting{Reference: ref, Amount: posting.Money, Role: string(posting.Role), Funding: optionalEnum(posting.Funding), Treatment: optionalEnum(posting.Treatment)}
 		if !validPosting(p) {
 			return ingestion.TransactionRecord{}, ingestion.ErrInvalidContract
 		}
@@ -476,7 +483,7 @@ func validPosting(posting ingestion.Posting) bool {
 	if posting.Treatment != "" && posting.Treatment != "movement" && posting.Treatment != "included" && posting.Treatment != "valuation" {
 		return false
 	}
-	return validOptionalText(posting.FeeID, ingestion.MaxTextLength)
+	return true
 }
 
 func validProviderState(value string) bool {
@@ -506,11 +513,11 @@ func validText(value string) bool {
 }
 
 func validTextLimit(value string, maximum int) bool {
-	return value != "" && utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum
+	return value != "" && !strings.ContainsRune(value, 0) && utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum
 }
 
 func validOptionalText(value string, maximum int) bool {
-	return value == "" || utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum
+	return value == "" || !strings.ContainsRune(value, 0) && utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum
 }
 
 func validEvidenceID(value string) bool { return validTextLimit(value, 128) }

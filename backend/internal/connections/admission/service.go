@@ -320,6 +320,9 @@ func (s *Service) CommitProviderOutcome(ctx context.Context, p household.Princip
 			if err := apply(ctx); err != nil {
 				return err
 			}
+			if err := s.repository.Quarantine(ctx, issued, evidence, "provider_outcome"); err != nil {
+				return err
+			}
 			if err := s.repository.SetJobOutcome(ctx, p, issued, state, reason, delay); err != nil {
 				return err
 			}

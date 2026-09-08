@@ -112,7 +112,7 @@ func TestSourceCollisionKeepsEvidenceWithoutNewPosting(t *testing.T) {
 	other := f.revision(uuid.NewString(), account, "-20", money.USD, 1)
 	input.Operation = &other
 	result, err := f.importSource(service, connection, input)
-	if err != nil || !result.Record.Ambiguous || f.count("source_revisions") != 2 || f.count("postings") != 1 {
+	if err != nil || !result.Record.Ambiguous || f.count("source_revisions") != 2 || f.count("quarantine") != 1 || f.count("postings") != 1 {
 		t.Fatalf("collision posted: %v", err)
 	}
 	// Simulate an index digest collision; full identity comparison must reject merging it.
@@ -124,7 +124,7 @@ func TestSourceCollisionKeepsEvidenceWithoutNewPosting(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err = f.importSource(service, connection, collision)
-	if err != nil || !result.Record.Ambiguous || f.count("quarantine") != 1 || f.count("postings") != 1 {
+	if err != nil || !result.Record.Ambiguous || f.count("quarantine") != 2 || f.count("postings") != 1 {
 		t.Fatalf("digest used as identity: %v", err)
 	}
 }

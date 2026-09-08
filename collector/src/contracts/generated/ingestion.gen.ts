@@ -154,7 +154,6 @@ export interface components {
       funding?: "own" | "credit" | "unknown";
       /** @enum {string} */
       treatment?: "movement" | "included" | "valuation";
-      feeId?: string;
     };
     TransactionRecord: {
       externalAccountId: string;
