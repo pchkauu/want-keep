@@ -128,6 +128,40 @@ describe("household loading boundary", () => {
     expect(read).toHaveBeenCalledTimes(2);
   });
 
+  it("waits for the replacement session state before issuing an invitation", async () => {
+    const api = new HouseholdApi(new HttpClient());
+    let finishInvitation!: (value: { revision: number }) => void;
+    vi.spyOn(api, "read").mockResolvedValue(household);
+    vi.spyOn(api, "invitations")
+      .mockResolvedValueOnce({ revision: 1 })
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (finishInvitation = resolve)),
+      );
+    const issue = vi.spyOn(api, "issue").mockResolvedValue({
+      state: { revision: 3 },
+      token: "a".repeat(43),
+    });
+    const controller = new HouseholdController(api);
+    await controller.load(session());
+
+    const replacement = session("user-a", "session-new");
+    const loading = controller.load(replacement);
+    const result = controller.issueInvitation(replacement);
+    expect(controller.load(replacement)).toBe(loading);
+    expect(issue).not.toHaveBeenCalled();
+
+    finishInvitation({ revision: 2 });
+    await expect(result).resolves.toMatchObject({
+      state: { revision: 3 },
+    });
+    expect(issue).toHaveBeenCalledWith(2);
+    expect(controller.snapshot()).toMatchObject({
+      status: "ready",
+      actorKey: "household-a:user-a:session-new",
+      invitation: { revision: 3 },
+    });
+  });
+
   it("drops late data from a replaced session", async () => {
     const api = new HouseholdApi(new HttpClient());
     let finishFirst!: (value: Household) => void;

@@ -7,6 +7,7 @@ export class HouseholdController {
   private state: HouseholdState = { status: "idle" };
   private readonly listeners = new Set<() => void>();
   private epoch = 0;
+  private pending?: { actorKey: string; promise: Promise<void> };
 
   readonly api: HouseholdApi;
 
@@ -27,17 +28,16 @@ export class HouseholdController {
 
   clear() {
     this.epoch++;
+    this.pending = undefined;
     this.publish({ status: "idle" });
   }
 
-  load(member: MemberSession, refresh = false) {
-    const actorKey = `${member.householdId}:${member.userId}:${member.sessionId}`;
-    if (
-      !refresh &&
-      this.state.actorKey === actorKey &&
-      (this.state.status === "loading" || this.state.status === "ready")
-    )
-      return;
+  load(member: MemberSession, refresh = false): Promise<void> {
+    const actorKey = this.actorKey(member);
+    if (!refresh && this.state.actorKey === actorKey) {
+      if (this.pending?.actorKey === actorKey) return this.pending.promise;
+      if (this.state.status === "ready") return Promise.resolve();
+    }
     const epoch = ++this.epoch;
     const previous =
       refresh && this.state.status === "ready" && this.state.household
@@ -48,7 +48,7 @@ export class HouseholdController {
         ? { ...previous, actorKey, refreshing: true, error: undefined }
         : { status: "loading", actorKey },
     );
-    void Promise.all([this.api.read(), this.api.invitations()]).then(
+    const request = Promise.all([this.api.read(), this.api.invitations()]).then(
       ([household, invitation]) => {
         if (epoch !== this.epoch || this.state.actorKey !== actorKey) return;
         const actor = household.members.find(
@@ -96,6 +96,35 @@ export class HouseholdController {
         });
       },
     );
+    const completion = request.finally(() => {
+      if (this.pending?.promise === completion) this.pending = undefined;
+    });
+    this.pending = { actorKey, promise: completion };
+    return completion;
+  }
+
+  async issueInvitation(member: MemberSession) {
+    const actorKey = this.actorKey(member);
+    await this.load(member);
+    const current = this.state;
+    if (
+      current.status !== "ready" ||
+      current.actorKey !== actorKey ||
+      !current.household ||
+      !current.invitation ||
+      current.error
+    )
+      throw current.error ?? new ApiFailure("session_changed");
+    const epoch = this.epoch;
+    const result = await this.api.issue(current.invitation.revision);
+    if (
+      epoch !== this.epoch ||
+      this.state.status !== "ready" ||
+      this.state.actorKey !== actorKey
+    )
+      throw new ApiFailure("network_unconfirmed");
+    this.updateInvitation(result.state);
+    return result;
   }
 
   updateInvitation(invitation: Invitation) {
@@ -106,5 +135,9 @@ export class HouseholdController {
       refreshing: false,
       error: undefined,
     });
+  }
+
+  private actorKey(member: MemberSession) {
+    return `${member.householdId}:${member.userId}:${member.sessionId}`;
   }
 }

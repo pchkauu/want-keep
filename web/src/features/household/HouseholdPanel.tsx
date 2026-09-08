@@ -151,11 +151,8 @@ export function HouseholdPanel({ compact = false }: { compact?: boolean }) {
                   );
                   if (!action.isLive()) return;
                   identity.controller.accept(member, ticket);
-                  const result = await controller.api.issue(
-                    invitation.revision,
-                  );
+                  const result = await controller.issueInvitation(member);
                   if (!action.isLive()) return;
-                  controller.updateInvitation(result.state);
                   setLink(`${window.location.origin}/invite#${result.token}`);
                 })
               }
