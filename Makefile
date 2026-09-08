@@ -134,8 +134,8 @@ ifeq ($(SCENARIO),all)
 		name="$${suite##*/}"; \
 		$(MAKE) e2e SCENARIO="$${name%.spec.ts}" || exit $$?; \
 	done
-else ifeq ($(SCENARIO),access)
-	sh scripts/test-access.sh
+else ifneq ($(filter $(SCENARIO),access family-access),)
+	WANT_KEEP_ACCESS_SCENARIO="$(SCENARIO)" sh scripts/test-access.sh
 else
 	@if [ -z "$(SCENARIO)" ]; then echo "SCENARIO=<name|all> is required." >&2; exit 2; fi
 	@if [ "$(SCENARIO)" = "all" ]; then suite_path="$(E2E_WEB_DIR)/e2e"; else suite_path="$(E2E_WEB_DIR)/e2e/$(SCENARIO).spec.ts"; fi; \

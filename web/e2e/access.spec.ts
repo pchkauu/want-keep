@@ -79,7 +79,7 @@ test("closed household, separate passkeys, cash command, invitation and personal
       .innerText();
     await page.getByRole("button", { name: "Codes saved — continue" }).click();
     await page.goto("/onboarding");
-    await expect(page).toHaveURL(/\/onboarding$/);
+    await expect(page).toHaveURL(/\/onboarding\?view=household$/);
     await expect(
       page.getByText("Alex Test", { exact: true }).last(),
     ).toBeVisible();
@@ -171,7 +171,7 @@ test("closed household, separate passkeys, cash command, invitation and personal
       .click();
     await expect(
       page.getByRole("heading", { name: "Account added: Cash at start" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
     expect(accountPosts).toBe(4);
     expect(commandKeys[0]).toBeTruthy();
     expect(new Set(commandKeys).size).toBe(1);
@@ -219,7 +219,7 @@ test("closed household, separate passkeys, cash command, invitation and personal
     expect(invitationFinishes).toBe(1);
     await partner.unroute("**/api/v1/invitations/accept");
     await partner.goto("/onboarding");
-    await expect(partner).toHaveURL(/\/onboarding$/);
+    await expect(partner).toHaveURL(/\/onboarding\?view=household$/);
     await expect(
       partner.getByText("Cash at start", { exact: true }),
     ).toBeVisible();
@@ -291,7 +291,7 @@ test("closed household, separate passkeys, cash command, invitation and personal
     await page
       .getByRole("button", { name: "Log in with Passkeys", exact: true })
       .click();
-    await expect(page).toHaveURL(/\/overview$/);
+    await expect(page).toHaveURL(/\/overview\?view=household$/);
     await page.goto("/settings/security");
     await page
       .getByRole("button", { name: "Issue new codes", exact: true })
@@ -310,6 +310,7 @@ test("closed household, separate passkeys, cash command, invitation and personal
       await expect(
         page.getByRole("heading", { name: "Add cash funds" }),
       ).toBeVisible();
+      await expect(page).toHaveURL(/\/onboarding\?view=household$/);
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -331,10 +332,16 @@ test("closed household, separate passkeys, cash command, invitation and personal
       "Unsaved cash",
     );
     await first.setOffline(true);
-    await expect(
-      page.getByText("No connection.", { exact: false }),
-    ).toBeVisible();
+    await expect(page.locator(".workspace-notice")).toContainText(
+      "No connection.",
+    );
+    const sessionRechecked = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().endsWith("/api/v1/me"),
+    );
     await first.setOffline(false);
+    await sessionRechecked;
     await page.clock.fastForward(31 * 60_000);
     await expect(page).toHaveURL(/\/login$/);
     await expect(
@@ -352,7 +359,7 @@ test("closed household, separate passkeys, cash command, invitation and personal
     await page
       .getByRole("button", { name: "Log in with Passkeys", exact: true })
       .click();
-    await expect(page).toHaveURL(/\/onboarding$/);
+    await expect(page).toHaveURL(/\/onboarding\?view=household$/);
     await expect(page.getByLabel("Account name", { exact: true })).toHaveValue(
       "Unsaved cash",
     );

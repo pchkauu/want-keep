@@ -3,6 +3,11 @@ set -eu
 private_dir=$(mktemp -d "${TMPDIR:-/tmp}/want-keep-access.XXXXXX")
 chmod 700 "$private_dir"
 project="want-keep-access-$(date +%s)-$$"
+scenario="${WANT_KEEP_ACCESS_SCENARIO:-access}"
+case "$scenario" in
+  access|family-access) ;;
+  *) echo "Unsupported access scenario: $scenario" >&2; exit 2 ;;
+esac
 api_pid=""
 cleanup() {
   if [ -n "$api_pid" ]; then kill "$api_pid" 2>/dev/null || true; wait "$api_pid" 2>/dev/null || true; fi
@@ -47,5 +52,5 @@ if [ "${WANT_KEEP_ACCESS_MANUAL:-0}" = 1 ]; then
   printf 'Manual Chrome URL: http://localhost:4182/setup\n'
   (cd web && npm run dev -- --host localhost --port 4182 --strictPort)
 else
-  (cd web && npm exec playwright test -- e2e/access.spec.ts)
+  (cd web && npm exec playwright test -- "e2e/$scenario.spec.ts")
 fi
