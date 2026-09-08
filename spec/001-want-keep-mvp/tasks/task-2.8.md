@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Ledger хранит неизменяемые снимки распределения по MembershipID отдельно от payer, owner и actor; allocation/domain выбирает версионные merchant/category rules. Поддержаны точные суммы, доли и equal с largest-remainder и MembershipID tie-break, personal/shared, item override и transaction fallback для оставшихся расходов. Неизвестное назначение остаётся unallocated; равные конфликтующие правила требуют решения. Новые правила не переписывают историю, source update не стирает пользовательское распределение, а matching сохраняет один семейный и один персональный эффект.
+Ledger хранит неизменяемые снимки распределения по MembershipID отдельно от payer, owner и actor; allocation/domain выбирает версионные merchant/category rules. Поддержаны точные суммы, доли и equal с largest-remainder и MembershipID tie-break, personal/shared, item override и сохраняемое основание transaction fallback для перерасчёта. Неизвестное назначение остаётся unallocated; равные конфликтующие правила требуют решения. Source import применяет правило только через подтверждённый merchant alias, новые правила не переписывают историю, source update не стирает пользовательское распределение, а matching сохраняет один семейный и один персональный эффект с учётом carrier/contribution.
 
 ### Границы изменений
 
@@ -246,7 +246,7 @@ make test-integration AREA=privacy
 git diff --check
 ```
 
-Смешанный чек 1000 даёт семье 1000, A 400 и B 600; шесть активов и произвольная точность сохраняются. Правила, preview, приоритеты, конфликт, replay, concurrent revision, миграция и права проверяются на PostgreSQL без изменения проводок.
+Смешанный чек 1000 даёт семье 1000, A 400 и B 600; шесть активов и произвольная точность сохраняются. Проверяются перерасчёт share/equal, неизменность amount-based, carrier/contribution matching, полный hash review, подтверждённые merchant aliases, правила, preview, replay, concurrent revision, миграция и права без изменения проводок.
 
 Task-1.6 и task-2.6 включены в базу; команды реализованы. Доказательства и границы: evidence/task-2.8-family-allocation.md. Доказаны backend-части AC-078/079/080/081/086/093; возвратные части AC-065/091 остаются task-2.7. UI, бюджеты, реальный OpenAI, банки и production не подтверждаются.
 
@@ -268,7 +268,7 @@ Allocate household expenses and items to members.
 
 ### Change and contracts
 
-Ledger stores immutable allocation snapshots by MembershipID independently from payer, owner and actor; allocation/domain selects versioned merchant/category rules. Exact amounts, shares and equal mode use largest remainder with MembershipID tie-break; personal/shared, item override and transaction fallback cover remaining expenses. Unknown purpose remains unallocated and conflicting equal-priority rules require resolution. New rules do not rewrite history, source updates cannot erase a user allocation, and matching retains one household and one member effect.
+Ledger stores immutable allocation snapshots by MembershipID independently from payer, owner and actor; allocation/domain selects versioned merchant/category rules. Exact amounts, shares and equal mode use largest remainder with MembershipID tie-break; personal/shared, item override and a retained transaction-fallback basis support recalculation. Unknown purpose remains unallocated and conflicting equal-priority rules require resolution. Source import applies a rule only through a confirmed merchant alias, new rules do not rewrite history, source updates cannot erase a user allocation, and matching retains one household and one member effect according to carrier/contribution.
 
 ### Change boundaries
 
@@ -501,7 +501,7 @@ make test-integration AREA=privacy
 git diff --check
 ```
 
-A mixed 1,000 receipt yields household 1,000, A 400 and B 600; all six assets and arbitrary precision are retained. Rules, preview, priorities, conflict, replay, concurrent revision, migration and permissions are checked on PostgreSQL without changing postings.
+A mixed 1,000 receipt yields household 1,000, A 400 and B 600; all six assets and arbitrary precision are retained. Share/equal recalculation, amount-based immutability, matching carrier/contribution, the complete review hash, confirmed merchant aliases, rules, preview, replay, concurrent revision, migration and permissions are checked without changing postings.
 
 Task-1.6 and task-2.6 are included in the base; commands exist. Evidence and boundaries: evidence/task-2.8-family-allocation.en.md. Backend portions of AC-078/079/080/081/086/093 are proven; refund portions of AC-065/091 remain with task-2.7. UI, budgets, real OpenAI, banks and production are not verified.
 
