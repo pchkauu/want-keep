@@ -167,6 +167,16 @@ func (w *Writer) append(ctx context.Context, p household.Principal, r ledger.Rev
 	if err != nil {
 		return nil, err
 	}
+	if r.Allocation.State == "" {
+		reason := r.AllocationReason
+		if reason == "" {
+			reason = "allocation_unresolved"
+		}
+		r, err = r.WithAllocation(ledger.AllocationInput{Reason: reason}, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if err := r.Validate(); err != nil {
 		return nil, err
 	}

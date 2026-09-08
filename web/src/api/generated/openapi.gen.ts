@@ -73,6 +73,59 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/allocation-rules": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List household allocation rules */
+    get: operations["allocation_rules_list"];
+    put?: never;
+    /** Create household allocation rule */
+    post: operations["allocation_rules_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/allocation-rules/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Preview the rule decision without changing data */
+    post: operations["allocation_rules_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/allocation-rules/{ruleId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read household allocation rule */
+    get: operations["allocation_rules_read"];
+    put?: never;
+    /** Replace conditions and shares in a new rule revision */
+    post: operations["allocation_rules_change"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/attachments": {
     parameters: {
       query?: never;
@@ -1827,8 +1880,79 @@ export interface components {
     AllocationChange: {
       allocation: components["schemas"]["ExpenseAllocation"];
       expectedRevision: components["schemas"]["Revision"];
-      items?: components["schemas"]["ReceiptItem"][];
+      items?: components["schemas"]["AllocationItemOverride"][];
       reason: string;
+    };
+    AllocationItemOverride: {
+      allocation: components["schemas"]["ExpenseAllocation"];
+      itemId: components["schemas"]["ID"];
+    };
+    AllocationRule: {
+      condition: components["schemas"]["AllocationRuleCondition"];
+      id: components["schemas"]["ID"];
+      priority: number;
+      revision: components["schemas"]["Revision"];
+      shares: components["schemas"]["AllocationRuleShare"][];
+      /** @enum {string} */
+      state: "active" | "archived";
+    };
+    AllocationRuleCondition: {
+      categoryId?: components["schemas"]["ID"];
+      merchantId?: components["schemas"]["ID"];
+    };
+    AllocationRuleInput: {
+      condition: components["schemas"]["AllocationRuleCondition"];
+      expectedRevision?: components["schemas"]["Revision"];
+      priority: number;
+      shares: components["schemas"]["AllocationRuleShare"][];
+      /** @enum {string} */
+      state: "active" | "archived";
+    };
+    AllocationRulePage: {
+      items: components["schemas"]["AllocationRule"][];
+      nextCursor?: string;
+    };
+    AllocationRulePreview: {
+      /** @enum {string} */
+      reason: "matched" | "no_matching_rule" | "rule_conflict";
+      rules: components["schemas"]["AllocationRuleReference"][];
+      shares: components["schemas"]["AllocationRuleShare"][];
+      /** @enum {string} */
+      state: "resolved" | "unresolved";
+    };
+    AllocationRulePreviewInput: {
+      categoryId?: components["schemas"]["ID"];
+      merchantId?: components["schemas"]["ID"];
+    };
+    AllocationRuleReference: {
+      revision: components["schemas"]["Revision"];
+      ruleId: components["schemas"]["ID"];
+    };
+    AllocationRuleShare: {
+      memberId: components["schemas"]["ID"];
+      share: components["schemas"]["PositiveDecimal"];
+    };
+    /** @description Immutable analytical allocation. Member amounts may repeat for different assets; assets are never converted or added together. */
+    AllocationSnapshot: {
+      members: components["schemas"]["MemberAmount"][];
+      /** @enum {string} */
+      mode?: "amounts" | "shares" | "equal" | "unresolved" | "composite";
+      /** @enum {string} */
+      origin:
+        | "explicit_purchase"
+        | "explicit_item"
+        | "rule"
+        | "equal_default"
+        | "unresolved"
+        | "mixed"
+        | "not_applicable";
+      /** @enum {string} */
+      purpose?: "personal" | "shared";
+      reason: string;
+      rules: components["schemas"]["AllocationRuleReference"][];
+      /** @enum {string} */
+      state: "resolved" | "partial" | "unresolved" | "not_applicable";
+      unallocated: components["schemas"]["Money"][];
     };
     AmountAllocation: {
       members: components["schemas"]["MemberAmount"][];
@@ -2289,6 +2413,14 @@ export interface components {
       credential: components["schemas"]["RegistrationCredential"];
       name: string;
     };
+    /** @description Shared equal allocation uses every active household membership. Personal equal allocation requires memberId. */
+    EqualAllocation: {
+      memberId?: components["schemas"]["ID"];
+      /** @enum {string} */
+      mode: "equal";
+      /** @enum {string} */
+      purpose: "personal" | "shared";
+    };
     /** @enum {string} */
     ErrorCode:
       | "unauthorized"
@@ -2367,6 +2499,7 @@ export interface components {
     ExpenseAllocation:
       | components["schemas"]["AmountAllocation"]
       | components["schemas"]["ShareAllocation"]
+      | components["schemas"]["EqualAllocation"]
       | components["schemas"]["UnresolvedAllocation"];
     /** @description HTTP 410 safe error. The optional compact outcome is included only after result-resource authorization. It cannot authorize a second execution. */
     ExpiredCommand: {
@@ -2562,6 +2695,7 @@ export interface components {
       | "category"
       | "merchant_identity"
       | "receipt_items"
+      | "allocation"
       | "legacy_all"
       | "matching"
       | "contribution";
@@ -2942,6 +3076,7 @@ export interface components {
       transactionId?: components["schemas"]["ID"];
     };
     ReceiptItem: {
+      allocation: components["schemas"]["AllocationSnapshot"];
       categoryId?: components["schemas"]["ID"];
       discount: components["schemas"]["Money"];
       gross: components["schemas"]["Money"];
@@ -3301,7 +3436,7 @@ export interface components {
       actorId: components["schemas"]["ID"];
       /** @enum {string} */
       aiState: "waiting" | "reviewed" | "clarification" | "failed";
-      allocation: components["schemas"]["ExpenseAllocation"];
+      allocation: components["schemas"]["AllocationSnapshot"];
       attachmentId?: components["schemas"]["ID"];
       balanceEffects: components["schemas"]["TransactionBalanceEffect"][];
       cashDate: components["schemas"]["Date"];
@@ -3360,7 +3495,7 @@ export interface components {
       locked: components["schemas"]["AmountValue"];
       owned: components["schemas"]["AmountValue"];
     };
-    /** @description Omitted fields remain unchanged; explicit actions distinguish clearing classification from no change. Receipt item replacement is atomic. Empty merchant/note clears source text. Member allocation remains unavailable until task-2.8. */
+    /** @description Omitted fields remain unchanged; explicit actions distinguish clearing classification from no change. Receipt item replacement is atomic. Empty merchant/note clears source text. Amount-based allocations must still match changed item totals; share-based allocations are recalculated exactly. */
     TransactionCorrection: {
       allocation?: components["schemas"]["ExpenseAllocation"];
       category?: components["schemas"]["ClassificationReferenceChange"];
@@ -3391,7 +3526,7 @@ export interface components {
     );
     TransactionCreate: {
       accountId: components["schemas"]["ID"];
-      allocation: components["schemas"]["ExpenseAllocation"];
+      allocation?: components["schemas"]["ExpenseAllocation"];
       amount: components["schemas"]["PositiveMoney"];
       attachmentId?: components["schemas"]["ID"];
       categoryId?: components["schemas"]["ID"];
@@ -3800,6 +3935,166 @@ export interface operations {
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
       503: components["responses"]["Problem"];
+    };
+  };
+  allocation_rules_list: {
+    parameters: {
+      query?: {
+        /** @description Opaque, bound to family, visibility and filters. */
+        cursor?: components["parameters"]["Cursor"];
+        limit?: components["parameters"]["Limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Stable keyset page ordered by rule ID. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AllocationRulePage"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+    };
+  };
+  allocation_rules_create: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Client-generated before submission. Unique within household + actor; same ID is used for status lookup. A different operation or payload with the same key is rejected. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+        /** @description Session-bound token; validate Origin as well. Exceptions use ceremony-bound challenge/state. */
+        "X-CSRF-Token": components["parameters"]["CSRF"];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AllocationRuleInput"];
+      };
+    };
+    responses: {
+      /** @description Registered command */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommandStatus"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      422: components["responses"]["Problem"];
+    };
+  };
+  allocation_rules_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AllocationRulePreviewInput"];
+      };
+    };
+    responses: {
+      /** @description Current resolution or a safe unresolved reason */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AllocationRulePreview"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+    };
+  };
+  allocation_rules_read: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        ruleId: components["schemas"]["ID"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Current rule revision */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AllocationRule"];
+        };
+      };
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+    };
+  };
+  allocation_rules_change: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Client-generated before submission. Unique within household + actor; same ID is used for status lookup. A different operation or payload with the same key is rejected. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+        /** @description Session-bound token; validate Origin as well. Exceptions use ceremony-bound challenge/state. */
+        "X-CSRF-Token": components["parameters"]["CSRF"];
+      };
+      path: {
+        ruleId: components["schemas"]["ID"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AllocationRuleInput"];
+      };
+    };
+    responses: {
+      /** @description Registered command */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommandStatus"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      /** @description Expired command detail; authorized compact outcome may be recovered without execution. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      422: components["responses"]["Problem"];
     };
   };
   attachments_upload: {

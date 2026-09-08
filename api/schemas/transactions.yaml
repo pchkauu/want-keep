@@ -69,6 +69,20 @@ ShareAllocation:
   - members
   description: Shares must sum to exactly 100. Allocation uses largest remainders
     and memberId ties.
+EqualAllocation:
+  type: object
+  additionalProperties: false
+  properties:
+    mode:
+      type: string
+      enum: [equal]
+    purpose:
+      type: string
+      enum: [personal, shared]
+    memberId:
+      "$ref": "./money.yaml#/ID"
+  required: [mode, purpose]
+  description: Shared equal allocation uses every active household membership. Personal equal allocation requires memberId.
 UnresolvedAllocation:
   type: object
   additionalProperties: false
@@ -88,7 +102,38 @@ ExpenseAllocation:
   oneOf:
   - "$ref": "./transactions.yaml#/AmountAllocation"
   - "$ref": "./transactions.yaml#/ShareAllocation"
+  - "$ref": "./transactions.yaml#/EqualAllocation"
   - "$ref": "./transactions.yaml#/UnresolvedAllocation"
+AllocationRuleReference:
+  type: object
+  additionalProperties: false
+  properties:
+    ruleId: { $ref: './money.yaml#/ID' }
+    revision: { $ref: './money.yaml#/Revision' }
+  required: [ruleId, revision]
+AllocationSnapshot:
+  type: object
+  additionalProperties: false
+  properties:
+    state: { type: string, enum: [resolved, partial, unresolved, not_applicable] }
+    purpose: { type: string, enum: [personal, shared] }
+    mode: { type: string, enum: [amounts, shares, equal, unresolved, composite] }
+    origin: { type: string, enum: [explicit_purchase, explicit_item, rule, equal_default, unresolved, mixed, not_applicable] }
+    reason: { type: string, maxLength: 2000 }
+    members:
+      type: array
+      maxItems: 6000
+      items: { $ref: './transactions.yaml#/MemberAmount' }
+    unallocated:
+      type: array
+      maxItems: 6
+      items: { $ref: './money.yaml#/Money' }
+    rules:
+      type: array
+      maxItems: 1000
+      items: { $ref: './transactions.yaml#/AllocationRuleReference' }
+  required: [state, origin, reason, members, unallocated, rules]
+  description: Immutable analytical allocation. Member amounts may repeat for different assets; assets are never converted or added together.
 Posting:
   type: object
   additionalProperties: false
@@ -134,6 +179,8 @@ ReceiptItem:
       "$ref": "./money.yaml#/Money"
     categoryId:
       "$ref": "./money.yaml#/ID"
+    allocation:
+      "$ref": "./transactions.yaml#/AllocationSnapshot"
   required:
   - id
   - name
@@ -141,6 +188,7 @@ ReceiptItem:
   - gross
   - discount
   - net
+  - allocation
 ReceiptItemInput:
   type: object
   additionalProperties: false
@@ -274,7 +322,7 @@ Transaction:
       items:
         "$ref": "./transactions.yaml#/Posting"
     allocation:
-      "$ref": "./transactions.yaml#/ExpenseAllocation"
+      "$ref": "./transactions.yaml#/AllocationSnapshot"
     categoryId:
       "$ref": "./money.yaml#/ID"
     merchantId:
@@ -369,7 +417,6 @@ TransactionCreate:
   - accountId
   - occurredAt
   - amount
-  - allocation
   - payer
 FeeInput:
   type: object
@@ -469,7 +516,7 @@ TransactionCorrection:
     - required: [merchantIdentity]
     - required: [receiptItems]
     - required: [allocation]
-  description: Omitted fields remain unchanged; explicit actions distinguish clearing classification from no change. Receipt item replacement is atomic. Empty merchant/note clears source text. Member allocation remains unavailable until task-2.8.
+  description: Omitted fields remain unchanged; explicit actions distinguish clearing classification from no change. Receipt item replacement is atomic. Empty merchant/note clears source text. Amount-based allocations must still match changed item totals; share-based allocations are recalculated exactly.
 TransactionLink:
   type: object
   additionalProperties: false
@@ -516,7 +563,7 @@ DecisionRevision:
   required: [transactionId, expectedRevision]
 LedgerField:
   type: string
-  enum: [principal, fees, occurred_at, payer, merchant, note, accounting, category, merchant_identity, receipt_items, legacy_all, matching, contribution]
+  enum: [principal, fees, occurred_at, payer, merchant, note, accounting, category, merchant_identity, receipt_items, allocation, legacy_all, matching, contribution]
 FieldProtection:
   type: object
   additionalProperties: false
@@ -609,8 +656,9 @@ AllocationChange:
       "$ref": "./transactions.yaml#/ExpenseAllocation"
     items:
       type: array
+      maxItems: 1000
       items:
-        "$ref": "./transactions.yaml#/ReceiptItem"
+        "$ref": "./transactions.yaml#/AllocationItemOverride"
     reason:
       type: string
       minLength: 1
@@ -619,6 +667,13 @@ AllocationChange:
   - expectedRevision
   - allocation
   - reason
+AllocationItemOverride:
+  type: object
+  additionalProperties: false
+  properties:
+    itemId: { $ref: './money.yaml#/ID' }
+    allocation: { $ref: './transactions.yaml#/ExpenseAllocation' }
+  required: [itemId, allocation]
 RefundCreate:
   type: object
   additionalProperties: false

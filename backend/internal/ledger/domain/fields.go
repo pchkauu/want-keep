@@ -74,6 +74,8 @@ func (r Revision) FieldEqual(other Revision, field Field) bool {
 		return slices.EqualFunc(r.ReceiptItems, other.ReceiptItems, func(a, b ReceiptItem) bool {
 			return a.ID == b.ID && a.Name == b.Name && a.Quantity == b.Quantity && a.CategoryID == b.CategoryID && a.Gross.Asset() == b.Gross.Asset() && a.Gross.Amount() == b.Gross.Amount() && a.Discount.Asset() == b.Discount.Asset() && a.Discount.Amount() == b.Discount.Amount()
 		})
+	case AllocationField:
+		return allocationEqual(r.Allocation, other.Allocation) && slices.EqualFunc(r.ReceiptItems, other.ReceiptItems, func(a, b ReceiptItem) bool { return allocationEqual(a.Allocation, b.Allocation) })
 	}
 	return false
 }
@@ -104,8 +106,40 @@ func (r *Revision) CopyField(from Revision, field Field) error {
 		r.MerchantID = from.MerchantID
 	case ReceiptItemsField:
 		r.ReceiptItems = slices.Clone(from.ReceiptItems)
+	case AllocationField:
+		r.Allocation = from.Allocation.Clone()
+		for i := range r.ReceiptItems {
+			for _, item := range from.ReceiptItems {
+				if r.ReceiptItems[i].ID == item.ID {
+					r.ReceiptItems[i].Allocation = item.Allocation.Clone()
+				}
+			}
+		}
 	default:
 		return ErrInvalidRevision
 	}
 	return nil
+}
+
+func allocationEqual(a, b AllocationSnapshot) bool {
+	if a.State != b.State || a.Purpose != b.Purpose || a.Mode != b.Mode || a.Origin != b.Origin || a.Reason != b.Reason || len(a.Inputs) != len(b.Inputs) || len(a.Members) != len(b.Members) || len(a.Unallocated) != len(b.Unallocated) || !slices.Equal(a.RuleRefs, b.RuleRefs) {
+		return false
+	}
+	for i := range a.Inputs {
+		left, right := a.Inputs[i], b.Inputs[i]
+		if left.MemberID != right.MemberID || left.Share != right.Share || (left.Amount == nil) != (right.Amount == nil) || left.Amount != nil && (left.Amount.Asset() != right.Amount.Asset() || left.Amount.Amount() != right.Amount.Amount()) {
+			return false
+		}
+	}
+	for i := range a.Members {
+		if a.Members[i].MemberID != b.Members[i].MemberID || a.Members[i].Money.Asset() != b.Members[i].Money.Asset() || a.Members[i].Money.Amount() != b.Members[i].Money.Amount() {
+			return false
+		}
+	}
+	for i := range a.Unallocated {
+		if a.Unallocated[i].Asset() != b.Unallocated[i].Asset() || a.Unallocated[i].Amount() != b.Unallocated[i].Amount() {
+			return false
+		}
+	}
+	return true
 }

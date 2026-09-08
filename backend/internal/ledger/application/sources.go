@@ -181,7 +181,22 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		}
 		validation := r.Clone()
 		validation.Participation = ledger.Participation{}
-		if validation.CheckSuccessor(prior) != nil {
+		validationErr := validation.CheckSuccessor(prior)
+		if found && errors.Is(validationErr, ledger.ErrInvalidAllocation) {
+			refreshed, refreshErr := r.RefreshAllocation()
+			_, allocationProtected := previous.Protections[ledger.AllocationField]
+			removesProtectedAllocation := allocationProtected && previous.Allocation.State != ledger.AllocationNotApplicable && refreshed.Allocation.State == ledger.AllocationNotApplicable
+			if refreshErr == nil && !removesProtectedAllocation {
+				r = refreshed
+				if !previous.FieldEqual(r, ledger.AllocationField) {
+					r.FieldVersions[ledger.AllocationField] = r.Revision
+				}
+				validation = r.Clone()
+				validation.Participation = ledger.Participation{}
+				validationErr = validation.CheckSuccessor(prior)
+			}
+		}
+		if validationErr != nil {
 			if !found {
 				return result, s.repository.RecordUnresolvedTransaction(ctx, input)
 			}

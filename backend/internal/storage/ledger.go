@@ -67,6 +67,9 @@ func (s *Store) AppendRevision(ctx context.Context, r ledger.Revision, expected 
 	if err = s.saveTransactionDetails(ctx, r); err != nil {
 		return err
 	}
+	if err = s.saveLedgerAllocations(ctx, r); err != nil {
+		return err
+	}
 	if err = s.saveLedgerParticipation(ctx, r); err != nil {
 		return err
 	}
@@ -140,6 +143,9 @@ func (s *Store) LedgerRevision(ctx context.Context, p household.Principal, id st
 	}
 	rows.Close()
 	if err = s.loadTransactionDetails(ctx, q, p, &r); err != nil {
+		return r, err
+	}
+	if err = s.loadLedgerAllocations(ctx, q, p, &r); err != nil {
 		return r, err
 	}
 	if err = s.loadLedgerParticipation(ctx, q, p, &r); err != nil {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	accounts "github.com/pchkauu/want-keep/backend/internal/accounts/application"
+	allocations "github.com/pchkauu/want-keep/backend/internal/allocation/application"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -38,5 +39,5 @@ func (f *fixture) create(asset money.Asset, amount string) string {
 }
 
 func (f *fixture) ledgerService() *journal.Service {
-	return journal.NewService(f.store, f.writer, func() calendar.Instant { return f.now }, uuid.NewString)
+	return journal.NewServiceWithAllocations(f.store, f.writer, allocations.NewService(f.store, uuid.NewString), func() calendar.Instant { return f.now }, uuid.NewString)
 }

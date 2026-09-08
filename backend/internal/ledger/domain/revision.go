@@ -50,6 +50,7 @@ type Revision struct {
 	PayerMemberID                                  household.MembershipID
 	Postings                                       []Posting
 	ReceiptItems                                   []ReceiptItem
+	Allocation                                     AllocationSnapshot
 }
 
 func (r Revision) Validate() error {
@@ -151,7 +152,10 @@ func (r Revision) Validate() error {
 	if err := r.validateEconomics(); err != nil {
 		return err
 	}
-	return r.validateClassification()
+	if err := r.validateClassification(); err != nil {
+		return err
+	}
+	return r.validateAllocation()
 }
 
 // Deltas compares complete revision snapshots. History remains immutable, while the

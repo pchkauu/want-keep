@@ -39,10 +39,6 @@ func (s *Server) correct(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, err)
 		return
 	}
-	if in.Allocation != nil {
-		s.problem(w, ledger.ErrFeatureUnavailable)
-		return
-	}
 	c, err := s.correctionInput(in)
 	if err != nil {
 		s.problem(w, err)
@@ -189,7 +185,55 @@ func (s *Server) correctionInput(in generated.TransactionCorrection) (ledger.Cor
 		}
 		c.ReceiptItems = &change
 	}
+	if in.Allocation != nil {
+		allocation, err := s.allocationInput(*in.Allocation)
+		if err != nil {
+			return c, err
+		}
+		c.Allocation = &ledger.AllocationChange{Allocation: allocation}
+	}
 	return c, nil
+}
+
+func (s *Server) allocate(w http.ResponseWriter, r *http.Request) {
+	a, err := s.guard.Authorize(r, s.sessions, true)
+	if err != nil {
+		s.problem(w, err)
+		return
+	}
+	id, err := s.transactionID(r)
+	if err != nil {
+		s.problem(w, err)
+		return
+	}
+	var input generated.AllocationChange
+	if err = s.decode(r, "AllocationChange", &input); err != nil {
+		s.problem(w, err)
+		return
+	}
+	allocation, err := s.allocationInput(input.Allocation)
+	if err != nil {
+		s.problem(w, err)
+		return
+	}
+	items := []ledger.ItemAllocationInput{}
+	if input.Items != nil {
+		for _, item := range *input.Items {
+			value, parseErr := s.allocationInput(item.Allocation)
+			if parseErr != nil {
+				s.problem(w, parseErr)
+				return
+			}
+			items = append(items, ledger.ItemAllocationInput{ItemID: item.ItemId, Allocation: value})
+		}
+	}
+	payload := struct {
+		TransactionID string
+		Input         generated.AllocationChange
+	}{id, input}
+	s.execute(w, r, a, "transactions.allocations", payload, func(ctx context.Context) (command.Result, error) {
+		return s.service.Allocate(ctx, a.Principal, id, uint64(input.ExpectedRevision), allocation, items, input.Reason)
+	})
 }
 
 func classificationReference(in generated.ClassificationReferenceChange) (string, error) {

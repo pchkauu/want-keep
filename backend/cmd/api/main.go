@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	accounts "github.com/pchkauu/want-keep/backend/internal/accounts/application"
+	allocations "github.com/pchkauu/want-keep/backend/internal/allocation/application"
 	attachments "github.com/pchkauu/want-keep/backend/internal/attachments/application"
 	"github.com/pchkauu/want-keep/backend/internal/attachments/files"
 	"github.com/pchkauu/want-keep/backend/internal/attachments/processor"
@@ -24,6 +25,7 @@ import (
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	accountdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/accounts"
+	allocationdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/allocation"
 	attachmentdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/attachments"
 	categorydelivery "github.com/pchkauu/want-keep/backend/internal/delivery/categories"
 	delivery "github.com/pchkauu/want-keep/backend/internal/delivery/identity"
@@ -120,7 +122,12 @@ func run() error {
 		return err
 	}
 	matchingService := matching.NewService(database, writer, now, uuid.NewString)
-	ledgerHandler, err := ledgerdelivery.New(ledger.NewService(database, matchingService, now, uuid.NewString), matchingService, ledger.NewQueries(database), executor, queries, service, database, config, now)
+	allocationService := allocations.NewService(database, uuid.NewString)
+	ledgerHandler, err := ledgerdelivery.New(ledger.NewServiceWithAllocations(database, matchingService, allocationService, now, uuid.NewString), matchingService, ledger.NewQueries(database), executor, queries, service, database, config, now)
+	if err != nil {
+		return err
+	}
+	allocationHandler, err := allocationdelivery.New(allocationService, executor, queries, service, database, config, now)
 	if err != nil {
 		return err
 	}
@@ -138,6 +145,8 @@ func run() error {
 	mux.Handle("/api/v1/transfers", ledgerHandler)
 	mux.Handle("/api/v1/matching", ledgerHandler)
 	mux.Handle("/api/v1/matching/", ledgerHandler)
+	mux.Handle("/api/v1/allocation-rules", allocationHandler)
+	mux.Handle("/api/v1/allocation-rules/", allocationHandler)
 	mux.Handle("/api/v1/reconciliations", reconciliationHandler)
 	mux.Handle("/api/v1/reconciliations/", reconciliationHandler)
 	mux.Handle("/api/v1/accounts", accountHandler)

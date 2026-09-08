@@ -70,6 +70,12 @@ paths:
     "$ref": "./paths/transactions.yaml#/~1transactions~1{transactionId}~1undo"
   "/transactions/{transactionId}/allocations":
     "$ref": "./paths/transactions.yaml#/~1transactions~1{transactionId}~1allocations"
+  "/allocation-rules":
+    "$ref": "./paths/allocations.yaml#/~1allocation-rules"
+  "/allocation-rules/preview":
+    "$ref": "./paths/allocations.yaml#/~1allocation-rules~1preview"
+  "/allocation-rules/{ruleId}":
+    "$ref": "./paths/allocations.yaml#/~1allocation-rules~1{ruleId}"
   "/reconciliations":
     "$ref": "./paths/reconciliations.yaml#/~1reconciliations"
   "/reconciliations/{reconciliationId}":
@@ -419,10 +425,16 @@ components:
       "$ref": "./schemas/transactions.yaml#/AmountAllocation"
     ShareAllocation:
       "$ref": "./schemas/transactions.yaml#/ShareAllocation"
+    EqualAllocation:
+      "$ref": "./schemas/transactions.yaml#/EqualAllocation"
     UnresolvedAllocation:
       "$ref": "./schemas/transactions.yaml#/UnresolvedAllocation"
     ExpenseAllocation:
       "$ref": "./schemas/transactions.yaml#/ExpenseAllocation"
+    AllocationSnapshot:
+      "$ref": "./schemas/transactions.yaml#/AllocationSnapshot"
+    AllocationRuleReference:
+      "$ref": "./schemas/transactions.yaml#/AllocationRuleReference"
     Posting:
       "$ref": "./schemas/transactions.yaml#/Posting"
     ReceiptItem:
@@ -451,6 +463,22 @@ components:
       "$ref": "./schemas/transactions.yaml#/UndoInput"
     AllocationChange:
       "$ref": "./schemas/transactions.yaml#/AllocationChange"
+    AllocationItemOverride:
+      "$ref": "./schemas/transactions.yaml#/AllocationItemOverride"
+    AllocationRuleShare:
+      "$ref": "./schemas/allocations.yaml#/AllocationRuleShare"
+    AllocationRuleCondition:
+      "$ref": "./schemas/allocations.yaml#/AllocationRuleCondition"
+    AllocationRuleInput:
+      "$ref": "./schemas/allocations.yaml#/AllocationRuleInput"
+    AllocationRule:
+      "$ref": "./schemas/allocations.yaml#/AllocationRule"
+    AllocationRulePage:
+      "$ref": "./schemas/allocations.yaml#/AllocationRulePage"
+    AllocationRulePreviewInput:
+      "$ref": "./schemas/allocations.yaml#/AllocationRulePreviewInput"
+    AllocationRulePreview:
+      "$ref": "./schemas/allocations.yaml#/AllocationRulePreview"
     RefundCreate:
       "$ref": "./schemas/transactions.yaml#/RefundCreate"
     Reimbursement:

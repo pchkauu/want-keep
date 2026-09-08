@@ -38,6 +38,22 @@ func (s *Service) Correct(ctx context.Context, p household.Principal, change Cha
 	return s.ApplyChanges(ctx, p, []Change{change}, reason)
 }
 
+func (s *Service) Allocate(ctx context.Context, p household.Principal, operationID string, expected uint64, allocation ledger.AllocationInput, items []ledger.ItemAllocationInput, reason string) (command.Result, error) {
+	if s.allocations == nil {
+		return command.Result{}, commands.Rejection{Code: "feature_unavailable"}
+	}
+	members, err := s.allocations.ActiveMemberIDs(ctx, p)
+	if err != nil {
+		return command.Result{}, err
+	}
+	completeEqualAllocation(&allocation, members)
+	for index := range items {
+		completeEqualAllocation(&items[index].Allocation, members)
+	}
+	allocation.Origin = ledger.AllocationExplicitPurchase
+	return s.ApplyChanges(ctx, p, []Change{{OperationID: operationID, Expected: expected, Correction: ledger.Correction{Allocation: &ledger.AllocationChange{Allocation: allocation, Items: items, Members: members}}}}, reason)
+}
+
 // ApplyChanges is the atomic decision boundary used by household commands. Its caller owns the transaction.
 func (s *Service) ApplyChanges(ctx context.Context, p household.Principal, changes []Change, reason string) (command.Result, error) {
 	return s.applyChanges(ctx, p, changes, reason, "correction")
@@ -88,6 +104,20 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 			}
 			d.Kind = "exclusion"
 		} else {
+			if in.Correction.Allocation != nil {
+				if s.allocations == nil {
+					return command.Result{}, commands.Rejection{Code: "feature_unavailable"}
+				}
+				members, memberErr := s.allocations.ActiveMemberIDs(ctx, p)
+				if memberErr != nil {
+					return command.Result{}, memberErr
+				}
+				in.Correction.Allocation.Members = members
+				completeEqualAllocation(&in.Correction.Allocation.Allocation, members)
+				for index := range in.Correction.Allocation.Items {
+					completeEqualAllocation(&in.Correction.Allocation.Items[index].Allocation, members)
+				}
+			}
 			updated, fields, err = r.Correct(in.Correction)
 			if errors.Is(err, ledger.ErrNoChange) && len(changes) > 1 && r.Participation.GroupID != "" {
 				unchanged[r.OperationID] = r.Participation.GroupID
@@ -153,6 +183,15 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 	return s.persistDecision(ctx, p, d, retained)
 }
 
+func completeEqualAllocation(input *ledger.AllocationInput, members []household.MembershipID) {
+	if input.Mode != ledger.AllocationEqual || input.Purpose != ledger.AllocationShared || len(input.Members) != 0 {
+		return
+	}
+	for _, memberID := range members {
+		input.Members = append(input.Members, ledger.AllocationMemberInput{MemberID: memberID})
+	}
+}
+
 func (s *Service) Undo(ctx context.Context, p household.Principal, id string, expected []ExpectedRevision, reason string) (command.Result, error) {
 	d, err := s.repository.Decision(ctx, p, id)
 	if err != nil {
@@ -196,7 +235,13 @@ func (s *Service) Undo(ctx context.Context, p household.Principal, id string, ex
 		if err != nil {
 			return command.Result{}, s.rejectDecision(err)
 		}
-		for _, field := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField} {
+		if validationErr := r.Validate(); errors.Is(validationErr, ledger.ErrInvalidAllocation) {
+			r, err = r.RefreshAllocation()
+			if err != nil {
+				return command.Result{}, s.rejectDecision(err)
+			}
+		}
+		for _, field := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField, ledger.AllocationField} {
 			if !prior.FieldEqual(r, field) && !slices.Contains(entry.Fields, field) {
 				entry.Fields = append(entry.Fields, field)
 			}

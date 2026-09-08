@@ -20,6 +20,7 @@ var (
 type ReceiptItem struct {
 	ID, Name, Quantity, CategoryID string
 	Gross, Discount                money.Money
+	Allocation                     AllocationSnapshot
 }
 
 func (i ReceiptItem) Validate() error {
@@ -34,6 +35,9 @@ func (i ReceiptItem) Validate() error {
 		return ErrInvalidAllocation
 	}
 	if compared, err := i.Discount.Compare(i.Gross); err != nil || compared > 0 {
+		return ErrInvalidAllocation
+	}
+	if i.Allocation.State != "" && i.Allocation.Validate() != nil {
 		return ErrInvalidAllocation
 	}
 	return nil

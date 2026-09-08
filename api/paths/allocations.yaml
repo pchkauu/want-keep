@@ -1,0 +1,109 @@
+---
+"/allocation-rules":
+  get:
+    operationId: allocation_rules_list
+    tags: [allocation-rules]
+    summary: List household allocation rules
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    responses:
+      '200':
+        description: Stable keyset page ordered by rule ID.
+        content:
+          application/json:
+            schema: { $ref: '../schemas/allocations.yaml#/AllocationRulePage' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+  post:
+    operationId: allocation_rules_create
+    tags: [allocation-rules]
+    summary: Create household allocation rule
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    x-command-type: allocation_rules.create
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../schemas/allocations.yaml#/AllocationRuleInput' }
+    responses:
+      '202':
+        description: Registered command
+        content:
+          application/json:
+            schema: { $ref: '../schemas/commands.yaml#/CommandStatus' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '409': { $ref: '../components.yaml#/responses/Problem' }
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+      '422': { $ref: '../components.yaml#/responses/Problem' }
+"/allocation-rules/{ruleId}":
+  get:
+    operationId: allocation_rules_read
+    tags: [allocation-rules]
+    summary: Read household allocation rule
+    parameters:
+    - name: ruleId
+      in: path
+      required: true
+      schema: { $ref: '../schemas/money.yaml#/ID' }
+    responses:
+      '200':
+        description: Current rule revision
+        content:
+          application/json:
+            schema: { $ref: '../schemas/allocations.yaml#/AllocationRule' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+  post:
+    operationId: allocation_rules_change
+    tags: [allocation-rules]
+    summary: Replace conditions and shares in a new rule revision
+    parameters:
+    - name: ruleId
+      in: path
+      required: true
+      schema: { $ref: '../schemas/money.yaml#/ID' }
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    x-command-type: allocation_rules.change
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../schemas/allocations.yaml#/AllocationRuleInput' }
+    responses:
+      '202':
+        description: Registered command
+        content:
+          application/json:
+            schema: { $ref: '../schemas/commands.yaml#/CommandStatus' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+      '409': { $ref: '../components.yaml#/responses/Problem' }
+      '410':
+        description: Expired command detail; authorized compact outcome may be recovered without execution.
+      '422': { $ref: '../components.yaml#/responses/Problem' }
+"/allocation-rules/preview":
+  post:
+    operationId: allocation_rules_preview
+    tags: [allocation-rules]
+    summary: Preview the rule decision without changing data
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../schemas/allocations.yaml#/AllocationRulePreviewInput' }
+    responses:
+      '200':
+        description: Current resolution or a safe unresolved reason
+        content:
+          application/json:
+            schema: { $ref: '../schemas/allocations.yaml#/AllocationRulePreview' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
