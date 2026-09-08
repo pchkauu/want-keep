@@ -213,13 +213,14 @@ type StoredEvidence struct {
 }
 
 type EvidenceBatch struct {
-	PageReference string
-	FetchedAt     calendar.Instant
-	Items         []StoredEvidence
+	HouseholdID, JobID string
+	PageReference      string
+	FetchedAt          calendar.Instant
+	Items              []StoredEvidence
 }
 
 func (b EvidenceBatch) Validate() error {
-	if !validText(b.PageReference) || b.FetchedAt.String() == "" || len(b.Items) < 1 || len(b.Items) > MaxEvidencePerPage {
+	if !validText(b.HouseholdID) || !validText(b.JobID) || !validText(b.PageReference) || b.FetchedAt.String() == "" || len(b.Items) < 1 || len(b.Items) > MaxEvidencePerPage {
 		return ErrEvidence
 	}
 	seenIDs, seenReferences := map[string]bool{}, map[string]bool{}
@@ -245,7 +246,11 @@ type Amount struct {
 }
 
 func (a Amount) Reporting(asset money.Asset) (reporting.Amount, error) {
-	if a.AssetCode != string(asset) {
+	return a.ReportingAs(string(asset), asset)
+}
+
+func (a Amount) ReportingAs(externalAssetCode string, asset money.Asset) (reporting.Amount, error) {
+	if a.AssetCode != externalAssetCode {
 		return reporting.Amount{}, money.ErrAssetMismatch
 	}
 	switch a.State {

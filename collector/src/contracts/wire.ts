@@ -174,6 +174,7 @@ function failure(value: unknown, expected: SyncRequest): void {
     "connectionGeneration",
     "binding",
     "admissionRevision",
+    "cursor",
     "kind",
     "retryable",
     "retryAfterSeconds",
@@ -187,11 +188,14 @@ function failure(value: unknown, expected: SyncRequest): void {
     "connectionGeneration",
     "binding",
     "admissionRevision",
+    "cursor",
     "kind",
     "retryable",
     "evidence",
   ]);
   echoedToken(object, expected);
+  textOrEmpty(object.cursor);
+  equal(object.cursor, expected.cursor ?? "");
   const kind = string(object.kind);
   oneOf(
     kind,

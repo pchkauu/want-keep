@@ -99,6 +99,9 @@ func DecodeResult(data []byte, expected ingestion.JobToken) (ingestion.Result, e
 	if err := decodeStrict(data, &source); err != nil {
 		return ingestion.Result{}, err
 	}
+	if !resultCursorPresent(data, string(source.Outcome)) {
+		return ingestion.Result{}, ingestion.ErrInvalidContract
+	}
 	if !source.Outcome.Valid() || (source.Page == nil) == (source.Failure == nil) {
 		return ingestion.Result{}, ingestion.ErrInvalidContract
 	}
@@ -119,6 +122,26 @@ func DecodeResult(data []byte, expected ingestion.JobToken) (ingestion.Result, e
 		return ingestion.Result{}, ingestion.ErrInvalidContract
 	}
 	return result, nil
+}
+
+func resultCursorPresent(data []byte, outcome string) bool {
+	var envelope struct {
+		Page    map[string]json.RawMessage `json:"page"`
+		Failure map[string]json.RawMessage `json:"failure"`
+	}
+	if json.Unmarshal(data, &envelope) != nil {
+		return false
+	}
+	switch outcome {
+	case "page":
+		_, present := envelope.Page["cursor"]
+		return present
+	case "failure":
+		_, present := envelope.Failure["cursor"]
+		return present
+	default:
+		return false
+	}
 }
 
 func pageFromGenerated(source generated.SyncPage, expected ingestion.JobToken) (ingestion.Page, error) {
@@ -180,7 +203,7 @@ func tokenFromFailure(source generated.ProviderFailure, expected ingestion.JobTo
 	if err != nil {
 		return ingestion.JobToken{}, err
 	}
-	return ingestion.JobToken{JobID: source.JobId.String(), Attempt: source.Attempt, LeaseToken: source.LeaseToken, ConnectionID: expected.ConnectionID, ConnectionGeneration: uint64(source.ConnectionGeneration), Binding: binding, AdmissionRevision: source.AdmissionRevision, Cursor: expected.Cursor, ReplayFrom: expected.ReplayFrom, ReplayTo: expected.ReplayTo}, nil
+	return ingestion.JobToken{JobID: source.JobId.String(), Attempt: source.Attempt, LeaseToken: source.LeaseToken, ConnectionID: expected.ConnectionID, ConnectionGeneration: uint64(source.ConnectionGeneration), Binding: binding, AdmissionRevision: source.AdmissionRevision, Cursor: source.Cursor, ReplayFrom: expected.ReplayFrom, ReplayTo: expected.ReplayTo}, nil
 }
 
 func bindingFromGenerated(source generated.DeploymentBinding) (connections.Binding, error) {

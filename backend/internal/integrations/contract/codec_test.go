@@ -227,6 +227,38 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 	}
 }
 
+func TestProviderFailureRequiresExactCursorEcho(t *testing.T) {
+	var golden map[string]any
+	if err := json.Unmarshal(fixture(t, "golden-page.json"), &golden); err != nil {
+		t.Fatal(err)
+	}
+	page := golden["page"].(map[string]any)
+	failure := map[string]any{
+		"outcome": "failure",
+		"failure": map[string]any{
+			"jobId": page["jobId"], "attempt": page["attempt"], "leaseToken": page["leaseToken"],
+			"connectionGeneration": page["connectionGeneration"], "binding": page["binding"],
+			"admissionRevision": page["admissionRevision"], "cursor": "", "kind": "mfa_required",
+			"retryable": false, "evidence": page["evidence"],
+		},
+	}
+	encoded, _ := json.Marshal(failure)
+	if _, err := contract.DecodeResult(encoded, goldenToken()); err != nil {
+		t.Fatal("valid provider failure was rejected", err)
+	}
+	payload := failure["failure"].(map[string]any)
+	payload["cursor"] = "stale-cursor"
+	encoded, _ = json.Marshal(failure)
+	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+		t.Fatal("stale provider failure cursor was accepted")
+	}
+	delete(payload, "cursor")
+	encoded, _ = json.Marshal(failure)
+	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+		t.Fatal("missing provider failure cursor was accepted")
+	}
+}
+
 func TestDecoderUsesOpenAPIUnicodeCharacterLimits(t *testing.T) {
 	var value map[string]any
 	if err := json.Unmarshal(fixture(t, "golden-page.json"), &value); err != nil {

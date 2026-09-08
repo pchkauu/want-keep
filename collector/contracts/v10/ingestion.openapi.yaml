@@ -568,6 +568,7 @@ components:
           connectionGeneration,
           binding,
           admissionRevision,
+          cursor,
           kind,
           retryable,
           evidence,
@@ -596,6 +597,9 @@ components:
           format: int64
           minimum: 1
           maximum: 9007199254740991
+        cursor:
+          type: string
+          maxLength: 2000
         kind:
           type: string
           enum:

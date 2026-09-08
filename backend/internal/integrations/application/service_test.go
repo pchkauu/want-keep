@@ -40,6 +40,9 @@ func TestEvidenceIsDurableBeforeCommitAndFailureClosesTheBoundary(t *testing.T) 
 				if err := batch.Validate(); err != nil {
 					return err
 				}
+				if batch.HouseholdID != string(principal().HouseholdID()) || batch.JobID != issued().ID {
+					t.Fatal("evidence lost trusted ownership", batch.HouseholdID, batch.JobID)
+				}
 				stored = true
 				return test.evidenceError
 			}}
@@ -59,6 +62,28 @@ func TestEvidenceIsDurableBeforeCommitAndFailureClosesTheBoundary(t *testing.T) 
 				t.Fatal("valid page was not applied", applied, failure, err)
 			}
 		})
+	}
+}
+
+func TestRejectedPageRetainsOwnedEvidenceDisposition(t *testing.T) {
+	commitError := errors.New("invalid account projection")
+	retained := false
+	gate := &gateFake{
+		commit: func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error) {
+			return false, commitError
+		},
+		reject: func(_ context.Context, p household.Principal, job jobs.Job, evidence string) error {
+			retained = p.HouseholdID() == job.HouseholdID && job.ID == issued().ID && evidence != ""
+			return nil
+		},
+	}
+	service, _ := application.NewService(gate, evidenceFake{save: func(context.Context, ingestion.EvidenceBatch) error { return nil }}, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+	job := issued()
+	token, _ := application.TokenFromJob(job)
+	result := page(token)
+	applied, failure, err := service.Ingest(context.Background(), principal(), job, &gatewayFake{result: ingestion.Result{Page: &result}})
+	if applied || failure != nil || !errors.Is(err, commitError) || !retained || gate.rejectCalls != 1 {
+		t.Fatal("rejected evidence did not receive a durable disposition", applied, failure, retained, gate.rejectCalls, err)
 	}
 }
 
@@ -148,12 +173,14 @@ func TestManifestCapabilitiesFencePageBeforeEvidence(t *testing.T) {
 
 type gateFake struct {
 	commitCalls, failureCalls int
+	rejectCalls               int
 	outcomeState              jobs.State
 	outcomeReason             jobs.Reason
 	outcomeDelay              time.Duration
 	beforeRead                func(context.Context, household.Principal, jobs.Job) error
 	commit                    func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error)
 	failure                   func(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error)
+	reject                    func(context.Context, household.Principal, jobs.Job, string) error
 }
 
 func (g *gateFake) BeforeRead(ctx context.Context, p household.Principal, job jobs.Job) error {
@@ -176,6 +203,13 @@ func (g *gateFake) CommitProviderOutcome(ctx context.Context, p household.Princi
 		return false, errors.New("unexpected failure commit")
 	}
 	return g.failure(ctx, p, job, evidence, state, reason, delay, apply)
+}
+func (g *gateFake) RetainRejectedResult(ctx context.Context, p household.Principal, job jobs.Job, evidence string) error {
+	g.rejectCalls++
+	if g.reject == nil {
+		return nil
+	}
+	return g.reject(ctx, p, job, evidence)
 }
 
 type evidenceFake struct {

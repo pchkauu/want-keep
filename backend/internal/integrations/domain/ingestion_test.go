@@ -33,6 +33,17 @@ func TestAmountDistinguishesKnownUnknownAndUnavailable(t *testing.T) {
 	}
 }
 
+func TestAmountPreservesExternalCodeWhileUsingCanonicalAsset(t *testing.T) {
+	amount, err := (ingestion.Amount{State: reporting.Known, AssetCode: "RUR", Value: "5000"}).ReportingAs("RUR", money.RUB)
+	value, known := amount.Value()
+	if err != nil || !known || value.Asset() != money.RUB || value.Amount() != "5000" {
+		t.Fatal("source amount did not keep its raw code and canonical value separate", amount, err)
+	}
+	if _, err = (ingestion.Amount{State: reporting.Known, AssetCode: "USD", Value: "5000"}).ReportingAs("RUR", money.RUB); !errors.Is(err, money.ErrAssetMismatch) {
+		t.Fatal("mismatched raw asset code was accepted", err)
+	}
+}
+
 func TestCanonicalHashSeparatesBoundariesAndContractVersion(t *testing.T) {
 	left, err := ingestion.CanonicalHash([]byte(`{"record":"ab"}`), strings.Repeat("c", 64))
 	if err != nil {
@@ -120,6 +131,8 @@ func TestEvidenceRequiresMatchingDigestAndBoundsTheBatch(t *testing.T) {
 	digest := sha256.Sum256(data)
 	fetchedAt, _ := calendar.ParseInstant("2026-09-08T12:00:00Z")
 	batch := ingestion.EvidenceBatch{
+		HouseholdID:   "household",
+		JobID:         "job",
 		PageReference: "evidence:page:test",
 		FetchedAt:     fetchedAt,
 		Items: []ingestion.StoredEvidence{

@@ -330,6 +330,7 @@ describe("collector ingestion contract v10", () => {
     const write = structuredClone(manifest) as { actions: unknown[] };
     write.actions.push("create_payment");
     expect(() => parseCapabilityManifest(write)).toThrow();
+    const expectedRequest = parseSyncRequest(request);
 
     const failure = {
       outcome: "failure",
@@ -340,11 +341,26 @@ describe("collector ingestion contract v10", () => {
         connectionGeneration: request.connectionGeneration,
         binding: request.binding,
         admissionRevision: request.admissionRevision,
+        cursor: expectedRequest.cursor ?? "",
         kind: "mfa_required",
         retryable: true,
         evidence: (golden as { page: { evidence: unknown[] } }).page.evidence,
       },
     };
-    expect(() => parseSyncResult(failure, parseSyncRequest(request))).toThrow();
+    expect(() => parseSyncResult(failure, expectedRequest)).toThrow();
+
+    const validFailure = structuredClone(failure) as {
+      failure: { retryable: boolean; cursor?: string };
+    };
+    validFailure.failure.retryable = false;
+    expect(() => parseSyncResult(validFailure, expectedRequest)).not.toThrow();
+    validFailure.failure.cursor = "stale-cursor";
+    expect(() => parseSyncResult(validFailure, expectedRequest)).toThrow(
+      "invalid ingestion contract",
+    );
+    delete validFailure.failure.cursor;
+    expect(() => parseSyncResult(validFailure, expectedRequest)).toThrow(
+      "invalid ingestion contract",
+    );
   });
 });

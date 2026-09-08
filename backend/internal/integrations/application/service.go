@@ -30,6 +30,7 @@ type ProviderGateway interface {
 }
 
 type EvidenceStore interface {
+	// Save durably binds the raw bytes and references to the server-derived household and job.
 	Save(context.Context, ingestion.EvidenceBatch) error
 }
 
@@ -37,6 +38,7 @@ type Gate interface {
 	BeforeRead(context.Context, household.Principal, jobs.Job) error
 	CommitPage(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error)
 	CommitProviderOutcome(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error)
+	RetainRejectedResult(context.Context, household.Principal, jobs.Job, string) error
 }
 
 type AccountImporter interface {
@@ -103,7 +105,7 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 		if err = manifest.RequirePage(*result.Page); err != nil {
 			return false, nil, err
 		}
-		batch, references, err := s.stage(ctx, result.Page.Evidence)
+		batch, references, err := s.stage(ctx, p, issued, result.Page.Evidence)
 		if err != nil {
 			return false, nil, err
 		}
@@ -111,12 +113,17 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 		applied, err := s.gate.CommitPage(ctx, p, issued, page, func(tx context.Context) error {
 			return s.applyPage(tx, p, issued, *result.Page, batch.FetchedAt, references)
 		})
+		if err != nil {
+			if retainErr := s.gate.RetainRejectedResult(ctx, p, issued, batch.PageReference); retainErr != nil {
+				return false, nil, errors.Join(err, errors.Join(ingestion.ErrEvidence, retainErr))
+			}
+		}
 		return applied, nil, err
 	}
 	if !ingestion.SameToken(token, result.Failure.Token) {
 		return false, nil, ingestion.ErrInvalidContract
 	}
-	batch, _, err := s.stage(ctx, result.Failure.Evidence)
+	batch, _, err := s.stage(ctx, p, issued, result.Failure.Evidence)
 	if err != nil {
 		return false, nil, err
 	}
@@ -149,8 +156,11 @@ func TokenFromJob(job jobs.Job) (ingestion.JobToken, error) {
 	return token, nil
 }
 
-func (s *Service) stage(ctx context.Context, raw []ingestion.Evidence) (ingestion.EvidenceBatch, map[string]ingestion.StoredEvidence, error) {
-	batch := ingestion.EvidenceBatch{PageReference: "evidence:page:" + s.newID(), FetchedAt: s.now()}
+func (s *Service) stage(ctx context.Context, p household.Principal, issued jobs.Job, raw []ingestion.Evidence) (ingestion.EvidenceBatch, map[string]ingestion.StoredEvidence, error) {
+	if issued.HouseholdID != p.HouseholdID() {
+		return ingestion.EvidenceBatch{}, nil, household.ErrForbidden
+	}
+	batch := ingestion.EvidenceBatch{HouseholdID: string(p.HouseholdID()), JobID: issued.ID, PageReference: "evidence:page:" + s.newID(), FetchedAt: s.now()}
 	references := make(map[string]ingestion.StoredEvidence, len(raw))
 	for _, evidence := range raw {
 		item := ingestion.StoredEvidence{Reference: "evidence:raw:" + s.newID(), Raw: evidence}
@@ -263,14 +273,14 @@ func (s *Service) accountInput(issued jobs.Job, record ingestion.AccountRecord, 
 	if !found {
 		return accounts.ImportInput{}, ingestion.ErrInvalidContract
 	}
-	asset, err := money.ParseAsset(record.Reference.AssetCode)
-	if err != nil {
-		return accounts.ImportInput{}, err
+	asset := money.Asset(record.Reference.AssetCode)
+	if canonical, canonicalErr := accounts.CanonicalSourceAsset(issued.Binding.Provider, record.Reference.AssetCode); canonicalErr == nil {
+		asset = canonical
 	}
 	values := []*ingestion.Amount{&balance.Owned, &balance.Available, &balance.Locked, &balance.Debt, &balance.CreditLimit}
 	converted := make([]reporting.Amount, 0, len(values))
 	for _, value := range values {
-		amount, convertErr := value.Reporting(asset)
+		amount, convertErr := value.ReportingAs(record.Reference.AssetCode, asset)
 		if convertErr != nil {
 			return accounts.ImportInput{}, convertErr
 		}
@@ -314,6 +324,10 @@ func (s *Service) accountDescriptorInput(issued jobs.Job, record ingestion.Accou
 	if !issued.RangeFrom.IsZero() {
 		origin = "historical_backfill"
 	}
+	asset := money.Asset(record.Reference.AssetCode)
+	if canonical, canonicalErr := accounts.CanonicalSourceAsset(issued.Binding.Provider, record.Reference.AssetCode); canonicalErr == nil {
+		asset = canonical
+	}
 	return accounts.ImportInput{
 		ConnectionID:      issued.ConnectionID,
 		JobID:             issued.ID,
@@ -324,7 +338,7 @@ func (s *Service) accountDescriptorInput(issued jobs.Job, record ingestion.Accou
 		ExternalAssetCode: record.Reference.AssetCode,
 		Name:              record.Name,
 		EvidenceRef:       stored.Reference,
-		Asset:             money.Asset(record.Reference.AssetCode),
+		Asset:             asset,
 		OpeningDate:       record.OpeningDate,
 		Aliases:           aliases,
 		Origin:            origin,
@@ -384,7 +398,7 @@ func (s *Service) applyTransaction(ctx context.Context, p household.Principal, i
 	}
 	revision := ledger.Revision{OperationID: operationID, Revision: 1, ActorID: p.UserID(), Reason: "provider_import", Type: ledger.Type(record.EconomicType), State: ledger.State(record.ProviderState), OccurredAt: record.OccurredAt, PostedAt: record.PostedAt, Timezone: zone, CashDate: cashDate, ExpenseMonth: expenseMonth, Merchant: record.Merchant, Note: record.Note, Origin: "source", FeeKnowledge: ledger.FeeKnowledge(record.FeeKnowledge), PnLBasis: ledger.PnLBasis(record.PnLBasis), PayerState: "unknown"}
 	for _, posting := range record.Postings {
-		asset, parseErr := money.ParseAsset(posting.Reference.AssetCode)
+		asset, parseErr := accounts.CanonicalSourceAsset(issued.Binding.Provider, posting.Reference.AssetCode)
 		if parseErr != nil {
 			input.UnresolvedReason = "unsupported_asset"
 			input.Operation = nil

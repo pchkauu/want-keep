@@ -141,8 +141,8 @@ sequenceDiagram
   J->>G: Verify exact gateway binding
   J->>G: BeforeRead(binding, revision, generation, lease)
   G->>C: Server-issued request without household/actor/internal IDs
-  C-->>G: Exact echo + evidence + typed records/coverage
-  G->>E: Persist raw evidence before financial transaction
+  C-->>G: Exact echo + issued cursor + evidence + typed records/coverage
+  G->>E: Persist raw evidence with server-derived household/job
   alt provider failure
     G->>Q: Associate evidence with household/job
     G->>G: Atomically retain waiting/retry/failed
@@ -153,9 +153,11 @@ sequenceDiagram
       A->>Q: Evidence + source_ambiguous/transaction_unresolved
       A-->>G: Partial coverage without an unconfirmed effect
     end
+  else page is rejected after staging
+    G->>Q: Durable rejected_result without financial effect/checkpoint
   else result is stale
     G->>Q: Evidence reference + safe reason
   end
 ```
 
-A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records.
+A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. A provider failure also echoes the issued cursor, so a delayed outcome from an earlier page cannot change the job after checkpoint advancement. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records. A confirmed `RUR → RUB` provider mapping preserves the raw code in evidence/metadata and uses RUB in the financial domain.

@@ -219,6 +219,7 @@ export interface components {
       binding: components["schemas"]["DeploymentBinding"];
       /** Format: int64 */
       admissionRevision: number;
+      cursor: string;
       /** @enum {string} */
       kind:
         | "reauthentication_required"

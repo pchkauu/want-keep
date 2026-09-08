@@ -64,6 +64,98 @@ func TestProviderFailuresPersistRecoverableJobOutcomes(t *testing.T) {
 	}
 }
 
+func TestDelayedProviderFailureCannotOverrideAdvancedCursor(t *testing.T) {
+	f := newFixture(t)
+	job := f.issued()
+	token, _ := application.TokenFromJob(job)
+	delayed := f.gateway(job)
+	delayed.result = ingestion.Result{Failure: &ingestion.ProviderFailure{
+		Token: token, Kind: ingestion.TemporaryFailure, Retryable: true,
+		Evidence: []ingestion.Evidence{delayed.result.Page.Evidence[0]},
+	}}
+	started, release := make(chan struct{}), make(chan struct{})
+	delayed.read = func() {
+		close(started)
+		<-release
+	}
+	type outcome struct {
+		applied bool
+		failure *ingestion.ProviderFailure
+		err     error
+	}
+	result := make(chan outcome, 1)
+	go func() {
+		applied, failure, err := f.service.Ingest(context.Background(), f.p, job, delayed)
+		result <- outcome{applied: applied, failure: failure, err: err}
+	}()
+	<-started
+	page := f.gatewayWithMutation(job, func(root map[string]any) {
+		payload := root["page"].(map[string]any)
+		payload["complete"] = false
+		payload["nextCursor"] = "page-2"
+	})
+	if applied, _, err := f.service.Ingest(testContext, f.p, job, page); err != nil || !applied {
+		t.Fatal("page did not advance the cursor", applied, err)
+	}
+	close(release)
+	delayedResult := <-result
+	if delayedResult.applied || delayedResult.failure == nil || delayedResult.err != nil {
+		t.Fatal("delayed failure changed the current job", delayedResult)
+	}
+	var cursor, state string
+	if err := f.admin.QueryRow(testContext, `SELECT cursor,state FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID).Scan(&cursor, &state); err != nil || cursor != "page-2" || state != "running" {
+		t.Fatal("delayed failure overwrote job progress", cursor, state, err)
+	}
+	var count int
+	if err := f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.quarantine WHERE household_id=$1 AND job_id=$2 AND reason='stale_result'`, f.family.ID, job.ID).Scan(&count); err != nil || count != 1 {
+		t.Fatal("delayed failure evidence was not quarantined", count, err)
+	}
+}
+
+func TestRaiffeisenRURUsesCanonicalRUBWithoutLosingRawCode(t *testing.T) {
+	f := newFixtureForProvider(t, "raiffeisen")
+	job := f.issued()
+	gateway := f.gatewayWithMutation(job, func(root map[string]any) {
+		for _, item := range root["page"].(map[string]any)["records"].([]any) {
+			record := item.(map[string]any)
+			for _, name := range []string{"account", "balanceSnapshot"} {
+				value, ok := record[name].(map[string]any)
+				if !ok || value["externalAccountId"] != "acct-rub" {
+					continue
+				}
+				value["assetCode"] = "RUR"
+				if name == "balanceSnapshot" {
+					for _, field := range []string{"owned", "available", "locked", "debt", "creditLimit"} {
+						value[field].(map[string]any)["assetCode"] = "RUR"
+					}
+				}
+			}
+			transaction, ok := record["transaction"].(map[string]any)
+			if !ok {
+				continue
+			}
+			for _, raw := range transaction["postings"].([]any) {
+				posting := raw.(map[string]any)
+				if posting["externalAccountId"] == "acct-rub" {
+					posting["assetCode"] = "RUR"
+				}
+			}
+		}
+	})
+	applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
+	if err != nil || !applied || failure != nil {
+		t.Fatal("confirmed RUR mapping was not applied", applied, failure, err)
+	}
+	var asset, externalCode string
+	if err = f.admin.QueryRow(testContext, `SELECT asset,external_asset_code FROM want_keep.accounts WHERE household_id=$1 AND name='Synthetic RUB'`, f.family.ID).Scan(&asset, &externalCode); err != nil || asset != "RUB" || externalCode != "RUR" {
+		t.Fatal("canonical and external assets were not kept separately", asset, externalCode, err)
+	}
+	var amountAsset string
+	if err = f.admin.QueryRow(testContext, `SELECT asset FROM want_keep.observation_amounts WHERE household_id=$1 AND amount=5000`, f.family.ID).Scan(&amountAsset); err != nil || amountAsset != "RUB" {
+		t.Fatal("RUR balance did not become canonical RUB", amountAsset, err)
+	}
+}
+
 func TestAmbiguousAccountCommitsTheRestOfThePageAsPartial(t *testing.T) {
 	f := newFixture(t)
 	partner := uuid.NewString()
@@ -248,6 +340,33 @@ func TestEvidenceFailureAndStaleAdmissionCannotCrossCommitFence(t *testing.T) {
 		applied, _, err := f.service.Ingest(testContext, f.p, job, f.gateway(job))
 		if applied || !errors.Is(err, ingestion.ErrEvidence) || f.count("accounts") != 0 || f.count("sync_progress") != 0 {
 			t.Fatal("financial commit survived evidence failure", applied, err)
+		}
+	})
+
+	t.Run("rejected page", func(t *testing.T) {
+		f := newFixture(t)
+		job := f.issued()
+		gateway := f.gatewayWithMutation(job, func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			for _, item := range records {
+				balance, ok := item.(map[string]any)["balanceSnapshot"].(map[string]any)
+				if ok && balance["externalAccountId"] == "acct-rub" {
+					balance["available"].(map[string]any)["amount"] = "-1"
+					return
+				}
+			}
+		})
+		applied, _, err := f.service.Ingest(testContext, f.p, job, gateway)
+		if applied || !errors.Is(err, ingestion.ErrInvalidContract) || f.count("accounts") != 0 || f.count("source_records") != 0 || f.count("sync_progress") != 0 {
+			t.Fatal("invalid page left a partial financial effect", applied, err)
+		}
+		var evidenceRef string
+		if queryErr := f.admin.QueryRow(testContext, `SELECT evidence_ref FROM want_keep.quarantine WHERE household_id=$1 AND job_id=$2 AND reason='rejected_result'`, f.family.ID, job.ID).Scan(&evidenceRef); queryErr != nil || evidenceRef == "" {
+			t.Fatal("rejected evidence was not associated with its household and job", evidenceRef, queryErr)
+		}
+		entries, _ := os.ReadDir(f.evidence.path)
+		if len(entries) != 1 || !strings.Contains(entries[0].Name(), string(f.family.ID)) || !strings.Contains(entries[0].Name(), job.ID) {
+			t.Fatal("raw evidence was not stored under trusted ownership", entries)
 		}
 	})
 

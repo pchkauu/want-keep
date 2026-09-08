@@ -307,6 +307,10 @@ func TestOmissionSurvivesFollowingCompletePage(t *testing.T) {
 	if err != nil || !applied {
 		t.Fatal("first page", err)
 	}
+	job, err = f.store.Job(testContext, f.p, job.ID)
+	if err != nil || job.Cursor != "next" {
+		t.Fatal("advanced job", job.Cursor, err)
+	}
 	page.Cursor, page.NextCursor, page.Complete = "next", "done", true
 	applied, err = s.CommitPage(testContext, f.p, job, page, func(context.Context) error { return nil })
 	if err != nil || !applied {

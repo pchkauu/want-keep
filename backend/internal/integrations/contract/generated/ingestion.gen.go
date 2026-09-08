@@ -635,6 +635,7 @@ type ProviderFailure struct {
 	Attempt              int                 `json:"attempt"`
 	Binding              DeploymentBinding   `json:"binding"`
 	ConnectionGeneration int64               `json:"connectionGeneration"`
+	Cursor               string              `json:"cursor"`
 	Evidence             []EvidenceBlob      `json:"evidence"`
 	JobId                openapi_types.UUID  `json:"jobId"`
 	Kind                 ProviderFailureKind `json:"kind"`

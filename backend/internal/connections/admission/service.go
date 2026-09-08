@@ -287,7 +287,9 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 				return err
 			}
 			if page.Complete {
-				if err = s.repository.FinishJob(ctx, p, issued); err != nil {
+				checkpointed := issued
+				checkpointed.Cursor = page.NextCursor
+				if err = s.repository.FinishJob(ctx, p, checkpointed); err != nil {
 					return err
 				}
 			}
@@ -334,6 +336,20 @@ func (s *Service) CommitProviderOutcome(ctx context.Context, p household.Princip
 		return false, s.quarantineResult(ctx, p, issued.ID, evidence)
 	}
 	return applied && err == nil, err
+}
+
+// RetainRejectedResult associates evidence that was staged before a page failed
+// domain or persistence validation. It does not advance the checkpoint or job.
+func (s *Service) RetainRejectedResult(ctx context.Context, p household.Principal, issued jobs.Job, evidence string) error {
+	if issued.HouseholdID != p.HouseholdID() {
+		return household.ErrForbidden
+	}
+	if evidence == "" || len(evidence) > 2000 {
+		return jobs.ErrInvalidJob
+	}
+	return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
+		return s.repository.Quarantine(ctx, issued, evidence, "rejected_result")
+	})
 }
 
 // CommitFailure retains the existing terminal boundary used by replay

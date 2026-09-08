@@ -70,9 +70,14 @@ type fixture struct {
 	service    *application.Service
 	evidence   *fileEvidenceStore
 	connection string
+	binding    connections.Binding
 }
 
 func newFixture(t *testing.T) *fixture {
+	return newFixtureForProvider(t, "bybit")
+}
+
+func newFixtureForProvider(t *testing.T, provider string) *fixture {
 	t.Helper()
 	name := "wk_ingestion_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 	if _, err := cluster.Exec(testContext, `CREATE DATABASE `+name); err != nil {
@@ -125,14 +130,15 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &fixture{t: t, store: store, admin: admin, p: p, family: family, now: now, gate: gate, service: service, evidence: evidence, connection: uuid.NewString()}
+	providerBinding := bindingFor(provider)
+	f := &fixture{t: t, store: store, admin: admin, p: p, family: family, now: now, gate: gate, service: service, evidence: evidence, connection: uuid.NewString(), binding: providerBinding}
 	if err = store.WithinHousehold(testContext, p, func(ctx context.Context) error {
-		return store.CreateConnection(ctx, admission.Connection{HouseholdID: family.ID, ID: f.connection, Provider: "bybit", Owner: p.UserID(), Generation: 1, Authorized: true})
+		return store.CreateConnection(ctx, admission.Connection{HouseholdID: family.ID, ID: f.connection, Provider: provider, Owner: p.UserID(), Generation: 1, Authorized: true})
 	}); err != nil {
 		t.Fatal(err)
 	}
 	for _, kind := range []connections.CheckKind{connections.ProviderCheck, connections.HostCheck} {
-		if _, err = gate.RecordCheck(testContext, connections.Check{Kind: kind, Binding: binding(), Result: connections.CheckPassed, At: now}); err != nil {
+		if _, err = gate.RecordCheck(testContext, connections.Check{Kind: kind, Binding: providerBinding, Result: connections.CheckPassed, At: now}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -140,12 +146,16 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func binding() connections.Binding {
-	return connections.Binding{Provider: "bybit", Environment: "test", AdapterBuildDigest: "sha256:" + strings.Repeat("0", 64), CollectorImageDigest: "sha256:" + strings.Repeat("1", 64), ContractVersion: "10", AllowlistRevision: "allowlist-1", NonSecretConfigRevision: "config-1", OperatorPermissionRevision: "permission-1"}
+	return bindingFor("bybit")
+}
+
+func bindingFor(provider string) connections.Binding {
+	return connections.Binding{Provider: provider, Environment: "test", AdapterBuildDigest: "sha256:" + strings.Repeat("0", 64), CollectorImageDigest: "sha256:" + strings.Repeat("1", 64), ContractVersion: "10", AllowlistRevision: "allowlist-1", NonSecretConfigRevision: "config-1", OperatorPermissionRevision: "permission-1"}
 }
 
 func (f *fixture) issued() jobs.Job {
 	f.t.Helper()
-	requested, err := f.gate.RequestSync(testContext, f.p, f.connection, binding(), time.Now().Add(time.Hour))
+	requested, err := f.gate.RequestSync(testContext, f.p, f.connection, f.binding, time.Now().Add(time.Hour))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -172,6 +182,7 @@ func (f *fixture) gatewayWithMutation(job jobs.Job, mutate func(map[string]any))
 	if err != nil {
 		f.t.Fatal(err)
 	}
+	manifest.Provider = job.Binding.Provider
 	var raw map[string]any
 	if err = json.Unmarshal(readFixture(f.t, "golden-page.json"), &raw); err != nil {
 		f.t.Fatal(err)
@@ -237,7 +248,8 @@ func (s *fileEvidenceStore) Save(_ context.Context, batch ingestion.EvidenceBatc
 		return err
 	}
 	for _, item := range batch.Items {
-		name := strings.ReplaceAll(item.Reference, ":", "_")
+		scope := batch.HouseholdID + "_" + batch.JobID + "_"
+		name := strings.NewReplacer(":", "_", "/", "_").Replace(scope + item.Reference)
 		temporary := filepath.Join(s.path, name+".tmp")
 		if err := os.WriteFile(temporary, item.Raw.Data, 0o600); err != nil {
 			return err

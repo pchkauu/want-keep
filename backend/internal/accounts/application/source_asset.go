@@ -2,12 +2,19 @@ package application
 
 import money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 
+// CanonicalSourceAsset applies only mappings established by provider contracts.
+// Callers retain the original external code as evidence and account metadata.
+func CanonicalSourceAsset(provider, externalCode string) (money.Asset, error) {
+	asset, err := money.ParseAsset(externalCode)
+	if err != nil && externalCode == "RUR" && (provider == "raiffeisen" || provider == "ozon") {
+		return money.RUB, nil
+	}
+	return asset, err
+}
+
 // ValidateAsset applies only mappings established by the provider contracts; the raw code is retained unchanged.
 func (input ImportInput) ValidateAsset() error {
-	asset, err := money.ParseAsset(input.ExternalAssetCode)
-	if err != nil && input.ExternalAssetCode == "RUR" && (input.Provider == "raiffeisen" || input.Provider == "ozon") {
-		asset, err = money.RUB, nil
-	}
+	asset, err := CanonicalSourceAsset(input.Provider, input.ExternalAssetCode)
 	if err != nil {
 		return err
 	}
