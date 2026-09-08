@@ -88,7 +88,7 @@ Explain that no new outcome was confirmed and offer explicit retry; cancelled sy
 
 **Top-down structure:** Center: logo, Want Keep, whitespace, primary button; subtle language/help.
 
-**Next action:** Log in with Passkeys → SCR-006 or unfinished SCR-005; help → SCR-002.
+**Next action:** Normal sign-in → SCR-006; same-member reauthentication after expiry restores an allowed internal route. Help → SCR-002.
 
 **Explanation and details:** System prompt, local error reason and retry; do not copy export dimensions.
 
@@ -134,9 +134,9 @@ Task: [task-7.1](tasks/task-7.1.md).
 
 **Primary answer:** Restricted first-member setup.
 
-**Top-down structure:** Bootstrap verification → name/household → passkey/recovery → invitation.
+**Top-down structure:** Operator token, name/household, locale, timezone and asset → own passkey → one-time recovery codes → SCR-005.
 
-**Next action:** Create household → SCR-004 or SCR-005.
+**Next action:** Create household → SCR-005; after an unknown response check /me, then sign in with the created passkey.
 
 **Explanation and details:** Repeat bootstrap is closed; no public signup.
 
@@ -182,11 +182,11 @@ Task: [task-7.1](tasks/task-7.1.md).
 
 **Primary answer:** Start with cash and accounts already available.
 
-**Top-down structure:** Progress → add account/connection → history date/balances → first plan → overview.
+**Top-down structure:** Household members and available accounts → cash account with exact opening funds/date → partner invitation or overview. Connections and the first plan are added by their owning tasks.
 
 **Next action:** Add FORM-03/13 or continue with available data → SCR-006.
 
-**Explanation and details:** Unknown history stays a visible limitation; unfinished connection does not block available features.
+**Explanation and details:** Onboarding remains accessible without a completion flag. Invitation and future connections do not block continuation. Account timeout reconciles the original UUID; reload checks recent commands.
 
 **Permissions:** Both members can read; server checks membership and resource ownership for actions.
 
