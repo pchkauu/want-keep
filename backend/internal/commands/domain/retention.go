@@ -21,10 +21,11 @@ const (
 
 // Outcome is compact recovery metadata, not the original command document or response body.
 type Outcome struct {
-	CommandID   string
-	Status      Status
-	Result      Result
-	FailureCode string
+	CommandID       string
+	Status          Status
+	Result          Result
+	FailureCode     string
+	CurrentRevision uint64
 }
 
 func (c Command) RequireDetail(principal household.Principal, now calendar.Instant) error {
@@ -55,7 +56,7 @@ func (c Command) Recover(principal household.Principal, kind, hash string, now c
 	if err := c.CheckReplay(principal, kind, hash, now); err != nil {
 		return Outcome{}, err
 	}
-	return Outcome{CommandID: c.id, Status: c.status, Result: c.result, FailureCode: c.errorCode}, nil
+	return Outcome{CommandID: c.id, Status: c.status, Result: c.result, FailureCode: c.errorCode, CurrentRevision: c.currentRevision}, nil
 }
 
 func (c Command) requireRetained(now calendar.Instant) error {

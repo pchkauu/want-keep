@@ -208,35 +208,138 @@ Reconciliation:
       "$ref": "./money.yaml#/ID"
     revision:
       "$ref": "./money.yaml#/Revision"
-    ledger:
-      "$ref": "./quality.yaml#/AmountValue"
-    source:
-      "$ref": "./quality.yaml#/AmountValue"
+    lifecycle:
+      type: string
+      enum: [open, resolved, superseded]
+    result:
+      type: string
+      enum: [balanced, discrepant, incomplete]
+    sourceAsOf:
+      "$ref": "./money.yaml#/Instant"
+    evaluatedAt:
+      "$ref": "./money.yaml#/Instant"
     quality:
       "$ref": "./quality.yaml#/DataQuality"
+    components:
+      type: array
+      minItems: 4
+      maxItems: 4
+      items:
+        "$ref": "./accounts.yaml#/ReconciliationComponent"
+    explanations:
+      type: array
+      items:
+        "$ref": "./accounts.yaml#/ReconciliationExplanation"
+    replay:
+      "$ref": "./accounts.yaml#/ReconciliationReplay"
     relatedTransactionIds:
       type: array
       items:
         "$ref": "./money.yaml#/ID"
-    state:
-      type: string
-      enum:
-      - open
-      - resolved
-    reason:
-      type: string
-      minLength: 1
-      maxLength: 2000
+    resolution:
+      "$ref": "./accounts.yaml#/ReconciliationResolution"
   required:
   - id
   - accountId
   - revision
-  - ledger
-  - source
+  - lifecycle
+  - result
+  - sourceAsOf
+  - evaluatedAt
   - quality
+  - components
+  - explanations
+  - replay
   - relatedTransactionIds
-  - state
-  - reason
+ReconciliationComponent:
+  type: object
+  additionalProperties: false
+  properties:
+    component:
+      type: string
+      enum: [owned, available, locked, debt]
+    source:
+      "$ref": "./quality.yaml#/AmountValue"
+    ledger:
+      "$ref": "./quality.yaml#/AmountValue"
+    difference:
+      "$ref": "./quality.yaml#/AmountValue"
+    adjustable:
+      type: boolean
+  required: [component, source, ledger, difference, adjustable]
+ReconciliationExplanation:
+  type: object
+  additionalProperties: false
+  properties:
+    code:
+      type: string
+      minLength: 1
+      maxLength: 100
+    message:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required: [code, message]
+ReconciliationReplay:
+  type: object
+  additionalProperties: false
+  properties:
+    status:
+      type: string
+      enum: [not_required, pending, completed, failed, unavailable]
+    requestedFrom:
+      "$ref": "./money.yaml#/Instant"
+    requestedTo:
+      "$ref": "./money.yaml#/Instant"
+    jobId:
+      "$ref": "./money.yaml#/ID"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+  required: [status]
+ReconciliationResolution:
+  type: object
+  additionalProperties: false
+  properties:
+    actorId:
+      "$ref": "./money.yaml#/ID"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    adjustmentTransactionId:
+      "$ref": "./money.yaml#/ID"
+    components:
+      type: array
+      minItems: 1
+      maxItems: 2
+      uniqueItems: true
+      items:
+        type: string
+        enum: [owned, debt]
+    recordedAt:
+      "$ref": "./money.yaml#/Instant"
+  required: [actorId, reason, adjustmentTransactionId, components, recordedAt]
+ReconciliationResolutionInput:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision:
+      "$ref": "./money.yaml#/Revision"
+    reason:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    components:
+      type: array
+      minItems: 1
+      maxItems: 2
+      uniqueItems: true
+      items:
+        type: string
+        enum: [owned, debt]
+  required: [expectedRevision, reason, components]
 AccountPage:
   type: object
   additionalProperties: false

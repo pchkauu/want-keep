@@ -24,7 +24,7 @@ func TestCorrectionFailuresRemainRecoverableAfterExpiration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		c, err = c.Fail(code, at)
+		c, err = c.Fail(code, 0, at)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -46,6 +46,36 @@ func TestCorrectionFailuresRemainRecoverableAfterExpiration(t *testing.T) {
 				t.Fatalf("%s %s: %v", code, schema, err)
 			}
 		}
+	}
+}
+
+func TestVersionConflictCarriesAuthorizedCurrentRevision(t *testing.T) {
+	b, err := contract.NewBoundary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const id = "10000000-0000-4000-8000-000000000001"
+	p, _ := (household.Membership{ID: "membership", UserID: "actor", HouseholdID: "family", Active: true}).Principal()
+	at, _ := calendar.ParseInstant("2026-09-07T00:00:00Z")
+	c, err := command.NewCommand(id, "reconciliations.resolve", strings.Repeat("a", 64), p, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err = c.Fail("version_conflict", 7, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live, err := b.CommandToDTO(c, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed, err := live.AsCommandFailed()
+	if err != nil || failed.Error.CurrentRevision == nil || int64(*failed.Error.CurrentRevision) != 7 {
+		t.Fatalf("live conflict lost current revision: %#v %v", failed, err)
+	}
+	expired, err := b.ExpiredCommandToDTO(id, &command.Outcome{CommandID: id, Status: command.Failed, FailureCode: "version_conflict", CurrentRevision: 7})
+	if err != nil || expired.CurrentRevision == nil || int64(*expired.CurrentRevision) != 7 {
+		t.Fatalf("expired conflict lost current revision: %#v %v", expired, err)
 	}
 }
 

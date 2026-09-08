@@ -48,7 +48,7 @@ func (s *Server) execute(w http.ResponseWriter, r *http.Request, a identity.Acce
 	}
 	if errors.Is(c.RequireDetail(a.Principal, s.now()), command.ErrCommandExpired) {
 		x := c.Snapshot()
-		outcome := command.Outcome{CommandID: x.ID, Status: x.Status, Result: x.Result, FailureCode: x.ErrorCode}
+		outcome := command.Outcome{CommandID: x.ID, Status: x.Status, Result: x.Result, FailureCode: x.ErrorCode, CurrentRevision: x.CurrentRevision}
 		out, e := s.boundary.ExpiredCommandToDTO(uuid.NewString(), &outcome)
 		if e != nil {
 			s.problem(w, e)

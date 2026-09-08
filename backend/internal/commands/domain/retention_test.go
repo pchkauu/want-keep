@@ -73,7 +73,7 @@ func TestRetentionBoundariesAndReconciliation(t *testing.T) {
 	if err := pending.RequireDetail(actor, at(900, 0)); err != nil {
 		t.Fatal(err)
 	}
-	reconciled, err := pending.Fail("version_conflict", at(900, 0))
+	reconciled, err := pending.Fail("version_conflict", 3, at(900, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestRetentionBoundariesAndReconciliation(t *testing.T) {
 	if err := reconciled.RequireDetail(actor, at(990, 0)); !errors.Is(err, command.ErrCommandExpired) {
 		t.Fatal(err)
 	}
-	if out, err := reconciled.Recover(actor, pending.Kind(), hash, at(1299, 0)); err != nil || out.FailureCode != "version_conflict" {
+	if out, err := reconciled.Recover(actor, pending.Kind(), hash, at(1299, 0)); err != nil || out.FailureCode != "version_conflict" || out.CurrentRevision != 3 {
 		t.Fatal("failure outcome lost")
 	}
 	if _, err := reconciled.Recover(actor, pending.Kind(), hash, at(1300, 0)); !errors.Is(err, command.ErrCommandNotFound) {

@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-D-39 остаётся идентичностью источника. Проверенная структурированная связь с namespace, сетью/движением и точными суммами допускает автоматическое сопоставление; сумма, дата и hash файла дают только кандидата. Поиск ID охватывает сохранённую историю; вероятные совпадения — ±7 календарных дней, полнота явная. Возможный дубль сохраняется со статусом банка, но без дополнительного эффекта до решения. Связь содержит одну исходящую и одну входящую сторону, отдельные комиссии и одного носителя каждого эффекта. Собственные стороны без пары не становятся доходом/расходом. Выбор основной записи для показа не назначает носителя эффекта или приоритет правок. Link/resolve, полевые исправления и undo проверяют все revisions; история, проекции, review/outbox и команда атомарны. CommitPage сохраняет checkpoint с matching_unresolved и отвергает устаревшие jobs. Undo сохраняет основание прежнего случая и полноту кандидатов; производный пересчёт не заменяет происхождение связи. Комиссия до principal сохраняется без повторного расхода.
+D-39 остаётся идентичностью источника. Проверенная структурированная связь с namespace, сетью/движением и точными суммами допускает автоматическое сопоставление; сумма, дата и hash файла дают только кандидата. Поиск ID охватывает сохранённую историю; вероятные совпадения — ±7 календарных дней, полнота явная. Возможный дубль сохраняется со статусом банка, но без дополнительного эффекта до решения. Связь содержит одну исходящую и одну входящую сторону, отдельные комиссии и одного носителя каждого эффекта. Собственные стороны без пары не становятся доходом/расходом. Выбор основной записи для показа не назначает носителя эффекта или приоритет правок. Link/resolve, полевые исправления и undo проверяют все revisions; история, проекции, review/outbox и команда атомарны. CommitPage сохраняет checkpoint с matching_unresolved и отвергает устаревшие jobs. Undo сохраняет основание прежнего случая и полноту кандидатов; производный пересчёт не заменяет происхождение связи. Комиссия до principal сохраняется без повторного расхода. Историческая сверка использует lifecycle компонентов на дату снимка и сохраняет matching_unresolved; HTTP link обновляет сравнение без новой observation или adjustment.
 
 ### Границы изменений
 
@@ -22,8 +22,8 @@ D-39 остаётся идентичностью источника. Прове�
 - `backend/internal/accounts/application/`
 - `backend/internal/storage/`
 - `backend/internal/delivery/ledger/`
-- `backend/migrations/011_transaction_matching.sql`
-- `backend/migrations/012_matching_decision_basis.sql`
+- `backend/migrations/012_transaction_matching.sql`
+- `backend/migrations/013_matching_decision_basis.sql`
 - `api/`
 - `backend/test/integration/matching/`
 
@@ -196,9 +196,9 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 make test-go PKG=./internal/matching/... && make test-integration AREA=matching && make test-matching-race
 ```
 
-Шесть активов; ручная оплата, нормализованный чек и банк; разные/вероятные покупки; обе последовательности сторон, комиссии, lifecycle, источники, составные правки/undo, конкуренция, права, replay/rollback/restart и миграция проверяются без двойного эффекта. Проверяются независимая правка с неизменённым участником и поздний подтверждённый идентификатор.
+Шесть активов; ручная оплата, нормализованный чек и банк; разные/вероятные покупки; обе последовательности сторон, комиссии, lifecycle, источники, составные правки/undo, конкуренция, права, replay/rollback/restart и миграция проверяются без двойного эффекта. Проверяются независимая правка с неизменённым участником и поздний подтверждённый идентификатор. Проверяется совместимость с task-2.5: ожидание без второго эффекта остаётся неполным, последующее проведение не меняет историческое удержание, а подтверждение связи обновляет банковскую сверку.
 
-Task-2.3 включена в базу; команды существуют. Обязательны make check, matching/audit/ledger/accounts/storage/identity/household integration/race, privacy и git diff --check. Реальные чеки/чат/OpenAI, банковский IO, возвраты, долг, экраны и эксплуатация не подтверждаются.
+Task-2.3 включена в базу; команды существуют. Обязательны make check, matching/reconciliation/audit/ledger/accounts/storage/identity/household/jobs integration/race, privacy и git diff --check. Реальные чеки/чат/OpenAI, банковский IO, возвраты, долг, экраны и эксплуатация не подтверждаются.
 
 ### Передача следующему агенту
 
@@ -218,7 +218,7 @@ Link evidence of one transaction without merging different purchases.
 
 ### Change and contracts
 
-D-39 remains source identity. Verified structured correspondence with namespace, network/movement and exact amounts permits automatic matching; amount, date and file hash only yield candidates. Identifier search spans retained history; probable matching uses ±7 calendar days with explicit completeness. A possible duplicate retains bank status without an additional effect until resolution. A link has one outgoing and one incoming principal, separate fees and one carrier per effect. A known internal side without its counterpart is not income/expense. Display primary does not select effect ownership or override priority. Link/resolve, field corrections and undo check all revisions; history, projections, review/outbox and command outcome are atomic. CommitPage retains a checkpoint with matching_unresolved and rejects stale jobs. Undo retains the prior case basis and candidate completeness; derived recalculation does not replace association provenance. Fee-before-principal is retained without a repeated expense.
+D-39 remains source identity. Verified structured correspondence with namespace, network/movement and exact amounts permits automatic matching; amount, date and file hash only yield candidates. Identifier search spans retained history; probable matching uses ±7 calendar days with explicit completeness. A possible duplicate retains bank status without an additional effect until resolution. A link has one outgoing and one incoming principal, separate fees and one carrier per effect. A known internal side without its counterpart is not income/expense. Display primary does not select effect ownership or override priority. Link/resolve, field corrections and undo check all revisions; history, projections, review/outbox and command outcome are atomic. CommitPage retains a checkpoint with matching_unresolved and rejects stale jobs. Undo retains the prior case basis and candidate completeness; derived recalculation does not replace association provenance. Fee-before-principal is retained without a repeated expense. Historical reconciliation uses component lifecycle at the snapshot cutoff and retains matching_unresolved; HTTP linking refreshes the comparison without a new observation or adjustment.
 
 ### Change boundaries
 
@@ -227,8 +227,8 @@ D-39 remains source identity. Verified structured correspondence with namespace,
 - `backend/internal/accounts/application/`
 - `backend/internal/storage/`
 - `backend/internal/delivery/ledger/`
-- `backend/migrations/011_transaction_matching.sql`
-- `backend/migrations/012_matching_decision_basis.sql`
+- `backend/migrations/012_transaction_matching.sql`
+- `backend/migrations/013_matching_decision_basis.sql`
 - `api/`
 - `backend/test/integration/matching/`
 
@@ -401,9 +401,9 @@ A link establishes coverage but does not prove the whole criterion; verification
 make test-go PKG=./internal/matching/... && make test-integration AREA=matching && make test-matching-race
 ```
 
-Six assets; manual payment, normalized receipt and bank; distinct/probable purchases; both side arrival orders, fees, lifecycle, sources, compound corrections/undo, concurrency, rights, replay/rollback/restart and migration are checked without duplicate effects. Includes an independent edit with an unchanged participant and a late verified identifier.
+Six assets; manual payment, normalized receipt and bank; distinct/probable purchases; both side arrival orders, fees, lifecycle, sources, compound corrections/undo, concurrency, rights, replay/rollback/restart and migration are checked without duplicate effects. Includes an independent edit with an unchanged participant and a late verified identifier. Includes task-2.5 compatibility: a waiting duplicate remains incomplete, a later posting preserves the historical hold, and link confirmation refreshes bank reconciliation.
 
-Task-2.3 is included in the base; commands exist. Require make check, matching/audit/ledger/accounts/storage/identity/household integration/race, privacy and git diff --check. Real receipts/chat/OpenAI, bank IO, refunds, debt, screens and operations are not verified.
+Task-2.3 is included in the base; commands exist. Require make check, matching/reconciliation/audit/ledger/accounts/storage/identity/household/jobs integration/race, privacy and git diff --check. Real receipts/chat/OpenAI, bank IO, refunds, debt, screens and operations are not verified.
 
 ### Handoff to the next agent
 

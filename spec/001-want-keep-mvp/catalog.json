@@ -3631,20 +3631,20 @@
         "backend/internal/accounts/application/",
         "backend/internal/storage/",
         "backend/internal/delivery/ledger/",
-        "backend/migrations/011_transaction_matching.sql",
-        "backend/migrations/012_matching_decision_basis.sql",
+        "backend/migrations/012_transaction_matching.sql",
+        "backend/migrations/013_matching_decision_basis.sql",
         "api/",
         "backend/test/integration/matching/"
       ],
       "behavior": {
-        "ru": "D-39 остаётся идентичностью источника. Проверенная структурированная связь с namespace, сетью/движением и точными суммами допускает автоматическое сопоставление; сумма, дата и hash файла дают только кандидата. Поиск ID охватывает сохранённую историю; вероятные совпадения — ±7 календарных дней, полнота явная. Возможный дубль сохраняется со статусом банка, но без дополнительного эффекта до решения. Связь содержит одну исходящую и одну входящую сторону, отдельные комиссии и одного носителя каждого эффекта. Собственные стороны без пары не становятся доходом/расходом. Выбор основной записи для показа не назначает носителя эффекта или приоритет правок. Link/resolve, полевые исправления и undo проверяют все revisions; история, проекции, review/outbox и команда атомарны. CommitPage сохраняет checkpoint с matching_unresolved и отвергает устаревшие jobs. Undo сохраняет основание прежнего случая и полноту кандидатов; производный пересчёт не заменяет происхождение связи. Комиссия до principal сохраняется без повторного расхода.",
-        "en": "D-39 remains source identity. Verified structured correspondence with namespace, network/movement and exact amounts permits automatic matching; amount, date and file hash only yield candidates. Identifier search spans retained history; probable matching uses ±7 calendar days with explicit completeness. A possible duplicate retains bank status without an additional effect until resolution. A link has one outgoing and one incoming principal, separate fees and one carrier per effect. A known internal side without its counterpart is not income/expense. Display primary does not select effect ownership or override priority. Link/resolve, field corrections and undo check all revisions; history, projections, review/outbox and command outcome are atomic. CommitPage retains a checkpoint with matching_unresolved and rejects stale jobs. Undo retains the prior case basis and candidate completeness; derived recalculation does not replace association provenance. Fee-before-principal is retained without a repeated expense."
+        "ru": "D-39 остаётся идентичностью источника. Проверенная структурированная связь с namespace, сетью/движением и точными суммами допускает автоматическое сопоставление; сумма, дата и hash файла дают только кандидата. Поиск ID охватывает сохранённую историю; вероятные совпадения — ±7 календарных дней, полнота явная. Возможный дубль сохраняется со статусом банка, но без дополнительного эффекта до решения. Связь содержит одну исходящую и одну входящую сторону, отдельные комиссии и одного носителя каждого эффекта. Собственные стороны без пары не становятся доходом/расходом. Выбор основной записи для показа не назначает носителя эффекта или приоритет правок. Link/resolve, полевые исправления и undo проверяют все revisions; история, проекции, review/outbox и команда атомарны. CommitPage сохраняет checkpoint с matching_unresolved и отвергает устаревшие jobs. Undo сохраняет основание прежнего случая и полноту кандидатов; производный пересчёт не заменяет происхождение связи. Комиссия до principal сохраняется без повторного расхода. Историческая сверка использует lifecycle компонентов на дату снимка и сохраняет matching_unresolved; HTTP link обновляет сравнение без новой observation или adjustment.",
+        "en": "D-39 remains source identity. Verified structured correspondence with namespace, network/movement and exact amounts permits automatic matching; amount, date and file hash only yield candidates. Identifier search spans retained history; probable matching uses ±7 calendar days with explicit completeness. A possible duplicate retains bank status without an additional effect until resolution. A link has one outgoing and one incoming principal, separate fees and one carrier per effect. A known internal side without its counterpart is not income/expense. Display primary does not select effect ownership or override priority. Link/resolve, field corrections and undo check all revisions; history, projections, review/outbox and command outcome are atomic. CommitPage retains a checkpoint with matching_unresolved and rejects stale jobs. Undo retains the prior case basis and candidate completeness; derived recalculation does not replace association provenance. Fee-before-principal is retained without a repeated expense. Historical reconciliation uses component lifecycle at the snapshot cutoff and retains matching_unresolved; HTTP linking refreshes the comparison without a new observation or adjustment."
       },
       "verification": {
         "command": "make test-go PKG=./internal/matching/... && make test-integration AREA=matching && make test-matching-race",
         "expected": {
-          "ru": "Шесть активов; ручная оплата, нормализованный чек и банк; разные/вероятные покупки; обе последовательности сторон, комиссии, lifecycle, источники, составные правки/undo, конкуренция, права, replay/rollback/restart и миграция проверяются без двойного эффекта. Проверяются независимая правка с неизменённым участником и поздний подтверждённый идентификатор.",
-          "en": "Six assets; manual payment, normalized receipt and bank; distinct/probable purchases; both side arrival orders, fees, lifecycle, sources, compound corrections/undo, concurrency, rights, replay/rollback/restart and migration are checked without duplicate effects. Includes an independent edit with an unchanged participant and a late verified identifier."
+          "ru": "Шесть активов; ручная оплата, нормализованный чек и банк; разные/вероятные покупки; обе последовательности сторон, комиссии, lifecycle, источники, составные правки/undo, конкуренция, права, replay/rollback/restart и миграция проверяются без двойного эффекта. Проверяются независимая правка с неизменённым участником и поздний подтверждённый идентификатор. Проверяется совместимость с task-2.5: ожидание без второго эффекта остаётся неполным, последующее проведение не меняет историческое удержание, а подтверждение связи обновляет банковскую сверку.",
+          "en": "Six assets; manual payment, normalized receipt and bank; distinct/probable purchases; both side arrival orders, fees, lifecycle, sources, compound corrections/undo, concurrency, rights, replay/rollback/restart and migration are checked without duplicate effects. Includes an independent edit with an unchanged participant and a late verified identifier. Includes task-2.5 compatibility: a waiting duplicate remains incomplete, a later posting preserves the historical hold, and link confirmation refreshes bank reconciliation."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/20",
@@ -3653,8 +3653,8 @@
         "en": "Matching, waiting without a second effect, existing movement linking and compound undo backend/API are implemented. Verification and boundaries are recorded in evidence/task-2.4-matching.en.md."
       },
       "verification_note": {
-        "ru": "Task-2.3 включена в базу; команды существуют. Обязательны make check, matching/audit/ledger/accounts/storage/identity/household integration/race, privacy и git diff --check. Реальные чеки/чат/OpenAI, банковский IO, возвраты, долг, экраны и эксплуатация не подтверждаются.",
-        "en": "Task-2.3 is included in the base; commands exist. Require make check, matching/audit/ledger/accounts/storage/identity/household integration/race, privacy and git diff --check. Real receipts/chat/OpenAI, bank IO, refunds, debt, screens and operations are not verified."
+        "ru": "Task-2.3 включена в базу; команды существуют. Обязательны make check, matching/reconciliation/audit/ledger/accounts/storage/identity/household/jobs integration/race, privacy и git diff --check. Реальные чеки/чат/OpenAI, банковский IO, возвраты, долг, экраны и эксплуатация не подтверждаются.",
+        "en": "Task-2.3 is included in the base; commands exist. Require make check, matching/reconciliation/audit/ledger/accounts/storage/identity/household/jobs integration/race, privacy and git diff --check. Real receipts/chat/OpenAI, bank IO, refunds, debt, screens and operations are not verified."
       }
     },
     {
@@ -3680,20 +3680,39 @@
         "AC-058"
       ],
       "targets": [
-        "backend/internal/reconciliation/"
+        "backend/internal/reconciliation/",
+        "backend/internal/storage/",
+        "backend/internal/delivery/reconciliation/",
+        "backend/migrations/011_reconciliation.sql",
+        "api/",
+        "backend/test/integration/reconciliation/",
+        "backend/internal/jobs/application/",
+        "backend/cmd/worker/"
       ],
       "behavior": {
-        "ru": "Сопоставлять баланс и операции на согласованный момент с учётом pending/locked и покрытого периода. Разницу хранить как состояние сверки, запускать ограниченный повтор истории и предлагать объяснение; не создавать молчаливую balancing-запись. Корректировка требует доказанной причины или решения владельца и проходит обычный аудит.",
-        "en": "Compare balances and transactions at a consistent instant considering pending/locked amounts and covered periods. Store discrepancies as reconciliation state, request bounded history replay and propose explanations; never silently create balancing entries. Adjustments require an established cause or owner decision and normal audit."
+        "ru": "Для каждого импортного счёта owned, available, locked и debt сравниваются отдельно на точный sourceAsOf; difference = source − ledger сохраняется точной native-суммой. Историческая проекция использует только доказанные к этому моменту effects, а неопределимый lifecycle делает компонент unknown. Новое наблюдение supersede предыдущую активную сверку; revision операции или открытия переоценивает текущую без события при идентичном результате. Discrepant/incomplete атомарно сохраняет durable outbox intent; worker после commit создаёт один дедуплицированный replay только для точной revision не более чем за 90 дней от последней подтверждённой точки или opening, с точными admission binding/revision и generation. Недоступность admission/авторизации сохраняется как unavailable без фиктивного задания. После completed/unavailable replay пользователь может атомарно разрешить только ненулевые известные owned/debt differences: сервер вычисляет adjustment, ledger сохраняет его без income/expense вместе с audit/outbox/review/command outcome. Available/locked напрямую не корректируются, source observation не изменяется.",
+        "en": "For each imported account, owned, available, locked and debt are compared independently at the exact sourceAsOf; difference = source − ledger is retained as an exact native amount. The historical projection uses only effects proven by that instant, while indeterminate lifecycle timing makes the affected component unknown. A new observation supersedes the previous active reconciliation; an operation or opening revision re-evaluates the current one without an event for an identical result. Discrepant/incomplete atomically stores a durable outbox intent; after commit the worker creates one deduplicated replay only for the exact revision, at most 90 days from the last confirmed point or opening, with exact admission binding/revision and generation. Missing admission or authorization records unavailable without a fake job. After completed/unavailable replay, a user may atomically resolve only nonzero known owned/debt differences: the server derives the adjustment and the ledger stores it without income/expense together with audit/outbox/review/command outcome. Available/locked cannot be adjusted directly and source observations remain immutable."
       },
       "verification": {
-        "command": "make test-integration AREA=reconciliation",
+        "command": "make test-go PKG=./internal/reconciliation/... && make test-integration AREA=reconciliation && make test-reconciliation-race",
         "expected": {
-          "ru": "Смещение времени снимка не создаёт ложный доход; пробелы и настоящая разница видны; корректировка не происходит без основания.",
-          "en": "Snapshot timing does not create false income; gaps and real differences are visible; no unsupported adjustment occurs."
+          "ru": "Шесть активов, четыре компонента, sourceAsOf/lifecycle, unknown/partial/stale, durable post-commit replay 90 дней, admission/reauth, переоценка, adjustment, rollback/replay, права, пагинация и миграция проходят без ложного дохода или повторного эффекта.",
+          "en": "Six assets, four components, sourceAsOf/lifecycle, unknown/partial/stale, durable post-commit 90-day replay, admission/reauth, re-evaluation, adjustment, rollback/replay, permissions, pagination and migration pass without false income or duplicate effects."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/21"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/21",
+      "verification_note": {
+        "ru": "Команды `make` реализованы и обязательны для локальной и CI-проверки task-2.5. Live provider IO, браузерная приёмка и production остаются последующим задачам и не подтверждаются этими suites.",
+        "en": "The `make` commands are implemented and required for local and CI validation of task-2.5. Live provider IO, browser acceptance and production remain downstream and are not proven by these suites."
+      },
+      "status": {
+        "ru": "Реализованы backend/API сверки, ограниченный replay-контракт и явные owned/debt adjustments; provider IO, UI и production остаются последующим задачам.",
+        "en": "Reconciliation backend/API, bounded replay contract and explicit owned/debt adjustments are implemented; provider IO, UI and production remain downstream."
+      },
+      "note": {
+        "ru": "Task-2.3 включена в базу; task-2.4 не является зависимостью. Доказательства и границы: evidence/task-2.5-reconciliation.md. Обязательны make check, reconciliation/audit/ledger/accounts/storage/identity/household integration/race и privacy. Эксплуатационная готовность не подтверждается.",
+        "en": "Task-2.3 is included in the base; task-2.4 is not a dependency. Evidence and boundaries: evidence/task-2.5-reconciliation.en.md. Require make check, reconciliation/audit/ledger/accounts/storage/identity/household integration/race and privacy. This does not confirm operational readiness."
+      }
     },
     {
       "id": "task-2.6",
@@ -7147,20 +7166,20 @@
         "en": "Why does the balance differ?"
       },
       "answer": {
-        "ru": "Размер/дата расхождения и вероятные объяснения с доказательствами.",
-        "en": "Discrepancy amount/date and possible evidence-backed explanations."
+        "ru": "Owned, available, locked и debt источника и журнала на sourceAsOf, их точная разница, качество данных и доказанные объяснения.",
+        "en": "Source and ledger owned, available, locked and debt at sourceAsOf, their exact differences, data quality and evidence-backed explanations."
       },
       "structure": {
-        "ru": "Источник vs журнал на одну дату → неполная история/pending/связи → возможные действия.",
-        "en": "Source vs ledger at same date → incomplete history/pending/links → possible actions."
+        "ru": "Lifecycle/result и свежесть → четыре компонента source/ledger/difference → объяснения и связанные операции → replay → resolution.",
+        "en": "Lifecycle/result and freshness → four source/ledger/difference components → explanations and related transactions → replay → resolution."
       },
       "action": {
-        "ru": "Обновить, открыть движения SCR-010, сопоставить/исправить FORM-06.",
-        "en": "Refresh, open movements SCR-010, match/correct FORM-06."
+        "ru": "Запустить/дождаться повторной загрузки, повторно войти в источник, открыть связанные движения SCR-010 либо после completed/unavailable replay явно скорректировать owned/debt.",
+        "en": "Start/wait for bounded replay, reauthenticate the source, open related movements in SCR-010 or, after completed/unavailable replay, explicitly adjust owned/debt."
       },
       "detail": {
-        "ru": "Нельзя выровнять остаток скрытой проводкой; пользователь видит причину и последствия коррекции.",
-        "en": "No hidden balancing entry; user sees correction reason and consequences."
+        "ru": "Unknown не равен нулю; balanced stale не становится fresh. Available/locked напрямую не корректируются. Явный adjustment не является доходом/расходом, не меняет снимок источника и заранее показывает рассчитанный эффект.",
+        "en": "Unknown is not zero; balanced stale does not become fresh. Available/locked cannot be adjusted directly. An explicit adjustment is not income/expense, never changes the source observation and previews the server-derived effect."
       },
       "rights": {
         "ru": "Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.",
@@ -7196,6 +7215,7 @@
         "AC-041"
       ],
       "tasks": [
+        "task-2.5",
         "task-7.2"
       ]
     },

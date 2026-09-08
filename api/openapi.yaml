@@ -569,6 +569,16 @@ components:
       "$ref": "./schemas/transactions.yaml#/TransactionPage"
     ReconciliationPage:
       "$ref": "./schemas/accounts.yaml#/ReconciliationPage"
+    ReconciliationComponent:
+      "$ref": "./schemas/accounts.yaml#/ReconciliationComponent"
+    ReconciliationExplanation:
+      "$ref": "./schemas/accounts.yaml#/ReconciliationExplanation"
+    ReconciliationReplay:
+      "$ref": "./schemas/accounts.yaml#/ReconciliationReplay"
+    ReconciliationResolution:
+      "$ref": "./schemas/accounts.yaml#/ReconciliationResolution"
+    ReconciliationResolutionInput:
+      "$ref": "./schemas/accounts.yaml#/ReconciliationResolutionInput"
     ReimbursementPage:
       "$ref": "./schemas/transactions.yaml#/ReimbursementPage"
     ConnectionPage:

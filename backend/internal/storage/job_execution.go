@@ -19,7 +19,7 @@ func (s *Store) FenceJob(ctx context.Context, p household.Principal, issued jobs
 	if p != scope.principal || issued.HouseholdID != p.HouseholdID() || issued.ActorID != p.UserID() {
 		return jobs.Job{}, household.ErrForbidden
 	}
-	current, err := scanJob(scope.tx.QueryRow(ctx, `SELECT `+jobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND id=$2 FOR UPDATE`, p.HouseholdID(), issued.ID))
+	current, err := scanReplayJob(scope.tx.QueryRow(ctx, `SELECT `+replayJobColumns+` FROM want_keep.jobs WHERE household_id=$1 AND id=$2 FOR UPDATE`, p.HouseholdID(), issued.ID))
 	if err != nil {
 		return current, err
 	}
