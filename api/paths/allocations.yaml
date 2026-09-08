@@ -27,7 +27,7 @@
       required: true
       content:
         application/json:
-          schema: { $ref: '../schemas/allocations.yaml#/AllocationRuleInput' }
+          schema: { $ref: '../schemas/allocations.yaml#/AllocationRuleCreateInput' }
     responses:
       '202':
         description: Registered command
@@ -74,7 +74,7 @@
       required: true
       content:
         application/json:
-          schema: { $ref: '../schemas/allocations.yaml#/AllocationRuleInput' }
+          schema: { $ref: '../schemas/allocations.yaml#/AllocationRuleChangeInput' }
     responses:
       '202':
         description: Registered command

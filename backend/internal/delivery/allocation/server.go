@@ -15,6 +15,7 @@ import (
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/contract"
+	"github.com/pchkauu/want-keep/backend/internal/delivery/http/generated"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/security"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	identity "github.com/pchkauu/want-keep/backend/internal/identity/domain"
@@ -96,6 +97,23 @@ func (s *Server) write(w http.ResponseWriter, status int, value any) {
 
 func (s *Server) problem(w http.ResponseWriter, err error) {
 	response := (contract.ErrorConverter{}).ToResponse(err, uuid.NewString())
+	var rejection commands.Rejection
+	if errors.As(err, &rejection) {
+		if rejection.CurrentRevision != 0 {
+			revision := generated.Revision(rejection.CurrentRevision)
+			response.Body.CurrentRevision = &revision
+		}
+		switch rejection.Code {
+		case "not_found":
+			response.Status, response.Body.Code, response.Body.Message = 404, "not_found", "Allocation rule not found."
+		case "version_conflict", "decision_conflict":
+			response.Status, response.Body.Code, response.Body.Message = 409, generated.ErrorCode(rejection.Code), "The allocation rule changed. Refresh it before trying again."
+		case "invalid_allocation", "no_change", "invalid_request":
+			response.Status, response.Body.Code, response.Body.Message = 422, generated.ErrorCode(rejection.Code), "Check the allocation rule fields and revision."
+		case "forbidden":
+			response.Status, response.Body.Code, response.Body.Message = 403, "forbidden", "You cannot access this resource."
+		}
+	}
 	switch {
 	case errors.Is(err, allocationdomain.ErrInvalidRule):
 		response.Status, response.Body.Code, response.Body.Message = 422, "invalid_allocation", "Check the rule conditions, members and exact shares."

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	allocationapp "github.com/pchkauu/want-keep/backend/internal/allocation/application"
 	allocationdomain "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	categoryapp "github.com/pchkauu/want-keep/backend/internal/categories/application"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
@@ -25,7 +26,7 @@ func TestConcurrentRuleChangesUseOneRevision(t *testing.T) {
 		t.Fatal(err, merchantCommand.ErrorCode())
 	}
 	merchant, _ := merchantCommand.Result()
-	service := allocationapp.NewService(fixture.store, uuid.NewString)
+	service := allocationapp.NewService(fixture.store, func() calendar.Instant { return fixture.now }, uuid.NewString)
 	initial := allocationapp.RuleInput{Priority: 10, State: allocationdomain.Active, Condition: allocationdomain.Condition{MerchantID: merchant.ResourceID}, Shares: []allocationdomain.Share{{MemberID: fixture.members[0].ID, Value: "50"}, {MemberID: fixture.members[1].ID, Value: "50"}}}
 	created, err := fixture.executor.Execute(testContext, fixture.p, commands.Request{ID: uuid.NewString(), Kind: "allocation_rules.create", PayloadHash: strings.Repeat("b", 64)}, func(ctx context.Context) (command.Result, error) {
 		return service.CreateRule(ctx, fixture.p, initial)

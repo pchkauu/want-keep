@@ -1896,13 +1896,20 @@ export interface components {
       /** @enum {string} */
       state: "active" | "archived";
     };
+    AllocationRuleChangeInput: {
+      condition: components["schemas"]["AllocationRuleCondition"];
+      expectedRevision: components["schemas"]["Revision"];
+      priority: number;
+      shares: components["schemas"]["AllocationRuleShare"][];
+      /** @enum {string} */
+      state: "active" | "archived";
+    };
     AllocationRuleCondition: {
       categoryId?: components["schemas"]["ID"];
       merchantId?: components["schemas"]["ID"];
     };
-    AllocationRuleInput: {
+    AllocationRuleCreateInput: {
       condition: components["schemas"]["AllocationRuleCondition"];
-      expectedRevision?: components["schemas"]["Revision"];
       priority: number;
       shares: components["schemas"]["AllocationRuleShare"][];
       /** @enum {string} */
@@ -3977,7 +3984,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["AllocationRuleInput"];
+        "application/json": components["schemas"]["AllocationRuleCreateInput"];
       };
     };
     responses: {
@@ -4070,7 +4077,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["AllocationRuleInput"];
+        "application/json": components["schemas"]["AllocationRuleChangeInput"];
       };
     };
     responses: {

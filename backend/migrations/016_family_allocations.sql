@@ -26,6 +26,8 @@ CREATE TABLE want_keep.allocation_rule_revisions (
  category_id uuid,
  actor_id uuid NOT NULL,
  command_id uuid,
+ recorded_at timestamptz NOT NULL,
+ recorded_ns want_keep.submicro NOT NULL,
  PRIMARY KEY(household_id,rule_id,revision),
  FOREIGN KEY(household_id,rule_id) REFERENCES want_keep.allocation_rules(household_id,id) DEFERRABLE INITIALLY DEFERRED,
  FOREIGN KEY(household_id,merchant_id) REFERENCES want_keep.merchants(household_id,id),

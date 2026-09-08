@@ -4,10 +4,20 @@ import (
 	"testing"
 
 	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 )
 
+func recordedAt(t *testing.T) calendar.Instant {
+	t.Helper()
+	value, err := calendar.ParseInstant("2026-09-08T12:00:00.123456789Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
+}
+
 func TestRulesUsePriorityAndRequireClarificationForTiedResults(t *testing.T) {
-	base := allocation.Rule{ID: "merchant", HouseholdID: "family", Revision: 1, Priority: 10, State: allocation.Active, Condition: allocation.Condition{MerchantID: "market"}, Shares: []allocation.Share{{MemberID: "a", Value: "60"}, {MemberID: "b", Value: "40"}}, ActorID: "actor"}
+	base := allocation.Rule{ID: "merchant", HouseholdID: "family", Revision: 1, Priority: 10, State: allocation.Active, Condition: allocation.Condition{MerchantID: "market"}, Shares: []allocation.Share{{MemberID: "a", Value: "60"}, {MemberID: "b", Value: "40"}}, ActorID: "actor", RecordedAt: recordedAt(t)}
 	same := base
 	same.ID = "category"
 	same.Condition = allocation.Condition{CategoryID: "food"}
@@ -27,13 +37,13 @@ func TestRulesUsePriorityAndRequireClarificationForTiedResults(t *testing.T) {
 }
 
 func TestRuleChangeIsVersionedAndNoopDoesNotAdvance(t *testing.T) {
-	rule := allocation.Rule{ID: "rule", HouseholdID: "family", Revision: 1, Priority: 1, State: allocation.Active, Condition: allocation.Condition{CategoryID: "food"}, Shares: []allocation.Share{{MemberID: "a", Value: "100"}}, ActorID: "a"}
+	rule := allocation.Rule{ID: "rule", HouseholdID: "family", Revision: 1, Priority: 1, State: allocation.Active, Condition: allocation.Condition{CategoryID: "food"}, Shares: []allocation.Share{{MemberID: "a", Value: "100"}}, ActorID: "a", RecordedAt: recordedAt(t)}
 	change := allocation.Change{Priority: rule.Priority, State: rule.State, Condition: rule.Condition, Shares: rule.Shares}
-	if _, err := rule.Apply(change, "b"); err != allocation.ErrRuleNoChange {
+	if _, err := rule.Apply(change, "b", recordedAt(t)); err != allocation.ErrRuleNoChange {
 		t.Fatalf("noop err = %v", err)
 	}
 	change.Priority = 2
-	next, err := rule.Apply(change, "b")
+	next, err := rule.Apply(change, "b", recordedAt(t))
 	if err != nil || next.Revision != 2 || next.ActorID != "b" || rule.Revision != 1 {
 		t.Fatalf("next=%+v err=%v original=%+v", next, err, rule)
 	}

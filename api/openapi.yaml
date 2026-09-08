@@ -469,8 +469,10 @@ components:
       "$ref": "./schemas/allocations.yaml#/AllocationRuleShare"
     AllocationRuleCondition:
       "$ref": "./schemas/allocations.yaml#/AllocationRuleCondition"
-    AllocationRuleInput:
-      "$ref": "./schemas/allocations.yaml#/AllocationRuleInput"
+    AllocationRuleCreateInput:
+      "$ref": "./schemas/allocations.yaml#/AllocationRuleCreateInput"
+    AllocationRuleChangeInput:
+      "$ref": "./schemas/allocations.yaml#/AllocationRuleChangeInput"
     AllocationRule:
       "$ref": "./schemas/allocations.yaml#/AllocationRule"
     AllocationRulePage:

@@ -381,7 +381,9 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 		if _, exists := itemInputs[item.ItemID]; exists || itemAmounts[item.ItemID].Validate() != nil {
 			return r, ErrInvalidAllocation
 		}
-		item.Allocation.Origin = AllocationExplicitItem
+		if item.Allocation.Origin != AllocationRule {
+			item.Allocation.Origin = AllocationExplicitItem
+		}
 		itemInputs[item.ItemID] = item.Allocation
 	}
 	if input.Origin == "" {
@@ -461,7 +463,11 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 	})
 	sort.Slice(result.Unallocated, func(i, j int) bool { return result.Unallocated[i].Asset() < result.Unallocated[j].Asset() })
 	sort.Slice(result.RuleRefs, func(i, j int) bool { return result.RuleRefs[i].ID < result.RuleRefs[j].ID })
-	if len(origins) > 1 {
+	if len(origins) == 1 {
+		for origin := range origins {
+			result.Origin = origin
+		}
+	} else if len(origins) > 1 {
 		result.Origin = AllocationMixed
 	}
 	if len(modes) > 1 || len(itemInputs) > 0 {

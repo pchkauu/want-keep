@@ -39,5 +39,5 @@ func (f *fixture) create(asset money.Asset, amount string) string {
 }
 
 func (f *fixture) ledgerService() *journal.Service {
-	return journal.NewServiceWithAllocations(f.store, f.writer, allocations.NewService(f.store, uuid.NewString), func() calendar.Instant { return f.now }, uuid.NewString)
+	return journal.NewServiceWithAllocations(f.store, f.writer, allocations.NewService(f.store, func() calendar.Instant { return f.now }, uuid.NewString), func() calendar.Instant { return f.now }, uuid.NewString)
 }

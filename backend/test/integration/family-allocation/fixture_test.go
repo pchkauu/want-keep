@@ -161,7 +161,7 @@ func (f *fixture) account(asset money.Asset, balance string) string {
 }
 
 func (f *fixture) ledgerService() *journal.Service {
-	allocations := allocation.NewService(f.store, uuid.NewString)
+	allocations := allocation.NewService(f.store, func() calendar.Instant { return f.now }, uuid.NewString)
 	return journal.NewServiceWithAllocations(f.store, journal.NewWriter(f.store, f.store), allocations, func() calendar.Instant { return f.now }, uuid.NewString)
 }
 
@@ -254,7 +254,7 @@ func (f *fixture) client(p household.Principal) *client {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	allocationService := allocation.NewService(f.store, uuid.NewString)
+	allocationService := allocation.NewService(f.store, func() calendar.Instant { return f.now }, uuid.NewString)
 	allocationHandler, err := allocationdelivery.New(allocationService, f.executor, commandQueries, sessions, f.store, config, func() calendar.Instant { return f.now })
 	if err != nil {
 		f.t.Fatal(err)

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	category "github.com/pchkauu/want-keep/backend/internal/categories/domain"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -13,6 +14,7 @@ type Repository interface {
 	AllocationRule(context.Context, household.Principal, string) (allocation.Rule, error)
 	AllocationRules(context.Context, household.Principal, string, int) ([]allocation.Rule, string, error)
 	MatchingAllocationRules(context.Context, household.Principal, string, string) ([]allocation.Rule, error)
+	MatchingAllocationRulesAt(context.Context, household.Principal, string, string, calendar.Instant) ([]allocation.Rule, error)
 	CreateAllocationRule(context.Context, allocation.Rule) error
 	SaveAllocationRule(context.Context, allocation.Rule, uint64) error
 	HouseholdMemberships(context.Context, household.Principal) ([]household.Membership, error)

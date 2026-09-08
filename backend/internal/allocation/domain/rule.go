@@ -8,6 +8,7 @@ import (
 	"sort"
 	"unicode/utf8"
 
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 )
 
@@ -48,10 +49,11 @@ type Rule struct {
 	Condition   Condition
 	Shares      []Share
 	ActorID     household.UserID
+	RecordedAt  calendar.Instant
 }
 
 func (r Rule) Validate() error {
-	if r.ID == "" || r.HouseholdID == "" || r.ActorID == "" || r.Revision < 1 || r.Revision > MaxRevision || r.Priority < 1 || r.Priority > 1000 || !slices.Contains([]State{Active, Archived}, r.State) || r.Condition.MerchantID == "" && r.Condition.CategoryID == "" || len(r.Shares) == 0 || len(r.Shares) > 1000 {
+	if r.ID == "" || r.HouseholdID == "" || r.ActorID == "" || r.RecordedAt.String() == "" || r.Revision < 1 || r.Revision > MaxRevision || r.Priority < 1 || r.Priority > 1000 || !slices.Contains([]State{Active, Archived}, r.State) || r.Condition.MerchantID == "" && r.Condition.CategoryID == "" || len(r.Shares) == 0 || len(r.Shares) > 1000 {
 		return ErrInvalidRule
 	}
 	seen := map[household.MembershipID]bool{}
@@ -104,8 +106,8 @@ type Change struct {
 	Shares    []Share
 }
 
-func (r Rule) Apply(change Change, actor household.UserID) (Rule, error) {
-	if actor == "" || r.Revision >= MaxRevision {
+func (r Rule) Apply(change Change, actor household.UserID, recordedAt calendar.Instant) (Rule, error) {
+	if actor == "" || recordedAt.String() == "" || r.Revision >= MaxRevision {
 		return r, ErrInvalidRule
 	}
 	next := r
@@ -118,6 +120,7 @@ func (r Rule) Apply(change Change, actor household.UserID) (Rule, error) {
 		return r, ErrRuleNoChange
 	}
 	next.Revision++
+	next.RecordedAt = recordedAt
 	if err := next.Validate(); err != nil {
 		return r, err
 	}

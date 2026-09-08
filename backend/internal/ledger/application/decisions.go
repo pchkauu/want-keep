@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sort"
 
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -21,6 +22,7 @@ type DecisionRepository interface {
 	LatestSourceFact(context.Context, household.Principal, string) (*ledger.Revision, error)
 	DecisionSourceFact(context.Context, household.Principal, string, string) (*ledger.Revision, error)
 	RevisionEvidence(context.Context, household.Principal, string, uint64) ([]ledger.Evidence, error)
+	FirstLedgerRecordedAt(context.Context, household.Principal, string) (calendar.Instant, error)
 }
 
 type Change struct {
@@ -161,6 +163,23 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 				return command.Result{}, commands.Rejection{Code: "source_conflict"}
 			}
 		}
+		if kind == "correction" && in.Correction.Allocation == nil && s.shouldResolveAllocation(r, fields) {
+			basis, basisErr := s.repository.FirstLedgerRecordedAt(ctx, p, r.OperationID)
+			if basisErr != nil {
+				return command.Result{}, s.reject(basisErr)
+			}
+			resolved, allocationChanged, resolveErr := s.resolveAllocationAt(ctx, p, updated, basis)
+			if resolveErr != nil {
+				return command.Result{}, resolveErr
+			}
+			if allocationChanged {
+				updated = resolved
+				if !slices.Contains(fields, ledger.AllocationField) {
+					fields = append(fields, ledger.AllocationField)
+				}
+				changedGroups[r.Participation.GroupID] = true
+			}
+		}
 		if slices.Contains(fields, ledger.PrincipalField) || slices.Contains(fields, ledger.FeesField) || slices.Contains(fields, ledger.AccountingField) {
 			financialGroups[r.Participation.GroupID] = true
 		}
@@ -196,6 +215,51 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 	}
 	d.Entries = entries
 	return s.persistDecision(ctx, p, d, retained)
+}
+
+func (s *Service) shouldResolveAllocation(revision ledger.Revision, fields []ledger.Field) bool {
+	if s.allocations == nil || !slices.Contains(fields, ledger.CategoryField) && !slices.Contains(fields, ledger.MerchantIDField) && !slices.Contains(fields, ledger.ReceiptItemsField) {
+		return false
+	}
+	if _, protected := revision.Protections[ledger.AllocationField]; protected {
+		return false
+	}
+	return revision.Allocation.State == ledger.AllocationUnresolved || revision.Allocation.State == ledger.AllocationPartial
+}
+
+func (s *Service) resolveAllocationAt(ctx context.Context, p household.Principal, revision ledger.Revision, at calendar.Instant) (ledger.Revision, bool, error) {
+	fallback, fallbackMatched, err := s.allocations.ResolveAt(ctx, p, revision.MerchantID, revision.CategoryID, at)
+	if err != nil {
+		return revision, false, err
+	}
+	if !fallbackMatched {
+		fallback = ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "allocation_unresolved"}
+	}
+	items := make([]ledger.ItemAllocationInput, 0, len(revision.ReceiptItems))
+	matched := fallbackMatched
+	for _, item := range revision.ReceiptItems {
+		resolved, itemMatched, resolveErr := s.allocations.ResolveAt(ctx, p, revision.MerchantID, item.CategoryID, at)
+		if resolveErr != nil {
+			return revision, false, resolveErr
+		}
+		if !itemMatched {
+			continue
+		}
+		matched = true
+		items = append(items, ledger.ItemAllocationInput{ItemID: item.ID, Allocation: resolved})
+	}
+	if !matched {
+		return revision, false, nil
+	}
+	members, err := s.allocations.ActiveMemberIDs(ctx, p)
+	if err != nil {
+		return revision, false, err
+	}
+	resolved, err := revision.WithAllocation(fallback, items, members)
+	if err != nil {
+		return revision, false, s.rejectDecision(err)
+	}
+	return resolved, !revision.FieldEqual(resolved, ledger.AllocationField), nil
 }
 
 func cloneAllocationChange(value ledger.AllocationChange) ledger.AllocationChange {

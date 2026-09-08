@@ -6,9 +6,24 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 )
+
+func (s *Store) FirstLedgerRecordedAt(ctx context.Context, p household.Principal, operationID string) (calendar.Instant, error) {
+	q, err := s.reader(ctx, p)
+	if err != nil {
+		return calendar.Instant{}, err
+	}
+	var at time.Time
+	var ns int16
+	err = q.QueryRow(ctx, `SELECT recorded_at,recorded_ns FROM want_keep.ledger_revision_audit WHERE household_id=$1 AND operation_id=$2 AND revision=1`, p.HouseholdID(), operationID).Scan(&at, &ns)
+	if err != nil {
+		return calendar.Instant{}, err
+	}
+	return restoreInstant(at, ns)
+}
 
 func (s *Store) SaveDecision(ctx context.Context, d ledger.Decision) error {
 	scope, err := s.familyScope(ctx)

@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	category "github.com/pchkauu/want-keep/backend/internal/categories/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
@@ -15,11 +16,12 @@ import (
 
 type Service struct {
 	repository Repository
+	now        func() calendar.Instant
 	newID      func() string
 }
 
-func NewService(repository Repository, newID func() string) *Service {
-	return &Service{repository: repository, newID: newID}
+func NewService(repository Repository, now func() calendar.Instant, newID func() string) *Service {
+	return &Service{repository: repository, now: now, newID: newID}
 }
 
 type RuleInput struct {
@@ -30,7 +32,7 @@ type RuleInput struct {
 }
 
 func (s *Service) CreateRule(ctx context.Context, principal household.Principal, input RuleInput) (command.Result, error) {
-	rule := allocation.Rule{ID: s.newID(), HouseholdID: principal.HouseholdID(), Revision: 1, Priority: input.Priority, State: input.State, Condition: input.Condition, Shares: slices.Clone(input.Shares), ActorID: principal.UserID()}
+	rule := allocation.Rule{ID: s.newID(), HouseholdID: principal.HouseholdID(), Revision: 1, Priority: input.Priority, State: input.State, Condition: input.Condition, Shares: slices.Clone(input.Shares), ActorID: principal.UserID(), RecordedAt: s.now()}
 	if err := s.validateRule(ctx, principal, rule); err != nil {
 		return command.Result{}, err
 	}
@@ -51,7 +53,7 @@ func (s *Service) ChangeRule(ctx context.Context, principal household.Principal,
 	if current.Revision != expected || expected >= allocation.MaxRevision {
 		return command.Result{}, commands.Rejection{Code: "version_conflict"}
 	}
-	next, err := current.Apply(allocation.Change{Priority: input.Priority, State: input.State, Condition: input.Condition, Shares: slices.Clone(input.Shares)}, principal.UserID())
+	next, err := current.Apply(allocation.Change{Priority: input.Priority, State: input.State, Condition: input.Condition, Shares: slices.Clone(input.Shares)}, principal.UserID(), s.now())
 	if err != nil {
 		return command.Result{}, s.reject(err)
 	}
@@ -94,18 +96,40 @@ func (s *Service) Preview(ctx context.Context, principal household.Principal, me
 }
 
 func (s *Service) Resolve(ctx context.Context, principal household.Principal, merchantID, categoryID string) (ledger.AllocationInput, bool, error) {
+	return s.resolve(ctx, principal, merchantID, categoryID, calendar.Instant{})
+}
+
+func (s *Service) ResolveAt(ctx context.Context, principal household.Principal, merchantID, categoryID string, at calendar.Instant) (ledger.AllocationInput, bool, error) {
+	if at.String() == "" {
+		return ledger.AllocationInput{}, false, commands.Rejection{Code: "invalid_request"}
+	}
+	return s.resolve(ctx, principal, merchantID, categoryID, at)
+}
+
+func (s *Service) resolve(ctx context.Context, principal household.Principal, merchantID, categoryID string, at calendar.Instant) (ledger.AllocationInput, bool, error) {
 	if merchantID == "" && categoryID == "" {
 		return ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "no_matching_rule"}, false, nil
 	}
-	resolution, err := s.Preview(ctx, principal, merchantID, categoryID)
-	if err != nil {
+	if err := s.requireConditions(ctx, principal, allocation.Condition{MerchantID: merchantID, CategoryID: categoryID}, true); err != nil {
 		return ledger.AllocationInput{}, false, err
 	}
+	var rules []allocation.Rule
+	var err error
+	if at.String() == "" {
+		rules, err = s.repository.MatchingAllocationRules(ctx, principal, merchantID, categoryID)
+	} else {
+		rules, err = s.repository.MatchingAllocationRulesAt(ctx, principal, merchantID, categoryID, at)
+	}
+	if err != nil {
+		return ledger.AllocationInput{}, false, s.reject(err)
+	}
+	resolution := allocation.Resolve(rules, merchantID, categoryID)
 	if resolution.State != "resolved" {
-		input := ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: resolution.Reason}
+		input := ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: resolution.Reason, Origin: ledger.AllocationUnknownOrigin}
 		if resolution.Reason != "rule_conflict" {
 			return input, false, nil
 		}
+		input.Origin = ledger.AllocationRule
 		for _, rule := range resolution.Rules {
 			input.RuleRefs = append(input.RuleRefs, ledger.AllocationRuleRef{ID: rule.ID, Revision: rule.Revision})
 		}

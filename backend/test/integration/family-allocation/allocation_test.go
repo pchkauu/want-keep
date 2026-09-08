@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	allocationapp "github.com/pchkauu/want-keep/backend/internal/allocation/application"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
+	categoryapp "github.com/pchkauu/want-keep/backend/internal/categories/application"
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/generated"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -112,6 +113,120 @@ func TestRuleCanBeArchivedAfterItsConditionIsArchived(t *testing.T) {
 	}
 }
 
+func TestAllocationRuleHTTPContractAndReadErrors(t *testing.T) {
+	fixture := newFixture(t)
+	client := fixture.client(fixture.p)
+	merchant := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/merchants", uuid.NewString(), map[string]any{"name": "Contract merchant", "aliases": []string{}}, http.StatusAccepted))
+	createWithRevision := ruleInput(client, merchant.Result.Id, 10, "50", "50", 1)
+	client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), createWithRevision, http.StatusBadRequest)
+
+	rule := createRule(t, client, merchant.Result.Id, 10, "50", "50")
+	changeWithoutRevision := ruleInput(client, merchant.Result.Id, 10, "60", "40", 0)
+	client.call(http.MethodPost, "/allocation-rules/"+rule.Result.Id, uuid.NewString(), changeWithoutRevision, http.StatusBadRequest)
+	client.call(http.MethodGet, "/allocation-rules/"+uuid.NewString(), "", nil, http.StatusNotFound)
+
+	foreignFamily := household.Household{ID: household.HouseholdID(uuid.NewString()), Name: "Foreign synthetic household"}
+	foreignUser := household.User{ID: household.UserID(uuid.NewString()), Name: "Foreign member"}
+	foreignMembership := household.Membership{ID: household.MembershipID(uuid.NewString()), HouseholdID: foreignFamily.ID, UserID: foreignUser.ID, Active: true}
+	zone, _ := calendar.ParseTimezone("Europe/Moscow")
+	if err := fixture.store.InitializeHousehold(testContext, foreignFamily, []household.User{foreignUser}, []household.Membership{foreignMembership}, zone, 2); err != nil {
+		t.Fatal(err)
+	}
+	foreignPrincipal, _ := foreignMembership.Principal()
+	var foreignMerchantID string
+	if err := fixture.store.WithinHousehold(testContext, foreignPrincipal, func(ctx context.Context) error {
+		result, createErr := categoryapp.NewService(fixture.store, uuid.NewString).CreateMerchant(ctx, foreignPrincipal, categoryapp.MerchantInput{Name: "Foreign merchant"})
+		foreignMerchantID = result.ResourceID
+		return createErr
+	}); err != nil {
+		t.Fatal(err)
+	}
+	client.call(http.MethodPost, "/allocation-rules/preview", "", map[string]any{"merchantId": foreignMerchantID}, http.StatusNotFound)
+
+	archived := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/merchants/"+merchant.Result.Id, uuid.NewString(), map[string]any{"expectedRevision": 1, "state": "archived"}, http.StatusAccepted))
+	if archived.Status != "succeeded" {
+		t.Fatal(archived)
+	}
+	client.call(http.MethodPost, "/allocation-rules/preview", "", map[string]any{"merchantId": merchant.Result.Id}, http.StatusNotFound)
+}
+
+func TestTrustedClassificationUsesOnlyFactTimeRules(t *testing.T) {
+	t.Run("pre-existing category rule applies", func(t *testing.T) {
+		fixture := newFixture(t)
+		client := fixture.client(fixture.p)
+		category := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Groceries"}, http.StatusAccepted))
+		rule := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": category.Result.Id}, "active", 10, "60", "40", 0), http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:01:00Z")
+		created := createExpense(t, client, fixture.account(money.RUB, "1000"), money.RUB, "100", "", unresolved())
+		fixture.now = instant("2026-09-08T12:02:00Z")
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules/"+rule.Result.Id, uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": category.Result.Id}, "active", 10, "40", "60", 1), http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:03:00Z")
+		corrected := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{"expectedRevision": 1, "reason": "Confirm category", "category": map[string]any{"action": "set", "id": category.Result.Id}}, http.StatusAccepted))
+		if corrected.Status != "succeeded" {
+			t.Fatal(corrected)
+		}
+		allocation := readTransaction(t, client, created.Result.Id).Allocation
+		assertMemberAmounts(t, fixture, allocation, "60", "40")
+		if len(allocation.Rules) != 1 || allocation.Rules[0].Revision != 1 {
+			t.Fatalf("late classification used a later rule revision: %+v", allocation.Rules)
+		}
+	})
+
+	t.Run("later rule is not retroactive", func(t *testing.T) {
+		fixture := newFixture(t)
+		client := fixture.client(fixture.p)
+		category := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Later category"}, http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:01:00Z")
+		created := createExpense(t, client, fixture.account(money.RUB, "1000"), money.RUB, "100", "", unresolved())
+		fixture.now = instant("2026-09-08T12:02:00Z")
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": category.Result.Id}, "active", 10, "60", "40", 0), http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:03:00Z")
+		corrected := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{"expectedRevision": 1, "reason": "Confirm category", "category": map[string]any{"action": "set", "id": category.Result.Id}}, http.StatusAccepted))
+		if corrected.Status != "succeeded" {
+			t.Fatal(corrected)
+		}
+		allocation := readTransaction(t, client, created.Result.Id).Allocation
+		if allocation.State != "unresolved" || len(allocation.Rules) != 0 {
+			t.Fatalf("later rule changed earlier fact: %+v", allocation)
+		}
+	})
+
+	t.Run("explicit allocation remains protected", func(t *testing.T) {
+		fixture := newFixture(t)
+		client := fixture.client(fixture.p)
+		category := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Protected category"}, http.StatusAccepted))
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": category.Result.Id}, "active", 10, "60", "40", 0), http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:01:00Z")
+		created := createExpense(t, client, fixture.account(money.RUB, "1000"), money.RUB, "100", "", equalShared())
+		fixture.now = instant("2026-09-08T12:02:00Z")
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{"expectedRevision": 1, "reason": "Confirm category", "category": map[string]any{"action": "set", "id": category.Result.Id}}, http.StatusAccepted))
+		assertMemberAmounts(t, fixture, readTransaction(t, client, created.Result.Id).Allocation, "50", "50")
+	})
+
+	t.Run("receipt item category uses eligible rule", func(t *testing.T) {
+		fixture := newFixture(t)
+		client := fixture.client(fixture.p)
+		category := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Receipt item category"}, http.StatusAccepted))
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": category.Result.Id}, "active", 10, "60", "40", 0), http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:01:00Z")
+		created := createExpense(t, client, fixture.account(money.RUB, "1000"), money.RUB, "100", "", unresolved())
+		itemID := uuid.NewString()
+		fixture.now = instant("2026-09-08T12:02:00Z")
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{
+			"expectedRevision": 1,
+			"reason":           "Attach classified item",
+			"receiptItems": map[string]any{"action": "replace", "totalDiscount": map[string]any{"amount": "0", "asset": "RUB"}, "items": []any{
+				map[string]any{"id": itemID, "name": "Classified item", "quantity": "1", "gross": map[string]any{"amount": "100", "asset": "RUB"}, "categoryId": category.Result.Id},
+			}},
+		}, http.StatusAccepted))
+		transaction := readTransaction(t, client, created.Result.Id)
+		if len(transaction.ReceiptItems) != 1 || transaction.ReceiptItems[0].Allocation.Origin != "rule" {
+			t.Fatalf("item rule allocation = %+v", transaction.ReceiptItems)
+		}
+		assertMemberAmounts(t, fixture, transaction.Allocation, "60", "40")
+	})
+}
+
 func TestNewImportedFactUsesConfirmedMerchantAliasRule(t *testing.T) {
 	fixture := newFixture(t)
 	first := fixture.client(fixture.p)
@@ -135,7 +250,7 @@ func TestNewImportedFactUsesConfirmedMerchantAliasRule(t *testing.T) {
 	connectionID := fixture.importConnection()
 	issued := fixture.issuedImport(gate, connectionID)
 	input := ledger.SourceInput{Key: ledger.SourceKey{HouseholdID: fixture.family.ID, Provider: "raiffeisen", ExternalAccountID: "synthetic", Product: "current", Log: "transactions", RecordID: uuid.NewString()}, PayloadHash: strings.Repeat("a", 64), EvidenceRef: "synthetic-evidence", ConnectionID: connectionID, JobID: issued.ID, FetchedAt: fixture.now, Classification: "new", Operation: &revision}
-	sources := journal.NewSources(fixture.store, journal.NewWriter(fixture.store, fixture.store), allocationapp.NewService(fixture.store, uuid.NewString))
+	sources := journal.NewSources(fixture.store, journal.NewWriter(fixture.store, fixture.store), allocationapp.NewService(fixture.store, func() calendar.Instant { return fixture.now }, uuid.NewString))
 	applied, err := gate.CommitPage(testContext, fixture.p, issued, admission.Page{EvidenceRef: input.EvidenceRef, Coverage: "complete", Complete: true}, func(ctx context.Context) error {
 		_, err := sources.Apply(ctx, fixture.p, input)
 		return err
@@ -181,7 +296,7 @@ func TestSourceRulesUseExpenseComponentsAndDoNotBlockIncome(t *testing.T) {
 	from, to := fixture.account(money.RUB, "1000"), fixture.account(money.RUB, "1000")
 	gate := fixture.admittedImport()
 	connectionID := fixture.importConnection()
-	sources := journal.NewSources(fixture.store, journal.NewWriter(fixture.store, fixture.store), allocationapp.NewService(fixture.store, uuid.NewString))
+	sources := journal.NewSources(fixture.store, journal.NewWriter(fixture.store, fixture.store), allocationapp.NewService(fixture.store, func() calendar.Instant { return fixture.now }, uuid.NewString))
 	zone, _ := calendar.ParseTimezone("Europe/Moscow")
 
 	apply := func(revision ledger.Revision, hash, evidence string) ledger.Revision {
@@ -231,7 +346,7 @@ func TestAllocationConditionRepositoryFailureIsNotAStoredBusinessRejection(t *te
 	err := fixture.store.WithinHousehold(testContext, fixture.p, func(transactionContext context.Context) error {
 		ctx, cancel := context.WithCancel(transactionContext)
 		cancel()
-		_, previewErr := allocationapp.NewService(fixture.store, uuid.NewString).Preview(ctx, fixture.p, merchant.Result.Id, "")
+		_, previewErr := allocationapp.NewService(fixture.store, func() calendar.Instant { return fixture.now }, uuid.NewString).Preview(ctx, fixture.p, merchant.Result.Id, "")
 		if !errors.Is(previewErr, context.Canceled) {
 			t.Fatalf("repository failure classified as %v", previewErr)
 		}

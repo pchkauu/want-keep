@@ -3,9 +3,11 @@ package storage
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
@@ -73,7 +75,8 @@ func (s *Store) SaveAllocationRule(ctx context.Context, rule allocation.Rule, ex
 }
 
 func (s *Store) insertAllocationRuleRevision(ctx context.Context, scope *transactionScope, rule allocation.Rule) error {
-	_, err := scope.tx.Exec(ctx, `INSERT INTO want_keep.allocation_rule_revisions(household_id,rule_id,revision,priority,state,merchant_id,category_id,actor_id,command_id) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')::uuid,NULLIF($7,'')::uuid,$8,NULLIF($9,'')::uuid)`, rule.HouseholdID, rule.ID, rule.Revision, rule.Priority, rule.State, rule.Condition.MerchantID, rule.Condition.CategoryID, rule.ActorID, commands.CurrentCommandID(ctx))
+	recordedAt, recordedNS := splitInstant(rule.RecordedAt)
+	_, err := scope.tx.Exec(ctx, `INSERT INTO want_keep.allocation_rule_revisions(household_id,rule_id,revision,priority,state,merchant_id,category_id,actor_id,command_id,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')::uuid,NULLIF($7,'')::uuid,$8,NULLIF($9,'')::uuid,$10,$11)`, rule.HouseholdID, rule.ID, rule.Revision, rule.Priority, rule.State, rule.Condition.MerchantID, rule.Condition.CategoryID, rule.ActorID, commands.CurrentCommandID(ctx), recordedAt, recordedNS)
 	if err != nil {
 		return err
 	}
@@ -170,6 +173,56 @@ func (s *Store) MatchingAllocationRules(ctx context.Context, principal household
 	return result, nil
 }
 
+func (s *Store) MatchingAllocationRulesAt(ctx context.Context, principal household.Principal, merchantID, categoryID string, at calendar.Instant) ([]allocation.Rule, error) {
+	q, err := s.reader(ctx, principal)
+	if err != nil {
+		return nil, err
+	}
+	if at.String() == "" {
+		return nil, allocation.ErrInvalidRule
+	}
+	recordedAt, recordedNS := splitInstant(at)
+	rows, err := q.Query(ctx, `WITH historical AS (
+ SELECT DISTINCT ON (rule_id) rule_id,revision,priority,state,merchant_id,category_id
+ FROM want_keep.allocation_rule_revisions
+ WHERE household_id=$1 AND (recorded_at,recorded_ns)<=($4,$5)
+ ORDER BY rule_id,revision DESC
+)
+SELECT rule_id,revision FROM historical
+WHERE state='active' AND (merchant_id IS NULL OR merchant_id=$2::uuid) AND (category_id IS NULL OR category_id=$3::uuid)
+ORDER BY priority,rule_id`, principal.HouseholdID(), nullableUUID(merchantID), nullableUUID(categoryID), recordedAt, recordedNS)
+	if err != nil {
+		return nil, err
+	}
+	type reference struct {
+		id       string
+		revision uint64
+	}
+	references := []reference{}
+	for rows.Next() {
+		var value reference
+		if err = rows.Scan(&value.id, &value.revision); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		references = append(references, value)
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	result := make([]allocation.Rule, 0, len(references))
+	for _, reference := range references {
+		rule, loadErr := loadAllocationRuleRevision(ctx, q, principal.HouseholdID(), reference.id, reference.revision)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		result = append(result, rule)
+	}
+	return result, nil
+}
+
 func nullableUUID(value string) any {
 	if value == "" {
 		return nil
@@ -179,11 +232,36 @@ func nullableUUID(value string) any {
 
 func loadAllocationRule(ctx context.Context, q reader, householdID household.HouseholdID, id string) (allocation.Rule, error) {
 	rule := allocation.Rule{ID: id, HouseholdID: householdID}
-	err := q.QueryRow(ctx, `SELECT revision,priority,state,COALESCE(merchant_id::text,''),COALESCE(category_id::text,''),actor_id FROM want_keep.allocation_rules WHERE household_id=$1 AND id=$2`, householdID, id).Scan(&rule.Revision, &rule.Priority, &rule.State, &rule.Condition.MerchantID, &rule.Condition.CategoryID, &rule.ActorID)
+	var recordedAt time.Time
+	var recordedNS int16
+	err := q.QueryRow(ctx, `SELECT r.revision,r.priority,r.state,COALESCE(r.merchant_id::text,''),COALESCE(r.category_id::text,''),r.actor_id,v.recorded_at,v.recorded_ns FROM want_keep.allocation_rules r JOIN want_keep.allocation_rule_revisions v ON (v.household_id,v.rule_id,v.revision)=(r.household_id,r.id,r.revision) WHERE r.household_id=$1 AND r.id=$2`, householdID, id).Scan(&rule.Revision, &rule.Priority, &rule.State, &rule.Condition.MerchantID, &rule.Condition.CategoryID, &rule.ActorID, &recordedAt, &recordedNS)
 	if err != nil {
 		return rule, err
 	}
-	rows, err := q.Query(ctx, `SELECT member_id,share::text FROM want_keep.allocation_rule_shares WHERE household_id=$1 AND rule_id=$2 AND revision=$3 ORDER BY position`, householdID, id, rule.Revision)
+	rule.RecordedAt, err = restoreInstant(recordedAt, recordedNS)
+	if err != nil {
+		return rule, err
+	}
+	return loadAllocationRuleShares(ctx, q, rule)
+}
+
+func loadAllocationRuleRevision(ctx context.Context, q reader, householdID household.HouseholdID, id string, revision uint64) (allocation.Rule, error) {
+	rule := allocation.Rule{ID: id, HouseholdID: householdID, Revision: revision}
+	var recordedAt time.Time
+	var recordedNS int16
+	err := q.QueryRow(ctx, `SELECT priority,state,COALESCE(merchant_id::text,''),COALESCE(category_id::text,''),actor_id,recorded_at,recorded_ns FROM want_keep.allocation_rule_revisions WHERE household_id=$1 AND rule_id=$2 AND revision=$3`, householdID, id, revision).Scan(&rule.Priority, &rule.State, &rule.Condition.MerchantID, &rule.Condition.CategoryID, &rule.ActorID, &recordedAt, &recordedNS)
+	if err != nil {
+		return rule, err
+	}
+	rule.RecordedAt, err = restoreInstant(recordedAt, recordedNS)
+	if err != nil {
+		return rule, err
+	}
+	return loadAllocationRuleShares(ctx, q, rule)
+}
+
+func loadAllocationRuleShares(ctx context.Context, q reader, rule allocation.Rule) (allocation.Rule, error) {
+	rows, err := q.Query(ctx, `SELECT member_id,share::text FROM want_keep.allocation_rule_shares WHERE household_id=$1 AND rule_id=$2 AND revision=$3 ORDER BY position`, rule.HouseholdID, rule.ID, rule.Revision)
 	if err != nil {
 		return rule, err
 	}

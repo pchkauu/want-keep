@@ -59,12 +59,12 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, err)
 		return
 	}
-	var input generated.AllocationRuleInput
-	if err = s.decode(r, "AllocationRuleInput", &input); err != nil || input.ExpectedRevision != nil {
+	var input generated.AllocationRuleCreateInput
+	if err = s.decode(r, "AllocationRuleCreateInput", &input); err != nil {
 		s.problem(w, contract.ErrInvalidRequest)
 		return
 	}
-	domainInput := ruleInput(input)
+	domainInput := createRuleInput(input)
 	s.execute(w, r, access, "allocation_rules.create", "", input, func(ctx context.Context) (command.Result, error) {
 		return s.service.CreateRule(ctx, access.Principal, domainInput)
 	})
@@ -81,18 +81,32 @@ func (s *Server) change(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, err)
 		return
 	}
-	var input generated.AllocationRuleInput
-	if err = s.decode(r, "AllocationRuleInput", &input); err != nil || input.ExpectedRevision == nil {
+	var input generated.AllocationRuleChangeInput
+	if err = s.decode(r, "AllocationRuleChangeInput", &input); err != nil {
 		s.problem(w, contract.ErrInvalidRequest)
 		return
 	}
-	domainInput := ruleInput(input)
+	domainInput := changeRuleInput(input)
 	s.execute(w, r, access, "allocation_rules.change", id, input, func(ctx context.Context) (command.Result, error) {
-		return s.service.ChangeRule(ctx, access.Principal, id, uint64(*input.ExpectedRevision), domainInput)
+		return s.service.ChangeRule(ctx, access.Principal, id, uint64(input.ExpectedRevision), domainInput)
 	})
 }
 
-func ruleInput(input generated.AllocationRuleInput) allocationapp.RuleInput {
+func createRuleInput(input generated.AllocationRuleCreateInput) allocationapp.RuleInput {
+	result := allocationapp.RuleInput{Priority: input.Priority, State: allocationdomain.State(input.State)}
+	if input.Condition.MerchantId != nil {
+		result.Condition.MerchantID = *input.Condition.MerchantId
+	}
+	if input.Condition.CategoryId != nil {
+		result.Condition.CategoryID = *input.Condition.CategoryId
+	}
+	for _, share := range input.Shares {
+		result.Shares = append(result.Shares, allocationdomain.Share{MemberID: householdMembershipID(share.MemberId), Value: share.Share})
+	}
+	return result
+}
+
+func changeRuleInput(input generated.AllocationRuleChangeInput) allocationapp.RuleInput {
 	result := allocationapp.RuleInput{Priority: input.Priority, State: allocationdomain.State(input.State)}
 	if input.Condition.MerchantId != nil {
 		result.Condition.MerchantID = *input.Condition.MerchantId

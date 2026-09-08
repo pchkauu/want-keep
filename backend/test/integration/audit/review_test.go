@@ -75,7 +75,7 @@ func TestReviewAllocationReplayHashesTheCompleteSplit(t *testing.T) {
 	f := newFixture(t)
 	c := f.client(f.p)
 	r := c.expense(f.create(money.RUB, "5000"), money.RUB, "500")
-	service := journal.NewServiceWithAllocations(f.store, f.writer, allocation.NewService(f.store, uuid.NewString), func() calendar.Instant { return f.now }, uuid.NewString)
+	service := journal.NewServiceWithAllocations(f.store, f.writer, allocation.NewService(f.store, func() calendar.Instant { return f.now }, uuid.NewString), func() calendar.Instant { return f.now }, uuid.NewString)
 	review := func(in journal.ReviewInput) error {
 		return f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error { return service.CompleteReview(ctx, f.p, in) })
 	}
