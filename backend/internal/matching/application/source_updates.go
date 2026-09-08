@@ -10,12 +10,22 @@ import (
 	matching "github.com/pchkauu/want-keep/backend/internal/matching/domain"
 )
 
-func (s *Service) update(ctx context.Context, p household.Principal, incoming ledger.Revision, expected uint64) error {
+func (s *Service) update(ctx context.Context, p household.Principal, incoming ledger.Revision, expected uint64, evidence []ledger.Evidence) error {
 	g, found, err := s.repository.MatchingForOperation(ctx, p, incoming.OperationID)
 	if err != nil {
 		return err
 	}
 	if !found {
+		previous, exists, err := s.repository.CurrentLedgerRevision(ctx, p, incoming.OperationID)
+		if err != nil {
+			return err
+		}
+		if !exists || previous.Revision != expected {
+			return matching.ErrConflict
+		}
+		if incoming.Correspondence != nil && (previous.Correspondence == nil || *previous.Correspondence != *incoming.Correspondence) {
+			return s.discover(ctx, p, incoming, expected, evidence)
+		}
 		return s.writer.Append(ctx, p, incoming, expected)
 	}
 	before, err := s.members(ctx, p, g)

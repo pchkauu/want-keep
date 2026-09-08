@@ -196,7 +196,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 make test-go PKG=./internal/matching/... && make test-integration AREA=matching && make test-matching-race
 ```
 
-Шесть активов; ручная оплата, нормализованный чек и банк; разные/вероятные покупки; обе последовательности сторон, комиссии, lifecycle, источники, составные правки/undo, конкуренция, права, replay/rollback/restart и миграция проверяются без двойного эффекта.
+Шесть активов; ручная оплата, нормализованный чек и банк; разные/вероятные покупки; обе последовательности сторон, комиссии, lifecycle, источники, составные правки/undo, конкуренция, права, replay/rollback/restart и миграция проверяются без двойного эффекта. Проверяются независимая правка с неизменённым участником и поздний подтверждённый идентификатор.
 
 Task-2.3 включена в базу; команды существуют. Обязательны make check, matching/audit/ledger/accounts/storage/identity/household integration/race, privacy и git diff --check. Реальные чеки/чат/OpenAI, банковский IO, возвраты, долг, экраны и эксплуатация не подтверждаются.
 
@@ -401,7 +401,7 @@ A link establishes coverage but does not prove the whole criterion; verification
 make test-go PKG=./internal/matching/... && make test-integration AREA=matching && make test-matching-race
 ```
 
-Six assets; manual payment, normalized receipt and bank; distinct/probable purchases; both side arrival orders, fees, lifecycle, sources, compound corrections/undo, concurrency, rights, replay/rollback/restart and migration are checked without duplicate effects.
+Six assets; manual payment, normalized receipt and bank; distinct/probable purchases; both side arrival orders, fees, lifecycle, sources, compound corrections/undo, concurrency, rights, replay/rollback/restart and migration are checked without duplicate effects. Includes an independent edit with an unchanged participant and a late verified identifier.
 
 Task-2.3 is included in the base; commands exist. Require make check, matching/audit/ledger/accounts/storage/identity/household integration/race, privacy and git diff --check. Real receipts/chat/OpenAI, bank IO, refunds, debt, screens and operations are not verified.
 

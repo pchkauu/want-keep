@@ -52,6 +52,7 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 	next := make([]ledger.Revision, 0, len(changes))
 	unchanged := map[string]string{}
 	changedGroups := map[string]bool{}
+	financialGroups := map[string]bool{}
 	for i, in := range changes {
 		if in.Exclude && in.Correction != (ledger.Correction{}) {
 			return command.Result{}, commands.Rejection{Code: "invalid_request"}
@@ -116,6 +117,9 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 				return command.Result{}, commands.Rejection{Code: "source_conflict"}
 			}
 		}
+		if slices.Contains(fields, ledger.PrincipalField) || slices.Contains(fields, ledger.FeesField) || slices.Contains(fields, ledger.AccountingField) {
+			financialGroups[r.Participation.GroupID] = true
+		}
 		if updated.OccurredAt.Time().After(s.now().Time()) {
 			return command.Result{}, commands.Rejection{Code: "invalid_request"}
 		}
@@ -127,7 +131,18 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 			return command.Result{}, commands.Rejection{Code: "no_change"}
 		}
 	}
-	return s.persistDecision(ctx, p, d, next)
+	// A repeated monetary value only supplies a revision check for an independent
+	// edit. The matching writer adds any actual derived participant changes.
+	retained, entries := next[:0], d.Entries[:0]
+	for i, r := range next {
+		if group, noop := unchanged[r.OperationID]; noop && !financialGroups[group] {
+			continue
+		}
+		retained = append(retained, r)
+		entries = append(entries, d.Entries[i])
+	}
+	d.Entries = entries
+	return s.persistDecision(ctx, p, d, retained)
 }
 
 func (s *Service) Undo(ctx context.Context, p household.Principal, id string, expected []ExpectedRevision, reason string) (command.Result, error) {

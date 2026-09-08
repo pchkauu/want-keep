@@ -30,7 +30,11 @@ func TestMatchingUndoRetainsIndependentDate(t *testing.T) {
 			linked := f.current(a.OperationID)
 			c := f.client(f.p)
 			changed := "2026-09-06T12:00:00Z"
-			c.result("/transactions/"+a.OperationID+"/corrections", map[string]any{"expectedRevision": linked.Revision, "reason": "Correct independent date", "occurredAt": changed})
+			bv := c.transaction(b.OperationID)
+			c.result("/transactions/"+a.OperationID+"/corrections", map[string]any{"expectedRevision": linked.Revision, "reason": "Correct independent date", "occurredAt": changed, "relatedChanges": []map[string]any{{"transactionId": b.OperationID, "expectedRevision": bv.Revision, "principal": bv.Postings}}})
+			if kind == matching.Transfer && f.current(b.OperationID).Revision != uint64(bv.Revision) {
+				t.Fatal("unchanged related participant acquired a financial revision")
+			}
 			corrected := f.current(a.OperationID)
 			if corrected.FieldVersions[ledger.MatchingField] != linked.FieldVersions[ledger.MatchingField] {
 				t.Fatal("date superseded association")

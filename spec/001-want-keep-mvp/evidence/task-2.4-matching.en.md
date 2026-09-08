@@ -30,3 +30,5 @@ Review regressions cover per-component carrier/date stability on note edits, dat
 Additional HTTP/PostgreSQL race regressions cover automatic-link undo after posted/cancelled/reversed, retained postings and holds, restored waiting cases and a separately confirmed transfer followed by its late counterpart. The rejected duplicate persists until explicit undo; source replay adds no effect.
 
 Regressions also cover independent date changes after linking and their later undo, fee-before-principal and replay, a separate fee, restoring two candidates and 100 candidates with incomplete coverage. Migration checks cover pre-funding records, immutable matching decision bases and retention after command cleanup. The derived contribution field cannot become a protected user override.
+
+Additional checks cover unchanged relatedChanges amounts during an independent date edit, late correspondence with a missing side or existing payment/transfer evidence, import replay and retained explicit separate decisions.

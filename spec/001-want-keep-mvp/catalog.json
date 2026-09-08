@@ -3643,8 +3643,8 @@
       "verification": {
         "command": "make test-go PKG=./internal/matching/... && make test-integration AREA=matching && make test-matching-race",
         "expected": {
-          "ru": "Шесть активов; ручная оплата, нормализованный чек и банк; разные/вероятные покупки; обе последовательности сторон, комиссии, lifecycle, источники, составные правки/undo, конкуренция, права, replay/rollback/restart и миграция проверяются без двойного эффекта.",
-          "en": "Six assets; manual payment, normalized receipt and bank; distinct/probable purchases; both side arrival orders, fees, lifecycle, sources, compound corrections/undo, concurrency, rights, replay/rollback/restart and migration are checked without duplicate effects."
+          "ru": "Шесть активов; ручная оплата, нормализованный чек и банк; разные/вероятные покупки; обе последовательности сторон, комиссии, lifecycle, источники, составные правки/undo, конкуренция, права, replay/rollback/restart и миграция проверяются без двойного эффекта. Проверяются независимая правка с неизменённым участником и поздний подтверждённый идентификатор.",
+          "en": "Six assets; manual payment, normalized receipt and bank; distinct/probable purchases; both side arrival orders, fees, lifecycle, sources, compound corrections/undo, concurrency, rights, replay/rollback/restart and migration are checked without duplicate effects. Includes an independent edit with an unchanged participant and a late verified identifier."
         }
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/20",

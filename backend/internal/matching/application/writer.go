@@ -60,8 +60,12 @@ func (s *Service) append(ctx context.Context, p household.Principal, r ledger.Re
 		return ledger.ErrInvalidRevision
 	}
 	if expected > 0 {
-		return s.update(ctx, p, r, expected)
+		return s.update(ctx, p, r, expected, evidence)
 	}
+	return s.discover(ctx, p, r, expected, evidence)
+}
+
+func (s *Service) discover(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64, evidence []ledger.Evidence) error {
 	if r.Participation.GroupID != "" {
 		return matching.ErrInvalid
 	}
@@ -81,18 +85,30 @@ func (s *Service) append(ctx context.Context, p household.Principal, r ledger.Re
 	if err != nil {
 		return err
 	}
+	if expected > 0 {
+		exact, err = s.withoutRejected(ctx, p, r.OperationID, exact)
+		if err != nil {
+			return err
+		}
+	}
 	if len(exact) > 0 && complete {
-		return s.acceptProven(ctx, p, r, exact, evidence)
+		return s.acceptProven(ctx, p, r, expected, exact, evidence)
 	}
 	possible, possibleComplete, err := s.repository.MatchingReferences(ctx, p, r, false, 100)
 	if err != nil {
 		return err
 	}
+	if expected > 0 {
+		possible, err = s.withoutRejected(ctx, p, r.OperationID, possible)
+		if err != nil {
+			return err
+		}
+	}
 	if len(exact) > 0 {
 		possible, possibleComplete = exact, false
 	}
 	if len(possible) > 0 || !possibleComplete {
-		return s.hold(ctx, p, r, possible, possibleComplete)
+		return s.hold(ctx, p, r, expected, possible, possibleComplete)
 	}
 	if r.Correspondence != nil && r.Correspondence.Kind != "payment" {
 		g := s.newGroup(p, r, matching.Kind(r.Correspondence.Kind), matching.WaitingSide, "confirmed_internal_side")
@@ -103,7 +119,7 @@ func (s *Service) append(ctx context.Context, p household.Principal, r ledger.Re
 		if err = s.repository.SaveMatchingGroup(ctx, g, 0); err != nil {
 			return err
 		}
-		return s.writer.Append(ctx, p, facts[0], 0)
+		return s.writer.Append(ctx, p, facts[0], expected)
 	}
 	return s.writer.Append(ctx, p, r, expected)
 }
@@ -112,7 +128,7 @@ func (s *Service) newGroup(p household.Principal, r ledger.Revision, kind matchi
 	return matching.Group{ID: s.newID(), PrimaryID: r.OperationID, Revision: 1, Kind: kind, State: state, ActorID: p.UserID(), At: s.now(), Reason: reason, Members: []matching.Member{{OperationID: r.OperationID, Revision: r.Revision}}, CandidatesComplete: true}
 }
 
-func (s *Service) hold(ctx context.Context, p household.Principal, r ledger.Revision, candidates []ledger.Revision, complete bool) error {
+func (s *Service) hold(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64, candidates []ledger.Revision, complete bool) error {
 	kind := matching.Payment
 	if r.Correspondence != nil {
 		kind = matching.Kind(r.Correspondence.Kind)
@@ -126,10 +142,10 @@ func (s *Service) hold(ctx context.Context, p household.Principal, r ledger.Revi
 		return err
 	}
 	r.Participation = ledger.Participation{GroupID: g.ID, Kind: ledger.ParticipationKind(kind), State: "waiting"}
-	return s.writer.Append(ctx, p, r, 0)
+	return s.writer.Append(ctx, p, r, expected)
 }
 
-func (s *Service) acceptProven(ctx context.Context, p household.Principal, r ledger.Revision, existing []ledger.Revision, evidence []ledger.Evidence) error {
+func (s *Service) acceptProven(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64, existing []ledger.Revision, evidence []ledger.Evidence) error {
 	ids := []string{}
 	for _, v := range existing {
 		ids = append(ids, v.OperationID)
@@ -139,23 +155,23 @@ func (s *Service) acceptProven(ctx context.Context, p household.Principal, r led
 		return err
 	}
 	if rejected {
-		return s.hold(ctx, p, r, existing, true)
+		return s.hold(ctx, p, r, expected, existing, true)
 	}
 	// Existing user protections remain independent; automatic linking does not
 	// overwrite contradictory confirmed values or hide competing fee evidence.
 	for _, v := range existing {
 		if v.Correspondence == nil || r.Correspondence == nil || *v.Correspondence != *r.Correspondence {
-			return s.hold(ctx, p, r, existing, true)
+			return s.hold(ctx, p, r, expected, existing, true)
 		}
 		for _, posting := range v.Postings {
 			if posting.Role == ledger.Fee && posting.FeeID == "" {
-				return s.hold(ctx, p, r, existing, true)
+				return s.hold(ctx, p, r, expected, existing, true)
 			}
 		}
 	}
 	for _, posting := range r.Postings {
 		if posting.Role == ledger.Fee && posting.FeeID == "" {
-			return s.hold(ctx, p, r, existing, true)
+			return s.hold(ctx, p, r, expected, existing, true)
 		}
 	}
 	g, found, err := s.repository.MatchingForOperation(ctx, p, existing[0].OperationID)
@@ -168,7 +184,7 @@ func (s *Service) acceptProven(ctx context.Context, p household.Principal, r led
 			return err
 		}
 	} else if g.State != matching.Linked && g.State != matching.WaitingSide {
-		return s.hold(ctx, p, r, existing, true)
+		return s.hold(ctx, p, r, expected, existing, true)
 	}
 	facts := append(slices.Clone(existing), r)
 	if found {
@@ -194,7 +210,7 @@ func (s *Service) acceptProven(ctx context.Context, p household.Principal, r led
 	}
 	if _, _, err = proposal.Assign(facts, true); err != nil {
 		if found {
-			return s.hold(ctx, p, r, existing, true)
+			return s.hold(ctx, p, r, expected, existing, true)
 		}
 		g.Candidates = nil
 		for _, v := range existing {
@@ -208,10 +224,10 @@ func (s *Service) acceptProven(ctx context.Context, p household.Principal, r led
 			return err
 		}
 		r.Participation = ledger.Participation{GroupID: g.ID, Kind: ledger.ParticipationKind(g.Kind), State: "waiting"}
-		return s.writer.Append(ctx, p, r, 0)
+		return s.writer.Append(ctx, p, r, expected)
 	}
 	r.Participation = ledger.Participation{GroupID: g.ID, Kind: ledger.ParticipationKind(g.Kind), State: "waiting"}
-	if err = s.writer.Append(ctx, p, r, 0); err != nil {
+	if err = s.writer.Append(ctx, p, r, expected); err != nil {
 		return err
 	}
 	_, err = s.link(ctx, p, proposal, facts, "proven_correspondence", true, evidence, []matching.Group{g})
