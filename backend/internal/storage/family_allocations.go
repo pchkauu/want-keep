@@ -304,8 +304,8 @@ func (s *Store) saveLedgerAllocation(ctx context.Context, revision ledger.Revisi
 	}
 	family := scope.principal.HouseholdID()
 	var fallback ledger.AllocationInput
-	if snapshot.Fallback != nil {
-		fallback = *snapshot.Fallback
+	if snapshot.Basis != nil {
+		fallback = *snapshot.Basis
 	}
 	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_snapshots(household_id,operation_id,revision,position,item_id,state,purpose,mode,origin,reason,fallback_mode,fallback_purpose,fallback_origin,fallback_reason) VALUES($1,$2,$3,$4,NULLIF($5,'')::uuid,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, family, revision.OperationID, revision.Revision, position, itemID, snapshot.State, snapshot.Purpose, snapshot.Mode, snapshot.Origin, snapshot.Reason, fallback.Mode, fallback.Purpose, fallback.Origin, fallback.Reason)
 	if err != nil {
@@ -323,8 +323,8 @@ func (s *Store) saveLedgerAllocation(ctx context.Context, revision ledger.Revisi
 			return err
 		}
 	}
-	if snapshot.Fallback != nil {
-		for index, input := range snapshot.Fallback.Members {
+	if snapshot.Basis != nil {
+		for index, input := range snapshot.Basis.Members {
 			var amount, asset, share any
 			if input.Amount != nil {
 				amount, asset = input.Amount.Amount(), input.Amount.Asset()
@@ -332,12 +332,12 @@ func (s *Store) saveLedgerAllocation(ctx context.Context, revision ledger.Revisi
 			if input.Share != "" {
 				share = input.Share
 			}
-			if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_fallback_inputs(household_id,operation_id,revision,snapshot_position,position,member_id,amount,asset,share) VALUES($1,$2,$3,0,$4,$5,$6::numeric,$7,$8::numeric)`, family, revision.OperationID, revision.Revision, index, input.MemberID, amount, asset, share); err != nil {
+			if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_fallback_inputs(household_id,operation_id,revision,snapshot_position,position,member_id,amount,asset,share) VALUES($1,$2,$3,$4,$5,$6,$7::numeric,$8,$9::numeric)`, family, revision.OperationID, revision.Revision, position, index, input.MemberID, amount, asset, share); err != nil {
 				return err
 			}
 		}
-		for _, ref := range snapshot.Fallback.RuleRefs {
-			if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_fallback_rule_refs(household_id,operation_id,revision,rule_id,rule_revision) VALUES($1,$2,$3,$4,$5)`, family, revision.OperationID, revision.Revision, ref.ID, ref.Revision); err != nil {
+		for _, ref := range snapshot.Basis.RuleRefs {
+			if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_fallback_rule_refs(household_id,operation_id,revision,snapshot_position,rule_id,rule_revision) VALUES($1,$2,$3,$4,$5,$6)`, family, revision.OperationID, revision.Revision, position, ref.ID, ref.Revision); err != nil {
 				return err
 			}
 		}
@@ -393,7 +393,7 @@ func loadLedgerAllocation(ctx context.Context, q reader, principal household.Pri
 		return snapshot, err
 	}
 	if fallbackMode != "" {
-		snapshot.Fallback = &ledger.AllocationInput{Mode: fallbackMode, Purpose: fallbackPurpose, Origin: fallbackOrigin, Reason: fallbackReason}
+		snapshot.Basis = &ledger.AllocationInput{Mode: fallbackMode, Purpose: fallbackPurpose, Origin: fallbackOrigin, Reason: fallbackReason}
 	}
 	rows, err := q.Query(ctx, `SELECT member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY position`, principal.HouseholdID(), operationID, revision, position)
 	if err != nil {
@@ -424,8 +424,8 @@ func loadLedgerAllocation(ctx context.Context, q reader, principal household.Pri
 		return snapshot, err
 	}
 	rows.Close()
-	if snapshot.Fallback != nil {
-		rows, err = q.Query(ctx, `SELECT member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_fallback_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY position`, principal.HouseholdID(), operationID, revision)
+	if snapshot.Basis != nil {
+		rows, err = q.Query(ctx, `SELECT member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_fallback_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY position`, principal.HouseholdID(), operationID, revision, position)
 		if err != nil {
 			return snapshot, err
 		}
@@ -447,14 +447,14 @@ func loadLedgerAllocation(ctx context.Context, q reader, principal household.Pri
 			if share != nil {
 				input.Share = *share
 			}
-			snapshot.Fallback.Members = append(snapshot.Fallback.Members, input)
+			snapshot.Basis.Members = append(snapshot.Basis.Members, input)
 		}
 		if err = rows.Err(); err != nil {
 			rows.Close()
 			return snapshot, err
 		}
 		rows.Close()
-		rows, err = q.Query(ctx, `SELECT rule_id,rule_revision FROM want_keep.ledger_allocation_fallback_rule_refs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY rule_id`, principal.HouseholdID(), operationID, revision)
+		rows, err = q.Query(ctx, `SELECT rule_id,rule_revision FROM want_keep.ledger_allocation_fallback_rule_refs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY rule_id`, principal.HouseholdID(), operationID, revision, position)
 		if err != nil {
 			return snapshot, err
 		}
@@ -464,7 +464,7 @@ func loadLedgerAllocation(ctx context.Context, q reader, principal household.Pri
 				rows.Close()
 				return snapshot, err
 			}
-			snapshot.Fallback.RuleRefs = append(snapshot.Fallback.RuleRefs, ref)
+			snapshot.Basis.RuleRefs = append(snapshot.Basis.RuleRefs, ref)
 		}
 		if err = rows.Err(); err != nil {
 			rows.Close()

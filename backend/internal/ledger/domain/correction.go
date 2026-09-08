@@ -2,8 +2,6 @@ package domain
 
 import (
 	"slices"
-
-	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 )
 
 func (r Revision) Correct(c Correction) (Revision, []Field, error) {
@@ -157,17 +155,4 @@ func (r Revision) Correct(c Correction) (Revision, []Field, error) {
 
 func allocationInput(snapshot AllocationSnapshot) AllocationInput {
 	return AllocationInput{Mode: snapshot.Mode, Purpose: snapshot.Purpose, Members: cloneAllocationInputs(snapshot.Inputs), Reason: snapshot.Reason, Origin: snapshot.Origin, RuleRefs: slices.Clone(snapshot.RuleRefs)}
-}
-
-func allocationMembers(snapshot AllocationSnapshot) []household.MembershipID {
-	unique := make(map[household.MembershipID]struct{}, len(snapshot.Inputs))
-	for _, member := range snapshot.Inputs {
-		unique[member.MemberID] = struct{}{}
-	}
-	result := make([]household.MembershipID, 0, len(unique))
-	for memberID := range unique {
-		result = append(result, memberID)
-	}
-	slices.Sort(result)
-	return result
 }

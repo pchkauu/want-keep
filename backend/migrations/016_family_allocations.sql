@@ -72,8 +72,8 @@ CREATE TABLE want_keep.ledger_allocation_snapshots (
  FOREIGN KEY(household_id,operation_id,revision,item_id) REFERENCES want_keep.receipt_items(household_id,operation_id,revision,id),
  CHECK((position=0 AND item_id IS NULL) OR (position>0 AND item_id IS NOT NULL)),
  CHECK((state='not_applicable' AND purpose='' AND mode='' AND origin='not_applicable' AND reason='') OR state<>'not_applicable'),
- CHECK((mode='composite')=(fallback_mode<>'')),
- CHECK((fallback_mode='unresolved' AND fallback_purpose='' AND fallback_origin='unresolved' AND length(fallback_reason)>0) OR (fallback_mode IN ('amounts','shares','equal') AND fallback_purpose IN ('personal','shared') AND fallback_origin<>'' ) OR fallback_mode='')
+ CHECK(mode<>'composite' OR fallback_mode<>''),
+ CHECK((fallback_mode='unresolved' AND fallback_purpose='' AND fallback_origin<>'' AND length(fallback_reason)>0) OR (fallback_mode IN ('amounts','shares','equal') AND fallback_purpose IN ('personal','shared') AND fallback_origin<>'' ) OR fallback_mode='')
 );
 CREATE TRIGGER immutable_history BEFORE UPDATE OR DELETE ON want_keep.ledger_allocation_snapshots FOR EACH ROW EXECUTE FUNCTION want_keep.reject_history_change();
 
@@ -99,14 +99,14 @@ CREATE TABLE want_keep.ledger_allocation_fallback_inputs (
  household_id uuid NOT NULL,
  operation_id uuid NOT NULL,
  revision want_keep.revision NOT NULL,
- snapshot_position integer NOT NULL DEFAULT 0 CHECK(snapshot_position=0),
+ snapshot_position integer NOT NULL CHECK(snapshot_position BETWEEN 0 AND 1000),
  position integer NOT NULL CHECK(position BETWEEN 0 AND 999),
  member_id uuid NOT NULL,
  amount want_keep.amount,
  asset want_keep.asset,
  share want_keep.amount,
- PRIMARY KEY(household_id,operation_id,revision,position),
- UNIQUE NULLS NOT DISTINCT(household_id,operation_id,revision,member_id,asset),
+ PRIMARY KEY(household_id,operation_id,revision,snapshot_position,position),
+ UNIQUE NULLS NOT DISTINCT(household_id,operation_id,revision,snapshot_position,member_id,asset),
  FOREIGN KEY(household_id,operation_id,revision,snapshot_position) REFERENCES want_keep.ledger_allocation_snapshots(household_id,operation_id,revision,position),
  FOREIGN KEY(household_id,member_id) REFERENCES want_keep.memberships(household_id,id),
  CHECK((amount IS NOT NULL AND asset IS NOT NULL AND share IS NULL AND amount>=0) OR (amount IS NULL AND asset IS NULL AND share IS NOT NULL AND share>0) OR (amount IS NULL AND asset IS NULL AND share IS NULL))
@@ -156,10 +156,10 @@ CREATE TABLE want_keep.ledger_allocation_fallback_rule_refs (
  household_id uuid NOT NULL,
  operation_id uuid NOT NULL,
  revision want_keep.revision NOT NULL,
- snapshot_position integer NOT NULL DEFAULT 0 CHECK(snapshot_position=0),
+ snapshot_position integer NOT NULL CHECK(snapshot_position BETWEEN 0 AND 1000),
  rule_id uuid NOT NULL,
  rule_revision want_keep.revision NOT NULL,
- PRIMARY KEY(household_id,operation_id,revision,rule_id),
+ PRIMARY KEY(household_id,operation_id,revision,snapshot_position,rule_id),
  FOREIGN KEY(household_id,operation_id,revision,snapshot_position) REFERENCES want_keep.ledger_allocation_snapshots(household_id,operation_id,revision,position),
  FOREIGN KEY(household_id,rule_id,rule_revision) REFERENCES want_keep.allocation_rule_revisions(household_id,rule_id,revision)
 );

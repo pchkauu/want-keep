@@ -192,7 +192,7 @@ func TestCompositeUnresolvedAllocationNormalizesAggregateAndKeepsItem(t *testing
 	if err != nil || allocated.Validate() != nil {
 		t.Fatalf("unresolved composite allocation = %+v, err=%v", allocated.Allocation, err)
 	}
-	if allocated.Allocation.State != AllocationUnresolved || allocated.Allocation.Mode != AllocationUnknown || allocated.Allocation.Fallback != nil || allocated.Allocation.Unallocated[0].Amount() != "100" {
+	if allocated.Allocation.State != AllocationUnresolved || allocated.Allocation.Mode != AllocationUnknown || allocated.Allocation.Basis == nil || allocated.Allocation.Unallocated[0].Amount() != "100" {
 		t.Fatalf("unresolved aggregate = %+v", allocated.Allocation)
 	}
 	if allocated.ReceiptItems[0].Allocation.Reason != "item_unknown" || allocated.ReceiptItems[1].Allocation.Reason != "purchase_unknown" {
@@ -229,6 +229,66 @@ func TestExplicitUnresolvedItemSurvivesFeeCorrection(t *testing.T) {
 	}
 }
 
+func TestRuleItemBasisSurvivesFinancialRefresh(t *testing.T) {
+	paid := mustAllocationMoney(t, "100", money.RUB)
+	revision := expenseRevision(paid)
+	revision.ReceiptItems = []ReceiptItem{{ID: "ruled", Name: "Ruled", Quantity: "1", Gross: paid, Discount: mustAllocationMoney(t, "0", money.RUB)}}
+	revision.Postings = append(revision.Postings, Posting{AccountID: "account", Money: mustAllocationMoney(t, "-10", money.RUB), Role: Fee, Funding: OwnFunds, Treatment: Movement})
+	members := []household.MembershipID{"member-a", "member-b"}
+	rule := AllocationInput{
+		Mode:     AllocationByShares,
+		Purpose:  AllocationShared,
+		Origin:   AllocationRule,
+		Members:  []AllocationMemberInput{{MemberID: members[0], Share: "60"}, {MemberID: members[1], Share: "40"}},
+		RuleRefs: []AllocationRuleRef{{ID: "rule", Revision: 3}},
+	}
+	allocated, err := revision.WithAllocation(AllocationInput{Mode: AllocationUnknown, Reason: "purchase_unknown"}, []ItemAllocationInput{{ItemID: "ruled", Allocation: rule}}, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fees := []Posting{{AccountID: "account", Money: mustAllocationMoney(t, "-20", money.RUB), Role: Fee, Funding: OwnFunds, Treatment: Movement}}
+	corrected, fields, err := allocated.Correct(Correction{Fees: &fees})
+	if err != nil || !slices.Contains(fields, AllocationField) {
+		t.Fatalf("rule refresh = %+v fields=%v err=%v", corrected.Allocation, fields, err)
+	}
+	item := corrected.ReceiptItems[0].Allocation
+	if item.Origin != AllocationRule || item.Basis == nil || len(item.RuleRefs) != 1 || item.RuleRefs[0].Revision != 3 {
+		t.Fatalf("rule item basis = %+v", item)
+	}
+	if allocationMemberTotal(corrected.Allocation, members[0], money.RUB) != "60" || allocationMemberTotal(corrected.Allocation, members[1], money.RUB) != "40" {
+		t.Fatalf("rule member totals = %+v", corrected.Allocation.Members)
+	}
+}
+
+func TestWaitingAllocationSuspendsAndRestoresBasis(t *testing.T) {
+	paid := mustAllocationMoney(t, "100", money.RUB)
+	revision := expenseRevision(paid)
+	revision.ReceiptItems = []ReceiptItem{{ID: "personal", Name: "Personal", Quantity: "1", Gross: paid, Discount: mustAllocationMoney(t, "0", money.RUB)}}
+	members := []household.MembershipID{"member-a", "member-b"}
+	personal := AllocationInput{Mode: AllocationByShares, Purpose: AllocationPersonal, Origin: AllocationExplicitItem, Members: []AllocationMemberInput{{MemberID: members[0], Share: "100"}}}
+	allocated, err := revision.WithAllocation(AllocationInput{Mode: AllocationUnknown, Reason: "purchase_unknown"}, []ItemAllocationInput{{ItemID: "personal", Allocation: personal}}, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting := allocated.Clone()
+	waiting.Participation = Participation{GroupID: "matching", Kind: "payment", State: "waiting"}
+	waiting, err = waiting.RefreshAllocation()
+	if err != nil || waiting.Validate() != nil {
+		t.Fatalf("suspend allocation = %+v err=%v", waiting.Allocation, err)
+	}
+	if waiting.Allocation.State != AllocationNotApplicable || waiting.Allocation.Basis == nil || waiting.ReceiptItems[0].Allocation.State != AllocationNotApplicable || waiting.ReceiptItems[0].Allocation.Basis == nil {
+		t.Fatalf("suspended basis = aggregate %+v item %+v", waiting.Allocation, waiting.ReceiptItems[0].Allocation)
+	}
+	waiting.Participation = Participation{}
+	restored, err := waiting.RefreshAllocation()
+	if err != nil || restored.Validate() != nil {
+		t.Fatalf("restore allocation = %+v err=%v", restored.Allocation, err)
+	}
+	if restored.ReceiptItems[0].Allocation.Origin != AllocationExplicitItem || allocationMemberTotal(restored.Allocation, members[0], money.RUB) != "100" {
+		t.Fatalf("restored basis = aggregate %+v item %+v", restored.Allocation, restored.ReceiptItems[0].Allocation)
+	}
+}
+
 func TestCompositeShareAllocationRefreshesAndAmountBasisRejectsChanges(t *testing.T) {
 	paid := mustAllocationMoney(t, "100", money.RUB)
 	revision := expenseRevision(paid)
@@ -240,7 +300,7 @@ func TestCompositeShareAllocationRefreshesAndAmountBasisRejectsChanges(t *testin
 	fallback := AllocationInput{Mode: AllocationByShares, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0], Share: "50"}, {MemberID: members[1], Share: "50"}}}
 	override := AllocationInput{Mode: AllocationByShares, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0], Share: "60"}, {MemberID: members[1], Share: "40"}}}
 	allocated, err := revision.WithAllocation(fallback, []ItemAllocationInput{{ItemID: "first", Allocation: override}}, members)
-	if err != nil || allocated.Allocation.Fallback == nil {
+	if err != nil || allocated.Allocation.Basis == nil {
 		t.Fatalf("composite allocation = %+v, err=%v", allocated.Allocation, err)
 	}
 	principal := []Posting{{AccountID: "account", Money: mustAllocationMoney(t, "-200", money.RUB), Role: Principal, Funding: OwnFunds, Treatment: Movement}}

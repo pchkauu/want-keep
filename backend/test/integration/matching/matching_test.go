@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	journal "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	application "github.com/pchkauu/want-keep/backend/internal/matching/application"
@@ -105,6 +106,45 @@ func TestSeparatePaymentContributesOnce(t *testing.T) {
 		}
 	}
 	f.balance(account, "available", "4400")
+}
+
+func TestSeparatePaymentRestoresSuspendedAllocationBasis(t *testing.T) {
+	f := newFixture(t)
+	account := f.create(money.RUB, "5000")
+	first := f.revision(uuid.NewString(), account, "-300", money.RUB, 1)
+	if _, err := f.write(first, request()); err != nil {
+		t.Fatal(err)
+	}
+
+	second := f.revision(uuid.NewString(), account, "-300", money.RUB, 1)
+	paid := cash("300", money.RUB)
+	second.ReceiptItems = []ledger.ReceiptItem{{ID: uuid.NewString(), Name: "Personal item", Quantity: "1", Gross: paid, Discount: cash("0", money.RUB)}}
+	personal := ledger.AllocationInput{Mode: ledger.AllocationByShares, Purpose: ledger.AllocationPersonal, Members: []ledger.AllocationMemberInput{{MemberID: f.members[0].ID, Share: "100"}}}
+	second, err := second.WithAllocation(ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "purchase_unknown"}, []ledger.ItemAllocationInput{{ItemID: second.ReceiptItems[0].ID, Allocation: personal}}, []household.MembershipID{f.members[0].ID, f.members[1].ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = f.write(second, request()); err != nil {
+		t.Fatal(err)
+	}
+	waiting := f.current(second.OperationID)
+	if waiting.Participation.State != "waiting" || waiting.Allocation.State != ledger.AllocationNotApplicable || waiting.Allocation.Basis == nil || waiting.ReceiptItems[0].Allocation.Basis == nil {
+		t.Fatalf("waiting allocation basis = aggregate %+v item %+v", waiting.Allocation, waiting.ReceiptItems[0].Allocation)
+	}
+
+	f.restart()
+	group, found, err := f.store.MatchingForOperation(testContext, f.p, second.OperationID)
+	if err != nil || !found {
+		t.Fatal(group, found, err)
+	}
+	f.client(f.p).result("/matching/"+group.ID+"/resolve", map[string]any{"expectedRevision": group.Revision, "decision": "separate", "reason": "Different purchase", "expectedRevisions": f.versions(second.OperationID)})
+	restored := f.current(second.OperationID)
+	if restored.Allocation.State != ledger.AllocationResolved || len(restored.Allocation.Members) != 1 || restored.Allocation.Members[0].MemberID != f.members[0].ID || restored.Allocation.Members[0].Money.Amount() != "300" {
+		t.Fatalf("restored allocation = %+v", restored.Allocation)
+	}
+	if restored.ReceiptItems[0].Allocation.Origin != ledger.AllocationExplicitItem || restored.ReceiptItems[0].Allocation.Basis == nil {
+		t.Fatalf("restored item allocation = %+v", restored.ReceiptItems[0].Allocation)
+	}
 }
 
 func TestExistingTransferPreservesSideDatesAndFee(t *testing.T) {

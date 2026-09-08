@@ -75,7 +75,7 @@ type AllocationSnapshot struct {
 	Mode        AllocationMode
 	Origin      AllocationOrigin
 	Reason      string
-	Fallback    *AllocationInput
+	Basis       *AllocationInput
 	Inputs      []AllocationMemberInput
 	Members     []MemberAmount
 	Unallocated []money.Money
@@ -92,9 +92,9 @@ func NotApplicableAllocation() AllocationSnapshot {
 }
 
 func (a AllocationSnapshot) Clone() AllocationSnapshot {
-	if a.Fallback != nil {
-		fallback := cloneAllocationInput(*a.Fallback)
-		a.Fallback = &fallback
+	if a.Basis != nil {
+		basis := cloneAllocationInput(*a.Basis)
+		a.Basis = &basis
 	}
 	a.Inputs = cloneAllocationInputs(a.Inputs)
 	a.Members = slices.Clone(a.Members)
@@ -116,7 +116,10 @@ func (a AllocationSnapshot) Validate() error {
 		return ErrInvalidAllocation
 	}
 	if a.State == AllocationNotApplicable {
-		if a.Purpose != "" || a.Mode != "" || a.Origin != AllocationNone || a.Reason != "" || a.Fallback != nil || len(a.Inputs)+len(a.Members)+len(a.Unallocated)+len(a.RuleRefs) != 0 {
+		if a.Purpose != "" || a.Mode != "" || a.Origin != AllocationNone || a.Reason != "" || len(a.Inputs)+len(a.Members)+len(a.Unallocated)+len(a.RuleRefs) != 0 {
+			return ErrInvalidAllocation
+		}
+		if a.Basis != nil && validateAllocationInput(*a.Basis) != nil {
 			return ErrInvalidAllocation
 		}
 		return nil
@@ -131,12 +134,13 @@ func (a AllocationSnapshot) Validate() error {
 	} else if !slices.Contains([]AllocationPurpose{AllocationPersonal, AllocationShared}, a.Purpose) || a.Mode != AllocationComposite && len(a.Inputs) == 0 {
 		return ErrInvalidAllocation
 	}
+	if a.Basis != nil && validateAllocationInput(*a.Basis) != nil {
+		return ErrInvalidAllocation
+	}
 	if a.Mode == AllocationComposite {
-		if a.Fallback == nil || validateAllocationInput(*a.Fallback) != nil || len(a.Inputs) != 0 {
+		if a.Basis == nil || len(a.Inputs) != 0 {
 			return ErrInvalidAllocation
 		}
-	} else if a.Fallback != nil {
-		return ErrInvalidAllocation
 	}
 	seenInputs := map[string]bool{}
 	inputMembers := map[household.MembershipID]bool{}
@@ -163,16 +167,21 @@ func (a AllocationSnapshot) Validate() error {
 			return ErrInvalidAllocation
 		}
 	}
-	if a.Purpose == AllocationPersonal && len(inputMembers) != 1 {
+	if a.Purpose == AllocationPersonal && a.Mode != AllocationComposite && len(inputMembers) != 1 {
 		return ErrInvalidAllocation
 	}
 	seenAmounts := map[string]bool{}
+	allocatedMembers := map[household.MembershipID]bool{}
 	for _, member := range a.Members {
 		key := string(member.MemberID) + "\x00" + string(member.Money.Asset())
 		if member.MemberID == "" || seenAmounts[key] || member.Money.Validate() != nil || member.Money.Sign() <= 0 || a.Mode != AllocationComposite && !inputMembers[member.MemberID] {
 			return ErrInvalidAllocation
 		}
 		seenAmounts[key] = true
+		allocatedMembers[member.MemberID] = true
+	}
+	if a.Purpose == AllocationPersonal && a.Mode == AllocationComposite && len(allocatedMembers) != 1 {
+		return ErrInvalidAllocation
 	}
 	seenAssets := map[money.Asset]bool{}
 	for _, amount := range a.Unallocated {
@@ -442,6 +451,10 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 			unallocated[amount.Asset()] = current
 		}
 		if component.ItemIndex >= 0 {
+			if basis, ok := itemInputs[component.ID]; ok {
+				basis = cloneAllocationInput(basis)
+				part.Basis = &basis
+			}
 			next.ReceiptItems[component.ItemIndex].Allocation = part
 		}
 	}
@@ -473,8 +486,8 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 	if len(modes) > 1 || len(itemInputs) > 0 {
 		result.Mode = AllocationComposite
 		result.Inputs = nil
-		fallback := cloneAllocationInput(input)
-		result.Fallback = &fallback
+		basis := cloneAllocationInput(input)
+		result.Basis = &basis
 	}
 	if len(result.Unallocated) == 0 {
 		result.State = AllocationResolved
@@ -493,7 +506,6 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 	if result.State == AllocationUnresolved {
 		result.Mode, result.Purpose, result.Origin = AllocationUnknown, "", AllocationUnknownOrigin
 		result.Inputs = nil
-		result.Fallback = nil
 		if strings.TrimSpace(result.Reason) == "" {
 			result.Reason = "allocation_unresolved"
 		}
@@ -505,25 +517,32 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 	return next, nil
 }
 
-// RefreshAllocation rebuilds a snapshot from its persisted purchase fallback
-// and explicit item-level bases after its financial components changed.
+// RefreshAllocation rebuilds a snapshot from its persisted purchase and item
+// bases after its financial contribution or exact amounts changed.
 func (r Revision) RefreshAllocation() (Revision, error) {
 	components, _, err := r.allocationComponents()
 	if err != nil {
 		return r, err
 	}
+	fallback, items, active, err := r.allocationBases()
+	if err != nil {
+		return r, err
+	}
 	if len(components) == 0 {
-		return r.WithAllocation(AllocationInput{}, nil, nil)
+		return r.suspendAllocation(fallback, items)
 	}
-	if r.Allocation.State == "" || r.Allocation.State == AllocationNotApplicable {
-		return r.WithAllocation(AllocationInput{Mode: AllocationUnknown, Reason: "allocation_unresolved"}, nil, nil)
+	if fallback.Mode == "" {
+		fallback = AllocationInput{Mode: AllocationUnknown, Reason: "allocation_unresolved"}
 	}
-	fallback := allocationInput(r.Allocation)
-	if r.Allocation.Mode == AllocationComposite {
-		if r.Allocation.Fallback == nil {
-			return r, ErrInvalidAllocation
-		}
-		fallback = cloneAllocationInput(*r.Allocation.Fallback)
+	return r.WithAllocation(fallback, items, active)
+}
+
+func (r Revision) allocationBases() (AllocationInput, []ItemAllocationInput, []household.MembershipID, error) {
+	fallback := AllocationInput{}
+	if r.Allocation.Basis != nil {
+		fallback = cloneAllocationInput(*r.Allocation.Basis)
+	} else if r.Allocation.State != "" && r.Allocation.State != AllocationNotApplicable {
+		fallback = allocationInput(r.Allocation)
 	}
 	items := make([]ItemAllocationInput, 0, len(r.ReceiptItems))
 	members := map[household.MembershipID]bool{}
@@ -531,24 +550,49 @@ func (r Revision) RefreshAllocation() (Revision, error) {
 		members[member.MemberID] = true
 	}
 	for _, item := range r.ReceiptItems {
-		if item.Allocation.State == "" || item.Allocation.State == AllocationNotApplicable || item.Allocation.Origin != AllocationExplicitItem {
+		var basis AllocationInput
+		switch {
+		case item.Allocation.Basis != nil:
+			basis = cloneAllocationInput(*item.Allocation.Basis)
+		case item.Allocation.State != "" && item.Allocation.State != AllocationNotApplicable && item.Allocation.Origin == AllocationExplicitItem:
+			basis = allocationInput(item.Allocation)
+		default:
 			continue
 		}
-		basis := allocationInput(item.Allocation)
 		items = append(items, ItemAllocationInput{ItemID: item.ID, Allocation: basis})
 		for _, member := range basis.Members {
 			members[member.MemberID] = true
 		}
 	}
-	if r.Allocation.Mode == AllocationComposite || len(items) > 0 {
-		active := make([]household.MembershipID, 0, len(members))
-		for memberID := range members {
-			active = append(active, memberID)
-		}
-		slices.Sort(active)
-		return r.WithAllocation(fallback, items, active)
+	active := make([]household.MembershipID, 0, len(members))
+	for memberID := range members {
+		active = append(active, memberID)
 	}
-	return r.WithAllocation(fallback, nil, allocationMembers(r.Allocation))
+	slices.Sort(active)
+	return fallback, items, active, nil
+}
+
+func (r Revision) suspendAllocation(fallback AllocationInput, items []ItemAllocationInput) (Revision, error) {
+	next := r.Clone()
+	next.Allocation = NotApplicableAllocation()
+	if fallback.Mode != "" {
+		basis := cloneAllocationInput(fallback)
+		next.Allocation.Basis = &basis
+	}
+	itemBases := make(map[string]AllocationInput, len(items))
+	for _, item := range items {
+		itemBases[item.ItemID] = cloneAllocationInput(item.Allocation)
+	}
+	for index := range next.ReceiptItems {
+		next.ReceiptItems[index].Allocation = NotApplicableAllocation()
+		if basis, ok := itemBases[next.ReceiptItems[index].ID]; ok {
+			next.ReceiptItems[index].Allocation.Basis = &basis
+		}
+	}
+	if err := next.validateAllocation(); err != nil {
+		return r, err
+	}
+	return next, nil
 }
 
 func allocateParts(components []allocationComponent, input AllocationInput, itemInputs map[string]AllocationInput, active map[household.MembershipID]bool) ([]AllocationSnapshot, error) {

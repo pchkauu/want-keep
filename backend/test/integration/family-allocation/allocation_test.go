@@ -224,6 +224,19 @@ func TestTrustedClassificationUsesOnlyFactTimeRules(t *testing.T) {
 			t.Fatalf("item rule allocation = %+v", transaction.ReceiptItems)
 		}
 		assertMemberAmounts(t, fixture, transaction.Allocation, "60", "40")
+
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{
+			"expectedRevision": 2,
+			"reason":           "Rename classified item",
+			"receiptItems": map[string]any{"action": "replace", "totalDiscount": map[string]any{"amount": "0", "asset": "RUB"}, "items": []any{
+				map[string]any{"id": itemID, "name": "Classified item renamed", "quantity": "1", "gross": map[string]any{"amount": "100", "asset": "RUB"}, "categoryId": category.Result.Id},
+			}},
+		}, http.StatusAccepted))
+		refreshed := readTransaction(t, client, created.Result.Id)
+		if len(refreshed.ReceiptItems) != 1 || refreshed.ReceiptItems[0].Allocation.Origin != "rule" || len(refreshed.ReceiptItems[0].Allocation.Rules) != 1 || refreshed.ReceiptItems[0].Allocation.Rules[0].Revision != 1 {
+			t.Fatalf("refreshed item rule allocation = %+v", refreshed.ReceiptItems)
+		}
+		assertMemberAmounts(t, fixture, refreshed.Allocation, "60", "40")
 	})
 }
 
@@ -404,8 +417,8 @@ func TestMixedReceiptDirectAllocationAndValidation(t *testing.T) {
 	}
 	assertMemberAmounts(t, fixture, revision.Allocation, "400", "600")
 	stored, found, err := fixture.store.CurrentLedgerRevision(testContext, fixture.p, created.Result.Id)
-	if err != nil || !found || stored.Allocation.Fallback == nil {
-		t.Fatalf("composite fallback round trip: found=%v fallback=%+v err=%v", found, stored.Allocation.Fallback, err)
+	if err != nil || !found || stored.Allocation.Basis == nil {
+		t.Fatalf("composite basis round trip: found=%v basis=%+v err=%v", found, stored.Allocation.Basis, err)
 	}
 	if revision.Postings[0].Money.Amount != "-1000" {
 		t.Fatal("analytical allocation changed family posting")

@@ -126,7 +126,7 @@ func allocationEqual(a, b AllocationSnapshot) bool {
 	if a.State != b.State || a.Purpose != b.Purpose || a.Mode != b.Mode || a.Origin != b.Origin || a.Reason != b.Reason || len(a.Inputs) != len(b.Inputs) || len(a.Members) != len(b.Members) || len(a.Unallocated) != len(b.Unallocated) || !slices.Equal(a.RuleRefs, b.RuleRefs) {
 		return false
 	}
-	if (a.Fallback == nil) != (b.Fallback == nil) || a.Fallback != nil && !allocationInputEqual(*a.Fallback, *b.Fallback) {
+	if (a.Basis == nil) != (b.Basis == nil) || a.Basis != nil && !allocationInputEqual(*a.Basis, *b.Basis) {
 		return false
 	}
 	for i := range a.Inputs {
