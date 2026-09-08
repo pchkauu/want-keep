@@ -31,8 +31,7 @@ type ImportRepository interface {
 	RecordCardAlias(context.Context, household.Principal, account.CardAlias) error
 }
 
-// Import is database-only work inside the admitted CommitPage transaction. It never posts a bank balance as a transaction.
-func (s *Service) applyImport(ctx context.Context, p household.Principal, r ImportRepository, input ImportInput) (account.Account, error) {
+func (s *Service) resolveImported(ctx context.Context, p household.Principal, r ImportRepository, input ImportInput) (account.Account, error) {
 	a, created, err := r.ResolveImportedAccount(ctx, p, input)
 	if err != nil {
 		return a, err
@@ -50,6 +49,29 @@ func (s *Service) applyImport(ctx context.Context, p household.Principal, r Impo
 			return a, err
 		}
 	}
+	for _, alias := range input.Aliases {
+		alias.AccountID = a.ID
+		if err = r.RecordCardAlias(ctx, p, alias); err != nil {
+			return a, err
+		}
+	}
+	return s.repository.Account(ctx, p, a.ID)
+}
+
+// ResolveImported is database-only work inside the admitted CommitPage transaction.
+// It resolves or creates an imported account and its aliases without inventing a balance observation.
+func (s *Service) ResolveImported(ctx context.Context, p household.Principal, r ImportRepository, input ImportInput) (ImportResult, error) {
+	return s.runImport(ctx, p, r, input, func(ctx context.Context) (account.Account, error) {
+		return s.resolveImported(ctx, p, r, input)
+	})
+}
+
+// Import is database-only work inside the admitted CommitPage transaction. It never posts a bank balance as a transaction.
+func (s *Service) applyImport(ctx context.Context, p household.Principal, r ImportRepository, input ImportInput) (account.Account, error) {
+	a, err := s.resolveImported(ctx, p, r, input)
+	if err != nil {
+		return a, err
+	}
 	o := input.Observation
 	o.AccountID = a.ID
 	o.ConnectionID = input.ConnectionID
@@ -57,12 +79,6 @@ func (s *Service) applyImport(ctx context.Context, p household.Principal, r Impo
 	o.EvidenceRef = input.EvidenceRef
 	if err = r.RecordObservation(ctx, p, o); err != nil {
 		return a, err
-	}
-	for _, alias := range input.Aliases {
-		alias.AccountID = a.ID
-		if err = r.RecordCardAlias(ctx, p, alias); err != nil {
-			return a, err
-		}
 	}
 	if s.reconciler != nil {
 		if err = s.reconciler.ReconcileAccount(ctx, p, a.ID); err != nil {
@@ -73,9 +89,15 @@ func (s *Service) applyImport(ctx context.Context, p household.Principal, r Impo
 }
 
 func (s *Service) Import(ctx context.Context, p household.Principal, r ImportRepository, input ImportInput) (ImportResult, error) {
+	return s.runImport(ctx, p, r, input, func(ctx context.Context) (account.Account, error) {
+		return s.applyImport(ctx, p, r, input)
+	})
+}
+
+func (s *Service) runImport(ctx context.Context, p household.Principal, r ImportRepository, input ImportInput, apply func(context.Context) (account.Account, error)) (ImportResult, error) {
 	var result ImportResult
 	err := r.WithinAccountImport(ctx, func(ctx context.Context) error {
-		a, e := s.applyImport(ctx, p, r, input)
+		a, e := apply(ctx)
 		if e == nil {
 			result.Account = &a
 		}

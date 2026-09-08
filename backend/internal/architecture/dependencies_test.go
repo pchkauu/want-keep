@@ -168,7 +168,7 @@ func inspectImports(internalRoot string) ([]importViolation, error) {
 			if err != nil {
 				return fmt.Errorf("parse import in %s: %w", relative, err)
 			}
-			if forbiddenImport(layer, importPath) || (packageOrSubpackage(importPath, "github.com/cockroachdb/apd/v3") && !strings.HasPrefix(filepath.ToSlash(relative), "money/domain/")) {
+			if forbiddenImport(relative, layer, importPath) || (packageOrSubpackage(importPath, "github.com/cockroachdb/apd/v3") && !strings.HasPrefix(filepath.ToSlash(relative), "money/domain/")) {
 				violations = append(violations, importViolation{
 					file:       filepath.ToSlash(relative),
 					layer:      layer,
@@ -218,7 +218,10 @@ func owningLayer(relative string) string {
 	}
 }
 
-func forbiddenImport(layer, importPath string) bool {
+func forbiddenImport(relative, layer, importPath string) bool {
+	if layer == "application" && strings.HasPrefix(filepath.ToSlash(relative), "integrations/application/") && importPath == modulePath+"/internal/integrations/domain" {
+		return false
+	}
 	for _, prefix := range []string{"attachments/files", "attachments/processor", "connections/credentials", "privacy/cryptobox"} {
 		if (layer == "domain" || layer == "application" || layer == "ai") && packageOrSubpackage(importPath, modulePath+"/internal/"+prefix) {
 			return true
@@ -309,5 +312,25 @@ import _ "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	}
 	if len(violations) != 2 {
 		t.Fatalf("admission dependency violations: %v", violations)
+	}
+}
+
+func TestIngestionApplicationOwnsDomainWithoutTransportLeakage(t *testing.T) {
+	root := t.TempDir()
+	writeGoFile(t, root, "integrations/application/service.go", `package application
+import _ "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
+`)
+	writeGoFile(t, root, "integrations/domain/transport.go", `package domain
+import _ "github.com/pchkauu/want-keep/backend/internal/integrations/contract/generated"
+`)
+	writeGoFile(t, root, "accounts/application/ingestion.go", `package application
+import _ "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
+`)
+	violations, err := inspectImports(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(violations) != 2 || violations[0].importPath != modulePath+"/internal/integrations/domain" || violations[1].importPath != modulePath+"/internal/integrations/contract/generated" {
+		t.Fatalf("ingestion dependency violations: %v", violations)
 	}
 }

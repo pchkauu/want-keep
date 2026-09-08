@@ -1,0 +1,531 @@
+{
+  "outcome": "page",
+  "page": {
+    "jobId": "11111111-1111-4111-8111-111111111111",
+    "attempt": 1,
+    "leaseToken": "lease-1",
+    "connectionGeneration": 1,
+    "binding": {
+      "provider": "bybit",
+      "environment": "test",
+      "adapterBuildDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "collectorImageDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "contractVersion": "10",
+      "allowlistRevision": "allowlist-1",
+      "nonSecretConfigRevision": "config-1",
+      "operatorPermissionRevision": "permission-1"
+    },
+    "admissionRevision": 3,
+    "cursor": "",
+    "complete": true,
+    "coverage": {
+      "state": "partial",
+      "gaps": ["unsupported_asset"]
+    },
+    "evidence": [
+      {
+        "id": "raw-1",
+        "mediaType": "application/json",
+        "data": "eyJzeW50aGV0aWMiOiJpbmdlc3Rpb24tdjEwIn0=",
+        "sha256": "67824f6c9fc5d99d2910b78a96ad8a3f843021b7857816e799623b36a773a47c",
+        "locator": "synthetic://golden-page"
+      }
+    ],
+    "records": [
+      {
+        "recordType": "account",
+        "account": {
+          "externalAccountId": "acct-rub",
+          "product": "current",
+          "assetCode": "RUB",
+          "network": "",
+          "name": "Synthetic RUB",
+          "openingDate": "2026-09-01",
+          "aliases": [
+            {
+              "id": "provider-card-1",
+              "label": "Main card",
+              "lastFour": "4242"
+            }
+          ],
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "balance_snapshot",
+        "balanceSnapshot": {
+          "externalAccountId": "acct-rub",
+          "product": "current",
+          "assetCode": "RUB",
+          "network": "",
+          "sourceAsOf": "2026-09-08T09:00:00.123456789Z",
+          "owned": {
+            "state": "known",
+            "assetCode": "RUB",
+            "amount": "5000"
+          },
+          "available": {
+            "state": "known",
+            "assetCode": "RUB",
+            "amount": "5000"
+          },
+          "locked": {
+            "state": "known",
+            "assetCode": "RUB",
+            "amount": "0"
+          },
+          "debt": {
+            "state": "known",
+            "assetCode": "RUB",
+            "amount": "0"
+          },
+          "creditLimit": {
+            "state": "known",
+            "assetCode": "RUB",
+            "amount": "0"
+          },
+          "ownAvailable": true,
+          "coverage": {
+            "state": "complete",
+            "gaps": []
+          },
+          "freshness": "fresh",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "account",
+        "account": {
+          "externalAccountId": "acct-usd",
+          "product": "wallet",
+          "assetCode": "USD",
+          "network": "",
+          "name": "Synthetic USD",
+          "openingDate": "2026-09-01",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "balance_snapshot",
+        "balanceSnapshot": {
+          "externalAccountId": "acct-usd",
+          "product": "wallet",
+          "assetCode": "USD",
+          "network": "",
+          "sourceAsOf": "2026-09-08T09:00:00.123456789Z",
+          "owned": {
+            "state": "known",
+            "assetCode": "USD",
+            "amount": "12.000000000123"
+          },
+          "available": {
+            "state": "unknown",
+            "assetCode": "USD",
+            "reason": "provider_field_missing"
+          },
+          "locked": {
+            "state": "known",
+            "assetCode": "USD",
+            "amount": "0"
+          },
+          "debt": {
+            "state": "known",
+            "assetCode": "USD",
+            "amount": "0"
+          },
+          "creditLimit": {
+            "state": "known",
+            "assetCode": "USD",
+            "amount": "0"
+          },
+          "ownAvailable": false,
+          "coverage": {
+            "state": "partial",
+            "gaps": ["provider_field_missing"]
+          },
+          "freshness": "stale",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "account",
+        "account": {
+          "externalAccountId": "acct-usdt",
+          "product": "wallet",
+          "assetCode": "USDT",
+          "network": "",
+          "name": "Synthetic USDT",
+          "openingDate": "2026-09-01",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "balance_snapshot",
+        "balanceSnapshot": {
+          "externalAccountId": "acct-usdt",
+          "product": "wallet",
+          "assetCode": "USDT",
+          "network": "",
+          "sourceAsOf": "2026-09-08T09:00:00.123456789Z",
+          "owned": {
+            "state": "known",
+            "assetCode": "USDT",
+            "amount": "10.000000000001"
+          },
+          "available": {
+            "state": "known",
+            "assetCode": "USDT",
+            "amount": "10.000000000001"
+          },
+          "locked": {
+            "state": "known",
+            "assetCode": "USDT",
+            "amount": "0"
+          },
+          "debt": {
+            "state": "known",
+            "assetCode": "USDT",
+            "amount": "0"
+          },
+          "creditLimit": {
+            "state": "known",
+            "assetCode": "USDT",
+            "amount": "0"
+          },
+          "ownAvailable": true,
+          "coverage": {
+            "state": "complete",
+            "gaps": []
+          },
+          "freshness": "fresh",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "account",
+        "account": {
+          "externalAccountId": "acct-usdc",
+          "product": "wallet",
+          "assetCode": "USDC",
+          "network": "",
+          "name": "Synthetic USDC",
+          "openingDate": "2026-09-01",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "balance_snapshot",
+        "balanceSnapshot": {
+          "externalAccountId": "acct-usdc",
+          "product": "wallet",
+          "assetCode": "USDC",
+          "network": "",
+          "sourceAsOf": "2026-09-08T09:00:00.123456789Z",
+          "owned": {
+            "state": "known",
+            "assetCode": "USDC",
+            "amount": "0.123456789123456789"
+          },
+          "available": {
+            "state": "known",
+            "assetCode": "USDC",
+            "amount": "0.123456789123456789"
+          },
+          "locked": {
+            "state": "known",
+            "assetCode": "USDC",
+            "amount": "0"
+          },
+          "debt": {
+            "state": "known",
+            "assetCode": "USDC",
+            "amount": "0"
+          },
+          "creditLimit": {
+            "state": "known",
+            "assetCode": "USDC",
+            "amount": "0"
+          },
+          "ownAvailable": true,
+          "coverage": {
+            "state": "complete",
+            "gaps": []
+          },
+          "freshness": "fresh",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "account",
+        "account": {
+          "externalAccountId": "acct-btc",
+          "product": "wallet",
+          "assetCode": "BTC",
+          "network": "bitcoin",
+          "name": "Synthetic BTC",
+          "openingDate": "2026-09-01",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "balance_snapshot",
+        "balanceSnapshot": {
+          "externalAccountId": "acct-btc",
+          "product": "wallet",
+          "assetCode": "BTC",
+          "network": "bitcoin",
+          "sourceAsOf": "2026-09-08T09:00:00.123456789Z",
+          "owned": {
+            "state": "known",
+            "assetCode": "BTC",
+            "amount": "0.000000000000000001"
+          },
+          "available": {
+            "state": "known",
+            "assetCode": "BTC",
+            "amount": "0.000000000000000001"
+          },
+          "locked": {
+            "state": "known",
+            "assetCode": "BTC",
+            "amount": "0"
+          },
+          "debt": {
+            "state": "known",
+            "assetCode": "BTC",
+            "amount": "0"
+          },
+          "creditLimit": {
+            "state": "known",
+            "assetCode": "BTC",
+            "amount": "0"
+          },
+          "ownAvailable": true,
+          "coverage": {
+            "state": "complete",
+            "gaps": []
+          },
+          "freshness": "fresh",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "account",
+        "account": {
+          "externalAccountId": "acct-eth",
+          "product": "wallet",
+          "assetCode": "ETH",
+          "network": "ethereum",
+          "name": "Synthetic ETH",
+          "openingDate": "2026-09-01",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "balance_snapshot",
+        "balanceSnapshot": {
+          "externalAccountId": "acct-eth",
+          "product": "wallet",
+          "assetCode": "ETH",
+          "network": "ethereum",
+          "sourceAsOf": "2026-09-08T09:00:00.123456789Z",
+          "owned": {
+            "state": "known",
+            "assetCode": "ETH",
+            "amount": "1.000000000000000123"
+          },
+          "available": {
+            "state": "known",
+            "assetCode": "ETH",
+            "amount": "1.000000000000000123"
+          },
+          "locked": {
+            "state": "known",
+            "assetCode": "ETH",
+            "amount": "0"
+          },
+          "debt": {
+            "state": "known",
+            "assetCode": "ETH",
+            "amount": "0"
+          },
+          "creditLimit": {
+            "state": "known",
+            "assetCode": "ETH",
+            "amount": "0"
+          },
+          "ownAvailable": true,
+          "coverage": {
+            "state": "complete",
+            "gaps": []
+          },
+          "freshness": "fresh",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "account",
+        "account": {
+          "externalAccountId": "acct-usdc-e",
+          "product": "wallet",
+          "assetCode": "USDC.E",
+          "network": "ethereum",
+          "name": "Synthetic USDC.E",
+          "openingDate": "2026-09-01",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "balance_snapshot",
+        "balanceSnapshot": {
+          "externalAccountId": "acct-usdc-e",
+          "product": "wallet",
+          "assetCode": "USDC.E",
+          "network": "ethereum",
+          "sourceAsOf": "2026-09-08T09:00:00.123456789Z",
+          "owned": {
+            "state": "known",
+            "assetCode": "USDC.E",
+            "amount": "2.5"
+          },
+          "available": {
+            "state": "known",
+            "assetCode": "USDC.E",
+            "amount": "2.5"
+          },
+          "locked": {
+            "state": "known",
+            "assetCode": "USDC.E",
+            "amount": "0"
+          },
+          "debt": {
+            "state": "known",
+            "assetCode": "USDC.E",
+            "amount": "0"
+          },
+          "creditLimit": {
+            "state": "known",
+            "assetCode": "USDC.E",
+            "amount": "0"
+          },
+          "ownAvailable": true,
+          "coverage": {
+            "state": "complete",
+            "gaps": []
+          },
+          "freshness": "fresh",
+          "evidenceId": "raw-1"
+        }
+      },
+      {
+        "recordType": "transaction",
+        "transaction": {
+          "externalAccountId": "acct-rub",
+          "product": "current",
+          "logNamespace": "payments",
+          "providerRecordId": "expense-1",
+          "classification": "new",
+          "providerState": "posted",
+          "economicType": "expense",
+          "occurredAt": "2026-09-08T08:00:00.000000001Z",
+          "postedAt": "2026-09-08T08:01:00.000000002Z",
+          "merchant": "Synthetic market",
+          "note": "Golden expense",
+          "feeKnowledge": "known",
+          "evidenceId": "raw-1",
+          "postings": [
+            {
+              "externalAccountId": "acct-rub",
+              "product": "current",
+              "network": "",
+              "assetCode": "RUB",
+              "money": "-500",
+              "role": "principal",
+              "funding": "own",
+              "treatment": "movement"
+            }
+          ]
+        }
+      },
+      {
+        "recordType": "transaction",
+        "transaction": {
+          "externalAccountId": "acct-usdt",
+          "product": "wallet",
+          "logNamespace": "trades",
+          "providerRecordId": "trade-1",
+          "classification": "new",
+          "providerState": "posted",
+          "economicType": "trade_result",
+          "occurredAt": "2026-09-08T08:10:00.000000003Z",
+          "postedAt": "2026-09-08T08:10:00.000000004Z",
+          "merchant": "Synthetic exchange",
+          "feeKnowledge": "known",
+          "pnlBasis": "net",
+          "evidenceId": "raw-1",
+          "postings": [
+            {
+              "externalAccountId": "acct-usdt",
+              "product": "wallet",
+              "network": "",
+              "assetCode": "USDT",
+              "money": "10",
+              "role": "pnl",
+              "funding": "own",
+              "treatment": "movement"
+            },
+            {
+              "externalAccountId": "acct-usdt",
+              "product": "wallet",
+              "network": "",
+              "assetCode": "USDT",
+              "money": "-1",
+              "role": "fee",
+              "funding": "own",
+              "treatment": "included"
+            },
+            {
+              "externalAccountId": "acct-usdt",
+              "product": "wallet",
+              "network": "",
+              "assetCode": "USDT",
+              "money": "5",
+              "role": "pnl",
+              "funding": "own",
+              "treatment": "valuation"
+            }
+          ]
+        }
+      },
+      {
+        "recordType": "transaction",
+        "transaction": {
+          "externalAccountId": "acct-eth",
+          "product": "wallet",
+          "logNamespace": "mining",
+          "providerRecordId": "reward-1",
+          "classification": "new",
+          "providerState": "posted",
+          "economicType": "yield",
+          "occurredAt": "2026-09-08T08:20:00.000000005Z",
+          "postedAt": "2026-09-08T08:20:00.000000006Z",
+          "merchant": "Synthetic pool",
+          "feeKnowledge": "known",
+          "evidenceId": "raw-1",
+          "postings": [
+            {
+              "externalAccountId": "acct-eth",
+              "product": "wallet",
+              "network": "ethereum",
+              "assetCode": "ETH",
+              "money": "0.000000000000000123",
+              "role": "reward",
+              "funding": "own",
+              "treatment": "movement"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
