@@ -29,9 +29,11 @@ function useHouseholdValue(
     controller.load(actor);
   }, [actor, controller]);
   const requested = HouseholdViewPolicy.fromSearch(location.search);
-  const view = state.household
-    ? HouseholdViewPolicy.normalize(requested, state.household.members)
-    : requested;
+  const view = HouseholdViewPolicy.normalize(
+    requested,
+    state.household?.members ?? [],
+  );
+  const navigationView = state.household ? view : requested;
   const canonicalSearch = state.household
     ? HouseholdViewPolicy.search(view, location.search)
     : location.search.slice(1);
@@ -70,7 +72,7 @@ function useHouseholdValue(
         );
       },
       path(pathname: string) {
-        return HouseholdViewPolicy.path(pathname, view);
+        return HouseholdViewPolicy.path(pathname, navigationView);
       },
       refresh() {
         controller.load(actor, true);
@@ -83,6 +85,7 @@ function useHouseholdValue(
       location.pathname,
       location.search,
       navigate,
+      navigationView,
       state,
       view,
     ],

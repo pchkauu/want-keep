@@ -163,11 +163,35 @@ test("household view keeps actor, ownership and invitation state separate", asyn
     await page
       .getByRole("button", { name: "Issue a new invitation", exact: true })
       .click();
+    const revokedInvitation = await page
+      .getByLabel("Private invitation link", { exact: true })
+      .inputValue();
+
+    await page
+      .getByRole("button", { name: "Revoke invitation", exact: true })
+      .click();
+    await expect(
+      page.getByText("Invitation revoked", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Private invitation link")).toHaveCount(0);
+    await partner.goto(revokedInvitation);
+    await partner
+      .getByRole("button", { name: "Check invitation", exact: true })
+      .click();
+    await expect(
+      partner.getByText("The invitation was revoked. Ask for a new one."),
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "Issue a new invitation", exact: true })
+      .click();
     const invitation = await page
       .getByLabel("Private invitation link", { exact: true })
       .inputValue();
 
-    await partner.goto(invitation);
+    await partner
+      .getByLabel("Invitation code", { exact: true })
+      .fill(new URL(invitation).hash.slice(1));
     await partner
       .getByRole("button", { name: "Check invitation", exact: true })
       .click();
@@ -197,6 +221,19 @@ test("household view keeps actor, ownership and invitation state separate", asyn
     const partnerMe = await (await partner.request.get("/api/v1/me")).json();
     const firstId = firstMe.user.id as string;
     const partnerId = partnerMe.user.id as string;
+
+    const degraded = await second.newPage();
+    await degraded.route("**/api/v1/household", (route) =>
+      route.abort("failed"),
+    );
+    await degraded.goto("/onboarding?view=member&member=unknown");
+    await expect(
+      degraded.getByText("Andrey cash", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      degraded.getByRole("button", { name: "Household", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await degraded.close();
 
     await partner
       .getByRole("button", { name: "Andrey Test", exact: true })
@@ -258,6 +295,13 @@ test("household view keeps actor, ownership and invitation state separate", asyn
       new RegExp(
         `view=member&member=${firstId}&period=month|period=month&view=member&member=${firstId}`,
       ),
+    );
+    await partner.goto(`/plan?view=member&member=${firstId}`);
+    await partner
+      .getByRole("link", { name: "Set up tracking", exact: true })
+      .click();
+    await expect(partner).toHaveURL(
+      new RegExp(`/onboarding\\?view=member&member=${firstId}$`),
     );
     await partner.goto("/overview?view=member&member=unknown");
     await expect(partner).toHaveURL(/view=household$/);

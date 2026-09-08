@@ -93,10 +93,16 @@ describe("household view policy", () => {
 });
 
 describe("household loading boundary", () => {
-  it("preserves loaded household data across reauthentication by the same actor", async () => {
+  it("reloads household data when the same actor receives a new session", async () => {
     const api = new HouseholdApi(new HttpClient());
-    const read = vi.spyOn(api, "read").mockResolvedValue(household);
-    vi.spyOn(api, "invitations").mockResolvedValue({ revision: 1 });
+    const refreshed = { ...household, name: "Refreshed family" };
+    const read = vi
+      .spyOn(api, "read")
+      .mockResolvedValueOnce(household)
+      .mockResolvedValueOnce(refreshed);
+    vi.spyOn(api, "invitations")
+      .mockResolvedValueOnce({ revision: 1 })
+      .mockResolvedValueOnce({ revision: 2 });
     const controller = new HouseholdController(api);
     controller.load(session());
     await vi.waitFor(() =>
@@ -107,12 +113,19 @@ describe("household loading boundary", () => {
       }),
     );
     controller.load(session("user-a", "session-new"));
-    expect(controller.snapshot()).toMatchObject({
-      status: "ready",
+    expect(controller.snapshot()).toEqual({
+      status: "loading",
       actorKey: "household-a:user-a:session-new",
-      household,
     });
-    expect(read).toHaveBeenCalledOnce();
+    await vi.waitFor(() =>
+      expect(controller.snapshot()).toMatchObject({
+        status: "ready",
+        actorKey: "household-a:user-a:session-new",
+        household: refreshed,
+        invitation: { revision: 2 },
+      }),
+    );
+    expect(read).toHaveBeenCalledTimes(2);
   });
 
   it("drops late data from a replaced session", async () => {

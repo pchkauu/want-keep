@@ -4,7 +4,7 @@
 
 ## Implementation
 
-The public `web/src/features/household/` module owns `/household` and invitation transport mapping, loading state and the selected view. Its controller binds a response to household, user and session; changing actor clears data and a late response from the previous session is discarded. Reauthentication by the same member advances the epoch without unmounting the current action. Identity retains WebAuthn and invitation acceptance; accounts receives only the typed household view and members.
+The public `web/src/features/household/` module owns `/household` and invitation transport mapping, loading state and the selected view. Its controller binds a response to household, user and session; every session ID change starts a new load and a late response from the previous session is discarded. Reauthentication by the same member keeps the current screen mounted while revalidating household state. Identity retains WebAuthn and invitation acceptance; accounts receives only the typed household view and members.
 
 The view lives in the URL as `?view=household` or `?view=member&member=<userId>`. Unknown, missing or pending members fall back to household view. Shell navigation carries only view/member. The module exposes the exact existing OpenAPI shape `{view}` or `{view, memberId}` to future report consumers. The signed-in member has a separate label; changing view never changes the session principal.
 
@@ -18,7 +18,7 @@ Backend, OpenAPI, migrations, dependencies and production are unchanged.
 
 `make test-web FILTER=household` checks URL normalization, report-context shape, inactive/unknown members, session changes and stale responses, membership/revision transport, household account filtering and actor independence from selected view.
 
-`make e2e SCENARIO=family-access` starts isolated PostgreSQL 17.11 and the Go API, applies migrations and uses two virtual WebAuthn authenticators. The scenario covers bootstrap, personal and household cash accounts, a lost invitation response, stale revision, partner enrollment, both `/settings/household` views, deep links/back/forward, unknown member, account grouping and partner-owned personal account creation while Andrey is selected. RU/EN, keyboard, reduced motion, 1280×720, 1440×900 and 200% equivalents 640×360/720×450 run without horizontal overflow.
+`make e2e SCENARIO=family-access` starts isolated PostgreSQL 17.11 and the Go API, applies migrations and uses two virtual WebAuthn authenticators. The scenario covers bootstrap, personal and household cash accounts, a lost invitation response, stale revision, revocation and denial of the revoked token, partner enrollment, both `/settings/household` views, deep links/back/forward, return from an unfinished section, a safe household view when `/household` fails, account grouping and partner-owned personal account creation while Andrey is selected. RU/EN, keyboard, reduced motion, 1280×720, 1440×900 and 200% equivalents 640×360/720×450 run without horizontal overflow.
 
 `make check` passed: formatting, lint, TypeScript, 117 web unit tests, Go/collector, build, SDD and reproducible OpenAPI. `make test-web FILTER=household` contains 10 tests. `make e2e SCENARIO=all` passed 28 scenarios: access, 19 component, 7 token and family-access. PostgreSQL household/accounts integration and both race suites passed against an isolated database. `git diff --check` passed.
 

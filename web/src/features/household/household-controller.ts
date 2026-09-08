@@ -32,22 +32,12 @@ export class HouseholdController {
 
   load(member: MemberSession, refresh = false) {
     const actorKey = `${member.householdId}:${member.userId}:${member.sessionId}`;
-    const actorScope = `${member.householdId}:${member.userId}:`;
     if (
       !refresh &&
       this.state.actorKey === actorKey &&
       (this.state.status === "loading" || this.state.status === "ready")
     )
       return;
-    if (
-      !refresh &&
-      this.state.status === "ready" &&
-      this.state.actorKey?.startsWith(actorScope)
-    ) {
-      this.epoch++;
-      this.publish({ ...this.state, actorKey, refreshing: false });
-      return;
-    }
     const epoch = ++this.epoch;
     const previous =
       refresh && this.state.status === "ready" && this.state.household
