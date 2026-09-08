@@ -830,11 +830,11 @@ Task: [task-7.14](tasks/task-7.14.md), [task-7.15](tasks/task-7.15.md).
 
 **Primary answer:** Two distinct members with transparent permissions.
 
-**Top-down structure:** Members/invitation → shared-access explanation → personal/shared resources and rules.
+**Top-down structure:** Signed-in member and household view → membership/status/cap → invitation → shared-access explanation → personal/shared resources and rules.
 
 **Next action:** When capacity exists, issue/reissue after own passkey confirmation within 5 minutes; revoke with an active session. Show metadata/revision first; never reread the secret.
 
-**Explanation and details:** No role changing, member exit/replacement or partner recovery in MVP.
+**Explanation and details:** The view lives in view/member URL parameters; unknown or inactive members fall back to household view. No role changing, member exit/replacement or partner recovery in MVP.
 
 **Permissions:** Both members can read; server checks membership and resource ownership for actions.
 

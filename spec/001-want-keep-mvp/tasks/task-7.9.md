@@ -5,7 +5,7 @@
 
 Добавить семейный контекст и принадлежность в интерфейс.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализация подготовлена; проверки, публикация и review фиксируются в evidence/task-7.9-household-context.md и GitHub.
 
 **Зависимости:** `task-7.1`, `task-1.6`.
 
@@ -13,12 +13,13 @@
 
 ### Изменение и контракты
 
-Показать текущего участника, отдельный вход/приглашение, принадлежность личное/семейное и переключение семейного/индивидуального вида. Персональный фильтр меняет представление, не права и не principal. Рендерить права сервера; запрещённые действия защищены backend. Одно семейное пространство и общий чат; состояние уведомлений персональное.
+Показать вошедшего участника отдельно от семейного/индивидуального разреза, состав и статусы членств, приглашение и принадлежность счетов. Разрез хранится в URL и меняет только представление: actor, personal owner и principal всегда берутся из сессии и серверных данных. Семейный вид показывает все счета; индивидуальный — семейные и личные счета выбранного участника. Скрытые счета остаются частью семейного пула. Backend повторно проверяет членство и права.
 
 ### Границы изменений
 
 - `web/src/features/household/`
-- `web/src/features/auth/`
+- `web/src/features/identity/`
+- `web/src/features/accounts/`
 - `web/src/app/`
 
 ### Экранный контракт
@@ -31,11 +32,11 @@
 
 **Главный ответ:** Два отдельных участника с прозрачными правами.
 
-**Структура сверху вниз:** Состав/приглашение → описание общего доступа → личные/общие ресурсы и правила.
+**Структура сверху вниз:** Вошедший участник и семейный разрез → состав/статусы/лимит → приглашение → описание общего доступа → личные/общие ресурсы и правила.
 
 **Следующее действие:** Если есть место, выдать/перевыпустить приглашение после собственного passkey-подтверждения до 5 минут; отозвать действующей сессией. Сначала показать метаданные/revision; секрет повторно не читается.
 
-**Объяснение и детализация:** Нет смены ролей, выхода/замены участника и восстановления партнёром в MVP.
+**Объяснение и детализация:** Разрез хранится в view/member URL, неизвестный или неактивный участник заменяется семейным видом. Нет смены ролей, выхода/замены участника и восстановления партнёром в MVP.
 
 **Права:** Оба участника видят; действия проверяет сервер по членству и владельцу ресурса.
 
@@ -140,7 +141,7 @@ make e2e SCENARIO=family-access
 
 RU/EN и desktop-вид различают текущего автора и выбранный разрез; попытка изменить роль через фильтр не даёт доступа; приглашение не допускает постороннего.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Команды реализованы: make test-web FILTER=household и make e2e SCENARIO=family-access. E2E поднимает изолированные PostgreSQL и Go API, использует два виртуальных WebAuthn-аутентификатора и проверяет URL-разрез, invitation recovery/conflict, actor/owner и 100%/200% desktop-композицию. Полные цели, планы, чат и уведомления остаются профильным задачам.
 
 ### Передача следующему агенту
 
@@ -152,7 +153,7 @@ RU/EN и desktop-вид различают текущего автора и вы
 
 Add household context and ownership to the interface.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** Implementation prepared; verification, publication and review are recorded in evidence/task-7.9-household-context.en.md and GitHub.
 
 **Dependencies:** `task-7.1`, `task-1.6`.
 
@@ -160,12 +161,13 @@ Add household context and ownership to the interface.
 
 ### Change and contracts
 
-Show the current member, separate sign-in/invitation, personal/household ownership and household/individual view selection. A person filter changes presentation, never permissions or principal. Render server capabilities; backend protects denied actions. One household workspace and shared chat; notification read state is personal.
+Show the signed-in member separately from the household/member view, membership composition and status, invitation state and account ownership. The URL view changes presentation only: actor, personal owner and principal always come from the session and server data. Household view shows every account; member view shows household accounts plus that member's personal accounts. Hidden accounts remain in the household pool. The backend rechecks membership and authority.
 
 ### Change boundaries
 
 - `web/src/features/household/`
-- `web/src/features/auth/`
+- `web/src/features/identity/`
+- `web/src/features/accounts/`
 - `web/src/app/`
 
 ### Screen contract
@@ -178,11 +180,11 @@ Show the current member, separate sign-in/invitation, personal/household ownersh
 
 **Primary answer:** Two distinct members with transparent permissions.
 
-**Top-down structure:** Members/invitation → shared-access explanation → personal/shared resources and rules.
+**Top-down structure:** Signed-in member and household view → membership/status/cap → invitation → shared-access explanation → personal/shared resources and rules.
 
 **Next action:** When capacity exists, issue/reissue after own passkey confirmation within 5 minutes; revoke with an active session. Show metadata/revision first; never reread the secret.
 
-**Explanation and details:** No role changing, member exit/replacement or partner recovery in MVP.
+**Explanation and details:** The view lives in view/member URL parameters; unknown or inactive members fall back to household view. No role changing, member exit/replacement or partner recovery in MVP.
 
 **Permissions:** Both members can read; server checks membership and resource ownership for actions.
 
@@ -287,7 +289,7 @@ make e2e SCENARIO=family-access
 
 RU/EN and desktop views distinguish current actor from selected view; changing the filter grants no authority and invitations do not admit outsiders.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Commands exist: make test-web FILTER=household and make e2e SCENARIO=family-access. E2E starts isolated PostgreSQL and the Go API, uses two virtual WebAuthn authenticators and checks URL view state, invitation recovery/conflict, actor/owner separation and 100%/200% desktop composition. Complete goals, plans, chat and notifications remain with their owning tasks.
 
 ### Handoff to the next agent
 

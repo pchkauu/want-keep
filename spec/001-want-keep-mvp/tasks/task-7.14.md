@@ -50,11 +50,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Главный ответ:** Два отдельных участника с прозрачными правами.
 
-**Структура сверху вниз:** Состав/приглашение → описание общего доступа → личные/общие ресурсы и правила.
+**Структура сверху вниз:** Вошедший участник и семейный разрез → состав/статусы/лимит → приглашение → описание общего доступа → личные/общие ресурсы и правила.
 
 **Следующее действие:** Если есть место, выдать/перевыпустить приглашение после собственного passkey-подтверждения до 5 минут; отозвать действующей сессией. Сначала показать метаданные/revision; секрет повторно не читается.
 
-**Объяснение и детализация:** Нет смены ролей, выхода/замены участника и восстановления партнёром в MVP.
+**Объяснение и детализация:** Разрез хранится в view/member URL, неизвестный или неактивный участник заменяется семейным видом. Нет смены ролей, выхода/замены участника и восстановления партнёром в MVP.
 
 **Права:** Оба участника видят; действия проверяет сервер по членству и владельцу ресурса.
 
@@ -367,11 +367,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Primary answer:** Two distinct members with transparent permissions.
 
-**Top-down structure:** Members/invitation → shared-access explanation → personal/shared resources and rules.
+**Top-down structure:** Signed-in member and household view → membership/status/cap → invitation → shared-access explanation → personal/shared resources and rules.
 
 **Next action:** When capacity exists, issue/reissue after own passkey confirmation within 5 minutes; revoke with an active session. Show metadata/revision first; never reread the secret.
 
-**Explanation and details:** No role changing, member exit/replacement or partner recovery in MVP.
+**Explanation and details:** The view lives in view/member URL parameters; unknown or inactive members fall back to household view. No role changing, member exit/replacement or partner recovery in MVP.
 
 **Permissions:** Both members can read; server checks membership and resource ownership for actions.
 

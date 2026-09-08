@@ -5372,12 +5372,13 @@
       ],
       "targets": [
         "web/src/features/household/",
-        "web/src/features/auth/",
+        "web/src/features/identity/",
+        "web/src/features/accounts/",
         "web/src/app/"
       ],
       "behavior": {
-        "ru": "Показать текущего участника, отдельный вход/приглашение, принадлежность личное/семейное и переключение семейного/индивидуального вида. Персональный фильтр меняет представление, не права и не principal. Рендерить права сервера; запрещённые действия защищены backend. Одно семейное пространство и общий чат; состояние уведомлений персональное.",
-        "en": "Show the current member, separate sign-in/invitation, personal/household ownership and household/individual view selection. A person filter changes presentation, never permissions or principal. Render server capabilities; backend protects denied actions. One household workspace and shared chat; notification read state is personal."
+        "ru": "Показать вошедшего участника отдельно от семейного/индивидуального разреза, состав и статусы членств, приглашение и принадлежность счетов. Разрез хранится в URL и меняет только представление: actor, personal owner и principal всегда берутся из сессии и серверных данных. Семейный вид показывает все счета; индивидуальный — семейные и личные счета выбранного участника. Скрытые счета остаются частью семейного пула. Backend повторно проверяет членство и права.",
+        "en": "Show the signed-in member separately from the household/member view, membership composition and status, invitation state and account ownership. The URL view changes presentation only: actor, personal owner and principal always come from the session and server data. Household view shows every account; member view shows household accounts plus that member's personal accounts. Hidden accounts remain in the household pool. The backend rechecks membership and authority."
       },
       "verification": {
         "command": "make test-web FILTER=household\nmake e2e SCENARIO=family-access",
@@ -5385,6 +5386,14 @@
           "ru": "RU/EN и desktop-вид различают текущего автора и выбранный разрез; попытка изменить роль через фильтр не даёт доступа; приглашение не допускает постороннего.",
           "en": "RU/EN and desktop views distinguish current actor from selected view; changing the filter grants no authority and invitations do not admit outsiders."
         }
+      },
+      "status": {
+        "ru": "Реализация подготовлена; проверки, публикация и review фиксируются в evidence/task-7.9-household-context.md и GitHub.",
+        "en": "Implementation prepared; verification, publication and review are recorded in evidence/task-7.9-household-context.en.md and GitHub."
+      },
+      "verification_note": {
+        "ru": "Команды реализованы: make test-web FILTER=household и make e2e SCENARIO=family-access. E2E поднимает изолированные PostgreSQL и Go API, использует два виртуальных WebAuthn-аутентификатора и проверяет URL-разрез, invitation recovery/conflict, actor/owner и 100%/200% desktop-композицию. Полные цели, планы, чат и уведомления остаются профильным задачам.",
+        "en": "Commands exist: make test-web FILTER=household and make e2e SCENARIO=family-access. E2E starts isolated PostgreSQL and the Go API, uses two virtual WebAuthn authenticators and checks URL view state, invitation recovery/conflict, actor/owner separation and 100%/200% desktop composition. Complete goals, plans, chat and notifications remain with their owning tasks."
       },
       "github_url": "https://github.com/pchkauu/want-keep/issues/56"
     },
@@ -8476,16 +8485,16 @@
         "en": "Two distinct members with transparent permissions."
       },
       "structure": {
-        "ru": "Состав/приглашение → описание общего доступа → личные/общие ресурсы и правила.",
-        "en": "Members/invitation → shared-access explanation → personal/shared resources and rules."
+        "ru": "Вошедший участник и семейный разрез → состав/статусы/лимит → приглашение → описание общего доступа → личные/общие ресурсы и правила.",
+        "en": "Signed-in member and household view → membership/status/cap → invitation → shared-access explanation → personal/shared resources and rules."
       },
       "action": {
         "ru": "Если есть место, выдать/перевыпустить приглашение после собственного passkey-подтверждения до 5 минут; отозвать действующей сессией. Сначала показать метаданные/revision; секрет повторно не читается.",
         "en": "When capacity exists, issue/reissue after own passkey confirmation within 5 minutes; revoke with an active session. Show metadata/revision first; never reread the secret."
       },
       "detail": {
-        "ru": "Нет смены ролей, выхода/замены участника и восстановления партнёром в MVP.",
-        "en": "No role changing, member exit/replacement or partner recovery in MVP."
+        "ru": "Разрез хранится в view/member URL, неизвестный или неактивный участник заменяется семейным видом. Нет смены ролей, выхода/замены участника и восстановления партнёром в MVP.",
+        "en": "The view lives in view/member URL parameters; unknown or inactive members fall back to household view. No role changing, member exit/replacement or partner recovery in MVP."
       },
       "rights": {
         "ru": "Оба участника видят; действия проверяет сервер по членству и владельцу ресурса.",
