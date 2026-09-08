@@ -20,7 +20,7 @@ func (f *fixture) importSource(service *admission.Service, connection string, in
 	input.ConnectionID = connection
 	input.JobID = issued.ID
 	input.FetchedAt = f.now
-	sources := journal.NewSources(f.store, f.writer)
+	sources := journal.NewSources(f.store, f.writer, nil)
 	var outcome ledger.SourceOutcome
 	applied, err := service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: input.EvidenceRef, Coverage: "complete", Complete: true}, func(ctx context.Context) error {
 		var err error
@@ -134,7 +134,7 @@ func TestFailedPageDoesNotAdvanceCheckpoint(t *testing.T) {
 	connection := f.connection()
 	issued := f.issued(service, connection, binding())
 	input := ledger.SourceInput{Key: ledger.SourceKey{HouseholdID: f.family.ID, Provider: "raiffeisen", ExternalAccountID: "stable", Product: "current", Log: "statement", RecordID: "entry"}, PayloadHash: strings.Repeat("a", 64), EvidenceRef: "synthetic:page", Classification: "new", ConnectionID: connection, JobID: issued.ID, FetchedAt: f.now}
-	sources := journal.NewSources(f.store, f.writer)
+	sources := journal.NewSources(f.store, f.writer, nil)
 	applied, err := service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: input.EvidenceRef, NextCursor: "p2", Coverage: "partial", Gaps: []string{"more_pages"}}, func(ctx context.Context) error {
 		if _, e := sources.Apply(ctx, f.p, input); e != nil {
 			return e

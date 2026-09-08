@@ -161,6 +161,102 @@ func TestAmountAllocationCoversMultipleComponentsAndAssetsExactly(t *testing.T) 
 	}
 }
 
+func TestCompositeAllocationPreservesSharedIntentAtOneQuantum(t *testing.T) {
+	paid := mustAllocationMoney(t, "0.01", money.RUB)
+	revision := expenseRevision(paid)
+	revision.ReceiptItems = []ReceiptItem{{ID: "small", Name: "Small", Quantity: "1", Gross: paid, Discount: mustAllocationMoney(t, "0", money.RUB)}}
+	members := []household.MembershipID{"member-a", "member-b"}
+	shared := AllocationInput{Mode: AllocationEqual, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0]}, {MemberID: members[1]}}}
+	allocated, err := revision.WithAllocation(AllocationInput{Mode: AllocationUnknown, Reason: "item allocation"}, []ItemAllocationInput{{ItemID: "small", Allocation: shared}}, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if allocated.Allocation.Purpose != AllocationShared || allocated.Allocation.Members[0].MemberID != members[0] || allocated.Allocation.Members[0].Money.Amount() != "0.01" {
+		t.Fatalf("shared one-quantum allocation = %+v", allocated.Allocation)
+	}
+}
+
+func TestCompositeShareAllocationRefreshesAndAmountBasisRejectsChanges(t *testing.T) {
+	paid := mustAllocationMoney(t, "100", money.RUB)
+	revision := expenseRevision(paid)
+	revision.ReceiptItems = []ReceiptItem{
+		{ID: "first", Name: "First", Quantity: "1", Gross: mustAllocationMoney(t, "40", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)},
+		{ID: "second", Name: "Second", Quantity: "1", Gross: mustAllocationMoney(t, "60", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)},
+	}
+	members := []household.MembershipID{"member-a", "member-b"}
+	fallback := AllocationInput{Mode: AllocationByShares, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0], Share: "50"}, {MemberID: members[1], Share: "50"}}}
+	override := AllocationInput{Mode: AllocationByShares, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0], Share: "60"}, {MemberID: members[1], Share: "40"}}}
+	allocated, err := revision.WithAllocation(fallback, []ItemAllocationInput{{ItemID: "first", Allocation: override}}, members)
+	if err != nil || allocated.Allocation.Fallback == nil {
+		t.Fatalf("composite allocation = %+v, err=%v", allocated.Allocation, err)
+	}
+	principal := []Posting{{AccountID: "account", Money: mustAllocationMoney(t, "-200", money.RUB), Role: Principal, Funding: OwnFunds, Treatment: Movement}}
+	zero := mustAllocationMoney(t, "0", money.RUB)
+	items := ReceiptItemsCorrection{Items: []ReceiptItemInput{
+		{ID: "first", Name: "First", Quantity: "1", Gross: mustAllocationMoney(t, "80", money.RUB)},
+		{ID: "second", Name: "Second", Quantity: "1", Gross: mustAllocationMoney(t, "120", money.RUB)},
+	}, TotalDiscount: zero}
+	corrected, fields, err := allocated.Correct(Correction{Principal: &principal, ReceiptItems: &items})
+	if err != nil || !slices.Contains(fields, AllocationField) || allocationMemberTotal(corrected.Allocation, members[0], money.RUB) != "108" || allocationMemberTotal(corrected.Allocation, members[1], money.RUB) != "92" {
+		t.Fatalf("refreshed allocation = %+v, fields=%v, err=%v", corrected.Allocation, fields, err)
+	}
+
+	amountOverride := AllocationInput{Mode: AllocationByAmounts, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0], Amount: allocationMoneyPtr(t, "24", money.RUB)}, {MemberID: members[1], Amount: allocationMoneyPtr(t, "16", money.RUB)}}}
+	allocated, err = revision.WithAllocation(fallback, []ItemAllocationInput{{ItemID: "first", Allocation: amountOverride}}, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = allocated.Correct(Correction{Principal: &principal, ReceiptItems: &items}); err != ErrInvalidAllocation {
+		t.Fatalf("amount-based composite refresh error = %v", err)
+	}
+}
+
+func TestAllocationInputOrderIsSemanticNoChange(t *testing.T) {
+	revision := expenseRevision(mustAllocationMoney(t, "100", money.RUB))
+	members := []household.MembershipID{"member-a", "member-b"}
+	first := AllocationInput{Mode: AllocationByShares, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0], Share: "60"}, {MemberID: members[1], Share: "40"}}}
+	allocated, err := revision.WithAllocation(first, nil, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reordered := AllocationInput{Mode: AllocationByShares, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[1], Share: "40"}, {MemberID: members[0], Share: "60"}}}
+	if _, _, err = allocated.Correct(Correction{Allocation: &AllocationChange{Allocation: reordered, Members: members}}); err != ErrNoChange {
+		t.Fatalf("reordered allocation error = %v", err)
+	}
+}
+
+func TestAllocationExcludesMatchedInternalAndNonCarrierPrincipal(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		kind         ParticipationKind
+		carrierID    string
+		contribution ContributionRole
+	}{
+		{name: "internal transfer", kind: "transfer", carrierID: "operation", contribution: "outgoing"},
+		{name: "payment evidence", kind: "payment", carrierID: "other", contribution: "payment"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			revision := expenseRevision(mustAllocationMoney(t, "1000", money.RUB))
+			revision.Allocation, revision.Participation = AllocationSnapshot{}, Participation{GroupID: "group", Kind: tc.kind, State: "linked", Parts: []Contribution{{ComponentID: tc.carrierID + ":0", Position: 0, CarrierID: tc.carrierID, CarrierPosition: 0, Role: tc.contribution, State: Posted, At: revision.OccurredAt}}}
+			refreshed, err := revision.RefreshAllocation()
+			if err != nil || refreshed.Allocation.State != AllocationNotApplicable || refreshed.Validate() != nil {
+				t.Fatalf("refreshed = %+v, err=%v", refreshed.Allocation, err)
+			}
+		})
+	}
+}
+
+func TestIncomeAllocationIsNotApplicableEvenWithFee(t *testing.T) {
+	revision := validAllocationRevision(Income, Posted, []Posting{
+		{AccountID: "account", Money: mustAllocationMoney(t, "100", money.RUB), Role: Principal, Funding: OwnFunds, Treatment: Movement},
+		{AccountID: "account", Money: mustAllocationMoney(t, "-5", money.RUB), Role: Fee, Funding: OwnFunds, Treatment: Movement},
+	})
+	allocated, err := revision.WithAllocation(AllocationInput{}, nil, nil)
+	if err != nil || allocated.Allocation.State != AllocationNotApplicable || allocated.Validate() != nil {
+		t.Fatalf("income allocation = %+v, err=%v", allocated.Allocation, err)
+	}
+}
+
 func TestPurchaseAmountFallbackProducesExactItemSnapshots(t *testing.T) {
 	members := []household.MembershipID{"member-a", "member-b"}
 	revision := expenseRevision(mustAllocationMoney(t, "100", money.RUB))

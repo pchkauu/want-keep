@@ -117,6 +117,24 @@ func (s *Service) Resolve(ctx context.Context, principal household.Principal, me
 	return input, true, nil
 }
 
+func (s *Service) ResolveSource(ctx context.Context, principal household.Principal, merchantName string) (ledger.AllocationInput, bool, error) {
+	if merchantName == "" {
+		return ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "no_matching_rule"}, false, nil
+	}
+	normalized, err := category.Normalize(merchantName)
+	if err != nil {
+		return ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "no_matching_rule"}, false, nil
+	}
+	merchantID, err := s.repository.MerchantAliasOwner(ctx, principal, normalized, "")
+	if err != nil {
+		return ledger.AllocationInput{}, false, s.reject(err)
+	}
+	if merchantID == "" {
+		return ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "no_matching_rule"}, false, nil
+	}
+	return s.Resolve(ctx, principal, merchantID, "")
+}
+
 func (s *Service) ActiveMemberIDs(ctx context.Context, principal household.Principal) ([]household.MembershipID, error) {
 	members, err := s.repository.ActiveMemberships(ctx, principal)
 	if err != nil {
@@ -164,13 +182,19 @@ func (s *Service) requireConditions(ctx context.Context, principal household.Pri
 	}
 	if condition.MerchantID != "" {
 		merchant, err := s.repository.Merchant(ctx, principal, condition.MerchantID)
-		if err != nil || merchant.State != category.Active {
+		if err != nil {
+			return s.reject(err)
+		}
+		if merchant.State != category.Active {
 			return commands.Rejection{Code: "not_found"}
 		}
 	}
 	if condition.CategoryID != "" {
 		entry, err := s.repository.Category(ctx, principal, condition.CategoryID)
-		if err != nil || entry.State != category.Active {
+		if err != nil {
+			return s.reject(err)
+		}
+		if entry.State != category.Active {
 			return commands.Rejection{Code: "not_found"}
 		}
 	}

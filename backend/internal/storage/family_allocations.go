@@ -225,7 +225,11 @@ func (s *Store) saveLedgerAllocation(ctx context.Context, revision ledger.Revisi
 		return err
 	}
 	family := scope.principal.HouseholdID()
-	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_snapshots(household_id,operation_id,revision,position,item_id,state,purpose,mode,origin,reason) VALUES($1,$2,$3,$4,NULLIF($5,'')::uuid,$6,$7,$8,$9,$10)`, family, revision.OperationID, revision.Revision, position, itemID, snapshot.State, snapshot.Purpose, snapshot.Mode, snapshot.Origin, snapshot.Reason)
+	var fallback ledger.AllocationInput
+	if snapshot.Fallback != nil {
+		fallback = *snapshot.Fallback
+	}
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_snapshots(household_id,operation_id,revision,position,item_id,state,purpose,mode,origin,reason,fallback_mode,fallback_purpose,fallback_origin,fallback_reason) VALUES($1,$2,$3,$4,NULLIF($5,'')::uuid,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, family, revision.OperationID, revision.Revision, position, itemID, snapshot.State, snapshot.Purpose, snapshot.Mode, snapshot.Origin, snapshot.Reason, fallback.Mode, fallback.Purpose, fallback.Origin, fallback.Reason)
 	if err != nil {
 		return err
 	}
@@ -239,6 +243,25 @@ func (s *Store) saveLedgerAllocation(ctx context.Context, revision ledger.Revisi
 		}
 		if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_inputs(household_id,operation_id,revision,snapshot_position,position,member_id,amount,asset,share) VALUES($1,$2,$3,$4,$5,$6,$7::numeric,$8,$9::numeric)`, family, revision.OperationID, revision.Revision, position, index, input.MemberID, amount, asset, share); err != nil {
 			return err
+		}
+	}
+	if snapshot.Fallback != nil {
+		for index, input := range snapshot.Fallback.Members {
+			var amount, asset, share any
+			if input.Amount != nil {
+				amount, asset = input.Amount.Amount(), input.Amount.Asset()
+			}
+			if input.Share != "" {
+				share = input.Share
+			}
+			if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_fallback_inputs(household_id,operation_id,revision,snapshot_position,position,member_id,amount,asset,share) VALUES($1,$2,$3,0,$4,$5,$6::numeric,$7,$8::numeric)`, family, revision.OperationID, revision.Revision, index, input.MemberID, amount, asset, share); err != nil {
+				return err
+			}
+		}
+		for _, ref := range snapshot.Fallback.RuleRefs {
+			if _, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_allocation_fallback_rule_refs(household_id,operation_id,revision,rule_id,rule_revision) VALUES($1,$2,$3,$4,$5)`, family, revision.OperationID, revision.Revision, ref.ID, ref.Revision); err != nil {
+				return err
+			}
 		}
 	}
 	for _, member := range snapshot.Members {
@@ -283,9 +306,16 @@ func (s *Store) loadLedgerAllocations(ctx context.Context, q reader, principal h
 
 func loadLedgerAllocation(ctx context.Context, q reader, principal household.Principal, operationID string, revision uint64, position int) (ledger.AllocationSnapshot, error) {
 	snapshot := ledger.AllocationSnapshot{}
-	err := q.QueryRow(ctx, `SELECT state,purpose,mode,origin,reason FROM want_keep.ledger_allocation_snapshots WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND position=$4`, principal.HouseholdID(), operationID, revision, position).Scan(&snapshot.State, &snapshot.Purpose, &snapshot.Mode, &snapshot.Origin, &snapshot.Reason)
+	var fallbackMode ledger.AllocationMode
+	var fallbackPurpose ledger.AllocationPurpose
+	var fallbackOrigin ledger.AllocationOrigin
+	var fallbackReason string
+	err := q.QueryRow(ctx, `SELECT state,purpose,mode,origin,reason,fallback_mode,fallback_purpose,fallback_origin,fallback_reason FROM want_keep.ledger_allocation_snapshots WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND position=$4`, principal.HouseholdID(), operationID, revision, position).Scan(&snapshot.State, &snapshot.Purpose, &snapshot.Mode, &snapshot.Origin, &snapshot.Reason, &fallbackMode, &fallbackPurpose, &fallbackOrigin, &fallbackReason)
 	if err != nil {
 		return snapshot, err
+	}
+	if fallbackMode != "" {
+		snapshot.Fallback = &ledger.AllocationInput{Mode: fallbackMode, Purpose: fallbackPurpose, Origin: fallbackOrigin, Reason: fallbackReason}
 	}
 	rows, err := q.Query(ctx, `SELECT member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY position`, principal.HouseholdID(), operationID, revision, position)
 	if err != nil {
@@ -316,6 +346,54 @@ func loadLedgerAllocation(ctx context.Context, q reader, principal household.Pri
 		return snapshot, err
 	}
 	rows.Close()
+	if snapshot.Fallback != nil {
+		rows, err = q.Query(ctx, `SELECT member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_fallback_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY position`, principal.HouseholdID(), operationID, revision)
+		if err != nil {
+			return snapshot, err
+		}
+		for rows.Next() {
+			var input ledger.AllocationMemberInput
+			var amount, asset, share *string
+			if err = rows.Scan(&input.MemberID, &amount, &asset, &share); err != nil {
+				rows.Close()
+				return snapshot, err
+			}
+			if amount != nil && asset != nil {
+				value, parseErr := money.NewMoney(*amount, money.Asset(*asset))
+				if parseErr != nil {
+					rows.Close()
+					return snapshot, parseErr
+				}
+				input.Amount = &value
+			}
+			if share != nil {
+				input.Share = *share
+			}
+			snapshot.Fallback.Members = append(snapshot.Fallback.Members, input)
+		}
+		if err = rows.Err(); err != nil {
+			rows.Close()
+			return snapshot, err
+		}
+		rows.Close()
+		rows, err = q.Query(ctx, `SELECT rule_id,rule_revision FROM want_keep.ledger_allocation_fallback_rule_refs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY rule_id`, principal.HouseholdID(), operationID, revision)
+		if err != nil {
+			return snapshot, err
+		}
+		for rows.Next() {
+			var ref ledger.AllocationRuleRef
+			if err = rows.Scan(&ref.ID, &ref.Revision); err != nil {
+				rows.Close()
+				return snapshot, err
+			}
+			snapshot.Fallback.RuleRefs = append(snapshot.Fallback.RuleRefs, ref)
+		}
+		if err = rows.Err(); err != nil {
+			rows.Close()
+			return snapshot, err
+		}
+		rows.Close()
+	}
 	rows, err = q.Query(ctx, `SELECT member_id,asset,amount::text FROM want_keep.ledger_allocation_member_amounts WHERE household_id=$1 AND operation_id=$2 AND revision=$3 AND snapshot_position=$4 ORDER BY member_id,asset`, principal.HouseholdID(), operationID, revision, position)
 	if err != nil {
 		return snapshot, err

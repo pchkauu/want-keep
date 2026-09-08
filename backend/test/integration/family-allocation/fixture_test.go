@@ -25,6 +25,8 @@ import (
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	catalog "github.com/pchkauu/want-keep/backend/internal/categories/application"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
+	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
+	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	allocationdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/allocation"
 	categorydelivery "github.com/pchkauu/want-keep/backend/internal/delivery/categories"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/security"
@@ -33,6 +35,7 @@ import (
 	identityapp "github.com/pchkauu/want-keep/backend/internal/identity/application"
 	identity "github.com/pchkauu/want-keep/backend/internal/identity/domain"
 	"github.com/pchkauu/want-keep/backend/internal/identity/webauthn"
+	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	journal "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	matching "github.com/pchkauu/want-keep/backend/internal/matching/application"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
@@ -160,6 +163,51 @@ func (f *fixture) account(asset money.Asset, balance string) string {
 func (f *fixture) ledgerService() *journal.Service {
 	allocations := allocation.NewService(f.store, uuid.NewString)
 	return journal.NewServiceWithAllocations(f.store, journal.NewWriter(f.store, f.store), allocations, func() calendar.Instant { return f.now }, uuid.NewString)
+}
+
+func allocationTestBinding() connections.Binding {
+	return connections.Binding{Provider: "raiffeisen", Environment: "test", AdapterBuildDigest: "sha256:" + strings.Repeat("a", 64), CollectorImageDigest: "sha256:" + strings.Repeat("b", 64), ContractVersion: "10", AllowlistRevision: "1", NonSecretConfigRevision: "1", OperatorPermissionRevision: "1"}
+}
+
+func (f *fixture) admittedImport() *admission.Service {
+	f.t.Helper()
+	service := admission.NewService(f.store, f.store)
+	for _, kind := range []connections.CheckKind{connections.ProviderCheck, connections.HostCheck} {
+		if _, err := service.RecordCheck(testContext, connections.Check{Kind: kind, Binding: allocationTestBinding(), Result: connections.CheckPassed, At: f.now}); err != nil {
+			f.t.Fatal(err)
+		}
+	}
+	return service
+}
+
+func (f *fixture) importConnection() string {
+	f.t.Helper()
+	id := uuid.NewString()
+	if err := f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
+		return f.store.CreateConnection(ctx, admission.Connection{HouseholdID: f.family.ID, ID: id, Provider: "raiffeisen", Owner: f.p.UserID(), Generation: 1, Authorized: true})
+	}); err != nil {
+		f.t.Fatal(err)
+	}
+	return id
+}
+
+func (f *fixture) issuedImport(service *admission.Service, connectionID string) jobs.Job {
+	f.t.Helper()
+	job, err := service.RequestSync(testContext, f.p, connectionID, allocationTestBinding(), time.Now().Add(time.Hour))
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	claimed, err := f.store.ClaimJobs(testContext, "sync", 100, time.Minute)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	for _, candidate := range claimed {
+		if candidate.ID == job.ID {
+			return candidate
+		}
+	}
+	f.t.Fatal("import job was not claimed")
+	return jobs.Job{}
 }
 
 type client struct {

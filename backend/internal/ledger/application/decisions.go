@@ -50,7 +50,11 @@ func (s *Service) Allocate(ctx context.Context, p household.Principal, operation
 	for index := range items {
 		completeEqualAllocation(&items[index].Allocation, members)
 	}
-	allocation.Origin = ledger.AllocationExplicitPurchase
+	if allocation.Mode == ledger.AllocationUnknown {
+		allocation.Origin = ledger.AllocationUnknownOrigin
+	} else {
+		allocation.Origin = ledger.AllocationExplicitPurchase
+	}
 	return s.ApplyChanges(ctx, p, []Change{{OperationID: operationID, Expected: expected, Correction: ledger.Correction{Allocation: &ledger.AllocationChange{Allocation: allocation, Items: items, Members: members}}}}, reason)
 }
 
@@ -112,11 +116,13 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 				if memberErr != nil {
 					return command.Result{}, memberErr
 				}
-				in.Correction.Allocation.Members = members
-				completeEqualAllocation(&in.Correction.Allocation.Allocation, members)
-				for index := range in.Correction.Allocation.Items {
-					completeEqualAllocation(&in.Correction.Allocation.Items[index].Allocation, members)
+				change := cloneAllocationChange(*in.Correction.Allocation)
+				change.Members = slices.Clone(members)
+				completeEqualAllocation(&change.Allocation, members)
+				for index := range change.Items {
+					completeEqualAllocation(&change.Items[index].Allocation, members)
 				}
+				in.Correction.Allocation = &change
 			}
 			updated, fields, err = r.Correct(in.Correction)
 			if errors.Is(err, ledger.ErrNoChange) && len(changes) > 1 && r.Participation.GroupID != "" {
@@ -161,7 +167,16 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 		if updated.OccurredAt.Time().After(s.now().Time()) {
 			return command.Result{}, commands.Rejection{Code: "invalid_request"}
 		}
-		next = append(next, updated.WithDecision(d, fields))
+		decided := updated.WithDecision(d, fields)
+		if in.Correction.Allocation == nil && slices.Contains(fields, ledger.AllocationField) {
+			if protection, protected := r.Protections[ledger.AllocationField]; protected {
+				decided.Protections[ledger.AllocationField] = protection
+			} else {
+				delete(decided.Protections, ledger.AllocationField)
+			}
+			decided.HumanOverride = len(decided.Protections) > 0
+		}
+		next = append(next, decided)
 		d.Entries = append(d.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: fields})
 	}
 	for _, group := range unchanged {
@@ -181,6 +196,18 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 	}
 	d.Entries = entries
 	return s.persistDecision(ctx, p, d, retained)
+}
+
+func cloneAllocationChange(value ledger.AllocationChange) ledger.AllocationChange {
+	value.Members = slices.Clone(value.Members)
+	value.Allocation.Members = slices.Clone(value.Allocation.Members)
+	value.Allocation.RuleRefs = slices.Clone(value.Allocation.RuleRefs)
+	value.Items = slices.Clone(value.Items)
+	for index := range value.Items {
+		value.Items[index].Allocation.Members = slices.Clone(value.Items[index].Allocation.Members)
+		value.Items[index].Allocation.RuleRefs = slices.Clone(value.Items[index].Allocation.RuleRefs)
+	}
+	return value
 }
 
 func completeEqualAllocation(input *ledger.AllocationInput, members []household.MembershipID) {

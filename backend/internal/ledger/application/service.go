@@ -40,6 +40,7 @@ func NewService(r FactsRepository, w JournalWriter, now func() calendar.Instant,
 
 type AllocationResolver interface {
 	Resolve(context.Context, household.Principal, string, string) (ledger.AllocationInput, bool, error)
+	ResolveSource(context.Context, household.Principal, string) (ledger.AllocationInput, bool, error)
 	ActiveMemberIDs(context.Context, household.Principal) ([]household.MembershipID, error)
 }
 

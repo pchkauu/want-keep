@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -21,11 +22,14 @@ type SourceRepository interface {
 	EmitEvent(context.Context, string, string, uint64, string) error
 }
 type Sources struct {
-	repository SourceRepository
-	writer     JournalWriter
+	repository  SourceRepository
+	writer      JournalWriter
+	allocations AllocationResolver
 }
 
-func NewSources(r SourceRepository, w JournalWriter) *Sources { return &Sources{r, w} }
+func NewSources(r SourceRepository, w JournalWriter, allocations AllocationResolver) *Sources {
+	return &Sources{repository: r, writer: w, allocations: allocations}
+}
 
 // Apply belongs inside CommitPage's transaction, after the deployment and lease fences.
 func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger.SourceInput) (ledger.SourceOutcome, error) {
@@ -134,6 +138,22 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 			if e != nil {
 				return result, e
 			}
+			if !found && raw.Allocation.State == "" && s.allocations != nil {
+				allocation, matched, resolveErr := s.allocations.ResolveSource(ctx, p, raw.Merchant)
+				if resolveErr != nil {
+					return result, fmt.Errorf("resolve source allocation: %w", resolveErr)
+				}
+				if matched {
+					members, membersErr := s.allocations.ActiveMemberIDs(ctx, p)
+					if membersErr != nil {
+						return result, fmt.Errorf("load source allocation members: %w", membersErr)
+					}
+					raw, resolveErr = raw.WithAllocation(allocation, nil, members)
+					if resolveErr != nil {
+						return result, fmt.Errorf("apply source allocation: %w", resolveErr)
+					}
+				}
+			}
 			if posting.Funding == "" {
 				raw.Postings[i].Funding = ledger.OwnFunds
 				if a.Product == "credit_card" {
@@ -183,16 +203,17 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		validation.Participation = ledger.Participation{}
 		validationErr := validation.CheckSuccessor(prior)
 		if found && errors.Is(validationErr, ledger.ErrInvalidAllocation) {
-			refreshed, refreshErr := r.RefreshAllocation()
+			refreshed, refreshErr := validation.RefreshAllocation()
 			_, allocationProtected := previous.Protections[ledger.AllocationField]
 			removesProtectedAllocation := allocationProtected && previous.Allocation.State != ledger.AllocationNotApplicable && refreshed.Allocation.State == ledger.AllocationNotApplicable
 			if refreshErr == nil && !removesProtectedAllocation {
-				r = refreshed
+				if copyErr := r.CopyField(refreshed, ledger.AllocationField); copyErr != nil {
+					return result, copyErr
+				}
 				if !previous.FieldEqual(r, ledger.AllocationField) {
 					r.FieldVersions[ledger.AllocationField] = r.Revision
 				}
-				validation = r.Clone()
-				validation.Participation = ledger.Participation{}
+				validation = refreshed
 				validationErr = validation.CheckSuccessor(prior)
 			}
 		}

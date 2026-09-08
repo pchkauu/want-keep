@@ -18,6 +18,7 @@ type Repository interface {
 	ActiveMemberships(context.Context, household.Principal) ([]household.Membership, error)
 	Category(context.Context, household.Principal, string) (category.Category, error)
 	Merchant(context.Context, household.Principal, string) (category.Merchant, error)
+	MerchantAliasOwner(context.Context, household.Principal, string, string) (string, error)
 	EmitEvent(context.Context, string, string, uint64, string) error
 }
 

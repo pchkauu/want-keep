@@ -4,11 +4,16 @@ package familyallocation_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
+	allocationapp "github.com/pchkauu/want-keep/backend/internal/allocation/application"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
+	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	"github.com/pchkauu/want-keep/backend/internal/delivery/http/generated"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	journal "github.com/pchkauu/want-keep/backend/internal/ledger/application"
@@ -68,6 +73,67 @@ func TestFamilyAllocationHTTPRulesAndExactAssets(t *testing.T) {
 	second.call(http.MethodGet, "/allocation-rules?limit=1&cursor="+url.QueryEscape(*page.NextCursor), "", nil, http.StatusBadRequest)
 }
 
+func TestNewImportedFactUsesConfirmedMerchantAliasRule(t *testing.T) {
+	fixture := newFixture(t)
+	first := fixture.client(fixture.p)
+	merchant := decode[generated.CommandSucceeded](t, first.call(http.MethodPost, "/merchants", uuid.NewString(), map[string]any{"name": "Synthetic market", "aliases": []string{"Market statement alias"}}, http.StatusAccepted))
+	createRule(t, first, merchant.Result.Id, 20, "60", "40")
+	accountID := fixture.account(money.RUB, "1000")
+	amount, _ := money.NewMoney("-100", money.RUB)
+	revision := ledger.Revision{OperationID: uuid.NewString(), Revision: 1, Reason: "Imported expense", Type: ledger.Expense, State: ledger.Posted, OccurredAt: fixture.now, FeeKnowledge: ledger.KnownFees, Merchant: "  MARKET statement   alias ", PayerState: "unknown", Postings: []ledger.Posting{{AccountID: accountID, Money: amount, Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}}}
+	zone, _ := calendar.ParseTimezone("Europe/Moscow")
+	revision, err := revision.InTimezone(zone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gate := fixture.admittedImport()
+	connectionID := fixture.importConnection()
+	issued := fixture.issuedImport(gate, connectionID)
+	input := ledger.SourceInput{Key: ledger.SourceKey{HouseholdID: fixture.family.ID, Provider: "raiffeisen", ExternalAccountID: "synthetic", Product: "current", Log: "transactions", RecordID: uuid.NewString()}, PayloadHash: strings.Repeat("a", 64), EvidenceRef: "synthetic-evidence", ConnectionID: connectionID, JobID: issued.ID, FetchedAt: fixture.now, Classification: "new", Operation: &revision}
+	sources := journal.NewSources(fixture.store, journal.NewWriter(fixture.store, fixture.store), allocationapp.NewService(fixture.store, uuid.NewString))
+	applied, err := gate.CommitPage(testContext, fixture.p, issued, admission.Page{EvidenceRef: input.EvidenceRef, Coverage: "complete", Complete: true}, func(ctx context.Context) error {
+		_, err := sources.Apply(ctx, fixture.p, input)
+		return err
+	})
+	if err != nil || !applied {
+		t.Fatal(err)
+	}
+	stored, found, err := fixture.store.CurrentLedgerRevision(testContext, fixture.p, revision.OperationID)
+	if err != nil || !found || stored.Allocation.Origin != ledger.AllocationRule {
+		t.Fatalf("source rule allocation: found=%v allocation=%+v err=%v", found, stored.Allocation, err)
+	}
+	if storedMemberTotal(stored.Allocation, fixture.members[0].ID, money.RUB) != "60" || storedMemberTotal(stored.Allocation, fixture.members[1].ID, money.RUB) != "40" {
+		t.Fatalf("source allocation members = %+v", stored.Allocation.Members)
+	}
+}
+
+func TestAllocationConditionRepositoryFailureIsNotAStoredBusinessRejection(t *testing.T) {
+	fixture := newFixture(t)
+	first := fixture.client(fixture.p)
+	merchant := decode[generated.CommandSucceeded](t, first.call(http.MethodPost, "/merchants", uuid.NewString(), map[string]any{"name": "Repository failure merchant", "aliases": []string{}}, http.StatusAccepted))
+	err := fixture.store.WithinHousehold(testContext, fixture.p, func(transactionContext context.Context) error {
+		ctx, cancel := context.WithCancel(transactionContext)
+		cancel()
+		_, previewErr := allocationapp.NewService(fixture.store, uuid.NewString).Preview(ctx, fixture.p, merchant.Result.Id, "")
+		if !errors.Is(previewErr, context.Canceled) {
+			t.Fatalf("repository failure classified as %v", previewErr)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func storedMemberTotal(snapshot ledger.AllocationSnapshot, memberID household.MembershipID, asset money.Asset) string {
+	for _, member := range snapshot.Members {
+		if member.MemberID == memberID && member.Money.Asset() == asset {
+			return member.Money.Amount()
+		}
+	}
+	return "0"
+}
+
 func TestMixedReceiptDirectAllocationAndValidation(t *testing.T) {
 	fixture := newFixture(t)
 	first := fixture.client(fixture.p)
@@ -105,6 +171,10 @@ func TestMixedReceiptDirectAllocationAndValidation(t *testing.T) {
 		t.Fatalf("mixed allocation: %+v", revision.Allocation)
 	}
 	assertMemberAmounts(t, fixture, revision.Allocation, "400", "600")
+	stored, found, err := fixture.store.CurrentLedgerRevision(testContext, fixture.p, created.Result.Id)
+	if err != nil || !found || stored.Allocation.Fallback == nil {
+		t.Fatalf("composite fallback round trip: found=%v fallback=%+v err=%v", found, stored.Allocation.Fallback, err)
+	}
 	if revision.Postings[0].Money.Amount != "-1000" {
 		t.Fatal("analytical allocation changed family posting")
 	}

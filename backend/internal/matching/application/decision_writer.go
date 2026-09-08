@@ -96,6 +96,7 @@ func (s *Service) AppendDecision(ctx context.Context, p household.Principal, d l
 			for _, r := range assigned {
 				index := slices.IndexFunc(next, func(v ledger.Revision) bool { return v.OperationID == r.OperationID })
 				if index >= 0 {
+					allocationChanged := !next[index].FieldEqual(r, ledger.AllocationField)
 					if !next[index].FieldEqual(r, ledger.MatchingField) {
 						field := ledger.ContributionField
 						if !next[index].Participation.SameCarriers(r.Participation) {
@@ -108,19 +109,36 @@ func (s *Service) AppendDecision(ctx context.Context, p household.Principal, d l
 						}
 						r.FieldVersions[field] = r.Revision
 					}
+					if allocationChanged {
+						for i, e := range d.Entries {
+							if e.OperationID == r.OperationID && !slices.Contains(e.Fields, ledger.AllocationField) {
+								d.Entries[i].Fields = append(d.Entries[i].Fields, ledger.AllocationField)
+							}
+						}
+						r.FieldVersions[ledger.AllocationField] = r.Revision
+					}
 					next[index] = r
 				} else {
 					old, _, err := s.repository.CurrentLedgerRevision(ctx, p, r.OperationID)
 					if err != nil {
 						return err
 					}
-					if !r.FieldEqual(old, ledger.MatchingField) {
+					matchingChanged := !r.FieldEqual(old, ledger.MatchingField)
+					allocationChanged := !r.FieldEqual(old, ledger.AllocationField)
+					if matchingChanged || allocationChanged {
+						fields := []ledger.Field{}
 						field := ledger.ContributionField
 						if !old.Participation.SameCarriers(r.Participation) {
 							field = ledger.MatchingField
 						}
-						d.Entries = append(d.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: []ledger.Field{field}})
-						r = r.WithDecision(d, []ledger.Field{field})
+						if matchingChanged {
+							fields = append(fields, field)
+						}
+						if allocationChanged {
+							fields = append(fields, ledger.AllocationField)
+						}
+						d.Entries = append(d.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: fields})
+						r = matchingDecisionRevision(r, old, d, fields)
 						next = append(next, r)
 					}
 				}

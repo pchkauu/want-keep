@@ -122,7 +122,11 @@ func (r *Revision) CopyField(from Revision, field Field) error {
 }
 
 func allocationEqual(a, b AllocationSnapshot) bool {
+	a, b = a.Clone(), b.Clone()
 	if a.State != b.State || a.Purpose != b.Purpose || a.Mode != b.Mode || a.Origin != b.Origin || a.Reason != b.Reason || len(a.Inputs) != len(b.Inputs) || len(a.Members) != len(b.Members) || len(a.Unallocated) != len(b.Unallocated) || !slices.Equal(a.RuleRefs, b.RuleRefs) {
+		return false
+	}
+	if (a.Fallback == nil) != (b.Fallback == nil) || a.Fallback != nil && !allocationInputEqual(*a.Fallback, *b.Fallback) {
 		return false
 	}
 	for i := range a.Inputs {
@@ -138,6 +142,20 @@ func allocationEqual(a, b AllocationSnapshot) bool {
 	}
 	for i := range a.Unallocated {
 		if a.Unallocated[i].Asset() != b.Unallocated[i].Asset() || a.Unallocated[i].Amount() != b.Unallocated[i].Amount() {
+			return false
+		}
+	}
+	return true
+}
+
+func allocationInputEqual(a, b AllocationInput) bool {
+	a, b = cloneAllocationInput(a), cloneAllocationInput(b)
+	if a.Mode != b.Mode || a.Purpose != b.Purpose || a.Reason != b.Reason || a.Origin != b.Origin || len(a.Members) != len(b.Members) || !slices.Equal(a.RuleRefs, b.RuleRefs) {
+		return false
+	}
+	for i := range a.Members {
+		left, right := a.Members[i], b.Members[i]
+		if left.MemberID != right.MemberID || left.Share != right.Share || (left.Amount == nil) != (right.Amount == nil) || left.Amount != nil && (left.Amount.Asset() != right.Amount.Asset() || left.Amount.Amount() != right.Amount.Amount()) {
 			return false
 		}
 	}
