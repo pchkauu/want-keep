@@ -36,7 +36,7 @@ func (s *Store) InitializeHousehold(ctx context.Context, h household.Household, 
 				return err
 			}
 		}
-		return nil
+		return s.insertStarterCategories(ctx, scope, h.ID)
 	})
 }
 func (s *Store) AddMember(ctx context.Context, user household.User, m household.Membership) error {

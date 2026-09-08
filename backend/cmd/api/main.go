@@ -20,10 +20,12 @@ import (
 	"github.com/pchkauu/want-keep/backend/internal/attachments/files"
 	"github.com/pchkauu/want-keep/backend/internal/attachments/processor"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
+	categories "github.com/pchkauu/want-keep/backend/internal/categories/application"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	accountdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/accounts"
 	attachmentdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/attachments"
+	categorydelivery "github.com/pchkauu/want-keep/backend/internal/delivery/categories"
 	delivery "github.com/pchkauu/want-keep/backend/internal/delivery/identity"
 	ledgerdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/ledger"
 	reconciliationdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/reconciliation"
@@ -124,6 +126,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	categoryHandler, err := categorydelivery.New(categories.NewService(database, uuid.NewString), executor, queries, service, database, config, now)
+	if err != nil {
+		return err
+	}
 	mux := http.NewServeMux()
 	mux.Handle("/api/v1/transactions", ledgerHandler)
 	mux.Handle("/api/v1/transactions/", ledgerHandler)
@@ -132,6 +138,10 @@ func run() error {
 	mux.Handle("/api/v1/reconciliations/", reconciliationHandler)
 	mux.Handle("/api/v1/accounts", accountHandler)
 	mux.Handle("/api/v1/accounts/", accountHandler)
+	mux.Handle("/api/v1/categories", categoryHandler)
+	mux.Handle("/api/v1/categories/", categoryHandler)
+	mux.Handle("/api/v1/merchants", categoryHandler)
+	mux.Handle("/api/v1/merchants/", categoryHandler)
 	mux.Handle("/api/v1/commands/", accountHandler)
 	mux.Handle("/api/v1/attachments", attachmentHandler)
 	mux.Handle("/api/v1/attachments/", attachmentHandler)

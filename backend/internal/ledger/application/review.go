@@ -22,6 +22,7 @@ type ReviewResult struct {
 	State, Rationale, PayloadHash string
 	At                            calendar.Instant
 	Evidence                      []ledger.Evidence
+	Proposal                      *ledger.ClassificationProposal
 }
 type ReviewRepository interface {
 	ReviewResult(context.Context, household.Principal, string, uint64) (ReviewResult, bool, error)
@@ -33,6 +34,7 @@ type ReviewInput struct {
 	State, Rationale string
 	Correction       *ledger.Correction
 	Evidence         []ledger.Evidence
+	Proposal         *ledger.ClassificationProposal
 }
 
 // CompleteReview accepts a result from a trusted worker in a household transaction.
@@ -60,11 +62,15 @@ func (s *Service) CompleteReview(ctx context.Context, p household.Principal, in 
 		Merchant, Note   *string
 		Payer            *ledger.PayerChange
 		Evidence         []ledger.Evidence
+		Proposal         *classificationProposalPayload
 	}{State: in.State, Rationale: in.Rationale, Evidence: in.Evidence}
 	if in.Correction != nil {
 		payload.Merchant = in.Correction.Merchant
 		payload.Note = in.Correction.Note
 		payload.Payer = in.Correction.Payer
+	}
+	if in.Proposal != nil {
+		payload.Proposal = proposalPayload(in.Proposal)
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -92,7 +98,17 @@ func (s *Service) CompleteReview(ctx context.Context, p household.Principal, in 
 	if current.Revision != in.Revision {
 		return commands.Rejection{Code: "version_conflict"}
 	}
-	if err = s.repository.SaveReviewResult(ctx, ReviewResult{OperationID: in.OperationID, Revision: in.Revision, ActorID: p.UserID(), State: in.State, Rationale: in.Rationale, PayloadHash: digest, At: s.now(), Evidence: in.Evidence}); err != nil {
+	if in.Proposal != nil {
+		if err = in.Proposal.ValidateFor(current); err != nil {
+			return s.reject(err)
+		}
+		candidate := current.Clone()
+		candidate.CategoryID, candidate.MerchantID, candidate.ReceiptItems = in.Proposal.CategoryID, in.Proposal.MerchantID, slices.Clone(in.Proposal.ReceiptItems)
+		if err = s.requireActiveClassification(ctx, p, candidate); err != nil {
+			return err
+		}
+	}
+	if err = s.repository.SaveReviewResult(ctx, ReviewResult{OperationID: in.OperationID, Revision: in.Revision, ActorID: p.UserID(), State: in.State, Rationale: in.Rationale, PayloadHash: digest, At: s.now(), Evidence: in.Evidence, Proposal: in.Proposal}); err != nil {
 		return err
 	}
 	if in.Correction != nil {
@@ -104,4 +120,22 @@ func (s *Service) CompleteReview(ctx context.Context, p household.Principal, in 
 		}
 	}
 	return nil
+}
+
+type classificationProposalPayload struct {
+	CategoryID, MerchantID, MerchantAlias string
+	Items                                 []classificationItemPayload
+}
+
+type classificationItemPayload struct {
+	ID, Name, Quantity, CategoryID string
+	Gross, Discount, Asset         string
+}
+
+func proposalPayload(value *ledger.ClassificationProposal) *classificationProposalPayload {
+	out := &classificationProposalPayload{CategoryID: value.CategoryID, MerchantID: value.MerchantID, MerchantAlias: value.MerchantAlias}
+	for _, item := range value.ReceiptItems {
+		out.Items = append(out.Items, classificationItemPayload{ID: item.ID, Name: item.Name, Quantity: item.Quantity, CategoryID: item.CategoryID, Gross: item.Gross.Amount(), Discount: item.Discount.Amount(), Asset: string(item.Gross.Asset())})
+	}
+	return out
 }

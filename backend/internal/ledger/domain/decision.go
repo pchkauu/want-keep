@@ -16,18 +16,21 @@ var ErrNoChange = errors.New("correction has no effect")
 type Field string
 
 const (
-	PrincipalField  Field = "principal"
-	FeesField       Field = "fees"
-	DateField       Field = "occurred_at"
-	PayerField      Field = "payer"
-	MerchantField   Field = "merchant"
-	NoteField       Field = "note"
-	AccountingField Field = "accounting"
-	LegacyField     Field = "legacy_all"
+	PrincipalField    Field = "principal"
+	FeesField         Field = "fees"
+	DateField         Field = "occurred_at"
+	PayerField        Field = "payer"
+	MerchantField     Field = "merchant"
+	NoteField         Field = "note"
+	AccountingField   Field = "accounting"
+	CategoryField     Field = "category"
+	MerchantIDField   Field = "merchant_identity"
+	ReceiptItemsField Field = "receipt_items"
+	LegacyField       Field = "legacy_all"
 )
 
 func (f Field) Valid() bool {
-	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, LegacyField}, f)
+	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, CategoryField, MerchantIDField, ReceiptItemsField, LegacyField}, f)
 }
 
 type AccountingState string
@@ -47,11 +50,13 @@ type PayerChange struct {
 	MemberID household.MembershipID
 }
 type Correction struct {
-	Principal      *[]Posting
-	Fees           *[]Posting
-	OccurredAt     *calendar.Instant
-	Payer          *PayerChange
-	Merchant, Note *string
+	Principal              *[]Posting
+	Fees                   *[]Posting
+	OccurredAt             *calendar.Instant
+	Payer                  *PayerChange
+	Merchant, Note         *string
+	CategoryID, MerchantID *string
+	ReceiptItems           *ReceiptItemsCorrection
 }
 
 type DecisionEntry struct {
@@ -109,6 +114,7 @@ func (d Decision) Validate() error {
 
 func (r Revision) Clone() Revision {
 	r.Postings = slices.Clone(r.Postings)
+	r.ReceiptItems = slices.Clone(r.ReceiptItems)
 	r.Protections = maps.Clone(r.Protections)
 	if r.Protections == nil {
 		r.Protections = map[Field]Protection{}

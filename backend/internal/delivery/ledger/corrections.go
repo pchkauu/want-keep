@@ -39,7 +39,7 @@ func (s *Server) correct(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, err)
 		return
 	}
-	if in.CategoryId != nil || in.Allocation != nil {
+	if in.Allocation != nil {
 		s.problem(w, ledger.ErrFeatureUnavailable)
 		return
 	}
@@ -152,7 +152,81 @@ func (s *Server) correctionInput(in generated.TransactionCorrection) (ledger.Cor
 		}
 		c.Fees = &p
 	}
+	if in.Category != nil {
+		value, err := classificationReference(*in.Category)
+		if err != nil {
+			return c, err
+		}
+		c.CategoryID = &value
+	}
+	if in.MerchantIdentity != nil {
+		value, err := classificationReference(*in.MerchantIdentity)
+		if err != nil {
+			return c, err
+		}
+		c.MerchantID = &value
+	}
+	if in.ReceiptItems != nil {
+		change, err := s.receiptItemsCorrection(*in.ReceiptItems)
+		if err != nil {
+			return c, err
+		}
+		c.ReceiptItems = &change
+	}
 	return c, nil
+}
+
+func classificationReference(in generated.ClassificationReferenceChange) (string, error) {
+	switch in.Action {
+	case "set":
+		if in.Id == nil {
+			return "", contract.ErrInvalidRequest
+		}
+		return *in.Id, nil
+	case "clear":
+		if in.Id != nil {
+			return "", contract.ErrInvalidRequest
+		}
+		return "", nil
+	default:
+		return "", contract.ErrInvalidRequest
+	}
+}
+
+func (s *Server) receiptItemsCorrection(in generated.ReceiptItemsChange) (ledger.ReceiptItemsCorrection, error) {
+	if in.Action == "clear" {
+		if in.Items != nil || in.TotalDiscount != nil {
+			return ledger.ReceiptItemsCorrection{}, contract.ErrInvalidRequest
+		}
+		return ledger.ReceiptItemsCorrection{Clear: true}, nil
+	}
+	if in.Action != "replace" || in.Items == nil || in.TotalDiscount == nil {
+		return ledger.ReceiptItemsCorrection{}, contract.ErrInvalidRequest
+	}
+	total, err := money.NewMoney(in.TotalDiscount.Amount, money.Asset(in.TotalDiscount.Asset))
+	if err != nil {
+		return ledger.ReceiptItemsCorrection{}, err
+	}
+	change := ledger.ReceiptItemsCorrection{TotalDiscount: total}
+	for _, item := range *in.Items {
+		gross, err := money.NewMoney(item.Gross.Amount, money.Asset(item.Gross.Asset))
+		if err != nil {
+			return ledger.ReceiptItemsCorrection{}, err
+		}
+		entry := ledger.ReceiptItemInput{ID: item.Id, Name: item.Name, Quantity: item.Quantity, Gross: gross}
+		if item.CategoryId != nil {
+			entry.CategoryID = *item.CategoryId
+		}
+		if item.Discount != nil {
+			discount, err := money.NewMoney(item.Discount.Amount, money.Asset(item.Discount.Asset))
+			if err != nil {
+				return ledger.ReceiptItemsCorrection{}, err
+			}
+			entry.Discount = &discount
+		}
+		change.Items = append(change.Items, entry)
+	}
+	return change, nil
 }
 func (s *Server) correctionPostings(in []generated.Posting) ([]ledger.Posting, error) {
 	out := make([]ledger.Posting, 0, len(in))

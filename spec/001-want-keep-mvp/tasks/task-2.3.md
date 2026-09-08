@@ -33,13 +33,13 @@
 
 **Вопрос:** Правильно ли учтена эта покупка?
 
-**Главный ответ:** Сумма, назначение, плательщик и доли одной операции.
+**Главный ответ:** Сумма, категория, продавец, позиции, назначение и плательщик одной операции.
 
-**Структура сверху вниз:** Результат учёта → счёт/дата/статус → личные/общие доли → чек → исправить/возврат.
+**Структура сверху вниз:** Результат учёта → счёт/дата/статус → category/merchant → позиции gross/discount/net → доли → чек → исправить/отменить/возврат.
 
 **Следующее действие:** Исправить FORM-06/07, вернуть FORM-08, явный долг FORM-09; чек → SCR-011.
 
-**Объяснение и детализация:** История до/после с автором, временем, decisionId и основаниями; отдельные банковское и учётное состояния. Защищённые поля сравниваются с нормализованным источником; review показывает безопасное обоснование и ссылки на evidence. Для выбранного решения видны возможность undo и причина отказа.
+**Объяснение и детализация:** История до/после показывает автора, время, decisionId, основание, банковское и учётное состояния, classification, защищённые поля, origin и selective undo. Raw merchant источника отделён от merchantId; AI proposal виден как предложение и не меняет факт без команды.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -49,9 +49,9 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-06 — Исправление, сопоставление и отмена
 
-**Поля:** Операция, expectedRevision, основание; полный principal и отдельные fees, дата покупки, payer, merchant/note. Пропуск сохраняет поле, пустой текст очищает. Undo: decisionId и expectedRevisions всех участников; исключение — отдельное действие. Сравнение до/после и с источником.
+**Поля:** Операция, expectedRevision, основание; полный principal и fees, дата, payer, raw merchant/note; category и merchant identity через set|clear, позиции через replace|clear. Undo: decisionId и expectedRevisions; сравнение до/после и с источником.
 
-**Проверки и права:** Оба участника исправляют факты. Сервер сохраняет счета/активы principal, проверяет группы сумм, права, версии и происхождение; actor не задаётся формой. Undo сохраняет поздние независимые поля и отвергает пересечение/ABA. Сопоставление, категории и доли активируются профильными задачами.
+**Проверки и права:** Оба участника исправляют семейные факты. Сервер сохраняет actor, счета/активы principal и происхождение, проверяет активные категории/продавцов и меняет полный item set атомарно. Позиции и скидки точно равны principal; top-level category с позициями запрещена. Undo сохраняет поздние независимые поля. Сопоставление и доли остаются профильным задачам.
 
 **Результат:** Новое решение и финансовые revisions с историей, либо no_change/conflict без эффекта и потери ввода. Исключение не меняет банковский статус; undo пересчитывает текущий эффект.
 
@@ -59,7 +59,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Поля:** Фото/PDF, обязательный счёт списания включая наличные; позиции, скидки, категории, personal/shared и доли % или суммы.
 
-**Проверки и права:** Оба member; лимиты файлов по контракту, позиции/скидки/доли точно равны оплате. Неоднозначность уточняется; AI не исполняет инструкции файла.
+**Проверки и права:** Оба участника; лимиты файлов по контракту. Task-2.6 атомарно проверяет позиции, активы и скидки против одной оплаты, распределяет известную общую скидку детерминированно и требует уточнение при неполных данных. OCR/PDF, сопоставление и personal/shared доли выполняют task-5.3/2.4/2.8.
 
 **Результат:** Создано/связано с существующим/ожидает уточнения/документ не подходит с причиной. Одно подтверждённое списание.
 
@@ -227,13 +227,13 @@ Decisions correct the complete principal group, separate fees, purchase time, pa
 
 **Question:** Is this purchase accounted for correctly?
 
-**Primary answer:** Amount, purpose, payer and shares of one transaction.
+**Primary answer:** Amount, category, merchant, items, allocation and payer for one transaction.
 
-**Top-down structure:** Accounting outcome → account/date/status → personal/shared shares → receipt → correction/refund.
+**Top-down structure:** Accounting outcome → account/date/status → category/merchant → item gross/discount/net → shares → receipt → correct/undo/refund.
 
 **Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
 
-**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason.
+**Explanation and details:** Before/after history shows actor, time, decisionId, rationale, bank and accounting states, classification, protected fields, origin and selective undo. Raw source merchant is separate from merchantId; an AI proposal remains a proposal and cannot change the fact without a command.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -243,9 +243,9 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-06 — Correction, matching and undo
 
-**Fields:** Transaction, expectedRevision and reason; complete principal and separate fees, purchase time, payer, merchant/note. Omission retains a field; empty text clears it. Undo: decisionId and all participant expectedRevisions; exclusion is a separate action. Compare before/after and source values.
+**Fields:** Transaction, expectedRevision and reason; complete principal and fees, date, payer, raw merchant/note; category and merchant identity via set|clear, items via replace|clear. Undo uses decisionId and expectedRevisions; compare before/after and source.
 
-**Validation and permissions:** Both members correct facts. The server preserves principal accounts/assets and validates monetary groups, rights, versions and provenance; the form cannot assign actor. Undo preserves later independent fields and rejects overlaps/ABA. Matching, categories and shares are activated by their owning tasks.
+**Validation and permissions:** Both members correct household facts. The server retains actor, principal accounts/assets and provenance, validates active categories/merchants and replaces the complete item set atomically. Items and discounts equal principal exactly; top-level category with items is forbidden. Undo preserves later independent fields. Matching and shares remain with their owning tasks.
 
 **Outcome:** New decision and financial revisions with history, or no_change/conflict without effect or lost input. Exclusion does not change bank state; undo recomputes the current effect.
 
@@ -253,7 +253,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Fields:** Photo/PDF, required debit account including cash; items, discounts, categories, personal/shared and percentage or amount shares.
 
-**Validation and permissions:** Either member; file limits from contract, items/discounts/shares exactly equal payment. Ambiguity requires clarification; AI never executes file instructions.
+**Validation and permissions:** Either member; file limits follow the contract. Task-2.6 atomically validates items, assets and discounts against one payment, allocates a known receipt-wide discount deterministically and requires clarification for incomplete data. Task-5.3/2.4/2.8 own OCR/PDF, matching and personal/shared shares.
 
 **Outcome:** Created/linked to existing/awaiting clarification/document unsuitable with reason. One confirmed debit.
 

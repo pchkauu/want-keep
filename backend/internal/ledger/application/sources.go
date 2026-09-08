@@ -43,6 +43,7 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		raw.Protections = map[ledger.Field]ledger.Protection{}
 		raw.FieldVersions = map[ledger.Field]uint64{}
 		raw.AccountingState = ledger.IncludedInAccounting
+		raw.CategoryID, raw.MerchantID, raw.ReceiptItems = "", "", nil
 		raw.DecisionID, raw.ReviewState = "", ""
 		input.Operation = &raw
 	}

@@ -88,6 +88,40 @@ func (r Revision) Correct(c Correction) (Revision, []Field, error) {
 			fields = append(fields, NoteField)
 		}
 	}
+	if c.CategoryID != nil {
+		if r.Type != Expense {
+			return r, nil, ErrFeatureUnavailable
+		}
+		next.CategoryID = *c.CategoryID
+		if !r.FieldEqual(next, CategoryField) {
+			fields = append(fields, CategoryField)
+		}
+	}
+	if c.MerchantID != nil {
+		if r.Type != Expense {
+			return r, nil, ErrFeatureUnavailable
+		}
+		next.MerchantID = *c.MerchantID
+		if !r.FieldEqual(next, MerchantIDField) {
+			fields = append(fields, MerchantIDField)
+		}
+	}
+	if c.ReceiptItems != nil {
+		if r.Type != Expense {
+			return r, nil, ErrFeatureUnavailable
+		}
+		items, err := c.ReceiptItems.Build(next)
+		if err != nil {
+			return r, nil, err
+		}
+		next.ReceiptItems = items
+		if !r.FieldEqual(next, ReceiptItemsField) {
+			fields = append(fields, ReceiptItemsField)
+		}
+	}
+	if err := next.validateClassification(); err != nil {
+		return r, nil, err
+	}
 	if len(fields) == 0 {
 		return r, nil, ErrNoChange
 	}

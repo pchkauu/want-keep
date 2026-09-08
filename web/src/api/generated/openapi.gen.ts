@@ -842,6 +842,41 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/merchants": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List household merchants and confirmed aliases */
+    get: operations["merchants_list"];
+    put?: never;
+    /** Create a household merchant with confirmed aliases */
+    post: operations["merchants_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/merchants/{merchantId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Change merchant name, state or confirmed aliases atomically */
+    post: operations["merchants_change"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/notifications": {
     parameters: {
       query?: never;
@@ -1491,7 +1526,7 @@ export interface paths {
     put?: never;
     /**
      * Record a confirmed manual income or expense
-     * @description Household fact is posted even when allocation is unresolved. Category and resolved allocation requests return feature_unavailable until their owning tasks ship; fields are never ignored. Cash date follows the purchase in household timezone. Inputs cannot set actor, household, state or AI status.
+     * @description Household fact is posted even when member allocation is unresolved. Active household category and merchant references may be confirmed at creation. Receipt item sets are created through corrections so their replacement and audit are atomic. Cash date follows the purchase in household timezone. Inputs cannot set actor, household, state or AI status.
      */
     post: operations["transactions_create"];
     delete?: never;
@@ -1938,15 +1973,36 @@ export interface components {
       lastFour: string;
     };
     Category: {
+      customName?: string;
       id: components["schemas"]["ID"];
+      labels?: components["schemas"]["LocalizedCategoryName"];
       name: string;
+      /** @enum {string} */
+      origin: "starter" | "custom";
       parentId?: components["schemas"]["ID"];
       revision: components["schemas"]["Revision"];
+      starterKey?: string;
+      /** @enum {string} */
+      state: "active" | "archived";
     };
     CategoryChange: {
-      category: components["schemas"]["CategoryInput"];
       expectedRevision: components["schemas"]["Revision"];
-    };
+      /** @description A replacement name supplied only with nameAction set. */
+      name?: string;
+      /**
+       * @description When set is selected, name is required. restore_default requires name to be omitted.
+       * @enum {string}
+       */
+      nameAction?: "set" | "restore_default";
+      /**
+       * @description When set is selected, parentId is required. clear requires parentId to be omitted.
+       * @enum {string}
+       */
+      parentAction?: "set" | "clear";
+      parentId?: components["schemas"]["ID"];
+      /** @enum {string} */
+      state?: "active" | "archived";
+    } & (unknown | unknown | unknown);
     CategoryInput: {
       name: string;
       parentId?: components["schemas"]["ID"];
@@ -1973,6 +2029,18 @@ export interface components {
       items: components["schemas"]["Clarification"][];
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
+    };
+    ClassificationProposal: {
+      categoryId?: components["schemas"]["ID"];
+      merchantAlias?: string;
+      merchantId?: components["schemas"]["ID"];
+      receiptItems: components["schemas"]["ReceiptItem"][];
+    };
+    /** @description The set action requires id; clear forbids id. Delivery validates this typed invariant. */
+    ClassificationReferenceChange: {
+      /** @enum {string} */
+      action: "set" | "clear";
+      id?: components["schemas"]["ID"];
     };
     CommandFailed: {
       completedAt: components["schemas"]["Instant"];
@@ -2177,6 +2245,9 @@ export interface components {
       | "invalid_rate"
       | "invalid_time"
       | "invalid_allocation"
+      | "category_archived"
+      | "category_has_active_children"
+      | "merchant_alias_conflict"
       | "invalid_availability"
       | "version_conflict"
       | "decision_conflict"
@@ -2420,9 +2491,16 @@ export interface components {
       | "merchant"
       | "note"
       | "accounting"
+      | "category"
+      | "merchant_identity"
+      | "receipt_items"
       | "legacy_all";
     /** @enum {string} */
     Locale: "ru" | "en";
+    LocalizedCategoryName: {
+      en: string;
+      ru: string;
+    };
     LoginOptions: {
       attemptId: components["schemas"]["ID"];
       challenge: string;
@@ -2466,6 +2544,39 @@ export interface components {
       /** @enum {string} */
       status: "active" | "pending";
       userId: components["schemas"]["ID"];
+    };
+    Merchant: {
+      aliases: components["schemas"]["MerchantAlias"][];
+      id: components["schemas"]["ID"];
+      name: string;
+      revision: components["schemas"]["Revision"];
+      /** @enum {string} */
+      state: "active" | "archived";
+    };
+    MerchantAlias: {
+      id: components["schemas"]["ID"];
+      name: string;
+      /** @enum {string} */
+      origin: "user_confirmed" | "review_proposed";
+      /** @enum {string} */
+      state: "active" | "archived";
+    };
+    MerchantChange: {
+      aliasIdsToArchive?: components["schemas"]["ID"][];
+      aliasesToAdd?: string[];
+      expectedRevision: components["schemas"]["Revision"];
+      name?: string;
+      /** @enum {string} */
+      state?: "active" | "archived";
+    } & (unknown | unknown | unknown | unknown);
+    MerchantInput: {
+      aliases: string[];
+      name: string;
+    };
+    MerchantPage: {
+      items: components["schemas"]["Merchant"][];
+      nextCursor?: string;
+      quality: components["schemas"]["DataQuality"];
     };
     Message: {
       actorId: components["schemas"]["ID"];
@@ -2705,13 +2816,28 @@ export interface components {
       transactionId?: components["schemas"]["ID"];
     };
     ReceiptItem: {
-      allocation: components["schemas"]["ExpenseAllocation"];
       categoryId?: components["schemas"]["ID"];
       discount: components["schemas"]["Money"];
+      gross: components["schemas"]["Money"];
+      id: components["schemas"]["ID"];
+      name: string;
+      net: components["schemas"]["Money"];
+      quantity: components["schemas"]["PositiveDecimal"];
+    };
+    ReceiptItemInput: {
+      categoryId?: components["schemas"]["ID"];
+      discount?: components["schemas"]["Money"];
+      gross: components["schemas"]["PositiveMoney"];
       id: components["schemas"]["ID"];
       name: string;
       quantity: components["schemas"]["PositiveDecimal"];
-      total: components["schemas"]["Money"];
+    };
+    /** @description The replace action requires items and totalDiscount; clear forbids both. Delivery validates this typed invariant. */
+    ReceiptItemsChange: {
+      /** @enum {string} */
+      action: "replace" | "clear";
+      items?: components["schemas"]["ReceiptItemInput"][];
+      totalDiscount?: components["schemas"]["Money"];
     };
     Reconciliation: {
       accountId: components["schemas"]["ID"];
@@ -3052,6 +3178,7 @@ export interface components {
       householdId: components["schemas"]["ID"];
       id: components["schemas"]["ID"];
       merchant?: string;
+      merchantId?: components["schemas"]["ID"];
       note?: string;
       occurredAt: components["schemas"]["Instant"];
       /** @enum {string} */
@@ -3065,6 +3192,7 @@ export interface components {
       protectedFields: components["schemas"]["FieldProtection"][];
       quality: components["schemas"]["DataQuality"];
       receiptId?: components["schemas"]["ID"];
+      receiptItems: components["schemas"]["ReceiptItem"][];
       review?: components["schemas"]["TransactionReview"];
       revision: components["schemas"]["Revision"];
       sourceConflict: boolean;
@@ -3093,21 +3221,25 @@ export interface components {
       locked: components["schemas"]["AmountValue"];
       owned: components["schemas"]["AmountValue"];
     };
-    /** @description Omitted fields remain unchanged; empty merchant/note clears the value. No-op requests are rejected. Categories and allocation are explicitly unavailable until their owning tasks. */
+    /** @description Omitted fields remain unchanged; explicit actions distinguish clearing classification from no change. Receipt item replacement is atomic. Empty merchant/note clears source text. Member allocation remains unavailable until task-2.8. */
     TransactionCorrection: {
       allocation?: components["schemas"]["ExpenseAllocation"];
-      categoryId?: components["schemas"]["ID"];
+      category?: components["schemas"]["ClassificationReferenceChange"];
       expectedRevision: components["schemas"]["Revision"];
       /** @description Complete fee group; an empty list confirms no fee. Only negative movement fees are accepted. */
       fees?: components["schemas"]["Posting"][];
       merchant?: string;
+      merchantIdentity?: components["schemas"]["ClassificationReferenceChange"];
       note?: string;
       occurredAt?: components["schemas"]["Instant"];
       payer?: components["schemas"]["Payer"];
       /** @description Complete principal group in existing order. Accounts, assets, funding and treatment stay unchanged; signed exact amounts obey the economic type. */
       principal?: components["schemas"]["Posting"][];
       reason: string;
+      receiptItems?: components["schemas"]["ReceiptItemsChange"];
     } & (
+      | unknown
+      | unknown
       | unknown
       | unknown
       | unknown
@@ -3125,6 +3257,7 @@ export interface components {
       categoryId?: components["schemas"]["ID"];
       funding?: components["schemas"]["PostingFunding"];
       merchant?: string;
+      merchantId?: components["schemas"]["ID"];
       note?: string;
       occurredAt: components["schemas"]["Instant"];
       payer: components["schemas"]["Payer"];
@@ -3177,6 +3310,7 @@ export interface components {
     };
     TransactionReview: {
       actorId: components["schemas"]["ID"];
+      classificationProposal?: components["schemas"]["ClassificationProposal"];
       evidence: components["schemas"]["DecisionEvidence"][];
       rationale: string;
       recordedAt: components["schemas"]["Instant"];
@@ -4263,6 +4397,9 @@ export interface operations {
         /** @description Opaque, bound to family, visibility and filters. */
         cursor?: components["parameters"]["Cursor"];
         limit?: components["parameters"]["Limit"];
+        state?: "active" | "archived";
+        parentId?: components["schemas"]["ID"];
+        search?: string;
       };
       header?: never;
       path?: never;
@@ -5475,6 +5612,121 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  merchants_list: {
+    parameters: {
+      query?: {
+        /** @description Opaque, bound to family, visibility and filters. */
+        cursor?: components["parameters"]["Cursor"];
+        limit?: components["parameters"]["Limit"];
+        state?: "active" | "archived";
+        search?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MerchantPage"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  merchants_create: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Client-generated before submission. Unique within household + actor; same ID is used for status lookup. A different operation or payload with the same key is rejected. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+        /** @description Session-bound token; validate Origin as well. Exceptions use ceremony-bound challenge/state. */
+        "X-CSRF-Token": components["parameters"]["CSRF"];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MerchantInput"];
+      };
+    };
+    responses: {
+      /** @description Registered command; read the same command ID after an unknown result. */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommandStatus"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      410: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  merchants_change: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Client-generated before submission. Unique within household + actor; same ID is used for status lookup. A different operation or payload with the same key is rejected. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+        /** @description Session-bound token; validate Origin as well. Exceptions use ceremony-bound challenge/state. */
+        "X-CSRF-Token": components["parameters"]["CSRF"];
+      };
+      path: {
+        merchantId: components["schemas"]["ID"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MerchantChange"];
+      };
+    };
+    responses: {
+      /** @description Registered command; read the same command ID after an unknown result. */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommandStatus"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      410: components["responses"]["Problem"];
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];
@@ -6980,6 +7232,8 @@ export interface operations {
         from?: components["schemas"]["Date"];
         to?: components["schemas"]["Date"];
         categoryId?: components["schemas"]["ID"];
+        merchantId?: components["schemas"]["ID"];
+        itemSearch?: string;
         type?:
           | "income"
           | "expense"
