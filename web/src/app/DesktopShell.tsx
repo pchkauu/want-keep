@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/design-system/components/button";
 import { useIdentity } from "@/features/identity";
+import { HouseholdViewSelector, useHousehold } from "@/features/household";
 import { LanguageSwitch } from "@/locales/LanguageSwitch";
 import { useLocale } from "@/locales/locale";
 import type { MessageKey } from "@/locales/messages";
@@ -25,12 +26,13 @@ const links = [
   { path: "/analytics", key: "analytics", icon: ChartNoAxesCombinedIcon },
   { path: "/chat", key: "chat", icon: MessageCircleIcon },
   { path: "/connections", key: "connections", icon: PlugIcon },
-  { path: "/settings", key: "settings", icon: SettingsIcon },
+  { path: "/settings/household", key: "settings", icon: SettingsIcon },
 ] as const;
 
 export function DesktopShell() {
   const { t } = useLocale();
   const { member, controller } = useIdentity();
+  const household = useHousehold();
   const location = useLocation();
   const [expanded, setExpanded] = useState(false);
   const [offline, setOffline] = useState(() => !navigator.onLine);
@@ -39,12 +41,14 @@ export function DesktopShell() {
   const title: MessageKey =
     location.pathname === "/onboarding"
       ? "onboarding"
-      : location.pathname === "/settings/security"
-        ? "security"
-        : location.pathname === "/notifications"
-          ? "notifications"
-          : (links.find((link) => link.path === location.pathname)?.key ??
-            "notFound");
+      : location.pathname === "/settings/household"
+        ? "householdSettingsTitle"
+        : location.pathname === "/settings/security"
+          ? "security"
+          : location.pathname === "/notifications"
+            ? "notifications"
+            : (links.find((link) => link.path === location.pathname)?.key ??
+              "notFound");
   useEffect(() => {
     heading.current?.focus();
   }, [location.pathname]);
@@ -63,7 +67,11 @@ export function DesktopShell() {
         {t("skip")}
       </a>
       <aside className="desktop-sidebar">
-        <Link to="/overview" className="sidebar-brand" aria-label="Want Keep">
+        <Link
+          to={household.path("/overview")}
+          className="sidebar-brand"
+          aria-label="Want Keep"
+        >
           <img src="/brand/logo_512px.svg" width="32" height="36" alt="" />
           <span>WANT KEEP</span>
         </Link>
@@ -81,7 +89,7 @@ export function DesktopShell() {
           {links.map(({ path, key, icon: Icon }, index) => (
             <NavLink
               key={path}
-              to={path}
+              to={household.path(path)}
               className={`desktop-nav-link${index === 5 ? " desktop-nav-link--lower" : ""}`}
               title={t(key)}
               onClick={() => setExpanded(false)}
@@ -103,10 +111,11 @@ export function DesktopShell() {
             {t(title)}
           </h1>
           <div className="desktop-header__actions">
+            <HouseholdViewSelector />
             <LanguageSwitch />
             <Link
               className="icon-link"
-              to="/notifications"
+              to={household.path("/notifications")}
               aria-label={t("notifications")}
             >
               <BellIcon aria-hidden="true" />

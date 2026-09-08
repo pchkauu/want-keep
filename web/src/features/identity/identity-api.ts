@@ -2,8 +2,6 @@ import { ApiFailure, HttpClient } from "@/api/http";
 import type { components } from "@/api/generated/openapi.gen";
 import {
   assets,
-  type Household,
-  type Invitation,
   type InvitationPreview,
   type InviteProfile,
   type MemberSession,
@@ -155,51 +153,6 @@ export class IdentityApi {
           credentialName: name,
           credential,
         },
-      ),
-    );
-  }
-  async household(): Promise<Household> {
-    const dto = await this.http.json<Schema["Household"]>("/household");
-    return {
-      name: dto.name,
-      timezone: dto.timezone,
-      maximum: dto.maxActiveMembers,
-      members: dto.members.map((m) => ({ id: m.user.id, name: m.user.name })),
-    };
-  }
-  private invitation(dto: Schema["InvitationState"]): Invitation {
-    return {
-      revision: dto.revision,
-      ...(dto.current
-        ? {
-            current: {
-              id: dto.current.id,
-              expiresAt: dto.current.expiresAt,
-              status: dto.current.status,
-            },
-          }
-        : {}),
-    };
-  }
-  async invitations() {
-    return this.invitation(
-      await this.http.json<Schema["InvitationState"]>("/household/invitations"),
-    );
-  }
-  async issue(revision: number) {
-    const dto = await this.http.json<Schema["InvitationCreated"]>(
-      "/household/invitations",
-      "POST",
-      { expectedRevision: revision },
-    );
-    return { state: this.invitation(dto.state), token: dto.invitationToken };
-  }
-  async revoke(id: string, revision: number) {
-    return this.invitation(
-      await this.http.json<Schema["InvitationState"]>(
-        `/household/invitations/${encodeURIComponent(id)}/revoke`,
-        "POST",
-        { expectedRevision: revision },
       ),
     );
   }

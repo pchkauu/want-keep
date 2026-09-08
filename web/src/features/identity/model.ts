@@ -22,12 +22,6 @@ export type MemberSession = {
   idleExpiresAt: string;
   csrf: string;
 };
-export type Household = {
-  name: string;
-  timezone: string;
-  members: readonly { id: string; name: string }[];
-  maximum: number;
-};
 export type Setup = {
   name: string;
   householdName: string;
@@ -40,14 +34,6 @@ export type InviteProfile = {
   name: string;
   locale: Locale;
   reportingAsset: Asset;
-};
-export type Invitation = {
-  revision: number;
-  current?: {
-    id: string;
-    expiresAt: string;
-    status: "active" | "accepted" | "revoked";
-  };
 };
 export type InvitationPreview = {
   householdName: string;

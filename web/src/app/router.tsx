@@ -6,6 +6,7 @@ import { UnavailablePage } from "./UnavailablePage";
 import type { ApplicationServices } from "./services";
 import { LocaleProvider } from "@/locales/LocaleProvider";
 import { RouteLoading } from "./RouteLoading";
+import { HouseholdPage } from "@/features/household";
 
 export function createApplication(services: ApplicationServices) {
   return createBrowserRouter([
@@ -51,6 +52,7 @@ export function createApplication(services: ApplicationServices) {
               path: "/settings",
               element: <Navigate to="/settings/security" replace />,
             },
+            { path: "/settings/household", element: <HouseholdPage /> },
             { path: "/settings/security", element: <SecurityPage /> },
             { path: "*", element: <UnavailablePage notFound /> },
           ],

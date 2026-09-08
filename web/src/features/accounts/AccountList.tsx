@@ -1,10 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/design-system/components/button";
+import { Badge } from "@/design-system/components/badge";
+import type { HouseholdMember, HouseholdView } from "@/features/household";
 import { useLocale } from "@/locales/locale";
-import { CashAccount, type AccountSummary } from "./cash-account";
+import {
+  AccountCollection,
+  CashAccount,
+  type AccountSummary,
+} from "./cash-account";
 import type { AccountsApi } from "./accounts-api";
 
-export function AccountList({ api }: { api: AccountsApi }) {
+export function AccountList({
+  api,
+  view,
+  members,
+}: {
+  api: AccountsApi;
+  view: HouseholdView;
+  members: readonly HouseholdMember[];
+}) {
   const { t, locale } = useLocale();
   const [data, setData] = useState<{
     items: AccountSummary[];
@@ -41,27 +55,66 @@ export function AccountList({ api }: { api: AccountsApi }) {
       epoch.current = ticket + 1;
     };
   }, [api, attempt]);
+  const groups = data
+    ? AccountCollection.groups(data.items, view, members)
+    : [];
+  const visibleCount = groups.reduce(
+    (count, group) => count + group.items.length,
+    0,
+  );
+  const memberName = (id: string) =>
+    members.find((member) => member.userId === id)?.name ?? t("unknownMember");
   return (
     <section className="access-panel">
       <h2>{t("currentAccounts")}</h2>
       {!data && !failed && <p role="status">{t("pending")}</p>}
       {failed && <p role="alert">{t("service_unavailable")}</p>}
       {data?.items.length === 0 && <p>{t("noAccounts")}</p>}
-      <ul className="access-account-list">
-        {data?.items.map((account) => (
-          <li key={account.id}>
-            <span>{account.name}</span>
-            <span className="access-amount">
-              {account.amount !== undefined
-                ? CashAccount.display(account.amount, locale)
-                : t("unknownAmount")}{" "}
-              {account.asset}
-            </span>
-            {account.partial && <small>{t("partial")}</small>}
-            {account.stale && <small>{t("stale")}</small>}
-          </li>
+      {data && data.items.length > 0 && visibleCount === 0 && (
+        <p>{t("noAccountsInView")}</p>
+      )}
+      <div className="access-account-groups">
+        {groups.map((group) => (
+          <section key={group.key} className="access-account-group">
+            <h3>
+              {group.scope === "household"
+                ? t("householdAccounts")
+                : `${t("personalAccounts")} · ${group.owner?.name ?? t("unknownMember")}`}
+            </h3>
+            <ul className="access-account-list">
+              {group.items.map((account) => (
+                <li key={account.id}>
+                  <div className="account-heading">
+                    <span>{account.name}</span>
+                    <Badge>
+                      {account.ownership.scope === "household"
+                        ? t("householdOwnership")
+                        : `${t("personalOwnership")} · ${memberName(account.ownership.personalOwnerId)}`}
+                    </Badge>
+                  </div>
+                  <span className="access-amount">
+                    {account.amount !== undefined
+                      ? CashAccount.display(account.amount, locale)
+                      : t("unknownAmount")}{" "}
+                    {account.asset}
+                  </span>
+                  {account.externalAccountOwnerId && (
+                    <small>
+                      {t("platformOwner")}:{" "}
+                      {memberName(account.externalAccountOwnerId)}
+                    </small>
+                  )}
+                  {account.partial && <small>{t("partial")}</small>}
+                  {account.stale && <small>{t("stale")}</small>}
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
+      {view.view === "member" && data && visibleCount < data.items.length && (
+        <p className="account-filter-note">{t("accountFilterExplanation")}</p>
+      )}
       {data?.cursor && (
         <Button
           variant="secondary"

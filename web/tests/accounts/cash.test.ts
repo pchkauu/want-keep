@@ -17,6 +17,12 @@ const account = {
   amount: draft.amount,
   partial: false,
   stale: false,
+  revision: 1,
+  ownership: {
+    scope: "personal" as const,
+    householdId: "family",
+    personalOwnerId: "alex",
+  },
 };
 function fixture() {
   const api = new AccountsApi(new HttpClient());

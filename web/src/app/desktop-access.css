@@ -259,6 +259,23 @@
   align-items: center;
   flex-wrap: wrap;
 }
+.household-view-selector {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.household-view-selector > span {
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.household-view-selector .wk-toggle-group {
+  max-width: min(100%, 440px);
+}
+.household-view-selector .wk-toggle-item {
+  min-height: 36px;
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
+}
 .icon-link {
   display: inline-flex;
   padding: 12px;
@@ -360,6 +377,36 @@
 .access-panel h3 {
   font: 500 18px/1.4 var(--wk-font-interface);
 }
+.household-panel__heading,
+.account-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.household-panel__heading > div,
+.account-heading > span {
+  min-width: 0;
+}
+.household-panel__heading .start-hero__eyebrow {
+  color: var(--wk-sand);
+  margin: 0 0 8px;
+}
+.household-panel__heading .wk-badge,
+.account-heading .wk-badge {
+  flex-shrink: 0;
+}
+.household-timezone,
+.household-invitation-state p,
+.account-filter-note {
+  color: var(--muted-foreground);
+}
+.household-invitation-state {
+  margin: 20px 0;
+}
+.household-invitation-state p {
+  margin: 4px 0;
+}
 .access-panel .access-link {
   display: flex;
 }
@@ -387,6 +434,9 @@
   align-content: start;
   max-width: 140px;
 }
+.access-members .wk-badge {
+  justify-self: center;
+}
 .member-avatar {
   border-radius: 50%;
   background: var(--wk-surface-warm);
@@ -404,11 +454,52 @@
   display: grid;
   gap: 12px;
 }
+.access-account-groups,
+.household-rules {
+  display: grid;
+  gap: 20px;
+}
+.access-account-group h3 {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  margin: 8px 0 12px;
+  text-transform: uppercase;
+}
 .access-account-list li {
   display: grid;
   gap: 8px;
   padding: 18px;
   border-radius: var(--radius);
+  background: var(--secondary);
+}
+.account-heading > span {
+  font-weight: var(--wk-weight-label);
+  overflow-wrap: anywhere;
+}
+.account-filter-note {
+  margin-top: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.household-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 24px;
+  align-items: start;
+}
+.household-hero > svg {
+  width: 88px;
+  height: 88px;
+  opacity: 0.82;
+}
+.household-rules > .access-panel > svg {
+  width: 32px;
+  height: 32px;
+  color: var(--accent-readable);
+  margin-bottom: 24px;
+}
+.household-boundaries {
   background: var(--secondary);
 }
 .access-amount {
@@ -451,6 +542,9 @@
 }
 @media (max-width: 1100px) {
   .start-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .household-settings-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .desktop-header,
@@ -500,6 +594,10 @@
   }
   .desktop-header__actions {
     gap: 8px;
+    width: 100%;
+  }
+  .household-view-selector {
+    width: 100%;
   }
   .desktop-header {
     padding: 20px;
@@ -511,6 +609,9 @@
     padding: 28px;
   }
   .start-hero img {
+    display: none;
+  }
+  .household-hero > svg {
     display: none;
   }
   .access-form__row {

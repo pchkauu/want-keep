@@ -115,6 +115,35 @@ export const ru = {
   invitationPrivacy:
     "Создаётся ваш отдельный вход. Оба участника видят семейные финансы; личные средства доступа остаются отдельными.",
   family: "Ваша семья",
+  householdSettingsTitle: "Семья и общий доступ",
+  householdSettingsDescription:
+    "Проверьте состав семьи, приглашение и правила доступа к общим и личным деньгам.",
+  householdViewLabel: "Показывать",
+  householdView: "Семья",
+  memberSlotsUsed: "мест занято",
+  membershipActive: "Активен",
+  membershipPending: "Ожидает",
+  familyTimezone: "Часовой пояс",
+  refreshHousehold: "Перечитать состояние",
+  refreshingHousehold: "Обновляем состав семьи…",
+  manageHousehold: "Настроить семью",
+  householdMemberLimitReached: "Все места в семье заняты.",
+  householdOffline:
+    "Нет соединения. Состав семьи доступен для просмотра, изменения подтверждать нельзя.",
+  invitationUnknown:
+    "Результат изменения неизвестен. Сначала перечитайте состояние; секретная ссылка повторно не показывается.",
+  invitationConflict:
+    "Приглашение уже изменилось. Перечитайте актуальную ревизию перед следующим действием.",
+  householdResourcesTitle: "Общие деньги, отдельная принадлежность",
+  householdResourcesDescription:
+    "Оба участника видят семейные финансы. Семейные ресурсы общие, личные сохраняют владельца. Выбранный разрез меняет только отображение.",
+  personalAccessTitle: "Личный вход и личные действия",
+  personalAccessDescription:
+    "Каждый входит своим passkey и восстанавливает только собственный доступ. Личные цели и часть плана изменяет их владелец; сервер проверяет права.",
+  openSecurity: "Открыть свои настройки безопасности",
+  notAvailableInMvp: "Границы MVP",
+  householdBoundaries:
+    "Смена ролей, выход или замена участника и восстановление через партнёра пока недоступны.",
   invitePartner: "Пригласить партнёра",
   issueInvitation: "Создать приглашение",
   reissueInvitation: "Выдать новое приглашение",
@@ -150,6 +179,15 @@ export const ru = {
   createAccount: "Добавить счёт",
   accountCreated: "Счёт добавлен",
   currentAccounts: "Доступные счета",
+  householdAccounts: "Семейные счета",
+  personalAccounts: "Личные счета",
+  householdOwnership: "Семейный",
+  personalOwnership: "Личный",
+  platformOwner: "Владелец аккаунта платформы",
+  unknownMember: "Неизвестный участник",
+  noAccountsInView: "В выбранном разрезе счетов пока нет.",
+  accountFilterExplanation:
+    "Личные счета другого участника скрыты только в этом представлении и остаются частью общего семейного денежного пула.",
   noAccounts: "Пока нет счетов. Добавьте наличные, чтобы начать учёт.",
   unknownAmount: "Остаток не подтверждён",
   partial: "Данные неполные",
@@ -299,6 +337,35 @@ export const en: Record<MessageKey, string> = {
   invitationPrivacy:
     "This creates your separate sign-in. Both members see household finances; access credentials remain personal.",
   family: "Your household",
+  householdSettingsTitle: "Household and shared access",
+  householdSettingsDescription:
+    "Review household membership, the invitation and access rules for shared and personal money.",
+  householdViewLabel: "Show",
+  householdView: "Household",
+  memberSlotsUsed: "places used",
+  membershipActive: "Active",
+  membershipPending: "Pending",
+  familyTimezone: "Timezone",
+  refreshHousehold: "Read current state",
+  refreshingHousehold: "Refreshing household…",
+  manageHousehold: "Manage household",
+  householdMemberLimitReached: "All household membership slots are filled.",
+  householdOffline:
+    "No connection. You can read the household, but changes cannot be confirmed.",
+  invitationUnknown:
+    "The change outcome is unknown. Read the current state first; the secret link cannot be shown again.",
+  invitationConflict:
+    "The invitation already changed. Read the current revision before another action.",
+  householdResourcesTitle: "Shared money, explicit ownership",
+  householdResourcesDescription:
+    "Both members see household finances. Household resources are shared and personal resources retain their owner. The selected view changes presentation only.",
+  personalAccessTitle: "Personal sign-in and personal actions",
+  personalAccessDescription:
+    "Each member signs in with their own passkey and recovers only their own access. Personal goals and plan sections stay owner-controlled; the server checks permissions.",
+  openSecurity: "Open your security settings",
+  notAvailableInMvp: "MVP boundaries",
+  householdBoundaries:
+    "Role changes, member exit or replacement, and partner-assisted recovery are not available yet.",
   invitePartner: "Invite your partner",
   issueInvitation: "Create invitation",
   reissueInvitation: "Issue a new invitation",
@@ -334,6 +401,15 @@ export const en: Record<MessageKey, string> = {
   createAccount: "Add account",
   accountCreated: "Account added",
   currentAccounts: "Available accounts",
+  householdAccounts: "Household accounts",
+  personalAccounts: "Personal accounts",
+  householdOwnership: "Household",
+  personalOwnership: "Personal",
+  platformOwner: "Platform account owner",
+  unknownMember: "Unknown member",
+  noAccountsInView: "There are no accounts in this view yet.",
+  accountFilterExplanation:
+    "The other member's personal accounts are hidden only in this view and remain part of the shared household money pool.",
   noAccounts: "No accounts yet. Add cash funds to start tracking.",
   unknownAmount: "Balance not confirmed",
   partial: "Data is incomplete",

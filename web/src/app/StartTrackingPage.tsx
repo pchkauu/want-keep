@@ -1,7 +1,8 @@
 import { Link } from "react-router";
 import { ArrowUpRightIcon } from "lucide-react";
 import { AccountList, CashAccounts } from "@/features/accounts";
-import { HouseholdPanel, useIdentity } from "@/features/identity";
+import { useIdentity } from "@/features/identity";
+import { HouseholdPanel, useHousehold } from "@/features/household";
 import { useLocale } from "@/locales/locale";
 import { useServices } from "./services";
 
@@ -13,6 +14,7 @@ export function StartTrackingPage({
   const { t } = useLocale();
   const { member } = useIdentity();
   const services = useServices();
+  const household = useHousehold();
   if (!member) return null;
   return (
     <>
@@ -25,7 +27,7 @@ export function StartTrackingPage({
           </p>
           <Link
             className="hero-link"
-            to={onboarding ? "/overview" : "/onboarding"}
+            to={household.path(onboarding ? "/overview" : "/onboarding")}
           >
             {t(onboarding ? "toOverview" : "toOnboarding")}
             <ArrowUpRightIcon aria-hidden="true" />
@@ -36,22 +38,39 @@ export function StartTrackingPage({
       {onboarding ? (
         <div className="start-grid">
           <div>
-            <CashAccounts controller={services.cashAccount(member.userId)} />
+            <CashAccounts
+              controller={services.cashAccount(member.userId)}
+              view={household.view}
+              members={household.household?.members ?? []}
+            />
           </div>
           <div>
-            <HouseholdPanel />
+            <HouseholdPanel compact />
           </div>
         </div>
       ) : (
         <div className="start-grid">
-          <AccountList api={services.accounts} />
+          <AccountList
+            api={services.accounts}
+            view={household.view}
+            members={household.household?.members ?? []}
+          />
           <section className="access-panel">
             <h2>{t("invitePartner")}</h2>
             <p>{t("invitationPrivacy")}</p>
-            <Link to="/onboarding" className="access-link">
+            <Link to={household.path("/onboarding")} className="access-link">
               {t("toOnboarding")}
             </Link>
-            <Link to="/settings/security" className="access-link">
+            <Link
+              to={household.path("/settings/household")}
+              className="access-link"
+            >
+              {t("manageHousehold")}
+            </Link>
+            <Link
+              to={household.path("/settings/security")}
+              className="access-link"
+            >
               {t("lostCodes")}
             </Link>
           </section>

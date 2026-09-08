@@ -2,11 +2,13 @@ import { createContext, useContext } from "react";
 import { HttpClient } from "@/api/http";
 import { AccountsApi, CashController } from "@/features/accounts";
 import { IdentityApi, SessionController } from "@/features/identity";
+import { HouseholdApi, HouseholdController } from "@/features/household";
 import { LocaleController } from "@/locales/locale";
 
 export class ApplicationServices {
   readonly http = new HttpClient();
   readonly identity = new SessionController(new IdentityApi(this.http));
+  readonly household = new HouseholdController(new HouseholdApi(this.http));
   readonly accounts = new AccountsApi(this.http);
   readonly locale: LocaleController;
   private cash?: CashController;
@@ -25,6 +27,7 @@ export class ApplicationServices {
       typeof navigator === "undefined" ? "ru" : navigator.language,
     );
     this.identity.onIdentityChange = () => {
+      this.household.clear();
       this.cash?.clear();
       this.cash = undefined;
       this.returnTo = undefined;

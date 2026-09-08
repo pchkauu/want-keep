@@ -6,5 +6,5 @@ export { SetupPage } from "./SetupPage";
 export { InvitePage } from "./InvitePage";
 export { RecoveryPage } from "./RecoveryPage";
 export { SecurityPage } from "./SecurityPage";
-export { HouseholdPanel } from "./HouseholdPanel";
-export type { Locale } from "./model";
+export { useCeremony as useOwnPasskeyConfirmation } from "./use-ceremony";
+export type { Locale, MemberSession } from "./model";

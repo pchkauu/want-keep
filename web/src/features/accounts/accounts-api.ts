@@ -12,10 +12,35 @@ export class AccountsApi {
   }
   private account(dto: Schema["Account"]): AccountSummary {
     const owned = dto.balance.owned;
+    if (
+      !dto.id ||
+      !dto.name ||
+      !dto.ownership.householdId ||
+      !Number.isSafeInteger(dto.revision) ||
+      dto.revision < 1 ||
+      (dto.ownership.scope === "personal" && !dto.ownership.personalOwnerId) ||
+      !["household", "personal"].includes(dto.ownership.scope)
+    )
+      throw new ApiFailure("invalid_response");
     return {
       id: dto.id,
       name: dto.name,
       asset: dto.asset,
+      revision: dto.revision,
+      ownership:
+        dto.ownership.scope === "personal"
+          ? {
+              scope: "personal",
+              householdId: dto.ownership.householdId,
+              personalOwnerId: dto.ownership.personalOwnerId,
+            }
+          : {
+              scope: "household",
+              householdId: dto.ownership.householdId,
+            },
+      ...(dto.externalAccountOwnerId
+        ? { externalAccountOwnerId: dto.externalAccountOwnerId }
+        : {}),
       ...(owned.knowledge === "known"
         ? { amount: decodeMoney(owned.value).amount }
         : {}),

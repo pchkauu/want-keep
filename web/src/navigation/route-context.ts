@@ -7,6 +7,7 @@ const destinations = new Set([
   "/chat",
   "/connections",
   "/settings",
+  "/settings/household",
   "/settings/security",
   "/notifications",
 ]);

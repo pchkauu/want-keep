@@ -6,6 +6,7 @@ import {
   LoginPage,
   InvitePage,
 } from "@/features/identity";
+import { HouseholdProvider } from "@/features/household";
 import { LocaleProvider } from "@/locales/LocaleProvider";
 import {
   ServicesContext,
@@ -62,9 +63,18 @@ export function App({ services }: { services: ApplicationServices }) {
 }
 export function ProtectedShell() {
   const { member } = useIdentity();
+  const services = useServices();
   return (
     <SessionBoundary>
-      <DesktopShell key={member?.userId} />
+      {member && (
+        <HouseholdProvider
+          key={member.userId}
+          actor={member}
+          controller={services.household}
+        >
+          <DesktopShell />
+        </HouseholdProvider>
+      )}
     </SessionBoundary>
   );
 }

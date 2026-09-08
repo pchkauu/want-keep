@@ -1,4 +1,5 @@
 import { ApiFailure } from "@/api/http";
+import type { HouseholdMember, HouseholdView } from "@/features/household";
 
 export type CashDraft = {
   name: string;
@@ -15,6 +16,17 @@ export type AccountSummary = {
   amount?: string;
   partial: boolean;
   stale: boolean;
+  revision: number;
+  ownership:
+    | { scope: "household"; householdId: string }
+    | { scope: "personal"; householdId: string; personalOwnerId: string };
+  externalAccountOwnerId?: string;
+};
+export type AccountGroup = {
+  key: string;
+  scope: "household" | "personal";
+  owner?: HouseholdMember;
+  items: readonly AccountSummary[];
 };
 export type Creation = {
   id: string;
@@ -64,5 +76,54 @@ export class CashAccount {
         ? ""
         : `${locale === "ru" ? "," : "."}${fraction}`)
     );
+  }
+}
+
+export class AccountCollection {
+  static visible(items: readonly AccountSummary[], view: HouseholdView) {
+    if (view.view === "household") return [...items];
+    return items.filter(
+      (account) =>
+        account.ownership.scope === "household" ||
+        account.ownership.personalOwnerId === view.memberId,
+    );
+  }
+
+  static groups(
+    items: readonly AccountSummary[],
+    view: HouseholdView,
+    members: readonly HouseholdMember[],
+  ): AccountGroup[] {
+    const visible = this.visible(items, view);
+    const groups: AccountGroup[] = [];
+    const shared = visible.filter(
+      (account) => account.ownership.scope === "household",
+    );
+    if (shared.length)
+      groups.push({
+        key: "household",
+        scope: "household",
+        items: shared,
+      });
+    const owners = new Set(
+      visible.flatMap((account) =>
+        account.ownership.scope === "personal"
+          ? [account.ownership.personalOwnerId]
+          : [],
+      ),
+    );
+    for (const ownerId of owners) {
+      groups.push({
+        key: `personal:${ownerId}`,
+        scope: "personal",
+        owner: members.find((member) => member.userId === ownerId),
+        items: visible.filter(
+          (account) =>
+            account.ownership.scope === "personal" &&
+            account.ownership.personalOwnerId === ownerId,
+        ),
+      });
+    }
+    return groups;
   }
 }
