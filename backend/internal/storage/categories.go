@@ -103,6 +103,16 @@ func (s *Store) CategoryHasActiveChildren(ctx context.Context, p household.Princ
 	return found, err
 }
 
+func (s *Store) CategoryHasChildren(ctx context.Context, p household.Principal, id string) (bool, error) {
+	q, err := s.reader(ctx, p)
+	if err != nil {
+		return false, err
+	}
+	var found bool
+	err = q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM want_keep.categories WHERE household_id=$1 AND parent_id=$2)`, p.HouseholdID(), id).Scan(&found)
+	return found, err
+}
+
 func (s *Store) CreateCategory(ctx context.Context, item category.Category) error {
 	scope, err := s.familyScope(ctx)
 	if err != nil {

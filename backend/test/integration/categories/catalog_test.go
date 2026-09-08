@@ -126,6 +126,35 @@ func TestCategoryChangeRejectsNameWithoutAction(t *testing.T) {
 	}
 }
 
+func TestCategoryReparentRejectsArchivedDescendants(t *testing.T) {
+	f := newFixture(t)
+	client := f.client(f.p)
+	destinationID := createCategory(t, client, "Destination", "")
+	rootID := createCategory(t, client, "Root with history", "")
+	childID := createCategory(t, client, "Archived child", rootID)
+	archived := decode[generated.CommandSucceeded](t, client.call("POST", "/categories/"+childID, uuid.NewString(), map[string]any{"expectedRevision": 1, "state": "archived"}, 202))
+	if archived.Status != "succeeded" {
+		t.Fatal(archived)
+	}
+
+	failed := decode[generated.CommandFailed](t, client.call("POST", "/categories/"+rootID, uuid.NewString(), map[string]any{"expectedRevision": 1, "parentAction": "set", "parentId": destinationID}, 202))
+	if failed.Error.Code != "category_has_active_children" {
+		t.Fatalf("root reparented over archived child: %+v", failed)
+	}
+
+	var revision, revisions int
+	var parentID *string
+	if err := f.admin.QueryRow(testContext, `SELECT revision,parent_id::text FROM want_keep.categories WHERE household_id=$1 AND id=$2`, f.family.ID, rootID).Scan(&revision, &parentID); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.category_revisions WHERE household_id=$1 AND id=$2`, f.family.ID, rootID).Scan(&revisions); err != nil {
+		t.Fatal(err)
+	}
+	if revision != 1 || parentID != nil || revisions != 1 {
+		t.Fatalf("failed reparent changed category: revision=%d parent=%v history=%d", revision, parentID, revisions)
+	}
+}
+
 func TestCatalogHistoryOutlivesCommandRetention(t *testing.T) {
 	f := newFixture(t)
 	client := f.client(f.p)

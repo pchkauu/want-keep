@@ -61,7 +61,7 @@ func (s *Service) ChangeCategory(ctx context.Context, p household.Principal, id 
 		return command.Result{}, s.reject(err)
 	}
 	if current.ParentID == "" && next.ParentID != "" {
-		hasChildren, e := s.repository.CategoryHasActiveChildren(ctx, p, id)
+		hasChildren, e := s.repository.CategoryHasChildren(ctx, p, id)
 		if e != nil {
 			return command.Result{}, e
 		}
