@@ -366,7 +366,11 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 		return next, nil
 	}
 	activeSet := map[household.MembershipID]bool{}
-	if input.Mode != "" && input.Mode != AllocationUnknown || len(items) > 0 {
+	requiresActiveMembers := input.requiresActiveMembers()
+	for _, item := range items {
+		requiresActiveMembers = requiresActiveMembers || item.Allocation.requiresActiveMembers()
+	}
+	if requiresActiveMembers {
 		activeSet, err = activeMembers(active)
 		if err != nil {
 			return r, err
@@ -508,33 +512,37 @@ func (r Revision) RefreshAllocation() (Revision, error) {
 	if r.Allocation.State == "" || r.Allocation.State == AllocationNotApplicable {
 		return r.WithAllocation(AllocationInput{Mode: AllocationUnknown, Reason: "allocation_unresolved"}, nil, nil)
 	}
+	fallback := allocationInput(r.Allocation)
 	if r.Allocation.Mode == AllocationComposite {
 		if r.Allocation.Fallback == nil {
 			return r, ErrInvalidAllocation
 		}
-		items := make([]ItemAllocationInput, 0, len(r.ReceiptItems))
-		members := map[household.MembershipID]bool{}
-		for _, member := range r.Allocation.Fallback.Members {
+		fallback = cloneAllocationInput(*r.Allocation.Fallback)
+	}
+	items := make([]ItemAllocationInput, 0, len(r.ReceiptItems))
+	members := map[household.MembershipID]bool{}
+	for _, member := range fallback.Members {
+		members[member.MemberID] = true
+	}
+	for _, item := range r.ReceiptItems {
+		if item.Allocation.State == "" || item.Allocation.State == AllocationNotApplicable || item.Allocation.Origin != AllocationExplicitItem {
+			continue
+		}
+		basis := allocationInput(item.Allocation)
+		items = append(items, ItemAllocationInput{ItemID: item.ID, Allocation: basis})
+		for _, member := range basis.Members {
 			members[member.MemberID] = true
 		}
-		for _, item := range r.ReceiptItems {
-			if item.Allocation.State == "" || item.Allocation.State == AllocationNotApplicable || item.Allocation.Origin != AllocationExplicitItem {
-				continue
-			}
-			basis := allocationInput(item.Allocation)
-			items = append(items, ItemAllocationInput{ItemID: item.ID, Allocation: basis})
-			for _, member := range basis.Members {
-				members[member.MemberID] = true
-			}
-		}
+	}
+	if r.Allocation.Mode == AllocationComposite || len(items) > 0 {
 		active := make([]household.MembershipID, 0, len(members))
 		for memberID := range members {
 			active = append(active, memberID)
 		}
 		slices.Sort(active)
-		return r.WithAllocation(cloneAllocationInput(*r.Allocation.Fallback), items, active)
+		return r.WithAllocation(fallback, items, active)
 	}
-	return r.WithAllocation(allocationInput(r.Allocation), nil, allocationMembers(r.Allocation))
+	return r.WithAllocation(fallback, nil, allocationMembers(r.Allocation))
 }
 
 func allocateParts(components []allocationComponent, input AllocationInput, itemInputs map[string]AllocationInput, active map[household.MembershipID]bool) ([]AllocationSnapshot, error) {
@@ -725,7 +733,11 @@ func allocateComponent(total money.Money, input AllocationInput, active map[hous
 		if strings.TrimSpace(input.Reason) == "" {
 			input.Reason = "allocation_unresolved"
 		}
-		return AllocationSnapshot{State: AllocationUnresolved, Mode: AllocationUnknown, Origin: AllocationUnknownOrigin, Reason: input.Reason, Unallocated: []money.Money{total}, RuleRefs: slices.Clone(input.RuleRefs)}, nil
+		origin := input.Origin
+		if origin == "" {
+			origin = AllocationUnknownOrigin
+		}
+		return AllocationSnapshot{State: AllocationUnresolved, Mode: AllocationUnknown, Origin: origin, Reason: input.Reason, Unallocated: []money.Money{total}, RuleRefs: slices.Clone(input.RuleRefs)}, nil
 	}
 	if input.Origin == "" {
 		input.Origin = AllocationExplicitPurchase
@@ -774,6 +786,10 @@ func allocateComponent(total money.Money, input AllocationInput, active map[hous
 		result.Members = append(result.Members, MemberAmount{MemberID: household.MembershipID(value.ID), Money: value.Money})
 	}
 	return result, result.Validate()
+}
+
+func (a AllocationInput) requiresActiveMembers() bool {
+	return a.Mode != "" && a.Mode != AllocationUnknown
 }
 
 func activeMembers(active []household.MembershipID) (map[household.MembershipID]bool, error) {

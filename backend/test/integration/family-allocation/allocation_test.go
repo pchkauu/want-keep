@@ -125,6 +125,12 @@ func TestNewImportedFactUsesConfirmedMerchantAliasRule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	untrustedAmount, _ := money.NewMoney("100", money.RUB)
+	untrustedAllocation := ledger.AllocationInput{Mode: ledger.AllocationByAmounts, Purpose: ledger.AllocationPersonal, Members: []ledger.AllocationMemberInput{{MemberID: fixture.members[1].ID, Amount: &untrustedAmount}}}
+	revision, err = revision.WithAllocation(untrustedAllocation, nil, []household.MembershipID{fixture.members[0].ID, fixture.members[1].ID})
+	if err != nil {
+		t.Fatal(err)
+	}
 	gate := fixture.admittedImport()
 	connectionID := fixture.importConnection()
 	issued := fixture.issuedImport(gate, connectionID)
@@ -142,7 +148,7 @@ func TestNewImportedFactUsesConfirmedMerchantAliasRule(t *testing.T) {
 		t.Fatalf("source rule allocation: found=%v allocation=%+v err=%v", found, stored.Allocation, err)
 	}
 	if storedMemberTotal(stored.Allocation, fixture.members[0].ID, money.RUB) != "60" || storedMemberTotal(stored.Allocation, fixture.members[1].ID, money.RUB) != "40" {
-		t.Fatalf("source allocation members = %+v", stored.Allocation.Members)
+		t.Fatalf("source-supplied allocation bypassed trusted rule = %+v", stored.Allocation.Members)
 	}
 
 	createRule(t, first, merchant.Result.Id, 20, "40", "60")
@@ -164,6 +170,57 @@ func TestNewImportedFactUsesConfirmedMerchantAliasRule(t *testing.T) {
 	stored, found, err = fixture.store.CurrentLedgerRevision(testContext, fixture.p, conflictedRevision.OperationID)
 	if err != nil || !found || stored.Allocation.State != ledger.AllocationUnresolved || stored.Allocation.Reason != "rule_conflict" || len(stored.Allocation.RuleRefs) != 2 {
 		t.Fatalf("source rule conflict: found=%v allocation=%+v err=%v", found, stored.Allocation, err)
+	}
+}
+
+func TestSourceRulesUseExpenseComponentsAndDoNotBlockIncome(t *testing.T) {
+	fixture := newFixture(t)
+	client := fixture.client(fixture.p)
+	merchant := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/merchants", uuid.NewString(), map[string]any{"name": "Income and transfer merchant", "aliases": []string{"Matched source merchant"}}, http.StatusAccepted))
+	createRule(t, client, merchant.Result.Id, 20, "60", "40")
+	from, to := fixture.account(money.RUB, "1000"), fixture.account(money.RUB, "1000")
+	gate := fixture.admittedImport()
+	connectionID := fixture.importConnection()
+	sources := journal.NewSources(fixture.store, journal.NewWriter(fixture.store, fixture.store), allocationapp.NewService(fixture.store, uuid.NewString))
+	zone, _ := calendar.ParseTimezone("Europe/Moscow")
+
+	apply := func(revision ledger.Revision, hash, evidence string) ledger.Revision {
+		t.Helper()
+		var err error
+		revision, err = revision.InTimezone(zone)
+		if err != nil {
+			t.Fatal(err)
+		}
+		issued := fixture.issuedImport(gate, connectionID)
+		input := ledger.SourceInput{Key: ledger.SourceKey{HouseholdID: fixture.family.ID, Provider: "raiffeisen", ExternalAccountID: "synthetic", Product: "current", Log: "transactions", RecordID: uuid.NewString()}, PayloadHash: strings.Repeat(hash, 64), EvidenceRef: evidence, ConnectionID: connectionID, JobID: issued.ID, FetchedAt: fixture.now, Classification: "new", Operation: &revision}
+		applied, commitErr := gate.CommitPage(testContext, fixture.p, issued, admission.Page{EvidenceRef: evidence, Coverage: "complete", Complete: true}, func(ctx context.Context) error {
+			_, applyErr := sources.Apply(ctx, fixture.p, input)
+			return applyErr
+		})
+		if commitErr != nil || !applied {
+			t.Fatalf("source page applied=%v err=%v", applied, commitErr)
+		}
+		stored, found, readErr := fixture.store.CurrentLedgerRevision(testContext, fixture.p, revision.OperationID)
+		if readErr != nil || !found {
+			t.Fatalf("stored source operation found=%v err=%v", found, readErr)
+		}
+		return stored
+	}
+
+	incomeAmount, _ := money.NewMoney("100", money.RUB)
+	income := ledger.Revision{OperationID: uuid.NewString(), Revision: 1, Reason: "Imported income", Type: ledger.Income, State: ledger.Posted, OccurredAt: fixture.now, FeeKnowledge: ledger.KnownFees, Merchant: "Matched source merchant", PayerState: "not_applicable", Postings: []ledger.Posting{{AccountID: from, Money: incomeAmount, Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}}}
+	storedIncome := apply(income, "c", "income-evidence")
+	if storedIncome.Allocation.State != ledger.AllocationNotApplicable {
+		t.Fatalf("income allocation = %+v", storedIncome.Allocation)
+	}
+
+	sent, _ := money.NewMoney("-100", money.RUB)
+	received, _ := money.NewMoney("100", money.RUB)
+	fee, _ := money.NewMoney("-10", money.RUB)
+	transfer := ledger.Revision{OperationID: uuid.NewString(), Revision: 1, Reason: "Imported transfer", Type: ledger.Transfer, State: ledger.Posted, OccurredAt: fixture.now, FeeKnowledge: ledger.KnownFees, Merchant: "Matched source merchant", PayerState: "not_applicable", Postings: []ledger.Posting{{AccountID: from, Money: sent, Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}, {AccountID: to, Money: received, Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}, {AccountID: from, Money: fee, Role: ledger.Fee, Funding: ledger.OwnFunds, Treatment: ledger.Movement}}}
+	storedTransfer := apply(transfer, "d", "transfer-evidence")
+	if storedTransfer.Allocation.Origin != ledger.AllocationRule || storedMemberTotal(storedTransfer.Allocation, fixture.members[0].ID, money.RUB) != "6" || storedMemberTotal(storedTransfer.Allocation, fixture.members[1].ID, money.RUB) != "4" {
+		t.Fatalf("transfer fee allocation = %+v", storedTransfer.Allocation)
 	}
 }
 
@@ -266,6 +323,18 @@ func TestMixedReceiptDirectAllocationAndValidation(t *testing.T) {
 	unresolvedTransaction := readTransaction(t, first, created.Result.Id)
 	if unresolvedTransaction.Allocation.State != "unresolved" || unresolvedTransaction.ReceiptItems[0].Allocation.Reason != "Ambiguous shared item" {
 		t.Fatalf("unresolved item allocation = %+v", unresolvedTransaction)
+	}
+	feeResult := decode[generated.CommandSucceeded](t, first.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{
+		"expectedRevision": 4,
+		"reason":           "Add confirmed fee",
+		"fees":             []any{map[string]any{"accountId": accountID, "role": "fee", "money": map[string]any{"asset": "RUB", "amount": "-10"}}},
+	}, http.StatusAccepted))
+	if feeResult.Status != "succeeded" {
+		t.Fatal(feeResult)
+	}
+	refreshed := readTransaction(t, first, created.Result.Id)
+	if refreshed.ReceiptItems[0].Allocation.Origin != "explicit_item" || refreshed.ReceiptItems[0].Allocation.Reason != "Ambiguous shared item" {
+		t.Fatalf("correction changed explicit unresolved item = %+v", refreshed.ReceiptItems[0].Allocation)
 	}
 }
 

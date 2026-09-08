@@ -60,3 +60,35 @@ func TestProtectedAllocationCannotBeSilentlyMovedOffNonCarrier(t *testing.T) {
 		t.Fatal("protected non-carrier allocation was silently discarded")
 	}
 }
+
+func TestMatchingPreservesProtectedUnresolvedItemAllocation(t *testing.T) {
+	f := fixture{t}
+	a, b := f.fact("a", "account", "-500", money.RUB), f.fact("b", "account", "-500", money.RUB)
+	a.Origin, b.Origin = "manual", "source"
+	gross, _ := money.NewMoney("500", money.RUB)
+	discount, _ := money.NewMoney("0", money.RUB)
+	a.ReceiptItems = []ledger.ReceiptItem{{ID: "unclear-item", Name: "Unclear item", Quantity: "1", Gross: gross, Discount: discount}}
+	var err error
+	a, err = a.WithAllocation(
+		ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "purchase_needs_clarification"},
+		[]ledger.ItemAllocationInput{{ItemID: "unclear-item", Allocation: ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "item_needs_clarification"}}},
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a = a.WithDecision(ledger.Decision{ID: "allocation-a", Kind: "correction", ActorID: "member-a", Reason: "Keep item unresolved", At: a.OccurredAt}, []ledger.Field{ledger.AllocationField})
+	_, revisions, err := f.group(matching.Payment, "a").Assign([]ledger.Revision{a, b}, false)
+	if err != nil {
+		t.Fatal("matching rejected unchanged protected allocation", err)
+	}
+	for _, revision := range revisions {
+		if revision.OperationID != "a" {
+			continue
+		}
+		item := revision.ReceiptItems[0].Allocation
+		if item.Origin != ledger.AllocationExplicitItem || item.Reason != "item_needs_clarification" {
+			t.Fatalf("matching changed explicit unresolved item = %+v", item)
+		}
+	}
+}

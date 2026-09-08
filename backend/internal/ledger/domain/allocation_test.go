@@ -198,6 +198,35 @@ func TestCompositeUnresolvedAllocationNormalizesAggregateAndKeepsItem(t *testing
 	if allocated.ReceiptItems[0].Allocation.Reason != "item_unknown" || allocated.ReceiptItems[1].Allocation.Reason != "purchase_unknown" {
 		t.Fatalf("unresolved items = %+v", allocated.ReceiptItems)
 	}
+	refreshed, err := allocated.RefreshAllocation()
+	if err != nil || refreshed.ReceiptItems[0].Allocation.Origin != AllocationExplicitItem || refreshed.ReceiptItems[0].Allocation.Reason != "item_unknown" || refreshed.ReceiptItems[1].Allocation.Reason != "purchase_unknown" {
+		t.Fatalf("refreshed unresolved items = %+v, err=%v", refreshed.ReceiptItems, err)
+	}
+}
+
+func TestExplicitUnresolvedItemSurvivesFeeCorrection(t *testing.T) {
+	paid := mustAllocationMoney(t, "100", money.RUB)
+	revision := expenseRevision(paid)
+	revision.ReceiptItems = []ReceiptItem{{ID: "unclear", Name: "Unclear", Quantity: "1", Gross: paid, Discount: mustAllocationMoney(t, "0", money.RUB)}}
+	revision.Postings = append(revision.Postings, Posting{AccountID: "account", Money: mustAllocationMoney(t, "-10", money.RUB), Role: Fee, Funding: OwnFunds, Treatment: Movement})
+	members := []household.MembershipID{"member-a", "member-b"}
+	fallback := AllocationInput{Mode: AllocationEqual, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0]}, {MemberID: members[1]}}}
+	allocated, err := revision.WithAllocation(fallback, []ItemAllocationInput{{ItemID: "unclear", Allocation: AllocationInput{Mode: AllocationUnknown, Reason: "item_needs_clarification"}}}, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fees := []Posting{{AccountID: "account", Money: mustAllocationMoney(t, "-20", money.RUB), Role: Fee, Funding: OwnFunds, Treatment: Movement}}
+	corrected, fields, err := allocated.Correct(Correction{Fees: &fees})
+	if err != nil || !slices.Contains(fields, AllocationField) {
+		t.Fatalf("fee correction = %+v fields=%v err=%v", corrected.Allocation, fields, err)
+	}
+	item := corrected.ReceiptItems[0].Allocation
+	if item.State != AllocationUnresolved || item.Origin != AllocationExplicitItem || item.Reason != "item_needs_clarification" || item.Unallocated[0].Amount() != "100" {
+		t.Fatalf("corrected unresolved item = %+v", item)
+	}
+	if allocationMemberTotal(corrected.Allocation, members[0], money.RUB) != "10" || allocationMemberTotal(corrected.Allocation, members[1], money.RUB) != "10" {
+		t.Fatalf("corrected fallback fee = %+v", corrected.Allocation.Members)
+	}
 }
 
 func TestCompositeShareAllocationRefreshesAndAmountBasisRejectsChanges(t *testing.T) {

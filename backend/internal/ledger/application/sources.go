@@ -50,6 +50,8 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		raw.AccountingState = ledger.IncludedInAccounting
 		raw.CategoryID, raw.MerchantID, raw.ReceiptItems = "", "", nil
 		raw.DecisionID, raw.ReviewState = "", ""
+		raw.Allocation = ledger.AllocationSnapshot{}
+		raw.AllocationReason = ""
 		input.Operation = &raw
 	}
 	if input.Operation != nil && input.Operation.Validate() != nil {
@@ -138,7 +140,19 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 			if e != nil {
 				return result, e
 			}
-			if !found && raw.Allocation.State == "" && s.allocations != nil {
+			if posting.Funding == "" {
+				raw.Postings[i].Funding = ledger.OwnFunds
+				if a.Product == "credit_card" {
+					raw.Postings[i].Funding = ledger.UnknownFunds
+				}
+			}
+		}
+		if !found {
+			raw, e = raw.WithAllocation(ledger.AllocationInput{}, nil, nil)
+			if e != nil {
+				return result, fmt.Errorf("initialize source allocation: %w", e)
+			}
+			if raw.Allocation.State != ledger.AllocationNotApplicable && s.allocations != nil {
 				allocation, matched, resolveErr := s.allocations.ResolveSource(ctx, p, raw.Merchant)
 				if resolveErr != nil {
 					return result, fmt.Errorf("resolve source allocation: %w", resolveErr)
@@ -155,12 +169,6 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 					if resolveErr != nil {
 						return result, fmt.Errorf("apply source allocation: %w", resolveErr)
 					}
-				}
-			}
-			if posting.Funding == "" {
-				raw.Postings[i].Funding = ledger.OwnFunds
-				if a.Product == "credit_card" {
-					raw.Postings[i].Funding = ledger.UnknownFunds
 				}
 			}
 		}
