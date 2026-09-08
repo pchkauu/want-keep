@@ -11,6 +11,10 @@ export interface components {
     Provider: "alfa" | "raiffeisen" | "ozon" | "bybit" | "aifory" | "emcd";
     AssetCode: string;
     DecimalString: string;
+    /** Format: date-time */
+    CanonicalInstant: string;
+    /** Format: date */
+    CalendarDate: string;
     DeploymentBinding: {
       provider: components["schemas"]["Provider"];
       environment: string;
@@ -23,10 +27,8 @@ export interface components {
       operatorPermissionRevision: string;
     };
     ReplayRange: {
-      /** Format: date-time */
-      from: string;
-      /** Format: date-time */
-      to: string;
+      from: components["schemas"]["CanonicalInstant"];
+      to: components["schemas"]["CanonicalInstant"];
     };
     SyncRequest: {
       /** Format: uuid */
@@ -118,8 +120,7 @@ export interface components {
       assetCode: components["schemas"]["AssetCode"];
       network?: string;
       name: string;
-      /** Format: date */
-      openingDate: string;
+      openingDate: components["schemas"]["CalendarDate"];
       aliases?: components["schemas"]["CardAlias"][];
       evidenceId: string;
     };
@@ -129,8 +130,7 @@ export interface components {
       logNamespace: string;
       assetCode: components["schemas"]["AssetCode"];
       network?: string;
-      /** Format: date-time */
-      sourceAsOf: string;
+      sourceAsOf: components["schemas"]["CanonicalInstant"];
       owned: components["schemas"]["SourceAmount"];
       available: components["schemas"]["SourceAmount"];
       locked: components["schemas"]["SourceAmount"];
@@ -175,10 +175,8 @@ export interface components {
         | "refund"
         | "yield"
         | "trade_result";
-      /** Format: date-time */
-      occurredAt: string;
-      /** Format: date-time */
-      postedAt?: string;
+      occurredAt: components["schemas"]["CanonicalInstant"];
+      postedAt?: components["schemas"]["CanonicalInstant"];
       merchant?: string;
       note?: string;
       /** @enum {string} */

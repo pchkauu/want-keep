@@ -58,12 +58,22 @@ func TestCashAssetsAndCardSafety(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, bad := range []CardAlias{{ID: "card", AccountID: "a", Label: "4242 4242 4242 4242", LastFour: "4242"}, {ID: "c", AccountID: "a", Label: "Card", LastFour: "123"}} {
+	for _, bad := range []CardAlias{
+		{ID: "card", AccountID: "a", Label: "4242 4242 4242 4242", LastFour: "4242"},
+		{ID: "card", AccountID: "a", Label: "4242.4242.4242.4242", LastFour: "4242"},
+		{ID: "card", AccountID: "a", Label: "4242/4242/4242/4242", LastFour: "4242"},
+		{ID: "card", AccountID: "a", Label: "4242\u200b4242\u200b4242\u200b4242", LastFour: "4242"},
+		{ID: "card", AccountID: "a", Label: "٤٢٤٢", LastFour: "4242"},
+		{ID: "c", AccountID: "a", Label: "Card", LastFour: "123"},
+	} {
 		if bad.Validate() == nil {
 			t.Fatal("unsafe alias accepted")
 		}
 	}
 	if err := (CardAlias{ID: "card", AccountID: "a", Label: "Primary card", LastFour: "1234"}).Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := (CardAlias{ID: "card", AccountID: "a", Label: "Основная карта 1234", LastFour: "1234"}).Validate(); err != nil {
 		t.Fatal(err)
 	}
 }

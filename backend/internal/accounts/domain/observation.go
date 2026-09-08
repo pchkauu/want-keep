@@ -3,6 +3,8 @@ package domain
 import (
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
@@ -76,13 +78,34 @@ func (o Observation) Funding(effects []Effect) reporting.Amount {
 type CardAlias struct{ ID, AccountID, Label, LastFour string }
 
 var lastFourPattern = regexp.MustCompile(`^[0-9]{4}$`)
-var longDigits = regexp.MustCompile(`[0-9][0-9 -]{5,}[0-9]`)
 
 func (c CardAlias) Validate() error {
-	if c.ID == "" || c.AccountID == "" || strings.TrimSpace(c.Label) == "" || len(c.Label) > 100 || longDigits.MatchString(c.Label) || !lastFourPattern.MatchString(c.LastFour) {
+	if c.ID == "" || c.AccountID == "" || strings.TrimSpace(c.Label) == "" || !utf8.ValidString(c.Label) || utf8.RuneCountInString(c.Label) > 100 || strings.ContainsRune(c.Label, 0) || !lastFourPattern.MatchString(c.LastFour) || !SafeCardAliasLabel(c.Label, c.LastFour) {
 		return ErrInvalidAccount
 	}
 	return nil
+}
+
+// SafeCardAliasLabel permits a descriptive label with no digits or the exact
+// non-secret last four. Other decimal digits can expose PAN or CVV data.
+func SafeCardAliasLabel(label, lastFour string) bool {
+	if !lastFourPattern.MatchString(lastFour) {
+		return false
+	}
+	digits := make([]rune, 0, 4)
+	for _, r := range label {
+		if !unicode.IsDigit(r) {
+			continue
+		}
+		if r < '0' || r > '9' {
+			return false
+		}
+		digits = append(digits, r)
+		if len(digits) > 4 {
+			return false
+		}
+	}
+	return len(digits) == 0 || string(digits) == lastFour
 }
 
 // Equivalent compares financial meaning at one observation instant, independently of fetch/session provenance.

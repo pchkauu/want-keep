@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -103,6 +104,40 @@ func TestGoldenPageRoundTripsThroughPostgreSQLWithoutDuplicateEffects(t *testing
 	}
 	if files, _ := os.ReadDir(f.evidence.path); len(files) != 2 {
 		t.Fatalf("raw evidence was not retained for both deliveries: %d", len(files))
+	}
+}
+
+func TestUnicodeContractLimitRoundTripsThroughPostgreSQL(t *testing.T) {
+	f := newFixture(t)
+	job := f.issued()
+	externalID := strings.Repeat("ё", 1500)
+	name := strings.Repeat("с", 1500)
+	gateway := f.gatewayWithMutation(job, func(root map[string]any) {
+		records := root["page"].(map[string]any)["records"].([]any)
+		for _, item := range records {
+			record := item.(map[string]any)
+			for _, key := range []string{"account", "balanceSnapshot"} {
+				value, ok := record[key].(map[string]any)
+				if !ok || value["externalAccountId"] != "acct-usd" {
+					continue
+				}
+				value["externalAccountId"] = externalID
+				if key == "account" {
+					value["name"] = name
+				}
+			}
+		}
+	})
+	applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
+	if err != nil || !applied || failure != nil {
+		t.Fatal("valid Unicode page did not commit", applied, failure, err)
+	}
+	var storedID, storedName string
+	if err = f.admin.QueryRow(testContext, `SELECT e.stable_id,a.name FROM want_keep.external_accounts e JOIN want_keep.accounts a ON (a.household_id,a.external_account_id)=(e.household_id,e.id) WHERE e.household_id=$1 AND e.stable_id=$2`, f.family.ID, externalID).Scan(&storedID, &storedName); err != nil {
+		t.Fatal(err)
+	}
+	if storedID != externalID || storedName != name {
+		t.Fatal("Unicode values changed across PostgreSQL", len([]rune(storedID)), len([]rune(storedName)))
 	}
 }
 

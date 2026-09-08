@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	generated "github.com/pchkauu/want-keep/backend/internal/integrations/contract/generated"
@@ -27,8 +28,6 @@ const MaxEncodedResultBytes = 14 * 1024 * 1024
 var (
 	decimalSyntax = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`)
 	assetSyntax   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$`)
-	lastFour      = regexp.MustCompile(`^[0-9]{4}$`)
-	longDigits    = regexp.MustCompile(`[0-9][0-9 -]{5,}[0-9]`)
 )
 
 func DecodeManifest(data []byte, provider string) (ingestion.Manifest, error) {
@@ -80,7 +79,10 @@ func EncodeSyncRequest(token ingestion.JobToken) ([]byte, error) {
 		request.Cursor = &token.Cursor
 	}
 	if !token.ReplayFrom.IsZero() {
-		request.ReplayRange = &generated.ReplayRange{From: token.ReplayFrom, To: token.ReplayTo}
+		request.ReplayRange = &generated.ReplayRange{
+			From: token.ReplayFrom.UTC().Format(time.RFC3339Nano),
+			To:   token.ReplayTo.UTC().Format(time.RFC3339Nano),
+		}
 	}
 	return json.Marshal(request)
 }
@@ -271,7 +273,7 @@ func accountFromGenerated(source generated.AccountRecord) (ingestion.AccountReco
 	if err != nil || !validText(source.LogNamespace) || !validText(source.Name) || !validEvidenceID(source.EvidenceId) {
 		return ingestion.AccountRecord{}, ingestion.ErrInvalidContract
 	}
-	date, err := calendar.ParseDate(source.OpeningDate.Time.Format(time.DateOnly))
+	date, err := calendar.ParseDate(source.OpeningDate)
 	if err != nil {
 		return ingestion.AccountRecord{}, err
 	}
@@ -281,7 +283,7 @@ func accountFromGenerated(source generated.AccountRecord) (ingestion.AccountReco
 			return result, ingestion.ErrInvalidContract
 		}
 		for _, alias := range *source.Aliases {
-			if !validText(alias.Id) || !validTextLimit(alias.Label, 100) || longDigits.MatchString(alias.Label) || !lastFour.MatchString(alias.LastFour) {
+			if !validText(alias.Id) || !validTextLimit(alias.Label, 100) || !account.SafeCardAliasLabel(alias.Label, alias.LastFour) {
 				return result, ingestion.ErrInvalidContract
 			}
 			result.Aliases = append(result.Aliases, ingestion.CardAlias{ID: alias.Id, Label: alias.Label, LastFour: alias.LastFour})
@@ -292,7 +294,7 @@ func accountFromGenerated(source generated.AccountRecord) (ingestion.AccountReco
 
 func balanceFromGenerated(source generated.BalanceSnapshotRecord) (ingestion.BalanceSnapshot, error) {
 	reference, err := reference(source.ExternalAccountId, string(source.Product), optional(source.Network), source.AssetCode)
-	if err != nil || !validText(source.LogNamespace) || !validEvidenceID(source.EvidenceId) || source.SourceAsOf.IsZero() {
+	if err != nil || !validText(source.LogNamespace) || !validEvidenceID(source.EvidenceId) || source.SourceAsOf == "" {
 		return ingestion.BalanceSnapshot{}, ingestion.ErrInvalidContract
 	}
 	asOf, err := instant(source.SourceAsOf)
@@ -341,7 +343,7 @@ func amountFromGenerated(source generated.SourceAmount, assetCode string) (inges
 }
 
 func transactionFromGenerated(source generated.TransactionRecord) (ingestion.TransactionRecord, error) {
-	if !validText(source.ExternalAccountId) || !ingestion.ValidProduct(string(source.Product)) || !validText(source.LogNamespace) || !validText(source.ProviderRecordId) || !validEvidenceID(source.EvidenceId) || len(source.Postings) > ingestion.MaxRecordsPerPage || source.OccurredAt.IsZero() {
+	if !validText(source.ExternalAccountId) || !ingestion.ValidProduct(string(source.Product)) || !validText(source.LogNamespace) || !validText(source.ProviderRecordId) || !validEvidenceID(source.EvidenceId) || len(source.Postings) > ingestion.MaxRecordsPerPage || source.OccurredAt == "" {
 		return ingestion.TransactionRecord{}, ingestion.ErrInvalidContract
 	}
 	occurredAt, err := instant(source.OccurredAt)
@@ -380,16 +382,12 @@ func reference(externalID, product, network, assetCode string) (ingestion.Accoun
 	return result, nil
 }
 
-func instant(value time.Time) (calendar.Instant, error) {
-	_, offset := value.Zone()
-	if offset != 0 {
-		return calendar.Instant{}, ingestion.ErrInvalidContract
-	}
-	return calendar.ParseInstant(value.UTC().Format(time.RFC3339Nano))
+func instant(value string) (calendar.Instant, error) {
+	return calendar.ParseInstant(value)
 }
 
 func decodeStrict(data []byte, target any) error {
-	if len(data) == 0 || len(data) > MaxEncodedResultBytes {
+	if len(data) == 0 || len(data) > MaxEncodedResultBytes || !validJSONUnicode(data) {
 		return ingestion.ErrInvalidContract
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
@@ -402,6 +400,68 @@ func decodeStrict(data []byte, target any) error {
 		return ingestion.ErrInvalidContract
 	}
 	return nil
+}
+
+func validJSONUnicode(data []byte) bool {
+	if !utf8.Valid(data) {
+		return false
+	}
+	inString := false
+	for i := 0; i < len(data); i++ {
+		switch data[i] {
+		case '"':
+			inString = !inString
+		case '\\':
+			if !inString || i+1 >= len(data) {
+				continue
+			}
+			if data[i+1] != 'u' {
+				i++
+				continue
+			}
+			value, ok := escapedCodeUnit(data, i+2)
+			if !ok {
+				return false
+			}
+			switch {
+			case value >= 0xD800 && value <= 0xDBFF:
+				if i+12 > len(data) || data[i+6] != '\\' || data[i+7] != 'u' {
+					return false
+				}
+				low, valid := escapedCodeUnit(data, i+8)
+				if !valid || low < 0xDC00 || low > 0xDFFF {
+					return false
+				}
+				i += 11
+			case value >= 0xDC00 && value <= 0xDFFF:
+				return false
+			default:
+				i += 5
+			}
+		}
+	}
+	return !inString
+}
+
+func escapedCodeUnit(data []byte, start int) (uint16, bool) {
+	if start+4 > len(data) {
+		return 0, false
+	}
+	var value uint16
+	for _, b := range data[start : start+4] {
+		value <<= 4
+		switch {
+		case b >= '0' && b <= '9':
+			value += uint16(b - '0')
+		case b >= 'a' && b <= 'f':
+			value += uint16(b-'a') + 10
+		case b >= 'A' && b <= 'F':
+			value += uint16(b-'A') + 10
+		default:
+			return 0, false
+		}
+	}
+	return value, true
 }
 
 func validPosting(posting ingestion.Posting) bool {

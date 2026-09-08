@@ -4,8 +4,6 @@
 package generated
 
 import (
-	"time"
-
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -503,15 +501,15 @@ func (e TransactionRecordProviderState) Valid() bool {
 
 // AccountRecord defines model for AccountRecord.
 type AccountRecord struct {
-	Aliases           *[]CardAlias       `json:"aliases,omitempty"`
-	AssetCode         AssetCode          `json:"assetCode"`
-	EvidenceId        string             `json:"evidenceId"`
-	ExternalAccountId string             `json:"externalAccountId"`
-	LogNamespace      string             `json:"logNamespace"`
-	Name              string             `json:"name"`
-	Network           *string            `json:"network,omitempty"`
-	OpeningDate       openapi_types.Date `json:"openingDate"`
-	Product           Product            `json:"product"`
+	Aliases           *[]CardAlias `json:"aliases,omitempty"`
+	AssetCode         AssetCode    `json:"assetCode"`
+	EvidenceId        string       `json:"evidenceId"`
+	ExternalAccountId string       `json:"externalAccountId"`
+	LogNamespace      string       `json:"logNamespace"`
+	Name              string       `json:"name"`
+	Network           *string      `json:"network,omitempty"`
+	OpeningDate       CalendarDate `json:"openingDate"`
+	Product           Product      `json:"product"`
 }
 
 // AssetCode defines model for AssetCode.
@@ -533,11 +531,17 @@ type BalanceSnapshotRecord struct {
 	OwnAvailable      bool                           `json:"ownAvailable"`
 	Owned             SourceAmount                   `json:"owned"`
 	Product           Product                        `json:"product"`
-	SourceAsOf        time.Time                      `json:"sourceAsOf"`
+	SourceAsOf        CanonicalInstant               `json:"sourceAsOf"`
 }
 
 // BalanceSnapshotRecordFreshness defines model for BalanceSnapshotRecord.Freshness.
 type BalanceSnapshotRecordFreshness string
+
+// CalendarDate defines model for CalendarDate.
+type CalendarDate = string
+
+// CanonicalInstant defines model for CanonicalInstant.
+type CanonicalInstant = string
 
 // CapabilityLog defines model for CapabilityLog.
 type CapabilityLog struct {
@@ -651,8 +655,8 @@ type RecordKind string
 
 // ReplayRange defines model for ReplayRange.
 type ReplayRange struct {
-	From time.Time `json:"from"`
-	To   time.Time `json:"to"`
+	From CanonicalInstant `json:"from"`
+	To   CanonicalInstant `json:"to"`
 }
 
 // SourceAmount defines model for SourceAmount.
@@ -739,9 +743,9 @@ type TransactionRecord struct {
 	LogNamespace      string                          `json:"logNamespace"`
 	Merchant          *string                         `json:"merchant,omitempty"`
 	Note              *string                         `json:"note,omitempty"`
-	OccurredAt        time.Time                       `json:"occurredAt"`
+	OccurredAt        CanonicalInstant                `json:"occurredAt"`
 	PnlBasis          *TransactionRecordPnlBasis      `json:"pnlBasis,omitempty"`
-	PostedAt          *time.Time                      `json:"postedAt,omitempty"`
+	PostedAt          *CanonicalInstant               `json:"postedAt,omitempty"`
 	Postings          []TransactionPosting            `json:"postings"`
 	Product           Product                         `json:"product"`
 	ProviderRecordId  string                          `json:"providerRecordId"`

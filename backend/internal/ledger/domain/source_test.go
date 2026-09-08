@@ -1,9 +1,10 @@
 package domain
 
 import (
-	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	"strings"
 	"testing"
+
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 )
 
 func TestSourceResolutionRequiresCurrentRevisionAndPreservesOriginal(t *testing.T) {
@@ -26,5 +27,20 @@ func TestSourceResolutionRequiresCurrentRevisionAndPreservesOriginal(t *testing.
 	again, duplicate, err := resolved.Next(input)
 	if err != nil || !duplicate || again != resolved {
 		t.Fatal("same correction repeated")
+	}
+}
+
+func TestSourceKeyUsesUnicodeCharacterLimitsAndRejectsNUL(t *testing.T) {
+	key := SourceKey{HouseholdID: "household", Provider: "raiffeisen", ExternalAccountID: strings.Repeat("ё", 1500), Product: "current", Log: "statement", RecordID: "entry"}
+	if err := key.Validate(); err != nil {
+		t.Fatal("valid multibyte identity was measured as bytes", err)
+	}
+	key.ExternalAccountID = strings.Repeat("ё", 2001)
+	if key.Validate() == nil {
+		t.Fatal("identity beyond the contract character limit was accepted")
+	}
+	key.ExternalAccountID = "external\x00account"
+	if key.Validate() == nil {
+		t.Fatal("NUL identity was accepted")
 	}
 }

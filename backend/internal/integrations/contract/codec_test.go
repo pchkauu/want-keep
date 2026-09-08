@@ -108,6 +108,28 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 			records := root["page"].(map[string]any)["records"].([]any)
 			records[0].(map[string]any)["account"].(map[string]any)["openingDate"] = "2026-02-30"
 		},
+		"zero calendar year": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			records[0].(map[string]any)["account"].(map[string]any)["openingDate"] = "0000-01-01"
+		},
+		"non-canonical UTC offset": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			records[1].(map[string]any)["balanceSnapshot"].(map[string]any)["sourceAsOf"] = "2026-09-08T09:00:00+00:00"
+		},
+		"zero instant year": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			records[1].(map[string]any)["balanceSnapshot"].(map[string]any)["sourceAsOf"] = "0000-01-01T00:00:00Z"
+		},
+		"card label with separated PAN": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			aliases := records[0].(map[string]any)["account"].(map[string]any)["aliases"].([]any)
+			aliases[0].(map[string]any)["label"] = "4242.4242.4242.4242"
+		},
+		"card label with Unicode digits": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			aliases := records[0].(map[string]any)["account"].(map[string]any)["aliases"].([]any)
+			aliases[0].(map[string]any)["label"] = "٤٢٤٢"
+		},
 		"missing account descriptor": func(root map[string]any) {
 			page := root["page"].(map[string]any)
 			records := page["records"].([]any)
@@ -123,6 +145,11 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 				t.Fatal("invalid contract accepted")
 			}
 		})
+	}
+
+	invalidSurrogate := strings.Replace(string(original), `"name": "Synthetic RUB"`, `"name": "\ud800"`, 1)
+	if _, err := contract.DecodeResult([]byte(invalidSurrogate), goldenToken()); err == nil {
+		t.Fatal("unpaired JSON surrogate was accepted")
 	}
 }
 

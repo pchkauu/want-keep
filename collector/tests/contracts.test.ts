@@ -96,6 +96,30 @@ describe("collector ingestion contract v10", () => {
     expect(() =>
       new SyntheticGateway(manifest, [wrongNamespace]).read(request),
     ).toThrow("invalid ingestion contract");
+
+    const wrongProvider = structuredClone(manifest) as { provider: string };
+    wrongProvider.provider = "alfa";
+    expect(() =>
+      new SyntheticGateway(wrongProvider, [golden]).read(request),
+    ).toThrow("invalid ingestion contract");
+  });
+
+  it("owns immutable manifest and result snapshots", () => {
+    const mutableManifest = structuredClone(manifest) as {
+      provider: string;
+      actions: string[];
+    };
+    const mutableGolden = structuredClone(golden) as {
+      page: { leaseToken: string };
+    };
+    const gateway = new SyntheticGateway(mutableManifest, [mutableGolden]);
+    mutableManifest.provider = "alfa";
+    mutableManifest.actions.length = 0;
+    mutableGolden.page.leaseToken = "mutated";
+
+    const exposed = gateway.manifest() as { actions: string[] };
+    exposed.actions.length = 0;
+    expect(gateway.read(request).outcome).toBe("page");
   });
 
   it("keeps decimal values as strings and unsupported assets explicit", () => {
@@ -164,6 +188,19 @@ describe("collector ingestion contract v10", () => {
     expect(() =>
       parseSyncResult(invalidInstant, parseSyncRequest(request)),
     ).toThrow();
+    snapshot.sourceAsOf = "2026-09-08T09:00:00+00:00";
+    expect(() =>
+      parseSyncResult(invalidInstant, parseSyncRequest(request)),
+    ).toThrow();
+    snapshot.sourceAsOf = "0000-01-01T00:00:00Z";
+    expect(() =>
+      parseSyncResult(invalidInstant, parseSyncRequest(request)),
+    ).toThrow();
+
+    account.openingDate = "0000-01-01";
+    expect(() =>
+      parseSyncResult(invalidDate, parseSyncRequest(request)),
+    ).toThrow();
 
     const unicode = structuredClone(golden) as {
       page: { records: Array<{ account?: { name: string } }> };
@@ -177,6 +214,10 @@ describe("collector ingestion contract v10", () => {
       parseSyncResult(unicode, parseSyncRequest(request)),
     ).not.toThrow();
     namedAccount.name = "ё".repeat(2_001);
+    expect(() => parseSyncResult(unicode, parseSyncRequest(request))).toThrow();
+    namedAccount.name = "invalid\ud800text";
+    expect(() => parseSyncResult(unicode, parseSyncRequest(request))).toThrow();
+    namedAccount.name = "invalid\u0000text";
     expect(() => parseSyncResult(unicode, parseSyncRequest(request))).toThrow();
 
     const missingDescriptor = structuredClone(golden) as {
@@ -197,12 +238,51 @@ describe("collector ingestion contract v10", () => {
       parseSyncResult(malformed, parseSyncRequest(request)),
     ).toThrow();
 
+    const invalidEvidenceIdentity = structuredClone(golden) as {
+      page: { evidence: Array<{ id: string }> };
+    };
+    invalidEvidenceIdentity.page.evidence[0]!.id = "invalid\ud800id";
+    expect(() =>
+      parseSyncResult(invalidEvidenceIdentity, parseSyncRequest(request)),
+    ).toThrow();
+
     expect(() =>
       parseSyncResultJSON(
         `${JSON.stringify(golden)} {}`,
         parseSyncRequest(request),
       ),
     ).toThrow();
+  });
+
+  it("allows only a descriptive card label and its exact last four", () => {
+    const aliased = structuredClone(golden) as {
+      page: {
+        records: Array<{
+          account?: { aliases?: Array<{ label: string; lastFour: string }> };
+        }>;
+      };
+    };
+    const alias = aliased.page.records.find(
+      (record) => record.account?.aliases?.[0] !== undefined,
+    )?.account?.aliases?.[0];
+    if (alias === undefined) throw new Error("invalid test fixture");
+
+    for (const label of [
+      "4242.4242.4242.4242",
+      "4242/4242/4242/4242",
+      "4242\u200b4242\u200b4242\u200b4242",
+      "٤٢٤٢",
+      "Card 123",
+    ]) {
+      alias.label = label;
+      expect(() => parseSyncResult(aliased, parseSyncRequest(request))).toThrow(
+        "invalid ingestion contract",
+      );
+    }
+    alias.label = "Business card 4242";
+    expect(() =>
+      parseSyncResult(aliased, parseSyncRequest(request)),
+    ).not.toThrow();
   });
 
   it("rejects write capabilities and inconsistent failure semantics", () => {

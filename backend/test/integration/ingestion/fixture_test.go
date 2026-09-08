@@ -163,6 +163,10 @@ func (f *fixture) issued() jobs.Job {
 }
 
 func (f *fixture) gateway(job jobs.Job) *fixtureGateway {
+	return f.gatewayWithMutation(job, nil)
+}
+
+func (f *fixture) gatewayWithMutation(job jobs.Job, mutate func(map[string]any)) *fixtureGateway {
 	f.t.Helper()
 	manifest, err := contract.DecodeManifest(readFixture(f.t, "manifest.json"), "bybit")
 	if err != nil {
@@ -176,6 +180,9 @@ func (f *fixture) gateway(job jobs.Job) *fixtureGateway {
 	page["jobId"], page["attempt"], page["leaseToken"] = job.ID, job.Attempt, job.LeaseToken
 	page["connectionGeneration"], page["admissionRevision"], page["cursor"] = job.ConnectionGeneration, job.AdmissionRevision, job.Cursor
 	page["binding"] = map[string]any{"provider": job.Binding.Provider, "environment": job.Binding.Environment, "adapterBuildDigest": job.Binding.AdapterBuildDigest, "collectorImageDigest": job.Binding.CollectorImageDigest, "contractVersion": job.Binding.ContractVersion, "allowlistRevision": job.Binding.AllowlistRevision, "nonSecretConfigRevision": job.Binding.NonSecretConfigRevision, "operatorPermissionRevision": job.Binding.OperatorPermissionRevision}
+	if mutate != nil {
+		mutate(raw)
+	}
 	data, _ := json.Marshal(raw)
 	token, err := application.TokenFromJob(job)
 	if err != nil {

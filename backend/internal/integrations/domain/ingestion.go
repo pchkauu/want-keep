@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"regexp"
 	"sort"
@@ -279,7 +280,8 @@ func (r AccountReference) Validate() error {
 }
 
 func (r AccountReference) Key() string {
-	return r.ExternalAccountID + "\x00" + r.Product + "\x00" + r.Network + "\x00" + r.AssetCode
+	encoded, _ := json.Marshal([]string{r.ExternalAccountID, r.Product, r.Network, r.AssetCode})
+	return string(encoded)
 }
 
 type CardAlias struct{ ID, Label, LastFour string }
@@ -539,12 +541,12 @@ func validText(value string) bool {
 }
 
 func validTextLimit(value string, maximum int) bool {
-	return value != "" && utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum
+	return value != "" && !strings.ContainsRune(value, 0) && utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum
 }
 
 func validBoundedText(value string, required bool) bool {
 	if value == "" {
 		return !required
 	}
-	return utf8.ValidString(value) && utf8.RuneCountInString(value) <= MaxTextLength
+	return !strings.ContainsRune(value, 0) && utf8.ValidString(value) && utf8.RuneCountInString(value) <= MaxTextLength
 }

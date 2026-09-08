@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -15,7 +17,7 @@ func (s *Store) ResolveExternalAccount(ctx context.Context, provider, stableID s
 	if err != nil {
 		return "", err
 	}
-	if len(stableID) < 1 || len(stableID) > 2000 {
+	if stableID == "" || strings.ContainsRune(stableID, 0) || !utf8.ValidString(stableID) || utf8.RuneCountInString(stableID) > 2000 {
 		return "", ledger.ErrInvalidSource
 	}
 	switch provider {

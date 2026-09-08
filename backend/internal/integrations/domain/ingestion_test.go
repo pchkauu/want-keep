@@ -50,6 +50,19 @@ func TestCanonicalHashSeparatesBoundariesAndContractVersion(t *testing.T) {
 	}
 }
 
+func TestAccountReferenceKeyIsStructuralAndRejectsSeparators(t *testing.T) {
+	valid := ingestion.AccountReference{ExternalAccountID: "external", Product: "wallet", Network: "ethereum", AssetCode: "USDT"}
+	other := ingestion.AccountReference{ExternalAccountID: "external-ethereum", Product: "wallet", Network: "", AssetCode: "USDT"}
+	if err := valid.Validate(); err != nil || valid.Key() == other.Key() {
+		t.Fatal("account identity is not structural", err)
+	}
+	invalid := valid
+	invalid.ExternalAccountID = "external\x00wallet"
+	if !errors.Is(invalid.Validate(), ingestion.ErrInvalidContract) {
+		t.Fatal("identity separator was accepted")
+	}
+}
+
 func TestPageAndFailureEnforceCursorAndRetrySemantics(t *testing.T) {
 	coverage, _ := reporting.NewCoverage(reporting.Complete, nil)
 	page := ingestion.Page{Token: token(), Complete: false, NextCursor: "page-2", Coverage: coverage, Evidence: []ingestion.Evidence{evidence()}}
