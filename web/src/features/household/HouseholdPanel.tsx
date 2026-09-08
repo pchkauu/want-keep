@@ -14,6 +14,7 @@ export function HouseholdPanel({ compact = false }: { compact?: boolean }) {
   const {
     status,
     refreshing,
+    actor,
     household,
     invitation,
     error,
@@ -174,13 +175,10 @@ export function HouseholdPanel({ compact = false }: { compact?: boolean }) {
               }
               onClick={() =>
                 void action.run(async () => {
-                  const next = await controller.api.revoke(
-                    current.id,
-                    invitation.revision,
-                  );
-                  if (!action.isLive()) return;
-                  controller.updateInvitation(next);
                   setLink("");
+                  setCopyState(undefined);
+                  await controller.revokeInvitation(actor);
+                  if (!action.isLive()) return;
                 })
               }
             >

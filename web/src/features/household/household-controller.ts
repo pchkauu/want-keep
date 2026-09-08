@@ -9,7 +9,7 @@ export class HouseholdController {
   private epoch = 0;
   private pending?: { actorKey: string; promise: Promise<void> };
 
-  readonly api: HouseholdApi;
+  private readonly api: HouseholdApi;
 
   constructor(api: HouseholdApi) {
     this.api = api;
@@ -48,54 +48,50 @@ export class HouseholdController {
         ? { ...previous, actorKey, refreshing: true, error: undefined }
         : { status: "loading", actorKey },
     );
-    const request = Promise.all([this.api.read(), this.api.invitations()]).then(
-      ([household, invitation]) => {
-        if (epoch !== this.epoch || this.state.actorKey !== actorKey) return;
-        const actor = household.members.find(
-          (candidate) => candidate.userId === member.userId,
-        );
-        if (
-          household.id !== member.householdId ||
-          !actor ||
-          actor.status !== "active"
-        ) {
-          this.publish({
-            status: "error",
-            actorKey,
-            error: new ApiFailure("invalid_response"),
-          });
-          return;
-        }
+    const request = Promise.allSettled([
+      this.api.read(),
+      this.api.invitations(),
+    ]).then(([householdResult, invitationResult]) => {
+      if (epoch !== this.epoch || this.state.actorKey !== actorKey) return;
+      if (householdResult.status === "rejected") {
+        this.publishLoadFailure(actorKey, previous, householdResult.reason);
+        return;
+      }
+      const household = householdResult.value;
+      const actor = household.members.find(
+        (candidate) => candidate.userId === member.userId,
+      );
+      if (
+        household.id !== member.householdId ||
+        !actor ||
+        actor.status !== "active"
+      ) {
+        this.publish({
+          status: "error",
+          actorKey,
+          error: new ApiFailure("invalid_response"),
+        });
+        return;
+      }
+      if (invitationResult.status === "rejected") {
         this.publish({
           status: "ready",
           actorKey,
           household,
-          invitation,
+          ...(previous?.invitation ? { invitation: previous.invitation } : {}),
           refreshing: false,
+          error: this.failure(invitationResult.reason),
         });
-      },
-      (error) => {
-        if (epoch !== this.epoch || this.state.actorKey !== actorKey) return;
-        const failure =
-          error instanceof ApiFailure
-            ? error
-            : new ApiFailure("service_unavailable");
-        if (previous) {
-          this.publish({
-            ...previous,
-            actorKey,
-            refreshing: false,
-            error: failure,
-          });
-          return;
-        }
-        this.publish({
-          status: "error",
-          actorKey,
-          error: failure,
-        });
-      },
-    );
+        return;
+      }
+      this.publish({
+        status: "ready",
+        actorKey,
+        household,
+        invitation: invitationResult.value,
+        refreshing: false,
+      });
+    });
     const completion = request.finally(() => {
       if (this.pending?.promise === completion) this.pending = undefined;
     });
@@ -104,6 +100,25 @@ export class HouseholdController {
   }
 
   async issueInvitation(member: MemberSession) {
+    const current = await this.invitationContext(member);
+    const result = await this.api.issue(current.invitation.revision);
+    this.applyInvitation(current, result.state);
+    return result;
+  }
+
+  async revokeInvitation(member: MemberSession) {
+    const current = await this.invitationContext(member);
+    if (current.invitation.current?.status !== "active")
+      throw new ApiFailure("invalid_response");
+    const invitation = await this.api.revoke(
+      current.invitation.current.id,
+      current.invitation.revision,
+    );
+    this.applyInvitation(current, invitation);
+    return invitation;
+  }
+
+  private async invitationContext(member: MemberSession) {
     const actorKey = this.actorKey(member);
     await this.load(member);
     const current = this.state;
@@ -115,20 +130,20 @@ export class HouseholdController {
       current.error
     )
       throw current.error ?? new ApiFailure("session_changed");
-    const epoch = this.epoch;
-    const result = await this.api.issue(current.invitation.revision);
-    if (
-      epoch !== this.epoch ||
-      this.state.status !== "ready" ||
-      this.state.actorKey !== actorKey
-    )
-      throw new ApiFailure("network_unconfirmed");
-    this.updateInvitation(result.state);
-    return result;
+    return { actorKey, epoch: this.epoch, invitation: current.invitation };
   }
 
-  updateInvitation(invitation: Invitation) {
-    if (this.state.status !== "ready" || !this.state.household) return;
+  private applyInvitation(
+    current: { actorKey: string; epoch: number },
+    invitation: Invitation,
+  ) {
+    if (
+      current.epoch !== this.epoch ||
+      this.state.status !== "ready" ||
+      this.state.actorKey !== current.actorKey ||
+      !this.state.household
+    )
+      throw new ApiFailure("network_unconfirmed");
     this.publish({
       ...this.state,
       invitation,
@@ -139,5 +154,24 @@ export class HouseholdController {
 
   private actorKey(member: MemberSession) {
     return `${member.householdId}:${member.userId}:${member.sessionId}`;
+  }
+
+  private publishLoadFailure(
+    actorKey: string,
+    previous: HouseholdState | undefined,
+    error: unknown,
+  ) {
+    const failure = this.failure(error);
+    this.publish(
+      previous
+        ? { ...previous, actorKey, refreshing: false, error: failure }
+        : { status: "error", actorKey, error: failure },
+    );
+  }
+
+  private failure(error: unknown) {
+    return error instanceof ApiFailure
+      ? error
+      : new ApiFailure("service_unavailable");
   }
 }

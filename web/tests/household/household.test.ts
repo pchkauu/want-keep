@@ -162,6 +162,59 @@ describe("household loading boundary", () => {
     });
   });
 
+  it("keeps a replacement session authoritative over a late revoke result", async () => {
+    const api = new HouseholdApi(new HttpClient());
+    let finishRevoke!: (value: { revision: number }) => void;
+    vi.spyOn(api, "read").mockResolvedValue(household);
+    vi.spyOn(api, "invitations")
+      .mockResolvedValueOnce({
+        revision: 1,
+        current: {
+          id: "invitation-a",
+          expiresAt: "2026-09-09T10:00:00Z",
+          status: "active",
+        },
+      })
+      .mockResolvedValueOnce({ revision: 3 });
+    const revoke = vi
+      .spyOn(api, "revoke")
+      .mockImplementation(
+        () => new Promise((resolve) => (finishRevoke = resolve)),
+      );
+    const controller = new HouseholdController(api);
+    await controller.load(session());
+
+    const result = controller.revokeInvitation(session());
+    await vi.waitFor(() =>
+      expect(revoke).toHaveBeenCalledWith("invitation-a", 1),
+    );
+    await controller.load(session("user-a", "session-new"));
+    finishRevoke({ revision: 2 });
+
+    await expect(result).rejects.toMatchObject({ code: "network_unconfirmed" });
+    expect(controller.snapshot()).toMatchObject({
+      status: "ready",
+      actorKey: "household-a:user-a:session-new",
+      invitation: { revision: 3 },
+    });
+  });
+
+  it("keeps household members available when invitation metadata fails", async () => {
+    const api = new HouseholdApi(new HttpClient());
+    vi.spyOn(api, "read").mockResolvedValue(household);
+    vi.spyOn(api, "invitations").mockRejectedValue(new Error("offline"));
+    const controller = new HouseholdController(api);
+
+    await controller.load(session());
+
+    expect(controller.snapshot()).toMatchObject({
+      status: "ready",
+      household,
+      error: { code: "service_unavailable" },
+    });
+    expect(controller.snapshot().invitation).toBeUndefined();
+  });
+
   it("drops late data from a replaced session", async () => {
     const api = new HouseholdApi(new HttpClient());
     let finishFirst!: (value: Household) => void;
