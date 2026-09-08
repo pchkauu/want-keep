@@ -96,3 +96,37 @@ func TestMatchingReceiptItemsAndCompoundAmountCorrection(t *testing.T) {
 		t.Fatal("compound correction did not retain the matching and receipt invariant")
 	}
 }
+
+func TestUnclassifiedCarrierCannotHideOtherProtectedCategories(t *testing.T) {
+	for _, existingGroup := range []bool{false, true} {
+		t.Run(map[bool]string{false: "new_link", true: "expand_link"}[existingGroup], func(t *testing.T) {
+			f := newFixture(t)
+			account := f.create(money.RUB, "5000")
+			a, b, d := uuid.NewString(), uuid.NewString(), uuid.NewString()
+			c := f.client(f.p)
+			categories := category.StarterCategories(f.family.ID)
+			for _, id := range []string{a, b, d} {
+				if _, err := f.write(f.revision(id, account, "-500", money.RUB, 1), request()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for i, id := range []string{b, d} {
+				c.result("/transactions/"+id+"/corrections", map[string]any{"expectedRevision": f.current(id).Revision, "category": map[string]any{"action": "set", "id": categories[i].ID}, "reason": "Confirmed independent classification"})
+			}
+			if existingGroup {
+				f.link(matching.Payment, a, a, b)
+			}
+			before := f.versions(a, b, d)
+			failed := decode[generated.CommandFailed](t, c.call("POST", "/transactions/"+a+"/links", uuid.NewString(), map[string]any{"kind": "receipt_match", "expectedRevisions": before, "reason": "Compare all protected evidence"}, 202))
+			if failed.Error.Code != "matching_conflict" {
+				t.Fatal("unclassified carrier hid protected conflict", failed)
+			}
+			for _, r := range before {
+				if f.current(r.TransactionId).Revision != uint64(r.ExpectedRevision) {
+					t.Fatal("rejected group changed revisions")
+				}
+			}
+			f.balance(account, "owned", "4500")
+		})
+	}
+}

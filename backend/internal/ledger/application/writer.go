@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"sort"
 
 	accounts "github.com/pchkauu/want-keep/backend/internal/accounts/application"
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
@@ -84,12 +85,7 @@ func (w *Writer) AppendDecision(ctx context.Context, p household.Principal, d le
 	if err := w.journal.SaveDecision(ctx, d); err != nil {
 		return err
 	}
-	for _, r := range next {
-		if err := w.Append(ctx, p, r, r.Revision-1); err != nil {
-			return err
-		}
-	}
-	return nil
+	return w.AppendBatch(ctx, p, next)
 }
 
 func (w *Writer) AppendSource(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64, evidence ledger.Evidence) error {
@@ -106,26 +102,77 @@ func NewWriterWithReconciliation(j Journal, a accounts.Repository, reconciler Re
 
 // Append must be called inside the household transaction, including the command or import fence.
 func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64) error {
+	affected, err := w.append(ctx, p, r, expected)
+	if err != nil {
+		return err
+	}
+	return w.reconcile(ctx, p, affected)
+}
+
+// AppendBatch publishes comparisons only after the complete financial group exists.
+// The caller supplies the same household transaction used for its decision or import page.
+func (w *Writer) AppendBatch(ctx context.Context, p household.Principal, revisions []ledger.Revision) error {
+	if len(revisions) == 0 || len(revisions) > 100 {
+		return ledger.ErrInvalidRevision
+	}
+	seen := map[string]bool{}
+	for _, r := range revisions {
+		if seen[r.OperationID] {
+			return ledger.ErrInvalidRevision
+		}
+		seen[r.OperationID] = true
+	}
+	affected := map[string]bool{}
+	for _, r := range revisions {
+		ids, err := w.append(ctx, p, r, r.Revision-1)
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			affected[id] = true
+		}
+	}
+	ids := make([]string, 0, len(affected))
+	for id := range affected {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return w.reconcile(ctx, p, ids)
+}
+
+func (w *Writer) reconcile(ctx context.Context, p household.Principal, accounts []string) error {
+	if w.reconciler == nil {
+		return nil
+	}
+	for _, id := range accounts {
+		if err := w.reconciler.ReconcileAccount(ctx, p, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Writer) append(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64) ([]string, error) {
 	if r.ActorID != p.UserID() {
-		return household.ErrForbidden
+		return nil, household.ErrForbidden
 	}
 	zone, err := w.journal.AccountTimezone(ctx, p)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if r.Timezone.String() != "" && r.Timezone != zone {
-		return ledger.ErrInvalidRevision
+		return nil, ledger.ErrInvalidRevision
 	}
 	r, err = r.InTimezone(zone)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := r.Validate(); err != nil {
-		return err
+		return nil, err
 	}
 	current, exists, err := w.journal.CurrentLedgerRevision(ctx, p, r.OperationID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	actual := uint64(0)
 	var previous *ledger.Revision
@@ -134,14 +181,14 @@ func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Rev
 		previous = &current
 	}
 	if expected != actual || actual >= command.MaxRevision || r.Revision != actual+1 {
-		return commands.Rejection{Code: "version_conflict"}
+		return nil, commands.Rejection{Code: "version_conflict"}
 	}
 	if err = r.CheckSuccessor(previous); err != nil {
-		return err
+		return nil, err
 	}
 	if r.PayerState == "known" {
 		if err = w.journal.RequireLedgerPayer(ctx, p, r.PayerMemberID); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	r.Postings = append([]ledger.Posting(nil), r.Postings...)
@@ -149,17 +196,17 @@ func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Rev
 	for _, id := range affected {
 		a, e := w.accounts.Account(ctx, p, id)
 		if e != nil {
-			return e
+			return nil, e
 		}
 		for i, posting := range r.Postings {
 			if posting.AccountID != id {
 				continue
 			}
 			if posting.Money.Asset() != a.Asset {
-				return money.ErrAssetMismatch
+				return nil, money.ErrAssetMismatch
 			}
 			if posting.Funding == ledger.CreditFunds && a.Product != "credit_card" {
-				return ledger.ErrInvalidRevision
+				return nil, ledger.ErrInvalidRevision
 			}
 			if posting.Funding == "" {
 				r.Postings[i].Funding = ledger.OwnFunds
@@ -170,17 +217,13 @@ func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Rev
 		}
 	}
 	if err = w.journal.AppendRevision(ctx, r, expected); err != nil {
-		return err
+		return nil, err
 	}
 	if err = accounts.NewProjector(w.accounts).Apply(ctx, p, r, previous); err != nil {
-		return err
+		return nil, err
 	}
-	if w.reconciler != nil && r.Type != ledger.Opening {
-		for _, id := range affected {
-			if err = w.reconciler.ReconcileAccount(ctx, p, id); err != nil {
-				return err
-			}
-		}
+	if r.Type == ledger.Opening {
+		return nil, nil
 	}
-	return nil
+	return affected, nil
 }

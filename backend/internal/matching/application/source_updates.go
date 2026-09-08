@@ -126,10 +126,8 @@ func (s *Service) saveSourceUpdate(ctx context.Context, p household.Principal, g
 	if err = s.repository.ReleaseMatchingCarriers(ctx, g.ID); err != nil {
 		return err
 	}
-	for _, r := range changes {
-		if err = s.writer.Append(ctx, p, r, r.Revision-1); err != nil {
-			return err
-		}
+	if err = s.writer.AppendBatch(ctx, p, changes); err != nil {
+		return err
 	}
 	return s.repository.RestoreMatchingCarriers(ctx, g.ID)
 }

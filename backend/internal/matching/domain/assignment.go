@@ -15,10 +15,11 @@ type componentKey struct {
 	asset   money.Asset
 }
 type assignedComponent struct {
-	posting  ledger.Posting
-	carrier  ledger.Revision
-	position int
-	state    ledger.State
+	posting         ledger.Posting
+	carrier         ledger.Revision
+	position        int
+	state           ledger.State
+	protectedFields map[ledger.Field]ledger.Revision
 }
 type effectAssignment struct {
 	group      Group
@@ -158,13 +159,7 @@ func (a *effectAssignment) observe(r ledger.Revision) error {
 			if !c.posting.SameMoney(p) || !c.posting.Funding.SameBasis(p.Funding) || c.carrier.OperationID == r.OperationID && c.position != i {
 				return ErrConflict
 			}
-			for _, f := range []ledger.Field{ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField} {
-				_, x := c.carrier.Protections[f]
-				_, y := r.Protections[f]
-				if x && y && !c.carrier.FieldEqual(r, f) {
-					return ErrConflict
-				}
-			}
+
 			if r.Origin == "source" {
 				if r.State == ledger.Reversed || r.State == ledger.Cancelled {
 					c.state = r.State
@@ -189,6 +184,9 @@ func (a *effectAssignment) observe(r ledger.Revision) error {
 			}
 		}
 		c := a.components[id]
+		if err := c.observeProtectedFields(r); err != nil {
+			return err
+		}
 		next.Participation.Parts = append(next.Participation.Parts, ledger.Contribution{ComponentID: id, Position: i, CarrierID: c.carrier.OperationID, CarrierPosition: c.position, Role: role})
 	}
 	a.result = append(a.result, next)
@@ -226,6 +224,24 @@ func (a *effectAssignment) validatePrincipal(allowPartial bool) error {
 		}
 	} else {
 		return ErrInvalid
+	}
+	return nil
+}
+
+func (c *assignedComponent) observeProtectedFields(r ledger.Revision) error {
+	_, legacy := r.Protections[ledger.LegacyField]
+	legacy = legacy || r.HumanOverride && len(r.Protections) == 0
+	for _, field := range []ledger.Field{ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField} {
+		if _, protected := r.Protections[field]; !protected && !legacy {
+			continue
+		}
+		if previous, found := c.protectedFields[field]; found && !previous.FieldEqual(r, field) {
+			return ErrConflict
+		}
+		if c.protectedFields == nil {
+			c.protectedFields = map[ledger.Field]ledger.Revision{}
+		}
+		c.protectedFields[field] = r
 	}
 	return nil
 }

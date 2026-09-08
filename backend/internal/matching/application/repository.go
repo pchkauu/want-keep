@@ -30,13 +30,18 @@ type Repository interface {
 	RestoreMatchingCarriers(context.Context, string) error
 }
 
+type Writer interface {
+	journal.JournalWriter
+	AppendBatch(context.Context, household.Principal, []ledger.Revision) error
+}
+
 type Service struct {
 	repository Repository
-	writer     journal.JournalWriter
+	writer     Writer
 	now        func() calendar.Instant
 	newID      func() string
 }
 
-func NewService(r Repository, w journal.JournalWriter, now func() calendar.Instant, newID func() string) *Service {
+func NewService(r Repository, w Writer, now func() calendar.Instant, newID func() string) *Service {
 	return &Service{repository: r, writer: w, now: now, newID: newID}
 }
