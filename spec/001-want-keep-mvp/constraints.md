@@ -110,3 +110,11 @@ Task-1.5 (D-46) добавляет отдельные keyring и изолиро�
 ### Граница хранения счетов (task-2.1)
 
 API счетов регистрирует команды до исполнения с проверкой сессии и использует порядок блокировок identity → household. Чтение выполняется в repeatable-read снимке без финансовых write locks. Миграция 007 сохраняет 001–006 и помечает старые недоказанные остатки как legacy. Только admitted импорт создаёт импортные продукты, наблюдения источника и алиасы; пользовательские команды не могут их подделать. Проекции журнала и неизменяемые наблюдения платформ хранятся и интерпретируются раздельно. Принадлежность счёта не назначает владельца банковской сессии. См. [контракт счетов](contracts.md#task-21--счета-и-начальные-остатки) и [границы проверки](evidence/task-2.1-accounts.md).
+
+## Ingestion task-3.2
+
+`collector/contracts/v10/ingestion.openapi.yaml` — единственный wire source внутреннего контракта версии 10. `make generate-contracts` обновляет Go и TypeScript, `make check-contracts` сравнивает оба результата с временной генерацией. Generated DTO остаются в `integrations/contract` и collector; `integrations/domain` не зависит от transport, SQL, HTTP, Playwright или provider SDK.
+
+`integrations/application` координирует `ProviderGateway`, `EvidenceStore`, accounts importer, ledger source writer и `connections/admission`. Provider IO выполняется только после pre-read fence и вне финансовой транзакции. Raw evidence сохраняется до `CommitPage`; callback не выполняет внешний IO. Счёт может быть разрешён без balance observation; любая ссылка balance/posting требует account descriptor той же самостоятельной страницы. Серверные principal, external owner, internal IDs, revisions и timestamps не берутся из payload.
+
+Контракт fail closed: только read capability, строгий JSON, лимиты и точное эхо job/binding/revision. Stale result пересекает только evidence/quarantine boundary. Реальные provider routes, network isolation и live permission доказываются следующими задачами; наличие synthetic gateway не является admission в production.

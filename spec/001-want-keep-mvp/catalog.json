@@ -3978,21 +3978,34 @@
         "AC-106"
       ],
       "targets": [
+        "collector/contracts/v10/",
+        "collector/src/contracts/",
         "backend/internal/integrations/",
-        "collector/contracts/"
+        "backend/internal/accounts/application/",
+        "backend/test/integration/ingestion/",
+        "scripts/generate-ingestion-contracts.sh",
+        ".github/workflows/ci.yml"
       ],
       "behavior": {
-        "ru": "Закрепить контракт коллектора и provider gateway: capability, source records, account references, coverage, balance snapshots, revisions, cursor, errors. Сохранять исходник до нормализации, namespace ID, связь счетов/карт и provenance значений. Отсутствующие поля/unsupported не становятся нулём. Golden-like contract fixtures должны быть синтетическими и проверять смысл, не только JSON shape. Каждый server-issued job и result содержит immutable exact admission binding и `admissionRevision`; application commit принимает result только при совпадении current `admitted` revision в той же транзакции, что source/posting/outbox, иначе сохраняет evidence в quarantine без финансового эффекта.",
-        "en": "Define collector/provider-gateway contracts: capability, source records, account references, coverage, balance snapshots, revisions, cursor and errors. Retain raw data before normalization, namespace IDs and track account/card relationships and provenance. Missing/unsupported fields never become zero. Synthetic contract fixtures test semantics, not only JSON shape. Every server-issued job and result carries the immutable exact admission binding and `admissionRevision`; application commit accepts a result only when the current `admitted` revision matches in the same transaction as source/posting/outbox, otherwise it retains evidence in quarantine without a financial effect."
+        "ru": "Контракт версии 10 описывает server-issued job, capability только чтения, точный D-43 binding/admissionRevision, cursor/replay, coverage, evidence и типизированные account/balance/transaction/failure records. Raw evidence сохраняется до финансового commit. Сервер назначает principal, external owner, internal account/operation/source revision, evidence reference и fetchedAt. Каждая самостоятельная страница повторяет account descriptor для balance/posting; account-only page не создаёт observation. D-39 dedup, partial omissions и admission/generation/lease/cursor fencing выполняются через существующий CommitPage; stale result остаётся только в quarantine. Generated DTO не входят в domain, суммы остаются decimal-строками, unknown/unavailable и unsupported assets не становятся нулём или паритетом.",
+        "en": "Contract version 10 defines a server-issued job, read-only capabilities, exact D-43 binding/admissionRevision, cursor/replay, coverage, evidence and typed account/balance/transaction/failure records. Raw evidence is durable before the financial commit. The server assigns principal, external owner, internal account/operation/source revision, evidence reference and fetchedAt. Every self-contained page repeats an account descriptor for each balance/posting; an account-only page creates no observation. D-39 dedup, partial omissions and admission/generation/lease/cursor fencing use the existing CommitPage; stale results remain only in quarantine. Generated DTOs never enter the domain, money remains decimal strings, and unknown/unavailable or unsupported assets never become zero or parity."
       },
       "verification": {
-        "command": "make check-contracts && make test-integration AREA=ingestion",
+        "command": "make check-contracts && make test-collector FILTER=contracts && make test-integration AREA=ingestion && make test-ingestion-race",
         "expected": {
-          "ru": "Round-trip и ошибки контракта проверены; replay и частичное покрытие не меняют семантику. Stale admission result не пересекает commit boundary.",
-          "en": "Contract round trips and errors pass; replay and partial coverage preserve semantics. A stale-admission result cannot cross the commit boundary."
+          "ru": "Точные шесть активов, строгий JSON/evidence, capability только чтения, D-39 identity/revision, partial coverage, replay/cursor и stale-admission quarantine проходят без потери точности, подмены principal или повторного финансового эффекта.",
+          "en": "Six exact assets, strict JSON/evidence, read-only capabilities, D-39 identity/revision, partial coverage, replay/cursor and stale-admission quarantine pass without precision loss, principal spoofing or duplicate financial effects."
         }
       },
-      "github_url": "https://github.com/pchkauu/want-keep/issues/27"
+      "github_url": "https://github.com/pchkauu/want-keep/issues/27",
+      "status": {
+        "ru": "Реализованы versioned wire-контракт, строгие Go/TypeScript boundary и атомарное применение synthetic ingestion pages; реальные provider IO, UI и production остаются последующим задачам.",
+        "en": "The versioned wire contract, strict Go/TypeScript boundary and atomic application of synthetic ingestion pages are implemented; live provider IO, UI and production remain downstream."
+      },
+      "verification_note": {
+        "ru": "Зависимости включены в базу. Доказательства и границы: evidence/task-3.2-ingestion.md. Обязательны make check, full integration matrix и ingestion/jobs/storage/accounts/ledger/audit/matching/reconciliation race suites. Live provider IO и эксплуатационная готовность не подтверждаются.",
+        "en": "Dependencies are included in the base. Evidence and boundaries: evidence/task-3.2-ingestion.en.md. Require make check, the full integration matrix and ingestion/jobs/storage/accounts/ledger/audit/matching/reconciliation race suites. Live provider IO and operational readiness are not proven."
+      }
     },
     {
       "id": "task-3.3",

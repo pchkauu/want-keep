@@ -127,3 +127,27 @@ flowchart LR
 ```
 
 Original statuses and dates remain in history. Incomplete search and waiting produce matching_unresolved; source observations stay separate. Stale import jobs enter quarantine before this flow. Bank IO and document recognition are connected by their owning tasks.
+
+## Task-3.2: connector ingestion page
+
+```mermaid
+sequenceDiagram
+  participant J as Validated sync job
+  participant C as API/Browser collector
+  participant E as EvidenceStore
+  participant G as Admission gate
+  participant A as Accounts/Ledger
+  participant Q as Quarantine
+  J->>G: BeforeRead(binding, revision, generation, lease)
+  G->>C: Server-issued request without household/actor/internal IDs
+  C-->>G: Exact echo + evidence + typed records/coverage
+  G->>E: Persist raw evidence before financial transaction
+  alt binding/revision/generation/lease/cursor are current
+    G->>A: CommitPage: resolve accounts + source revisions + observations/postings
+    A-->>G: Audit/outbox/checkpoint atomically
+  else result is stale
+    G->>Q: Evidence reference + safe reason
+  end
+```
+
+A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage.

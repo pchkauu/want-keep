@@ -5,7 +5,7 @@
 
 Нормализовать данные без утечки моделей платформ в домен.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализованы versioned wire-контракт, строгие Go/TypeScript boundary и атомарное применение synthetic ingestion pages; реальные provider IO, UI и production остаются последующим задачам.
 
 **Зависимости:** `task-3.1`, `task-1.2`, `task-2.1`, `task-2.2`.
 
@@ -13,12 +13,17 @@
 
 ### Изменение и контракты
 
-Закрепить контракт коллектора и provider gateway: capability, source records, account references, coverage, balance snapshots, revisions, cursor, errors. Сохранять исходник до нормализации, namespace ID, связь счетов/карт и provenance значений. Отсутствующие поля/unsupported не становятся нулём. Golden-like contract fixtures должны быть синтетическими и проверять смысл, не только JSON shape. Каждый server-issued job и result содержит immutable exact admission binding и `admissionRevision`; application commit принимает result только при совпадении current `admitted` revision в той же транзакции, что source/posting/outbox, иначе сохраняет evidence в quarantine без финансового эффекта.
+Контракт версии 10 описывает server-issued job, capability только чтения, точный D-43 binding/admissionRevision, cursor/replay, coverage, evidence и типизированные account/balance/transaction/failure records. Raw evidence сохраняется до финансового commit. Сервер назначает principal, external owner, internal account/operation/source revision, evidence reference и fetchedAt. Каждая самостоятельная страница повторяет account descriptor для balance/posting; account-only page не создаёт observation. D-39 dedup, partial omissions и admission/generation/lease/cursor fencing выполняются через существующий CommitPage; stale result остаётся только в quarantine. Generated DTO не входят в domain, суммы остаются decimal-строками, unknown/unavailable и unsupported assets не становятся нулём или паритетом.
 
 ### Границы изменений
 
+- `collector/contracts/v10/`
+- `collector/src/contracts/`
 - `backend/internal/integrations/`
-- `collector/contracts/`
+- `backend/internal/accounts/application/`
+- `backend/test/integration/ingestion/`
+- `scripts/generate-ingestion-contracts.sh`
+- `.github/workflows/ci.yml`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -136,12 +141,12 @@
 ### Проверка результата
 
 ```sh
-make check-contracts && make test-integration AREA=ingestion
+make check-contracts && make test-collector FILTER=contracts && make test-integration AREA=ingestion && make test-ingestion-race
 ```
 
-Round-trip и ошибки контракта проверены; replay и частичное покрытие не меняют семантику. Stale admission result не пересекает commit boundary.
+Точные шесть активов, строгий JSON/evidence, capability только чтения, D-39 identity/revision, partial coverage, replay/cursor и stale-admission quarantine проходят без потери точности, подмены principal или повторного финансового эффекта.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Зависимости включены в базу. Доказательства и границы: evidence/task-3.2-ingestion.md. Обязательны make check, full integration matrix и ingestion/jobs/storage/accounts/ledger/audit/matching/reconciliation race suites. Live provider IO и эксплуатационная готовность не подтверждаются.
 
 ### Передача следующему агенту
 
@@ -153,7 +158,7 @@ Round-trip и ошибки контракта проверены; replay и ча
 
 Normalize data without leaking provider models into the domain.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** The versioned wire contract, strict Go/TypeScript boundary and atomic application of synthetic ingestion pages are implemented; live provider IO, UI and production remain downstream.
 
 **Dependencies:** `task-3.1`, `task-1.2`, `task-2.1`, `task-2.2`.
 
@@ -161,12 +166,17 @@ Normalize data without leaking provider models into the domain.
 
 ### Change and contracts
 
-Define collector/provider-gateway contracts: capability, source records, account references, coverage, balance snapshots, revisions, cursor and errors. Retain raw data before normalization, namespace IDs and track account/card relationships and provenance. Missing/unsupported fields never become zero. Synthetic contract fixtures test semantics, not only JSON shape. Every server-issued job and result carries the immutable exact admission binding and `admissionRevision`; application commit accepts a result only when the current `admitted` revision matches in the same transaction as source/posting/outbox, otherwise it retains evidence in quarantine without a financial effect.
+Contract version 10 defines a server-issued job, read-only capabilities, exact D-43 binding/admissionRevision, cursor/replay, coverage, evidence and typed account/balance/transaction/failure records. Raw evidence is durable before the financial commit. The server assigns principal, external owner, internal account/operation/source revision, evidence reference and fetchedAt. Every self-contained page repeats an account descriptor for each balance/posting; an account-only page creates no observation. D-39 dedup, partial omissions and admission/generation/lease/cursor fencing use the existing CommitPage; stale results remain only in quarantine. Generated DTOs never enter the domain, money remains decimal strings, and unknown/unavailable or unsupported assets never become zero or parity.
 
 ### Change boundaries
 
+- `collector/contracts/v10/`
+- `collector/src/contracts/`
 - `backend/internal/integrations/`
-- `collector/contracts/`
+- `backend/internal/accounts/application/`
+- `backend/test/integration/ingestion/`
+- `scripts/generate-ingestion-contracts.sh`
+- `.github/workflows/ci.yml`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -284,12 +294,12 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make check-contracts && make test-integration AREA=ingestion
+make check-contracts && make test-collector FILTER=contracts && make test-integration AREA=ingestion && make test-ingestion-race
 ```
 
-Contract round trips and errors pass; replay and partial coverage preserve semantics. A stale-admission result cannot cross the commit boundary.
+Six exact assets, strict JSON/evidence, read-only capabilities, D-39 identity/revision, partial coverage, replay/cursor and stale-admission quarantine pass without precision loss, principal spoofing or duplicate financial effects.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Dependencies are included in the base. Evidence and boundaries: evidence/task-3.2-ingestion.en.md. Require make check, the full integration matrix and ingestion/jobs/storage/accounts/ledger/audit/matching/reconciliation race suites. Live provider IO and operational readiness are not proven.
 
 ### Handoff to the next agent
 

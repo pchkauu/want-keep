@@ -110,3 +110,11 @@ An invitation does not assign principal or provide financial access before atomi
 ### Accounts storage boundary (task-2.1)
 
 The accounts API registers commands before session-bound execution and reuses the identity → household lock order. Reads use repeatable-read snapshots without financial write locks. Migration 007 preserves 001–006 and marks old unproven balances as legacy. Only admitted import transactions may create imported products, source observations or aliases; public commands cannot forge them. Ledger projections and immutable provider observations have separate persistence and semantics. Account ownership never grants ownership of a bank session. See [accounts contract](contracts.en.md#task-21--accounts-and-opening-balances) and [verification boundaries](evidence/task-2.1-accounts.en.md).
+
+## Ingestion task-3.2
+
+`collector/contracts/v10/ingestion.openapi.yaml` is the sole wire-format source for internal contract version 10. `make generate-contracts` updates Go and TypeScript, while `make check-contracts` compares both outputs against temporary generation. Generated DTOs remain in `integrations/contract` and the collector; `integrations/domain` depends on no transport, SQL, HTTP, Playwright or provider SDK.
+
+`integrations/application` coordinates `ProviderGateway`, `EvidenceStore`, the accounts importer, ledger source writer and `connections/admission`. Provider IO runs only after the pre-read fence and outside the financial transaction. Raw evidence is durable before `CommitPage`; the callback performs no external IO. An account may be resolved without a balance observation; every balance/posting reference requires an account descriptor in the same self-contained page. Server principals, external owners, internal IDs, revisions and timestamps never come from the payload.
+
+The contract fails closed: read capabilities only, strict JSON, bounded inputs and an exact job/binding/revision echo. A stale result crosses only the evidence/quarantine boundary. Downstream tasks prove live provider routes, network isolation and permission; a synthetic gateway does not admit production deployment.

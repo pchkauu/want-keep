@@ -127,3 +127,27 @@ flowchart LR
 ```
 
 Отдельные исходные статусы и даты остаются в истории. Неполный поиск и ожидание дают matching_unresolved; source observations сохраняются отдельно. Устаревший import job попадает в quarantine до этой цепочки. Банковский IO и распознавание документов подключаются в профильных задачах.
+
+## Task-3.2: входная страница коннектора
+
+```mermaid
+sequenceDiagram
+  participant J as Проверенное sync job
+  participant C as API/Browser collector
+  participant E as EvidenceStore
+  participant G as Admission gate
+  participant A as Accounts/Ledger
+  participant Q as Quarantine
+  J->>G: BeforeRead(binding, revision, generation, lease)
+  G->>C: Server-issued request без household/actor/internal IDs
+  C-->>G: Exact echo + evidence + typed records/coverage
+  G->>E: Сохранить raw evidence до финансовой транзакции
+  alt binding/revision/generation/lease/cursor актуальны
+    G->>A: CommitPage: resolve accounts + source revisions + observations/postings
+    A-->>G: Audit/outbox/checkpoint атомарно
+  else результат устарел
+    G->>Q: Evidence reference + safe reason
+  end
+```
+
+Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage.
