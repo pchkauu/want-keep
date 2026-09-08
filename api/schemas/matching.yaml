@@ -87,12 +87,12 @@ EffectParticipation:
   properties:
     groupId: { $ref: './money.yaml#/ID' }
     kind: { $ref: './matching.yaml#/MatchingKind' }
-    state: { type: string, enum: [waiting, linked] }
+    state: { type: string, enum: [waiting, retained, linked] }
     components:
       type: array
       items: { $ref: './matching.yaml#/EffectContribution' }
   required: [groupId, kind, state, components]
-  description: Waiting retains original facts with no additional effect. Linked components reference one active carrier; source lifecycle and accounting exclusion remain independent.
+  description: Waiting retains new facts with no additional effect. Retained keeps an already accepted independent contribution while late evidence awaits a decision. Both expose incomplete coverage. Linked components reference one active carrier; source lifecycle and accounting exclusion remain independent.
 EffectContribution:
   type: object
   additionalProperties: false

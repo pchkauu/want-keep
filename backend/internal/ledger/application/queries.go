@@ -110,7 +110,7 @@ func (q *Queries) view(ctx context.Context, p household.Principal, r ledger.Revi
 		return View{}, err
 	}
 	r.SourceConflict = r.SourceConflict || matchingConflict
-	if r.Participation.State == "waiting" {
+	if r.Participation.AwaitingDecision() {
 		reasons = append(reasons, "matching_unresolved")
 	}
 	if r.SourceConflict {

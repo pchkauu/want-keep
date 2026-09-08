@@ -122,7 +122,7 @@ func (a *effectAssignment) carrierRank(r ledger.Revision) int {
 			return 0
 		}
 	}
-	if r.Participation.GroupID == "" {
+	if r.Participation.GroupID == "" || r.Participation.State == "retained" {
 		return 1
 	}
 	return 2

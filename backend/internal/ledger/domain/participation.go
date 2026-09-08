@@ -43,6 +43,10 @@ func (p Participation) SameCarriers(other Participation) bool {
 	return true
 }
 
+func (p Participation) AwaitingDecision() bool {
+	return p.State == "waiting" || p.State == "retained"
+}
+
 func (p Participation) Validate(r Revision) error {
 	if p.GroupID == "" {
 		if p.Kind != "" || p.State != "" || len(p.Parts) != 0 {
@@ -50,10 +54,10 @@ func (p Participation) Validate(r Revision) error {
 		}
 		return nil
 	}
-	if !slices.Contains([]ParticipationKind{"payment", "transfer", "exchange"}, p.Kind) || !slices.Contains([]ParticipationState{"waiting", "linked"}, p.State) {
+	if !slices.Contains([]ParticipationKind{"payment", "transfer", "exchange"}, p.Kind) || !slices.Contains([]ParticipationState{"waiting", "retained", "linked"}, p.State) {
 		return ErrInvalidRevision
 	}
-	if p.State == "waiting" {
+	if p.AwaitingDecision() {
 		if len(p.Parts) != 0 {
 			return ErrInvalidRevision
 		}
@@ -84,7 +88,7 @@ func (p Participation) Validate(r Revision) error {
 }
 
 func (r Revision) Contributes(position int) bool {
-	if r.Participation.GroupID == "" {
+	if r.Participation.GroupID == "" || r.Participation.State == "retained" {
 		return true
 	}
 	return r.Participation.State == "linked" && position < len(r.Participation.Parts) && r.Participation.Parts[position].CarrierID == r.OperationID

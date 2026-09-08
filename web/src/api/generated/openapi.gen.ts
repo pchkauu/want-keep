@@ -2251,13 +2251,13 @@ export interface components {
       /** @enum {string} */
       state: "draft" | "pending" | "posted" | "reversed" | "cancelled";
     };
-    /** @description Waiting retains original facts with no additional effect. Linked components reference one active carrier; source lifecycle and accounting exclusion remain independent. */
+    /** @description Waiting retains new facts with no additional effect. Retained keeps an already accepted independent contribution while late evidence awaits a decision. Both expose incomplete coverage. Linked components reference one active carrier; source lifecycle and accounting exclusion remain independent. */
     EffectParticipation: {
       components: components["schemas"]["EffectContribution"][];
       groupId: components["schemas"]["ID"];
       kind: components["schemas"]["MatchingKind"];
       /** @enum {string} */
-      state: "waiting" | "linked";
+      state: "waiting" | "retained" | "linked";
     };
     EmptyInput: Record<string, never>;
     EnrollmentInput:

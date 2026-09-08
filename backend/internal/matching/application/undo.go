@@ -78,7 +78,7 @@ func (s *Service) undoMatching(ctx context.Context, p household.Principal, d led
 		facts := restored[id]
 		waiting, accepted := []ledger.Revision{}, []ledger.Revision{}
 		for _, r := range facts {
-			if r.Participation.State == "waiting" {
+			if r.Participation.AwaitingDecision() {
 				waiting = append(waiting, r)
 			} else {
 				accepted = append(accepted, r)
@@ -121,14 +121,14 @@ func (s *Service) undoMatching(ctx context.Context, p household.Principal, d led
 			g.Kind = original.Kind
 		}
 		var err error
-		if facts[0].Participation.State == "waiting" {
+		if facts[0].Participation.AwaitingDecision() {
 			g.State = matching.Clarification
 			g.PrimaryID = facts[0].OperationID
 			g.Members = nil
 			candidates := g.Candidates
 			g.Candidates = nil
 			for _, r := range facts {
-				if r.Participation.State != "waiting" {
+				if !r.Participation.AwaitingDecision() {
 					return matching.ErrConflict
 				}
 				g.Members = append(g.Members, matching.Member{OperationID: r.OperationID, Revision: r.Revision})

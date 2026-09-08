@@ -3633,6 +3633,7 @@
         "backend/internal/delivery/ledger/",
         "backend/migrations/013_transaction_matching.sql",
         "backend/migrations/014_matching_decision_basis.sql",
+        "backend/migrations/015_matching_retained_effect.sql",
         "api/",
         "backend/test/integration/matching/"
       ],

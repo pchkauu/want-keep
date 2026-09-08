@@ -24,6 +24,7 @@ D-39 остаётся идентичностью источника. Прове�
 - `backend/internal/delivery/ledger/`
 - `backend/migrations/013_transaction_matching.sql`
 - `backend/migrations/014_matching_decision_basis.sql`
+- `backend/migrations/015_matching_retained_effect.sql`
 - `api/`
 - `backend/test/integration/matching/`
 
@@ -229,6 +230,7 @@ D-39 remains source identity. Verified structured correspondence with namespace,
 - `backend/internal/delivery/ledger/`
 - `backend/migrations/013_transaction_matching.sql`
 - `backend/migrations/014_matching_decision_basis.sql`
+- `backend/migrations/015_matching_retained_effect.sql`
 - `api/`
 - `backend/test/integration/matching/`
 

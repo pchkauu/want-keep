@@ -116,6 +116,103 @@ func TestLateProofFindsExistingFinancialEvidence(t *testing.T) {
 			if f.count("operation_revisions") != before {
 				t.Fatal("late proof replay duplicated effect")
 			}
+			c := f.client(f.p)
+			decision := f.current(incoming.OperationID).DecisionID
+			c.result("/transactions/"+incoming.OperationID+"/undo", map[string]any{"decisionId": decision, "expectedRevisions": f.versions(first.OperationID, incoming.OperationID), "reason": "Reconsider late proof"})
+			if kind == matching.Payment {
+				f.balance(from, "owned", "4400")
+			} else {
+				f.balance(from, "owned", "4700")
+				f.balance(to, "owned", "300")
+			}
+		})
+	}
+}
+
+func TestLateIncompatibleProofRetainsAcceptedEffect(t *testing.T) {
+	for _, state := range []ledger.State{ledger.Posted, ledger.Pending} {
+		t.Run(string(state), func(t *testing.T) {
+			f := newFixture(t)
+			gate, connection := f.admit(), f.connection(f.p)
+			account := f.create(money.RUB, "1000")
+			first := f.revision(uuid.NewString(), account, "-300", money.RUB, 1)
+			incoming := f.revision(uuid.NewString(), account, "-600", money.RUB, 1)
+			incoming.State = state
+			if state == ledger.Pending {
+				incoming.PostedAt = ledger.Revision{}.PostedAt
+			}
+			first.Correspondence = &ledger.Correspondence{Kind: "payment", Namespace: "synthetic:late-proof", Reference: "incompatible"}
+			for _, r := range []*ledger.Revision{&first, &incoming} {
+				if _, err := f.importSource(gate, connection, f.sourceInput(r, r.OperationID)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			owned, locked := "100", "0"
+			if state == ledger.Pending {
+				owned, locked = "700", "600"
+			}
+			f.balance(account, "owned", owned)
+			f.balance(account, "locked", locked)
+			incoming.Correspondence = first.Correspondence
+			input := f.sourceInput(&incoming, incoming.OperationID)
+			input.Classification, input.ExpectedRevision, input.PayloadHash = "correction", 1, strings.Repeat("b", 64)
+			if _, err := f.importSource(gate, connection, input); err != nil {
+				t.Fatal(err)
+			}
+			current := f.current(incoming.OperationID)
+			if current.Participation.State != "retained" || !current.Contributes(0) {
+				t.Fatal("accepted effect not retained", current.Participation)
+			}
+			g, found, err := f.store.MatchingForOperation(testContext, f.p, incoming.OperationID)
+			if err != nil || !found || g.State != matching.Clarification {
+				t.Fatal(g, found, err)
+			}
+			f.balance(account, "owned", owned)
+			f.balance(account, "locked", locked)
+			var conflict string
+			if err := f.admin.QueryRow(testContext, `SELECT conflict FROM want_keep.ledger_source_facts WHERE household_id=$1 AND operation_id=$2 ORDER BY source_revision DESC LIMIT 1`, f.family.ID, incoming.OperationID).Scan(&conflict); err != nil || conflict != "matching_conflict" {
+				t.Fatal(conflict, err)
+			}
+			funding, err := f.store.AccountFunding(testContext, f.p, account)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, known := funding.Value(); known {
+				t.Fatal("unresolved contribution funded a reserve")
+			}
+			count := f.count("operation_revisions")
+			if out, err := f.importSource(gate, connection, input); err != nil || !out.Duplicate {
+				t.Fatal(out, err)
+			}
+			if f.count("operation_revisions") != count {
+				t.Fatal("replay changed history")
+			}
+			c := f.client(f.p)
+			if v := c.transaction(incoming.OperationID); v.Participation == nil || v.Participation.State != "retained" {
+				t.Fatal("transport lost retained effect", v)
+			}
+			c.result("/matching/"+g.ID+"/resolve", map[string]any{"decision": "separate", "expectedRevision": g.Revision, "expectedRevisions": f.versions(incoming.OperationID), "reason": "Independent payment"})
+			decision := f.current(incoming.OperationID).DecisionID
+			f.balance(account, "owned", owned)
+			f.balance(account, "locked", locked)
+			c.result("/transactions/"+incoming.OperationID+"/undo", map[string]any{"decisionId": decision, "expectedRevisions": f.versions(incoming.OperationID), "reason": "Reconsider evidence"})
+			restored, found, err := f.store.MatchingForOperation(testContext, f.p, incoming.OperationID)
+			if err != nil || !found || restored.ID != g.ID || restored.State != matching.Clarification || f.current(incoming.OperationID).Participation.State != "retained" {
+				t.Fatal("undo lost retained case", restored, err)
+			}
+			f.balance(account, "owned", owned)
+			f.balance(account, "locked", locked)
+			// Provider lifecycle still updates the retained independent contribution.
+			incoming.State = ledger.Cancelled
+			if state == ledger.Posted {
+				incoming.State = ledger.Reversed
+			}
+			input.ExpectedRevision, input.PayloadHash = 2, strings.Repeat("c", 64)
+			if _, err := f.importSource(gate, connection, input); err != nil {
+				t.Fatal(err)
+			}
+			f.balance(account, "owned", "700")
+			f.balance(account, "locked", "0")
 		})
 	}
 }

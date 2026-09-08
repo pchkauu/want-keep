@@ -141,8 +141,13 @@ func (s *Service) hold(ctx context.Context, p household.Principal, r ledger.Revi
 	if err := s.repository.SaveMatchingGroup(ctx, g, 0); err != nil {
 		return err
 	}
-	r.Participation = ledger.Participation{GroupID: g.ID, Kind: ledger.ParticipationKind(kind), State: "waiting"}
-	return s.writer.Append(ctx, p, r, expected)
+	if err := s.appendUnresolved(ctx, p, g, r, expected); err != nil {
+		return err
+	}
+	if expected > 0 {
+		return ledger.ErrMatchingConflict
+	}
+	return nil
 }
 
 func (s *Service) acceptProven(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64, existing []ledger.Revision, evidence []ledger.Evidence) error {
@@ -180,9 +185,6 @@ func (s *Service) acceptProven(ctx context.Context, p household.Principal, r led
 	}
 	if !found {
 		g = s.newGroup(p, r, matching.Kind(r.Correspondence.Kind), matching.Clarification, "proven_correspondence")
-		if err = s.repository.SaveMatchingGroup(ctx, g, 0); err != nil {
-			return err
-		}
 	} else if g.State != matching.Linked && g.State != matching.WaitingSide {
 		return s.hold(ctx, p, r, expected, existing, true)
 	}
@@ -220,29 +222,27 @@ func (s *Service) acceptProven(ctx context.Context, p household.Principal, r led
 		proposal.PrimaryID = existing[0].OperationID
 	}
 	if _, _, err = proposal.Assign(facts, true); err != nil {
-		if found {
-			return s.hold(ctx, p, r, expected, existing, true)
-		}
-		g.Candidates = nil
-		for _, v := range existing {
-			g.Candidates = append(g.Candidates, matching.Candidate{Member: matching.Member{OperationID: v.OperationID, Revision: v.Revision}, Reason: "conflicting_correspondence"})
-		}
-		g, err = g.Next(p.UserID(), s.now(), "conflicting_correspondence")
-		if err != nil {
-			return err
-		}
-		if err = s.repository.SaveMatchingGroup(ctx, g, g.Revision-1); err != nil {
-			return err
-		}
-		r.Participation = ledger.Participation{GroupID: g.ID, Kind: ledger.ParticipationKind(g.Kind), State: "waiting"}
-		return s.writer.Append(ctx, p, r, expected)
+		return s.hold(ctx, p, r, expected, existing, true)
 	}
-	r.Participation = ledger.Participation{GroupID: g.ID, Kind: ledger.ParticipationKind(g.Kind), State: "waiting"}
-	if err = s.writer.Append(ctx, p, r, expected); err != nil {
+	if !found {
+		if err = s.repository.SaveMatchingGroup(ctx, g, 0); err != nil {
+			return err
+		}
+	}
+	if err = s.appendUnresolved(ctx, p, g, r, expected); err != nil {
 		return err
 	}
 	_, err = s.link(ctx, p, proposal, facts, "proven_correspondence", true, evidence, []matching.Group{g})
 	return err
+}
+
+func (s *Service) appendUnresolved(ctx context.Context, p household.Principal, g matching.Group, r ledger.Revision, expected uint64) error {
+	state := ledger.ParticipationState("waiting")
+	if expected > 0 {
+		state = "retained"
+	}
+	r.Participation = ledger.Participation{GroupID: g.ID, Kind: ledger.ParticipationKind(g.Kind), State: state}
+	return s.writer.Append(ctx, p, r, expected)
 }
 
 func (s *Service) members(ctx context.Context, p household.Principal, g matching.Group) ([]ledger.Revision, error) {
