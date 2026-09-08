@@ -427,6 +427,15 @@
     parameters:
     - "$ref": "../components.yaml#/parameters/Cursor"
     - "$ref": "../components.yaml#/parameters/Limit"
+    - name: state
+      in: query
+      schema: { type: string, enum: [active, archived] }
+    - name: parentId
+      in: query
+      schema: { $ref: '../schemas/money.yaml#/ID' }
+    - name: search
+      in: query
+      schema: { type: string, maxLength: 200 }
     responses:
       '200':
         description: Success
@@ -552,6 +561,98 @@
         application/json:
           schema:
             "$ref": "../schemas/settings.yaml#/CategoryChange"
+"/merchants":
+  get:
+    operationId: merchants_list
+    tags: [categories]
+    summary: List household merchants and confirmed aliases
+    parameters:
+    - "$ref": "../components.yaml#/parameters/Cursor"
+    - "$ref": "../components.yaml#/parameters/Limit"
+    - name: state
+      in: query
+      schema: { type: string, enum: [active, archived] }
+    - name: search
+      in: query
+      schema: { type: string, maxLength: 200 }
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema: { $ref: '../schemas/settings.yaml#/MerchantPage' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '403': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+      '409': { $ref: '../components.yaml#/responses/Problem' }
+      '422': { $ref: '../components.yaml#/responses/Problem' }
+      '429': { $ref: '../components.yaml#/responses/Problem' }
+      '500': { $ref: '../components.yaml#/responses/Problem' }
+      '503': { $ref: '../components.yaml#/responses/Problem' }
+  post:
+    operationId: merchants_create
+    tags: [categories]
+    summary: Create a household merchant with confirmed aliases
+    parameters:
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../schemas/settings.yaml#/MerchantInput' }
+    responses:
+      '202':
+        description: Registered command; read the same command ID after an unknown result.
+        content:
+          application/json:
+            schema: { $ref: '../schemas/commands.yaml#/CommandStatus' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '403': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+      '409': { $ref: '../components.yaml#/responses/Problem' }
+      '410': { $ref: '../components.yaml#/responses/Problem' }
+      '422': { $ref: '../components.yaml#/responses/Problem' }
+      '429': { $ref: '../components.yaml#/responses/Problem' }
+      '500': { $ref: '../components.yaml#/responses/Problem' }
+      '503': { $ref: '../components.yaml#/responses/Problem' }
+    x-command-type: merchants.create
+"/merchants/{merchantId}":
+  post:
+    operationId: merchants_change
+    tags: [categories]
+    summary: Change merchant name, state or confirmed aliases atomically
+    parameters:
+    - name: merchantId
+      in: path
+      required: true
+      schema: { $ref: '../schemas/money.yaml#/ID' }
+    - "$ref": "../components.yaml#/parameters/IdempotencyKey"
+    - "$ref": "../components.yaml#/parameters/CSRF"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../schemas/settings.yaml#/MerchantChange' }
+    responses:
+      '202':
+        description: Registered command; read the same command ID after an unknown result.
+        content:
+          application/json:
+            schema: { $ref: '../schemas/commands.yaml#/CommandStatus' }
+      '400': { $ref: '../components.yaml#/responses/Problem' }
+      '401': { $ref: '../components.yaml#/responses/Problem' }
+      '403': { $ref: '../components.yaml#/responses/Problem' }
+      '404': { $ref: '../components.yaml#/responses/Problem' }
+      '409': { $ref: '../components.yaml#/responses/Problem' }
+      '410': { $ref: '../components.yaml#/responses/Problem' }
+      '422': { $ref: '../components.yaml#/responses/Problem' }
+      '429': { $ref: '../components.yaml#/responses/Problem' }
+      '500': { $ref: '../components.yaml#/responses/Problem' }
+      '503': { $ref: '../components.yaml#/responses/Problem' }
+    x-command-type: merchants.change
 "/rules":
   get:
     operationId: rules_list

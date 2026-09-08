@@ -1,6 +1,6 @@
 # Task-2.4 — transfer links and one payment
 
-The backend/API implements matching cases, links, effect participation and compound undo. Base: `ff9dcc79eff6c8d35a38aedb39b95532b48672b6`; branch: `feat/task-2.4-transfer-matching`. Task-2.3 is included. Contract version 10 is extended in [contracts.en.md](../contracts.en.md); migrations 012 and 013 are additive. No dependencies are added.
+The backend/API implements matching cases, links, effect participation and compound undo. Base: `ff9dcc79eff6c8d35a38aedb39b95532b48672b6`; branch: `feat/task-2.4-transfer-matching`. Task-2.3 is included. Contract version 10 is extended in [contracts.en.md](../contracts.en.md); migrations 013 and 014 are additive. No dependencies are added.
 
 Matching owns search/composition, ledger owns monetary effects/decisions, accounts owns projections. Proven correspondence requires complete namespace/ID and compatible monetary sides; amount/date/file hash alone create clarification. A waiting possible duplicate adds no second effect. Original records remain independent. User confirmation, group corrections and undo use all revisions and the existing authenticated command transaction. Bank facts use the same JournalWriter inside CommitPage. Normalized input contains verified structured data only; this task does not implement real parsers, collectors or OpenAI.
 
@@ -12,7 +12,7 @@ Matching tests cover HTTP → Go → SQL → JSON for six assets; no second effe
 
 HTTP tests cover a manual transfer and two bank cases, compound amount corrections and undo preserving a later independent note, compound exclusion/undo, cursor scope, household isolation, field spoofing and Origin/CSRF. Two members answer concurrently through a barrier: one outcome wins. Rollback retains no partial revisions; after restart the original key recovers the outcome and changed payloads are rejected. A normalized receipt with a synthetic accepted attachment and a bank fact retain authorship and multiple evidence references for one RUB 300 expense. This is not actual file recognition testing.
 
-Additional checks passed for the existing-transfer API: RUB 1000 + fee 10 and RUB 9000 → USDT 100 + fee RUB 50, incomplete composition rejection without changes, same-key replay, truncated searches above 100 candidates, separate-purchase undo retaining candidates, migration over 011 and matching history after D-41 cleanup. The base includes PR #79: 26 local Chromium catalog/token checks passed; this is not product-screen acceptance.
+Additional checks passed for the existing-transfer API: RUB 1000 + fee 10 and RUB 9000 → USDT 100 + fee RUB 50, incomplete composition rejection without changes, same-key replay, truncated searches above 100 candidates, separate-purchase undo retaining candidates, migration over 012 and matching history after D-41 cleanup. The base includes PR #79: 26 local Chromium catalog/token checks passed; this is not product-screen acceptance.
 
 ## Acceptance boundaries
 
@@ -33,8 +33,10 @@ Regressions also cover independent date changes after linking and their later un
 
 Additional checks cover unchanged relatedChanges amounts during an independent date edit, late correspondence with a missing side or existing payment/transfer evidence, import replay and retained explicit separate decisions.
 
-After PR #81 and #82, versions010 and011 belong to durable jobs and balance reconciliation. The undeployed matching migrations are renumbered012–013 without SQL changes; target files001–011 remain byte-identical. No deployed data is migrated. Previous isolated candidate databases are not reused to verify the new sequence.
+After PR #81, #82 and #83, versions 010–012 belong to durable jobs, balance reconciliation and classification. The undeployed matching migrations are renumbered 013–014 with classification fields retained in audit constraints; target files 001–012 remain byte-identical. No deployed data is migrated. Previous isolated candidate databases are not reused to verify the new sequence.
 
 Explicit rejected pairs are checked against every member of an already linked candidate. Late evidence cannot reintroduce a rejected participant through a third record: the confirmed separate purchase retains its effect and new source evidence. Automatic linking also checks the complete expanded composition.
 
 Task-2.5 compatibility: bank reconciliation uses single-effect participation and retains `matching_unresolved` coverage. Historical component lifecycle is restored from audit and confirmed source posting time, then the existing domain component assignment is applied. A later posting does not change a hold at an earlier cutoff; unknown state cannot authorize a balancing adjustment. The matching JournalWriter uses the reconciliation trigger; HTTP linking refreshes the comparison without creating an observation or adjustment.
+
+Task-2.6 compatibility: matching retains category, merchant_identity and receipt_items with their protections and provenance. Contradicting protected classifications require correction; link undo retains later independent classification. A compound monetary correction must preserve the exact receipt-item total. Related receipt items are supplied in `relatedChanges[].receiptItems` together with the corresponding principal; all changes commit atomically. Matching migrations 013–014 expand audit constraints with the combined field set; target migrations 001–012 remain unchanged.

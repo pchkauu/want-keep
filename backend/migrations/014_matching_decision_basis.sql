@@ -1,7 +1,7 @@
 ALTER TABLE want_keep.ledger_decision_entries DROP CONSTRAINT ledger_decision_entries_fields_check;
-ALTER TABLE want_keep.ledger_decision_entries ADD CHECK(cardinality(fields)>0 AND fields <@ ARRAY['principal','fees','occurred_at','payer','merchant','note','accounting','matching','contribution']::text[]);
+ALTER TABLE want_keep.ledger_decision_entries ADD CHECK(cardinality(fields)>0 AND fields <@ ARRAY['principal','fees','occurred_at','payer','merchant','note','accounting','category','merchant_identity','receipt_items','matching','contribution']::text[]);
 ALTER TABLE want_keep.ledger_field_origins DROP CONSTRAINT ledger_field_origins_field_check;
-ALTER TABLE want_keep.ledger_field_origins ADD CHECK(field IN ('principal','fees','occurred_at','payer','merchant','note','accounting','legacy_all','matching','contribution'));
+ALTER TABLE want_keep.ledger_field_origins ADD CHECK(field IN ('principal','fees','occurred_at','payer','merchant','note','accounting','category','merchant_identity','receipt_items','legacy_all','matching','contribution'));
 ALTER TABLE want_keep.ledger_field_origins ADD CHECK(field<>'contribution' OR NOT protected);
 
 CREATE TABLE want_keep.matching_decision_groups (

@@ -119,5 +119,6 @@ RelatedCorrection:
       type: array
       maxItems: 1000
       items: { $ref: './transactions.yaml#/Posting' }
+    receiptItems: { $ref: './transactions.yaml#/ReceiptItemsChange' }
   required: [transactionId, expectedRevision]
-  description: Complete protected monetary groups for related operations. A revision-only participant validates the group without overwriting metadata. All current group members are required for monetary changes.
+  description: Complete protected monetary groups and dependent receipt items for related operations. A revision-only participant validates the group without overwriting metadata. All current group members are required for monetary changes; receipt totals remain consistent with each changed principal.

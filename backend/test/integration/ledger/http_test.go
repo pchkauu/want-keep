@@ -132,7 +132,10 @@ func TestHTTPTransfersExchangeAndUnsupportedFeatures(t *testing.T) {
 	f.balance(fee, "owned", "0.99999")
 	manual := c.input(a, "RUB", "12000")
 	manual["categoryId"] = uuid.NewString()
-	c.call("POST", "/transactions", uuid.NewString(), manual, 422)
+	failed = decode[generated.CommandFailed](t, c.call("POST", "/transactions", uuid.NewString(), manual, 202))
+	if failed.Error.Code != "not_found" {
+		t.Fatal("unknown category was not rejected", failed)
+	}
 	delete(manual, "categoryId")
 	manual["allocation"] = map[string]any{"mode": "shares", "purpose": "shared", "members": []any{map[string]any{"memberId": string(f.members[0].ID), "share": "50"}, map[string]any{"memberId": string(f.members[1].ID), "share": "50"}}}
 	c.call("POST", "/transactions", uuid.NewString(), manual, 422)

@@ -66,6 +66,14 @@ func (r Revision) FieldEqual(other Revision, field Field) bool {
 		return slices.Equal(r.Participation.Parts, other.Participation.Parts)
 	case AccountingField:
 		return r.Accounting() == other.Accounting()
+	case CategoryField:
+		return r.CategoryID == other.CategoryID
+	case MerchantIDField:
+		return r.MerchantID == other.MerchantID
+	case ReceiptItemsField:
+		return slices.EqualFunc(r.ReceiptItems, other.ReceiptItems, func(a, b ReceiptItem) bool {
+			return a.ID == b.ID && a.Name == b.Name && a.Quantity == b.Quantity && a.CategoryID == b.CategoryID && a.Gross.Asset() == b.Gross.Asset() && a.Gross.Amount() == b.Gross.Amount() && a.Discount.Asset() == b.Discount.Asset() && a.Discount.Amount() == b.Discount.Amount()
+		})
 	}
 	return false
 }
@@ -90,6 +98,12 @@ func (r *Revision) CopyField(from Revision, field Field) error {
 		r.Participation = from.Clone().Participation
 	case AccountingField:
 		r.AccountingState = from.Accounting()
+	case CategoryField:
+		r.CategoryID = from.CategoryID
+	case MerchantIDField:
+		r.MerchantID = from.MerchantID
+	case ReceiptItemsField:
+		r.ReceiptItems = slices.Clone(from.ReceiptItems)
 	default:
 		return ErrInvalidRevision
 	}

@@ -101,7 +101,15 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 				return command.Result{}, s.rejectDecision(err)
 			}
 		}
+		if kind != "undo" {
+			if err = s.requireActiveClassification(ctx, p, updated); err != nil {
+				return command.Result{}, err
+			}
+		}
 		if kind == "automated" {
+			if in.Correction.CategoryID != nil || in.Correction.MerchantID != nil || in.Correction.ReceiptItems != nil {
+				return command.Result{}, commands.Rejection{Code: "clarification_required"}
+			}
 			if r.HumanOverride && len(r.Protections) == 0 {
 				return command.Result{}, commands.Rejection{Code: "protected_field"}
 			}
@@ -188,7 +196,7 @@ func (s *Service) Undo(ctx context.Context, p household.Principal, id string, ex
 		if err != nil {
 			return command.Result{}, s.rejectDecision(err)
 		}
-		for _, field := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField} {
+		for _, field := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField} {
 			if !prior.FieldEqual(r, field) && !slices.Contains(entry.Fields, field) {
 				entry.Fields = append(entry.Fields, field)
 			}

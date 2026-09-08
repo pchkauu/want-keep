@@ -126,21 +126,65 @@ ReceiptItem:
       maxLength: 2000
     quantity:
       "$ref": "./money.yaml#/PositiveDecimal"
-    total:
+    gross:
       "$ref": "./money.yaml#/Money"
     discount:
       "$ref": "./money.yaml#/Money"
-    allocation:
-      "$ref": "./transactions.yaml#/ExpenseAllocation"
+    net:
+      "$ref": "./money.yaml#/Money"
     categoryId:
       "$ref": "./money.yaml#/ID"
   required:
   - id
   - name
   - quantity
-  - total
+  - gross
   - discount
-  - allocation
+  - net
+ReceiptItemInput:
+  type: object
+  additionalProperties: false
+  properties:
+    id: { $ref: './money.yaml#/ID' }
+    name: { type: string, minLength: 1, maxLength: 2000 }
+    quantity: { $ref: './money.yaml#/PositiveDecimal' }
+    gross: { $ref: './money.yaml#/PositiveMoney' }
+    discount: { $ref: './money.yaml#/Money' }
+    categoryId: { $ref: './money.yaml#/ID' }
+  required: [id, name, quantity, gross]
+ClassificationReferenceChange:
+  type: object
+  additionalProperties: false
+  properties:
+    action: { type: string, enum: [set, clear] }
+    id: { $ref: './money.yaml#/ID' }
+  required: [action]
+  description: The set action requires id; clear forbids id. Delivery validates this typed invariant.
+ReceiptItemsChange:
+  type: object
+  additionalProperties: false
+  properties:
+    action: { type: string, enum: [replace, clear] }
+    items:
+      type: array
+      minItems: 1
+      maxItems: 1000
+      items: { $ref: './transactions.yaml#/ReceiptItemInput' }
+    totalDiscount: { $ref: './money.yaml#/Money' }
+  required: [action]
+  description: The replace action requires items and totalDiscount; clear forbids both. Delivery validates this typed invariant.
+ClassificationProposal:
+  type: object
+  additionalProperties: false
+  properties:
+    categoryId: { $ref: './money.yaml#/ID' }
+    merchantId: { $ref: './money.yaml#/ID' }
+    merchantAlias: { type: string, minLength: 1, maxLength: 200 }
+    receiptItems:
+      type: array
+      maxItems: 1000
+      items: { $ref: './transactions.yaml#/ReceiptItem' }
+  required: [receiptItems]
 Transaction:
   type: object
   additionalProperties: false
@@ -233,6 +277,12 @@ Transaction:
       "$ref": "./transactions.yaml#/ExpenseAllocation"
     categoryId:
       "$ref": "./money.yaml#/ID"
+    merchantId:
+      "$ref": "./money.yaml#/ID"
+    receiptItems:
+      type: array
+      maxItems: 1000
+      items: { $ref: './transactions.yaml#/ReceiptItem' }
     merchant:
       type: string
       minLength: 1
@@ -278,6 +328,7 @@ Transaction:
   - balanceEffects
   - economicComponents
   - holds
+  - receiptItems
 TransactionCreate:
   type: object
   additionalProperties: false
@@ -296,6 +347,8 @@ TransactionCreate:
     amount:
       "$ref": "./money.yaml#/PositiveMoney"
     categoryId:
+      "$ref": "./money.yaml#/ID"
+    merchantId:
       "$ref": "./money.yaml#/ID"
     merchant:
       type: string
@@ -399,7 +452,9 @@ TransactionCorrection:
     payer: { $ref: './transactions.yaml#/Payer' }
     merchant: { type: string, maxLength: 2000 }
     note: { type: string, maxLength: 2000 }
-    categoryId: { $ref: './money.yaml#/ID' }
+    category: { $ref: './transactions.yaml#/ClassificationReferenceChange' }
+    merchantIdentity: { $ref: './transactions.yaml#/ClassificationReferenceChange' }
+    receiptItems: { $ref: './transactions.yaml#/ReceiptItemsChange' }
     allocation: { $ref: './transactions.yaml#/ExpenseAllocation' }
   required: [expectedRevision, reason]
   allOf:
@@ -410,9 +465,11 @@ TransactionCorrection:
     - required: [payer]
     - required: [merchant]
     - required: [note]
-    - required: [categoryId]
+    - required: [category]
+    - required: [merchantIdentity]
+    - required: [receiptItems]
     - required: [allocation]
-  description: Omitted fields remain unchanged; empty merchant/note clears the value. No-op requests are rejected. Categories and allocation are explicitly unavailable until their owning tasks.
+  description: Omitted fields remain unchanged; explicit actions distinguish clearing classification from no change. Receipt item replacement is atomic. Empty merchant/note clears source text. Member allocation remains unavailable until task-2.8.
 TransactionLink:
   type: object
   additionalProperties: false
@@ -459,7 +516,7 @@ DecisionRevision:
   required: [transactionId, expectedRevision]
 LedgerField:
   type: string
-  enum: [principal, fees, occurred_at, payer, merchant, note, accounting, legacy_all, matching, contribution]
+  enum: [principal, fees, occurred_at, payer, merchant, note, accounting, category, merchant_identity, receipt_items, legacy_all, matching, contribution]
 FieldProtection:
   type: object
   additionalProperties: false
@@ -511,6 +568,7 @@ TransactionReview:
     evidence:
       type: array
       items: { $ref: './transactions.yaml#/DecisionEvidence' }
+    classificationProposal: { $ref: './transactions.yaml#/ClassificationProposal' }
   required: [revision, actorId, state, rationale, recordedAt, evidence]
 SourceTransactionFact:
   type: object

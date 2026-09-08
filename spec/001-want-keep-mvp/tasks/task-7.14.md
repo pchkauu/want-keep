@@ -90,11 +90,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Главный ответ:** Понятные категории, продавцы и правила назначения расходов.
 
-**Структура сверху вниз:** Категории/подкатегории → продавцы → правила/приоритет → preview примеров.
+**Структура сверху вниз:** Категории/подкатегории и архив → продавцы/подтверждённые алиасы → правила/приоритет → preview примеров.
 
 **Следующее действие:** Создать/исправить FORM-15; проверить затронутые операции SCR-009.
 
-**Объяснение и детализация:** Продавец не подкатегория автоматически; правило personal/shared не меняет чужой личный план.
+**Объяснение и детализация:** Starter labels имеют стабильные RU/EN-ключи, custom name не переводится. Продавец не становится подкатегорией; архив сохраняет историю. AI proposal требует пользовательского подтверждения; правило personal/shared не меняет чужой личный план.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -140,11 +140,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-15 — Категории и правила
 
-**Поля:** Название категории/подкатегории, продавец/условие, результат категории и назначения, область применения.
+**Поля:** Название категории/подкатегории, родитель и состояние; имя продавца, состояние и подтверждённые алиасы. Правила/условия и массовое применение остаются отдельным контрактом.
 
-**Проверки и права:** Оба member; preview затронутых операций, проверка циклов категории/валидности долей. История не переписывается массово без отдельного явного решения.
+**Проверки и права:** Оба участника управляют семейным каталогом. Допустимы два уровня без циклов, уникальные активные имена и один активный подтверждённый алиас на продавца семьи. Архив сохраняет историю; восстановление повторно проверяет конфликты. Предложение AI не применяется без пользовательской команды.
 
-**Результат:** Правило сохранено с версией; неоднозначные совпадения в уточнения, прошлые данные меняются отдельными audit-командами.
+**Результат:** Версионированная категория или продавец сохранены; no_change/conflict не создают эффекта. Исторические ссылки остаются доступны.
 
 - **UISTATE-01 — Загрузка:** Скелетон структуры и подпись загрузки; суммы не подменяются нулями.
 - **UISTATE-02 — Обновление:** Сохранить предыдущие данные и контекст, показать время последнего успеха; блокировать только конфликтующие действия.
@@ -407,11 +407,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Primary answer:** Clear categories, merchants and expense-allocation rules.
 
-**Top-down structure:** Categories/subcategories → merchants → rules/priority → example preview.
+**Top-down structure:** Categories/subcategories and archive → merchants/confirmed aliases → rules/priority → example preview.
 
 **Next action:** Create/correct FORM-15; inspect affected transactions SCR-009.
 
-**Explanation and details:** Merchant is not automatically a subcategory; personal/shared rule never edits partner’s personal plan.
+**Explanation and details:** Starter labels use stable RU/EN keys and a custom name is not translated. A merchant never becomes a subcategory; archival preserves history. An AI proposal requires user confirmation; a personal/shared rule never edits a partner personal plan.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -457,11 +457,11 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 #### FORM-15 — Categories and rules
 
-**Fields:** Category/subcategory name, merchant/condition, category/allocation result, applicability.
+**Fields:** Category/subcategory name, parent and state; merchant name, state and confirmed aliases. Rules/conditions and bulk application remain a separate contract.
 
-**Validation and permissions:** Either member; affected-transaction preview, category-cycle/share validity checks. No bulk history rewriting without a separate explicit decision.
+**Validation and permissions:** Either member manages the household catalog. Two acyclic levels, unique active names and one active confirmed alias owner per household are enforced. Archival preserves history; restore rechecks conflicts. An AI proposal is not applied without a user command.
 
-**Outcome:** Versioned rule saved; ambiguous matches become clarifications and historical data changes use separate audited commands.
+**Outcome:** A versioned category or merchant is saved; no_change/conflict creates no effect. Historical references remain available.
 
 - **UISTATE-01 — Loading:** Structural skeleton and loading label; amounts are never replaced by zero.
 - **UISTATE-02 — Refreshing:** Keep previous data/context and last-success time; block only conflicting actions.

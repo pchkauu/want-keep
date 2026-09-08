@@ -158,7 +158,7 @@ func (a *effectAssignment) observe(r ledger.Revision) error {
 			if !c.posting.SameMoney(p) || !c.posting.Funding.SameBasis(p.Funding) || c.carrier.OperationID == r.OperationID && c.position != i {
 				return ErrConflict
 			}
-			for _, f := range []ledger.Field{ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField} {
+			for _, f := range []ledger.Field{ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField} {
 				_, x := c.carrier.Protections[f]
 				_, y := r.Protections[f]
 				if x && y && !c.carrier.FieldEqual(r, f) {

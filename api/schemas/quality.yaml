@@ -22,6 +22,9 @@ ErrorCode:
   - invalid_rate
   - invalid_time
   - invalid_allocation
+  - category_archived
+  - category_has_active_children
+  - merchant_alias_conflict
   - invalid_availability
   - version_conflict
   - matching_conflict

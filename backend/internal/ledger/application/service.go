@@ -7,6 +7,7 @@ import (
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
 	attachment "github.com/pchkauu/want-keep/backend/internal/attachments/domain"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
+	category "github.com/pchkauu/want-keep/backend/internal/categories/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -21,6 +22,8 @@ type FactsRepository interface {
 	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
 	RequireLedgerPayer(context.Context, household.Principal, household.MembershipID) error
 	Attachment(context.Context, household.Principal, string) (attachment.Attachment, error)
+	Category(context.Context, household.Principal, string) (category.Category, error)
+	Merchant(context.Context, household.Principal, string) (category.Merchant, error)
 }
 
 type Service struct {
@@ -43,6 +46,7 @@ type CreateInput struct {
 	PayerState                                     string
 	PayerMemberID                                  household.MembershipID
 	Merchant, Note, AttachmentID, AllocationReason string
+	CategoryID, MerchantID                         string
 	Unsupported                                    bool
 }
 
@@ -89,11 +93,18 @@ func (s *Service) Create(ctx context.Context, p household.Principal, in CreateIn
 	r.Type = in.Type
 	r.PayerState, r.PayerMemberID = in.PayerState, in.PayerMemberID
 	r.Merchant, r.Note, r.AttachmentID, r.AllocationReason = in.Merchant, in.Note, in.AttachmentID, in.AllocationReason
+	r.CategoryID, r.MerchantID = in.CategoryID, in.MerchantID
 	if in.Merchant != "" {
 		r.Protections[ledger.MerchantField] = ledger.Protection{Revision: 1}
 	}
 	if in.Note != "" {
 		r.Protections[ledger.NoteField] = ledger.Protection{Revision: 1}
+	}
+	if in.CategoryID != "" {
+		r.Protections[ledger.CategoryField] = ledger.Protection{Revision: 1}
+	}
+	if in.MerchantID != "" {
+		r.Protections[ledger.MerchantIDField] = ledger.Protection{Revision: 1}
 	}
 	amount := in.Amount
 	if in.Type == ledger.Expense {
@@ -104,7 +115,41 @@ func (s *Service) Create(ctx context.Context, p household.Principal, in CreateIn
 		}
 	}
 	r.Postings = []ledger.Posting{{AccountID: in.AccountID, Money: amount, Role: ledger.Principal, Funding: in.Funding, Treatment: ledger.Movement}}
+	if err = s.requireActiveClassification(ctx, p, r); err != nil {
+		return command.Result{}, err
+	}
 	return s.append(ctx, p, r)
+}
+
+func (s *Service) requireActiveClassification(ctx context.Context, p household.Principal, r ledger.Revision) error {
+	ids := map[string]bool{}
+	if r.CategoryID != "" {
+		ids[r.CategoryID] = true
+	}
+	for _, item := range r.ReceiptItems {
+		if item.CategoryID != "" {
+			ids[item.CategoryID] = true
+		}
+	}
+	for id := range ids {
+		entry, err := s.repository.Category(ctx, p, id)
+		if err != nil {
+			return s.reject(err)
+		}
+		if entry.State != category.Active {
+			return commands.Rejection{Code: "category_archived"}
+		}
+	}
+	if r.MerchantID != "" {
+		entry, err := s.repository.Merchant(ctx, p, r.MerchantID)
+		if err != nil {
+			return s.reject(err)
+		}
+		if entry.State != category.Active {
+			return commands.Rejection{Code: "not_found"}
+		}
+	}
+	return nil
 }
 
 func (s *Service) manual(ctx context.Context, p household.Principal, at calendar.Instant) (ledger.Revision, error) {
@@ -143,6 +188,12 @@ func (s *Service) reject(err error) error {
 		return commands.Rejection{Code: "source_ambiguous"}
 	case errors.Is(err, ledger.ErrInvalidRevision), errors.Is(err, ledger.ErrInvalidTransition):
 		return commands.Rejection{Code: "invalid_transaction"}
+	case errors.Is(err, ledger.ErrInvalidAllocation):
+		return commands.Rejection{Code: "invalid_allocation"}
+	case errors.Is(err, ledger.ErrClarificationRequired):
+		return commands.Rejection{Code: "clarification_required"}
+	case errors.Is(err, category.ErrNotFound):
+		return commands.Rejection{Code: "not_found"}
 	case errors.Is(err, ledger.ErrNotFound), errors.Is(err, account.ErrNotFound), errors.Is(err, attachment.ErrNotFound):
 		return commands.Rejection{Code: "not_found"}
 	case errors.Is(err, household.ErrForbidden):

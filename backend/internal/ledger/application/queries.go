@@ -11,14 +11,15 @@ import (
 )
 
 type Filter struct {
-	AccountID, Search string
-	From, To          calendar.Date
-	Type              ledger.Type
-	State             ledger.State
+	AccountID, CategoryID, MerchantID string
+	Search, ItemSearch                string
+	From, To                          calendar.Date
+	Type                              ledger.Type
+	State                             ledger.State
 }
 
 func (f Filter) Validate() error {
-	if utf8.RuneCountInString(f.Search) > 200 || f.Type != "" && !f.Type.Valid() || f.State != "" && !f.State.Valid() || f.From.String() != "" && f.To.String() != "" && f.From.String() > f.To.String() {
+	if utf8.RuneCountInString(f.Search) > 200 || utf8.RuneCountInString(f.ItemSearch) > 200 || f.Type != "" && !f.Type.Valid() || f.State != "" && !f.State.Valid() || f.From.String() != "" && f.To.String() != "" && f.From.String() > f.To.String() {
 		return ledger.ErrInvalidRevision
 	}
 	return nil

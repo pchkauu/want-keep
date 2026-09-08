@@ -41,6 +41,7 @@ type Revision struct {
 	FeeKnowledge                                   FeeKnowledge
 	PnLBasis                                       PnLBasis
 	Merchant, Note, AttachmentID, AllocationReason string
+	CategoryID, MerchantID                         string
 	OccurredAt                                     calendar.Instant
 	CashDate                                       calendar.Date
 	ExpenseMonth                                   calendar.Month
@@ -48,6 +49,7 @@ type Revision struct {
 	PayerState                                     string
 	PayerMemberID                                  household.MembershipID
 	Postings                                       []Posting
+	ReceiptItems                                   []ReceiptItem
 }
 
 func (r Revision) Validate() error {
@@ -146,7 +148,10 @@ func (r Revision) Validate() error {
 			return ErrInvalidRevision
 		}
 	}
-	return r.validateEconomics()
+	if err := r.validateEconomics(); err != nil {
+		return err
+	}
+	return r.validateClassification()
 }
 
 // Deltas compares complete revision snapshots. History remains immutable, while the

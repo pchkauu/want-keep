@@ -103,7 +103,7 @@ func (s *Service) saveSourceUpdate(ctx context.Context, p household.Principal, g
 			if r.FieldVersions == nil {
 				r.FieldVersions = map[ledger.Field]uint64{}
 			}
-			for _, f := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField} {
+			for _, f := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField} {
 				if !old.FieldEqual(r, f) {
 					r.FieldVersions[f] = r.Revision
 				}

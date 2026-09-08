@@ -45,10 +45,13 @@ func (s *Store) TransactionReferences(ctx context.Context, p household.Principal
 	rows, err := q.Query(ctx, `SELECT r.operation_id,r.revision FROM want_keep.operations o JOIN want_keep.operation_revisions r ON (r.household_id,r.operation_id,r.revision)=(o.household_id,o.id,o.revision) LEFT JOIN want_keep.transaction_details d ON (d.household_id,d.operation_id,d.revision)=(r.household_id,r.operation_id,r.revision)
  WHERE o.household_id=$1 AND ($2='' OR EXISTS(SELECT 1 FROM want_keep.postings p WHERE (p.household_id,p.operation_id,p.revision)=(r.household_id,r.operation_id,r.revision) AND p.account_id=NULLIF($2,'')::uuid))
  AND ($3='' OR r.cash_date>=NULLIF($3,'')::date) AND ($4='' OR r.cash_date<=NULLIF($4,'')::date)
- AND ($5='' OR r.economic_type=$5) AND ($6='' OR r.state=$6)
- AND ($7='' OR strpos(lower(COALESCE(d.merchant,'') || ' ' || COALESCE(d.note,'')),lower($7))>0)
- AND ($8='' OR (r.occurred_at,r.occurred_ns,r.operation_id)<($9::timestamptz,$10::smallint,NULLIF($8,'')::uuid))
- ORDER BY r.occurred_at DESC,r.occurred_ns DESC,r.operation_id DESC LIMIT $11`, p.HouseholdID(), f.AccountID, f.From.String(), f.To.String(), f.Type, f.State, f.Search, c.ID, at, ns, limit+1)
+	 AND ($5='' OR r.economic_type=$5) AND ($6='' OR r.state=$6)
+	 AND ($7='' OR strpos(lower(COALESCE(d.merchant,'') || ' ' || COALESCE(d.note,'')),lower($7))>0)
+	 AND ($8='' OR d.category_id=NULLIF($8,'')::uuid OR EXISTS(SELECT 1 FROM want_keep.receipt_items i WHERE (i.household_id,i.operation_id,i.revision)=(r.household_id,r.operation_id,r.revision) AND i.category_id=NULLIF($8,'')::uuid))
+	 AND ($9='' OR d.merchant_id=NULLIF($9,'')::uuid)
+	 AND ($10='' OR EXISTS(SELECT 1 FROM want_keep.receipt_items i WHERE (i.household_id,i.operation_id,i.revision)=(r.household_id,r.operation_id,r.revision) AND strpos(lower(i.name),lower($10))>0))
+	 AND ($11='' OR (r.occurred_at,r.occurred_ns,r.operation_id)<($12::timestamptz,$13::smallint,NULLIF($11,'')::uuid))
+	 ORDER BY r.occurred_at DESC,r.occurred_ns DESC,r.operation_id DESC LIMIT $14`, p.HouseholdID(), f.AccountID, f.From.String(), f.To.String(), f.Type, f.State, f.Search, f.CategoryID, f.MerchantID, f.ItemSearch, c.ID, at, ns, limit+1)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -22,7 +22,7 @@ func TestMigrationDoesNotInventMatchingAndProtectsHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range names {
-		if name >= "012_" {
+		if name >= "013_" {
 			continue
 		}
 		data, err := fs.ReadFile(migrations.Files, name)
@@ -43,6 +43,14 @@ func TestMigrationDoesNotInventMatchingAndProtectsHistory(t *testing.T) {
 	if _, err = f.admin.Exec(testContext, `INSERT INTO want_keep.postings(household_id,operation_id,revision,position,account_id,amount,asset,role) VALUES($1,$2,1,0,$3,-0.0000000000000000123,'ETH','principal')`, f.family.ID, id, account); err != nil {
 		t.Fatal(err)
 	}
+	if _, err = f.admin.Exec(testContext, `INSERT INTO want_keep.ledger_revision_audit(household_id,operation_id,revision,accounting_state) VALUES($1,$2,1,'included')`, f.family.ID, id); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"category", "merchant_identity", "receipt_items"} {
+		if _, err = f.admin.Exec(testContext, `INSERT INTO want_keep.ledger_field_origins(household_id,operation_id,revision,field,changed_revision,protected,protection_revision) VALUES($1,$2,1,$3,1,true,1)`, f.family.ID, id, field); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for range 2 {
 		if err = storage.Migrate(testContext, f.admin, migrations.Files); err != nil {
 			t.Fatal(err)
@@ -54,6 +62,9 @@ func TestMigrationDoesNotInventMatchingAndProtectsHistory(t *testing.T) {
 	}
 	if f.count("matching_cases") != 0 {
 		t.Fatal("migration invented matching")
+	}
+	if len(r.Protections) != 3 {
+		t.Fatal("migration lost classification protection")
 	}
 	for _, table := range []string{"matching_decision_groups", "matching_revisions", "matching_members", "matching_candidates", "ledger_participations", "ledger_contributions", "ledger_correspondences", "ledger_fee_ids"} {
 		var allowed bool

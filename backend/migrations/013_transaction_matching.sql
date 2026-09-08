@@ -1,9 +1,9 @@
 ALTER TABLE want_keep.ledger_decisions DROP CONSTRAINT ledger_decisions_kind_check;
 ALTER TABLE want_keep.ledger_decisions ADD CHECK(kind IN ('correction','exclusion','undo','automated','matching'));
 ALTER TABLE want_keep.ledger_decision_entries DROP CONSTRAINT ledger_decision_entries_fields_check;
-ALTER TABLE want_keep.ledger_decision_entries ADD CHECK(cardinality(fields)>0 AND fields <@ ARRAY['principal','fees','occurred_at','payer','merchant','note','accounting','matching']::text[]);
+ALTER TABLE want_keep.ledger_decision_entries ADD CHECK(cardinality(fields)>0 AND fields <@ ARRAY['principal','fees','occurred_at','payer','merchant','note','accounting','category','merchant_identity','receipt_items','matching']::text[]);
 ALTER TABLE want_keep.ledger_field_origins DROP CONSTRAINT ledger_field_origins_field_check;
-ALTER TABLE want_keep.ledger_field_origins ADD CHECK(field IN ('principal','fees','occurred_at','payer','merchant','note','accounting','legacy_all','matching'));
+ALTER TABLE want_keep.ledger_field_origins ADD CHECK(field IN ('principal','fees','occurred_at','payer','merchant','note','accounting','category','merchant_identity','receipt_items','legacy_all','matching'));
 ALTER TABLE want_keep.ledger_source_facts DROP CONSTRAINT ledger_source_facts_conflict_check;
 ALTER TABLE want_keep.ledger_source_facts ADD CHECK(conflict IN ('','protected_fields','invalid_merge','legacy_protection','matching_conflict'));
 

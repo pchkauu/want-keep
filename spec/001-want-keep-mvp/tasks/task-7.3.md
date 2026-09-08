@@ -33,7 +33,7 @@
 
 **Следующее действие:** Уточнить/распределить FORM-07/12; открыть SCR-010.
 
-**Объяснение и детализация:** Недостоверные поля выделены текстом; неподходящий документ объяснён, небезопасный файл не исполняется.
+**Объяснение и детализация:** Gross, discount и net позиции объясняют одну оплату; общая скидка распределена детерминированно. Неполные скидки или расхождение требуют уточнения, без выдуманной позиции. Недостоверные поля выделяются, неподходящий документ объясняется, небезопасное содержимое не исполняется. OCR/PDF остаётся task-5.3.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -85,7 +85,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Поля:** Фото/PDF, обязательный счёт списания включая наличные; позиции, скидки, категории, personal/shared и доли % или суммы.
 
-**Проверки и права:** Оба member; лимиты файлов по контракту, позиции/скидки/доли точно равны оплате. Неоднозначность уточняется; AI не исполняет инструкции файла.
+**Проверки и права:** Оба участника; лимиты файлов по контракту. Task-2.6 атомарно проверяет позиции, активы и скидки против одной оплаты, распределяет известную общую скидку детерминированно и требует уточнение при неполных данных. OCR/PDF, сопоставление и personal/shared доли выполняют task-5.3/2.4/2.8.
 
 **Результат:** Создано/связано с существующим/ожидает уточнения/документ не подходит с причиной. Одно подтверждённое списание.
 
@@ -307,7 +307,7 @@ Implement text, attachment previews, mandatory receipt account dropdown, upload/
 
 **Next action:** Clarify/allocate FORM-07/12; open SCR-010.
 
-**Explanation and details:** Uncertain fields labelled; unsuitable document explained and unsafe content never executed.
+**Explanation and details:** Item gross, discount and net explain one payment; a receipt-wide discount is allocated deterministically. Incomplete discounts or a mismatch require clarification without an invented item. Uncertain fields are labelled, unsuitable documents are explained and unsafe content is never executed. OCR/PDF remains task-5.3.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -359,7 +359,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Fields:** Photo/PDF, required debit account including cash; items, discounts, categories, personal/shared and percentage or amount shares.
 
-**Validation and permissions:** Either member; file limits from contract, items/discounts/shares exactly equal payment. Ambiguity requires clarification; AI never executes file instructions.
+**Validation and permissions:** Either member; file limits follow the contract. Task-2.6 atomically validates items, assets and discounts against one payment, allocates a known receipt-wide discount deterministically and requires clarification for incomplete data. Task-5.3/2.4/2.8 own OCR/PDF, matching and personal/shared shares.
 
 **Outcome:** Created/linked to existing/awaiting clarification/document unsuitable with reason. One confirmed debit.
 

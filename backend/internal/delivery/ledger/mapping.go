@@ -16,7 +16,7 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 	if err := r.Validate(); err != nil {
 		return generated.Transaction{}, err
 	}
-	out := generated.Transaction{Id: r.OperationID, Revision: int64(r.Revision), ActorId: string(r.ActorID), HouseholdId: string(p.HouseholdID()), Type: generated.TransactionType(r.Type), State: generated.TransactionState(r.State), OccurredAt: r.OccurredAt.String(), CashDate: r.CashDate.String(), AiState: "waiting", Origin: "legacy", FeeKnowledge: "unknown", Postings: []generated.Posting{}, Sources: []generated.SourceReference{}, BalanceEffects: []generated.TransactionBalanceEffect{}, EconomicComponents: []generated.EconomicComponent{}, Holds: []generated.TransactionHold{}}
+	out := generated.Transaction{Id: r.OperationID, Revision: int64(r.Revision), ActorId: string(r.ActorID), HouseholdId: string(p.HouseholdID()), Type: generated.TransactionType(r.Type), State: generated.TransactionState(r.State), OccurredAt: r.OccurredAt.String(), CashDate: r.CashDate.String(), AiState: "waiting", Origin: "legacy", FeeKnowledge: "unknown", Postings: []generated.Posting{}, ReceiptItems: []generated.ReceiptItem{}, Sources: []generated.SourceReference{}, BalanceEffects: []generated.TransactionBalanceEffect{}, EconomicComponents: []generated.EconomicComponent{}, Holds: []generated.TransactionHold{}}
 	if r.Participation.GroupID != "" {
 		v := r.Participation
 		dto := generated.EffectParticipation{GroupId: v.GroupID, Kind: generated.MatchingKind(v.Kind), State: generated.EffectParticipationState(v.State), Components: []generated.EffectContribution{}}
@@ -33,6 +33,26 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 		out.Review = &generated.TransactionReview{Revision: int64(rv.Revision), ActorId: string(rv.ActorID), State: generated.TransactionReviewState(rv.State), Rationale: rv.Rationale, RecordedAt: rv.At.String(), Evidence: []generated.DecisionEvidence{}}
 		for _, e := range rv.Evidence {
 			out.Review.Evidence = append(out.Review.Evidence, generated.DecisionEvidence{Kind: generated.DecisionEvidenceKind(e.Kind), Id: e.ID, Revision: int64(e.Revision)})
+		}
+		if rv.Proposal != nil {
+			proposal := &generated.ClassificationProposal{ReceiptItems: []generated.ReceiptItem{}}
+			if rv.Proposal.CategoryID != "" {
+				proposal.CategoryId = &rv.Proposal.CategoryID
+			}
+			if rv.Proposal.MerchantID != "" {
+				proposal.MerchantId = &rv.Proposal.MerchantID
+			}
+			if rv.Proposal.MerchantAlias != "" {
+				proposal.MerchantAlias = &rv.Proposal.MerchantAlias
+			}
+			for _, item := range rv.Proposal.ReceiptItems {
+				dto, e := receiptItemDTO(item)
+				if e != nil {
+					return out, e
+				}
+				proposal.ReceiptItems = append(proposal.ReceiptItems, dto)
+			}
+			out.Review.ClassificationProposal = proposal
 		}
 	}
 	out.SourceFacts = []generated.SourceTransactionFact{}
@@ -82,6 +102,19 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 	}
 	if r.Merchant != "" {
 		out.Merchant = &r.Merchant
+	}
+	if r.CategoryID != "" {
+		out.CategoryId = &r.CategoryID
+	}
+	if r.MerchantID != "" {
+		out.MerchantId = &r.MerchantID
+	}
+	for _, item := range r.ReceiptItems {
+		dto, err := receiptItemDTO(item)
+		if err != nil {
+			return out, err
+		}
+		out.ReceiptItems = append(out.ReceiptItems, dto)
 	}
 	if r.Note != "" {
 		out.Note = &r.Note
@@ -172,6 +205,30 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 			return out, err
 		}
 		out.Exchange = x
+	}
+	return out, nil
+}
+
+func receiptItemDTO(item ledger.ReceiptItem) (generated.ReceiptItem, error) {
+	gross, err := (contract.MoneyConverter{}).ToDTO(item.Gross)
+	if err != nil {
+		return generated.ReceiptItem{}, err
+	}
+	discount, err := (contract.MoneyConverter{}).ToDTO(item.Discount)
+	if err != nil {
+		return generated.ReceiptItem{}, err
+	}
+	net, err := item.Net()
+	if err != nil {
+		return generated.ReceiptItem{}, err
+	}
+	netDTO, err := (contract.MoneyConverter{}).ToDTO(net)
+	if err != nil {
+		return generated.ReceiptItem{}, err
+	}
+	out := generated.ReceiptItem{Id: item.ID, Name: item.Name, Quantity: item.Quantity, Gross: gross, Discount: discount, Net: netDTO}
+	if item.CategoryID != "" {
+		out.CategoryId = &item.CategoryID
 	}
 	return out, nil
 }

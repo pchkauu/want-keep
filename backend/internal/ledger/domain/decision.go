@@ -23,13 +23,16 @@ const (
 	MerchantField     Field = "merchant"
 	NoteField         Field = "note"
 	AccountingField   Field = "accounting"
+	CategoryField     Field = "category"
+	MerchantIDField   Field = "merchant_identity"
+	ReceiptItemsField Field = "receipt_items"
 	LegacyField       Field = "legacy_all"
 	MatchingField     Field = "matching"
 	ContributionField Field = "contribution"
 )
 
 func (f Field) Valid() bool {
-	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, LegacyField, MatchingField, ContributionField}, f)
+	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, CategoryField, MerchantIDField, ReceiptItemsField, LegacyField, MatchingField, ContributionField}, f)
 }
 
 type AccountingState string
@@ -49,11 +52,13 @@ type PayerChange struct {
 	MemberID household.MembershipID
 }
 type Correction struct {
-	Principal      *[]Posting
-	Fees           *[]Posting
-	OccurredAt     *calendar.Instant
-	Payer          *PayerChange
-	Merchant, Note *string
+	Principal              *[]Posting
+	Fees                   *[]Posting
+	OccurredAt             *calendar.Instant
+	Payer                  *PayerChange
+	Merchant, Note         *string
+	CategoryID, MerchantID *string
+	ReceiptItems           *ReceiptItemsCorrection
 }
 
 type DecisionEntry struct {
@@ -116,6 +121,7 @@ func (r Revision) Clone() Revision {
 	}
 	r.Postings = slices.Clone(r.Postings)
 	r.Participation.Parts = slices.Clone(r.Participation.Parts)
+	r.ReceiptItems = slices.Clone(r.ReceiptItems)
 	r.Protections = maps.Clone(r.Protections)
 	if r.Protections == nil {
 		r.Protections = map[Field]Protection{}
