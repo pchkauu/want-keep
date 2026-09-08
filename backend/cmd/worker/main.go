@@ -10,11 +10,16 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
+	"github.com/google/uuid"
+	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	"github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/application"
 	domain "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/application"
+	reconciliation "github.com/pchkauu/want-keep/backend/internal/reconciliation/application"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 )
 
@@ -60,14 +65,23 @@ func run() error {
 	report := func(d jobs.Diagnostic) {
 		fmt.Fprintf(os.Stderr, "queue=%s job=%s source=%s transaction=%s stage=%s code=%s duration_ms=%d\n", d.Kind, d.JobID, d.ConnectionID, d.TransactionID, d.Stage, d.Code, d.Duration.Milliseconds())
 	}
-	scheduler := jobs.Scheduler{Repository: db, Admission: admission.NewService(db, db), Bindings: bindings, Report: report}
+	admissionService := admission.NewService(db, db)
+	scheduler := jobs.Scheduler{Repository: db, Admission: admissionService, Bindings: bindings, Report: report}
+	now := func() calendar.Instant {
+		at, err := calendar.ParseInstant(time.Now().UTC().Format(time.RFC3339Nano))
+		if err != nil {
+			panic(err)
+		}
+		return at
+	}
+	reconciliationService := reconciliation.NewService(db, db, ledger.NewWriter(db, db), admissionService, now, uuid.NewString)
 	var group sync.WaitGroup
 	group.Add(1)
 	go func() { defer group.Done(); _ = scheduler.Run(ctx) }()
 	for _, kind := range []domain.Kind{domain.Sync, domain.Outbox, domain.AI} {
 		var handler jobs.Handler
 		if kind == domain.Outbox {
-			handler = jobs.OutboxHandler{Repository: db}
+			handler = jobs.OutboxHandler{Repository: db, Reconciliation: reconciliationService}
 		}
 		worker := jobs.Worker{Repository: db, Handler: handler, Config: jobs.DefaultWorkerConfig(kind), Report: report}
 		group.Add(1)

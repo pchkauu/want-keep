@@ -17,15 +17,23 @@ import (
 type Journal interface {
 	AppendRevision(context.Context, ledger.Revision, uint64) error
 }
+type ReconciliationTrigger interface {
+	ReconcileAccount(context.Context, household.Principal, string) error
+}
 type Service struct {
 	repository CatalogRepository
 	journal    Journal
+	reconciler ReconciliationTrigger
 	now        func() calendar.Instant
 	newID      func() string
 }
 
 func NewService(r CatalogRepository, j Journal, now func() calendar.Instant, newID func() string) *Service {
-	return &Service{r, j, now, newID}
+	return &Service{repository: r, journal: j, now: now, newID: newID}
+}
+
+func NewServiceWithReconciliation(r CatalogRepository, j Journal, reconciler ReconciliationTrigger, now func() calendar.Instant, newID func() string) *Service {
+	return &Service{repository: r, journal: j, reconciler: reconciler, now: now, newID: newID}
 }
 
 type CreateInput struct {
@@ -70,6 +78,11 @@ func (s *Service) Create(ctx context.Context, p household.Principal, input Creat
 	}
 	if err = s.writeOpening(ctx, p, a, o, 0); err != nil {
 		return command.Result{}, err
+	}
+	if s.reconciler != nil {
+		if err = s.reconciler.ReconcileAccount(ctx, p, a.ID); err != nil {
+			return command.Result{}, err
+		}
 	}
 	return s.result(ctx, p, a.ID, "created", o.Reason, "interactive")
 }
@@ -125,6 +138,11 @@ func (s *Service) CorrectOpening(ctx context.Context, p household.Principal, id 
 	}
 	if err = s.writeOpening(ctx, p, a, o, old.Revision); err != nil {
 		return command.Result{}, err
+	}
+	if s.reconciler != nil {
+		if err = s.reconciler.ReconcileAccount(ctx, p, id); err != nil {
+			return command.Result{}, err
+		}
 	}
 	return s.result(ctx, p, id, "opening_corrected", o.Reason, "interactive")
 }

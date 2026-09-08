@@ -21,14 +21,17 @@ import (
 	"github.com/pchkauu/want-keep/backend/internal/attachments/processor"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
+	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	accountdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/accounts"
 	attachmentdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/attachments"
 	delivery "github.com/pchkauu/want-keep/backend/internal/delivery/identity"
 	ledgerdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/ledger"
+	reconciliationdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/reconciliation"
 	application "github.com/pchkauu/want-keep/backend/internal/identity/application"
 	"github.com/pchkauu/want-keep/backend/internal/identity/webauthn"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	"github.com/pchkauu/want-keep/backend/internal/privacy/cryptobox"
+	reconciliation "github.com/pchkauu/want-keep/backend/internal/reconciliation/application"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 )
 
@@ -103,14 +106,21 @@ func run() error {
 		}
 		return at
 	}
-	accountService := accounts.NewService(database, database, now, uuid.NewString)
+	baseWriter := ledger.NewWriter(database, database)
+	reconciliationService := reconciliation.NewService(database, database, baseWriter, admission.NewService(database, database), now, uuid.NewString)
+	writer := ledger.NewWriterWithReconciliation(database, database, reconciliationService)
+	accountService := accounts.NewServiceWithReconciliation(database, database, reconciliationService, now, uuid.NewString)
 	executor := commands.NewExecutor(database, database, now)
 	queries := commands.NewQueries(database, database.AuthorizeCommandResult)
 	accountHandler, err := accountdelivery.New(accountService, executor, queries, service, database, config, now)
 	if err != nil {
 		return err
 	}
-	ledgerHandler, err := ledgerdelivery.New(ledger.NewService(database, ledger.NewWriter(database, database), now, uuid.NewString), ledger.NewQueries(database), executor, queries, service, database, config, now)
+	ledgerHandler, err := ledgerdelivery.New(ledger.NewService(database, writer, now, uuid.NewString), ledger.NewQueries(database), executor, queries, service, database, config, now)
+	if err != nil {
+		return err
+	}
+	reconciliationHandler, err := reconciliationdelivery.New(reconciliationService, executor, queries, service, database, config, now)
 	if err != nil {
 		return err
 	}
@@ -118,6 +128,8 @@ func run() error {
 	mux.Handle("/api/v1/transactions", ledgerHandler)
 	mux.Handle("/api/v1/transactions/", ledgerHandler)
 	mux.Handle("/api/v1/transfers", ledgerHandler)
+	mux.Handle("/api/v1/reconciliations", reconciliationHandler)
+	mux.Handle("/api/v1/reconciliations/", reconciliationHandler)
 	mux.Handle("/api/v1/accounts", accountHandler)
 	mux.Handle("/api/v1/accounts/", accountHandler)
 	mux.Handle("/api/v1/commands/", accountHandler)

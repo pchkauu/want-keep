@@ -22,7 +22,11 @@ type Repository interface {
 }
 
 // Rejection is a confirmed business refusal. Infrastructure errors leave the command pending.
-type Rejection struct{ Code string }
+// CurrentRevision is included only when the authorized use case can safely expose it.
+type Rejection struct {
+	Code            string
+	CurrentRevision uint64
+}
 
 func (e Rejection) Error() string { return e.Code }
 
@@ -103,7 +107,7 @@ func (s *Executor) ExecuteRegistered(ctx context.Context, p household.Principal,
 			if c.Status() != command.Pending {
 				return nil
 			}
-			c, e = c.Fail(rejection.Code, s.now())
+			c, e = c.Fail(rejection.Code, rejection.CurrentRevision, s.now())
 			if e != nil {
 				return e
 			}

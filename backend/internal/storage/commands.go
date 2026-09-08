@@ -11,7 +11,7 @@ import (
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 )
 
-const commandColumns = `id,kind,payload_hash,status,registered_at,registered_ns,completed_at,completed_ns,result_type,result_id::text,result_revision,failure_code`
+const commandColumns = `id,kind,payload_hash,status,registered_at,registered_ns,completed_at,completed_ns,result_type,result_id::text,result_revision,failure_code,failure_revision`
 
 func (s *Store) RegisterCommand(ctx context.Context, c command.Command) (command.Command, error) {
 	scope, err := s.familyScope(ctx)
@@ -62,8 +62,8 @@ func scanCommand(row pgx.Row, p household.Principal) (command.Command, error) {
 	var completed *time.Time
 	var completedNS *int16
 	var resultType, resultID, failure *string
-	var revision *uint64
-	err := row.Scan(&state.ID, &state.Kind, &state.PayloadHash, &state.Status, &at, &ns, &completed, &completedNS, &resultType, &resultID, &revision, &failure)
+	var revision, failureRevision *uint64
+	err := row.Scan(&state.ID, &state.Kind, &state.PayloadHash, &state.Status, &at, &ns, &completed, &completedNS, &resultType, &resultID, &revision, &failure, &failureRevision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return command.Command{}, command.ErrCommandNotFound
 	}
@@ -92,6 +92,9 @@ func scanCommand(row pgx.Row, p household.Principal) (command.Command, error) {
 	if failure != nil {
 		state.ErrorCode = *failure
 	}
+	if failureRevision != nil {
+		state.CurrentRevision = *failureRevision
+	}
 	return command.Restore(state)
 }
 func (s *Store) SaveCommand(ctx context.Context, c command.Command) error {
@@ -110,13 +113,16 @@ func (s *Store) SaveCommand(ctx context.Context, c command.Command) error {
 		return command.ErrInvalidCommand
 	}
 	at, ns := splitInstant(state.CompletedAt)
-	var resultType, resultID, resultRevision, failure any
+	var resultType, resultID, resultRevision, failure, failureRevision any
 	if result, ok := c.Result(); ok {
 		resultType, resultID, resultRevision = result.ResourceType, result.ResourceID, result.Revision
 	} else {
 		failure = c.ErrorCode()
+		if revision, ok := c.CurrentRevision(); ok {
+			failureRevision = revision
+		}
 	}
-	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.command_tombstones SET status=$4,completed_at=$5,completed_ns=$6,result_type=$7,result_id=$8,result_revision=$9,failure_code=$10 WHERE household_id=$1 AND actor_id=$2 AND id=$3 AND status='pending' AND kind=$11 AND payload_hash=$12`, state.HouseholdID, state.ActorID, state.ID, state.Status, at, ns, resultType, resultID, resultRevision, failure, state.Kind, state.PayloadHash)
+	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.command_tombstones SET status=$4,completed_at=$5,completed_ns=$6,result_type=$7,result_id=$8,result_revision=$9,failure_code=$10,failure_revision=$11 WHERE household_id=$1 AND actor_id=$2 AND id=$3 AND status='pending' AND kind=$12 AND payload_hash=$13`, state.HouseholdID, state.ActorID, state.ID, state.Status, at, ns, resultType, resultID, resultRevision, failure, failureRevision, state.Kind, state.PayloadHash)
 	if err != nil {
 		return err
 	}

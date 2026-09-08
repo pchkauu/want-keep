@@ -114,6 +114,13 @@ jobs:
           make test-integration AREA=audit
           make test-audit-race
 
+      - name: Verify balance reconciliation and concurrent resolutions
+        env:
+          WANT_KEEP_TEST_DATABASE_URL: postgres://postgres:synthetic-admin@127.0.0.1:5432/want_keep_test?sslmode=disable
+        run: |
+          make test-integration AREA=reconciliation
+          make test-reconciliation-race
+
       - name: Verify ledger states, native effects and concurrent commands
         env:
           WANT_KEEP_TEST_DATABASE_URL: postgres://postgres:synthetic-admin@127.0.0.1:5432/want_keep_test?sslmode=disable

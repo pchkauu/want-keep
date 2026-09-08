@@ -348,13 +348,13 @@ Task: [task-7.3](tasks/task-7.3.md).
 
 **Question:** Why does the balance differ?
 
-**Primary answer:** Discrepancy amount/date and possible evidence-backed explanations.
+**Primary answer:** Source and ledger owned, available, locked and debt at sourceAsOf, their exact differences, data quality and evidence-backed explanations.
 
-**Top-down structure:** Source vs ledger at same date → incomplete history/pending/links → possible actions.
+**Top-down structure:** Lifecycle/result and freshness → four source/ledger/difference components → explanations and related transactions → replay → resolution.
 
-**Next action:** Refresh, open movements SCR-010, match/correct FORM-06.
+**Next action:** Start/wait for bounded replay, reauthenticate the source, open related movements in SCR-010 or, after completed/unavailable replay, explicitly adjust owned/debt.
 
-**Explanation and details:** No hidden balancing entry; user sees correction reason and consequences.
+**Explanation and details:** Unknown is not zero; balanced stale does not become fresh. Available/locked cannot be adjusted directly. An explicit adjustment is not income/expense, never changes the source observation and previews the server-derived effect.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -364,7 +364,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 REQ: REQ-004, REQ-013, REQ-041. AC: AC-004, AC-013, AC-041.
 
-Task: [task-7.2](tasks/task-7.2.md).
+Task: [task-2.5](tasks/task-2.5.md), [task-7.2](tasks/task-7.2.md).
 
 ### SCR-013 — Reimbursements
 

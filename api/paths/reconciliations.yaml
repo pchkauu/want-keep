@@ -8,6 +8,20 @@
     parameters:
     - "$ref": "../components.yaml#/parameters/Cursor"
     - "$ref": "../components.yaml#/parameters/Limit"
+    - name: accountId
+      in: query
+      schema:
+        "$ref": "../schemas/money.yaml#/ID"
+    - name: lifecycle
+      in: query
+      schema:
+        type: string
+        enum: [open, resolved, superseded]
+    - name: result
+      in: query
+      schema:
+        type: string
+        enum: [balanced, discrepant, incomplete]
     responses:
       '200':
         description: Success
@@ -122,4 +136,4 @@
       content:
         application/json:
           schema:
-            "$ref": "../schemas/transactions.yaml#/UndoInput"
+            "$ref": "../schemas/accounts.yaml#/ReconciliationResolutionInput"
