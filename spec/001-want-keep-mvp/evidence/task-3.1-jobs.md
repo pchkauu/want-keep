@@ -44,6 +44,8 @@ go run ./cmd/worker
 
 ## Проверка и передача
 
+`TestWaitingReviewDoesNotBlockAccounting` удерживает AI-задание в `handler_unavailable`, `gateway_unavailable` или `budget_wait`. Пока оно ожидает, параллельно завершаются admitted sync page и обычная ledger-команда; проверяются остаток, проводки, outbox, receipt и неизменные состояние/причина/attempt/lease token ожидающей проверки.
+
 ```sh
 make bootstrap
 make check

@@ -44,6 +44,8 @@ Environment: `WANT_KEEP_ENV`, `WANT_KEEP_DATABASE_URL`; migrations use the separ
 
 ## Verification and handoff
 
+`TestWaitingReviewDoesNotBlockAccounting` retains an AI job in `handler_unavailable`, `gateway_unavailable` or `budget_wait`. While it waits, an admitted sync page and an ordinary ledger command complete concurrently; the test checks the balance, postings, outbox, receipt and unchanged state/reason/attempt/lease token of the waiting review.
+
 ```sh
 make bootstrap
 make check
