@@ -1,3 +1,6 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { HttpClient } from "@/api/http";
 import { AccountsApi } from "@/features/accounts/accounts-api";
@@ -8,7 +11,9 @@ import {
 import {
   HouseholdApi,
   HouseholdController,
+  HouseholdProvider,
   HouseholdViewPolicy,
+  useHousehold,
   type Household,
   type HouseholdMember,
 } from "@/features/household";
@@ -93,6 +98,67 @@ describe("household view policy", () => {
 });
 
 describe("household loading boundary", () => {
+  it("publishes confirmed members before invitation metadata settles", async () => {
+    const api = new HouseholdApi(new HttpClient());
+    let finishInvitation!: (value: { revision: number }) => void;
+    vi.spyOn(api, "read").mockResolvedValue(household);
+    vi.spyOn(api, "invitations").mockImplementation(
+      () => new Promise((resolve) => (finishInvitation = resolve)),
+    );
+    const controller = new HouseholdController(api);
+    const loading = controller.load(session());
+
+    await vi.waitFor(() =>
+      expect(controller.snapshot()).toMatchObject({
+        status: "ready",
+        household,
+        invitationLoadStatus: "loading",
+      }),
+    );
+    expect(controller.snapshot().invitation).toBeUndefined();
+
+    finishInvitation({ revision: 1 });
+    await loading;
+    expect(controller.snapshot()).toMatchObject({
+      status: "ready",
+      household,
+      invitation: { revision: 1 },
+      invitationLoadStatus: "ready",
+    });
+  });
+
+  it("masks a prior session snapshot before provider effects run", async () => {
+    const api = new HouseholdApi(new HttpClient());
+    vi.spyOn(api, "read").mockResolvedValue(household);
+    vi.spyOn(api, "invitations").mockResolvedValue({ revision: 1 });
+    const controller = new HouseholdController(api);
+    await controller.load(session());
+
+    function SnapshotProbe() {
+      const state = useHousehold();
+      return createElement(
+        "span",
+        null,
+        `${state.status}:${state.household?.name ?? "hidden"}`,
+      );
+    }
+
+    const markup = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        { initialEntries: ["/?view=household"] },
+        createElement(HouseholdProvider, {
+          controller,
+          actor: session("user-a", "replacement-session"),
+          children: createElement(SnapshotProbe),
+        }),
+      ),
+    );
+
+    expect(markup).toContain("loading:hidden");
+    expect(markup).not.toContain(household.name);
+  });
+
   it("reloads household data when the same actor receives a new session", async () => {
     const api = new HouseholdApi(new HttpClient());
     const refreshed = { ...household, name: "Refreshed family" };
@@ -210,9 +276,11 @@ describe("household loading boundary", () => {
     expect(controller.snapshot()).toMatchObject({
       status: "ready",
       household,
-      error: { code: "service_unavailable" },
+      invitationLoadStatus: "error",
+      invitationError: { code: "service_unavailable" },
     });
     expect(controller.snapshot().invitation).toBeUndefined();
+    expect(controller.snapshot().error).toBeUndefined();
   });
 
   it("drops late data from a replaced session", async () => {

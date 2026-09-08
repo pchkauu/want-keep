@@ -48,50 +48,66 @@ export class HouseholdController {
         ? { ...previous, actorKey, refreshing: true, error: undefined }
         : { status: "loading", actorKey },
     );
-    const request = Promise.allSettled([
-      this.api.read(),
-      this.api.invitations(),
-    ]).then(([householdResult, invitationResult]) => {
-      if (epoch !== this.epoch || this.state.actorKey !== actorKey) return;
-      if (householdResult.status === "rejected") {
-        this.publishLoadFailure(actorKey, previous, householdResult.reason);
-        return;
-      }
-      const household = householdResult.value;
-      const actor = household.members.find(
-        (candidate) => candidate.userId === member.userId,
-      );
-      if (
-        household.id !== member.householdId ||
-        !actor ||
-        actor.status !== "active"
-      ) {
-        this.publish({
-          status: "error",
-          actorKey,
-          error: new ApiFailure("invalid_response"),
-        });
-        return;
-      }
-      if (invitationResult.status === "rejected") {
+    const invitationRequest = this.api.invitations().then(
+      (value) => ({ status: "fulfilled", value }) as const,
+      (reason: unknown) => ({ status: "rejected", reason }) as const,
+    );
+    const request = this.api.read().then(
+      async (household) => {
+        if (epoch !== this.epoch || this.state.actorKey !== actorKey) return;
+        const actor = household.members.find(
+          (candidate) => candidate.userId === member.userId,
+        );
+        if (
+          household.id !== member.householdId ||
+          !actor ||
+          actor.status !== "active"
+        ) {
+          this.publish({
+            status: "error",
+            actorKey,
+            error: new ApiFailure("invalid_response"),
+          });
+          return;
+        }
         this.publish({
           status: "ready",
           actorKey,
           household,
           ...(previous?.invitation ? { invitation: previous.invitation } : {}),
+          invitationLoadStatus: "loading",
           refreshing: false,
-          error: this.failure(invitationResult.reason),
         });
-        return;
-      }
-      this.publish({
-        status: "ready",
-        actorKey,
-        household,
-        invitation: invitationResult.value,
-        refreshing: false,
-      });
-    });
+        const invitationResult = await invitationRequest;
+        if (epoch !== this.epoch || this.state.actorKey !== actorKey) return;
+        if (invitationResult.status === "rejected") {
+          this.publish({
+            status: "ready",
+            actorKey,
+            household,
+            ...(previous?.invitation
+              ? { invitation: previous.invitation }
+              : {}),
+            invitationLoadStatus: "error",
+            invitationError: this.failure(invitationResult.reason),
+            refreshing: false,
+          });
+          return;
+        }
+        this.publish({
+          status: "ready",
+          actorKey,
+          household,
+          invitation: invitationResult.value,
+          invitationLoadStatus: "ready",
+          refreshing: false,
+        });
+      },
+      (error: unknown) => {
+        if (epoch !== this.epoch || this.state.actorKey !== actorKey) return;
+        this.publishLoadFailure(actorKey, previous, error);
+      },
+    );
     const completion = request.finally(() => {
       if (this.pending?.promise === completion) this.pending = undefined;
     });
@@ -127,9 +143,15 @@ export class HouseholdController {
       current.actorKey !== actorKey ||
       !current.household ||
       !current.invitation ||
+      current.invitationLoadStatus !== "ready" ||
+      current.invitationError ||
       current.error
     )
-      throw current.error ?? new ApiFailure("session_changed");
+      throw (
+        current.error ??
+        current.invitationError ??
+        new ApiFailure("session_changed")
+      );
     return { actorKey, epoch: this.epoch, invitation: current.invitation };
   }
 
@@ -147,6 +169,8 @@ export class HouseholdController {
     this.publish({
       ...this.state,
       invitation,
+      invitationLoadStatus: "ready",
+      invitationError: undefined,
       refreshing: false,
       error: undefined,
     });

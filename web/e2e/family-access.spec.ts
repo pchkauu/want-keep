@@ -105,6 +105,28 @@ test("household view keeps actor, ownership and invitation state separate", asyn
       page.getByText("Andrey Test", { exact: true }).first(),
     ).toBeVisible();
 
+    const invitationUnavailable = await first.newPage();
+    invitationUnavailable.on("pageerror", (error) =>
+      errors.push(error.message),
+    );
+    await invitationUnavailable.route(
+      "**/api/v1/household/invitations",
+      (route) => route.abort("failed"),
+    );
+    await invitationUnavailable.goto("/settings/household?view=household");
+    await expect(
+      invitationUnavailable.getByText("Andrey Test", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(invitationUnavailable.getByRole("alert")).toContainText(
+      "No response received",
+    );
+    await expect(
+      invitationUnavailable.getByRole("button", {
+        name: "Read current state",
+      }),
+    ).toBeVisible();
+    await invitationUnavailable.close();
+
     let lostIssue = 0;
     await page.route("**/api/v1/household/invitations", async (route) => {
       if (route.request().method() !== "POST" || lostIssue > 0) {

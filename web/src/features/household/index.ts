@@ -5,7 +5,7 @@ export { useHousehold } from "./use-household";
 export { HouseholdViewSelector } from "./HouseholdViewSelector";
 export { HouseholdPanel } from "./HouseholdPanel";
 export { HouseholdPage } from "./HouseholdPage";
-export { HouseholdViewPolicy } from "./model";
+export { HouseholdStatePolicy, HouseholdViewPolicy } from "./model";
 export type {
   Household,
   HouseholdMember,

@@ -9,6 +9,7 @@ import type { MemberSession } from "@/features/identity";
 import type { HouseholdController } from "./household-controller";
 import { HouseholdContext } from "./household-context";
 import {
+  HouseholdStatePolicy,
   HouseholdViewPolicy,
   type HouseholdView,
   type ReportView,
@@ -28,17 +29,19 @@ function useHouseholdValue(
   useEffect(() => {
     controller.load(actor);
   }, [actor, controller]);
+  const actorKey = `${actor.householdId}:${actor.userId}:${actor.sessionId}`;
+  const visibleState = HouseholdStatePolicy.forActor(state, actorKey);
   const requested = HouseholdViewPolicy.fromSearch(location.search);
   const view = HouseholdViewPolicy.normalize(
     requested,
-    state.household?.members ?? [],
+    visibleState.household?.members ?? [],
   );
-  const navigationView = state.household ? view : requested;
-  const canonicalSearch = state.household
+  const navigationView = visibleState.household ? view : requested;
+  const canonicalSearch = visibleState.household
     ? HouseholdViewPolicy.search(view, location.search)
     : location.search.slice(1);
   useEffect(() => {
-    if (!state.household || canonicalSearch === location.search.slice(1))
+    if (!visibleState.household || canonicalSearch === location.search.slice(1))
       return;
     void navigate(
       { pathname: location.pathname, search: `?${canonicalSearch}` },
@@ -49,19 +52,19 @@ function useHouseholdValue(
     location.pathname,
     location.search,
     navigate,
-    state.household,
+    visibleState.household,
   ]);
   return useMemo(
     () => ({
-      ...state,
+      ...visibleState,
       actor,
       view,
       reportView: HouseholdViewPolicy.report(view) as ReportView,
       select(next: HouseholdView) {
-        if (!state.household) return;
+        if (!visibleState.household) return;
         const normalized = HouseholdViewPolicy.normalize(
           next,
-          state.household.members,
+          visibleState.household.members,
         );
         void navigate(
           {
@@ -86,7 +89,7 @@ function useHouseholdValue(
       location.search,
       navigate,
       navigationView,
-      state,
+      visibleState,
       view,
     ],
   );

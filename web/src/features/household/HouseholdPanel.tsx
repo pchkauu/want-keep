@@ -17,6 +17,8 @@ export function HouseholdPanel({ compact = false }: { compact?: boolean }) {
     actor,
     household,
     invitation,
+    invitationLoadStatus,
+    invitationError,
     error,
     controller,
     refresh,
@@ -41,7 +43,7 @@ export function HouseholdPanel({ compact = false }: { compact?: boolean }) {
   }, []);
 
   const current = invitation?.current;
-  const invitationStatus: MessageKey =
+  const invitationStateLabel: MessageKey =
     current?.status === "accepted"
       ? "invitationAccepted"
       : current?.status === "revoked"
@@ -66,7 +68,9 @@ export function HouseholdPanel({ compact = false }: { compact?: boolean }) {
   return (
     <section
       className="access-panel household-panel"
-      aria-busy={status === "loading" || refreshing}
+      aria-busy={
+        status === "loading" || refreshing || invitationLoadStatus === "loading"
+      }
     >
       <div className="household-panel__heading">
         <div>
@@ -81,7 +85,7 @@ export function HouseholdPanel({ compact = false }: { compact?: boolean }) {
       </div>
       {status === "loading" || status === "idle" ? (
         <p role="status">{t("pending")}</p>
-      ) : status === "error" || !household || !invitation ? (
+      ) : status === "error" || !household ? (
         <div className="access-notice">
           <p role="alert">
             {t(
@@ -120,71 +124,97 @@ export function HouseholdPanel({ compact = false }: { compact?: boolean }) {
               </li>
             ))}
           </ul>
-          <div className="household-invitation-state">
-            <p>{t(invitationStatus)}</p>
-            {current && (
-              <p>
-                {t("expiresAt")}:{" "}
-                {new Intl.DateTimeFormat(locale, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(current.expiresAt))}
+          {invitationLoadStatus === "loading" ? (
+            <p role="status">{t("pending")}</p>
+          ) : invitationLoadStatus === "error" || invitationError ? (
+            <div className="access-notice">
+              <p role="alert">
+                {t(
+                  invitationError?.code &&
+                    Object.hasOwn(ru, invitationError.code)
+                    ? (invitationError.code as MessageKey)
+                    : "service_unavailable",
+                )}
               </p>
-            )}
-          </div>
-          {activeCount < household.maximum ? (
-            <Button
-              disabled={
-                action.busy ||
-                offline ||
-                refreshing ||
-                Boolean(error) ||
-                Boolean(action.error)
-              }
-              onClick={() =>
-                void action.run(async () => {
-                  setLink("");
-                  setCopyState(undefined);
-                  const ticket = identity.controller.ticket();
-                  const member = await identity.api.login(
-                    action.webauthn,
-                    "reauthentication",
-                  );
-                  if (!action.isLive()) return;
-                  identity.controller.accept(member, ticket);
-                  const result = await controller.issueInvitation(member);
-                  if (!action.isLive()) return;
-                  setLink(`${window.location.origin}/invite#${result.token}`);
-                })
-              }
-            >
-              {t(current ? "reissueInvitation" : "issueInvitation")}
-            </Button>
-          ) : (
-            <p>{t("householdMemberLimitReached")}</p>
-          )}
-          {current?.status === "active" && (
-            <Button
-              variant="secondary"
-              disabled={
-                action.busy ||
-                offline ||
-                refreshing ||
-                Boolean(error) ||
-                Boolean(action.error)
-              }
-              onClick={() =>
-                void action.run(async () => {
-                  setLink("");
-                  setCopyState(undefined);
-                  await controller.revokeInvitation(actor);
-                  if (!action.isLive()) return;
-                })
-              }
-            >
-              {t("revokeInvitation")}
-            </Button>
-          )}
+              <Button
+                variant="secondary"
+                disabled={refreshing}
+                onClick={refresh}
+              >
+                {t("refreshHousehold")}
+              </Button>
+            </div>
+          ) : invitation ? (
+            <>
+              <div className="household-invitation-state">
+                <p>{t(invitationStateLabel)}</p>
+                {current && (
+                  <p>
+                    {t("expiresAt")}:{" "}
+                    {new Intl.DateTimeFormat(locale, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    }).format(new Date(current.expiresAt))}
+                  </p>
+                )}
+              </div>
+              {activeCount < household.maximum ? (
+                <Button
+                  disabled={
+                    action.busy ||
+                    offline ||
+                    refreshing ||
+                    Boolean(error) ||
+                    Boolean(action.error)
+                  }
+                  onClick={() =>
+                    void action.run(async () => {
+                      setLink("");
+                      setCopyState(undefined);
+                      const ticket = identity.controller.ticket();
+                      const member = await identity.api.login(
+                        action.webauthn,
+                        "reauthentication",
+                      );
+                      if (!action.isLive()) return;
+                      identity.controller.accept(member, ticket);
+                      const result = await controller.issueInvitation(member);
+                      if (!action.isLive()) return;
+                      setLink(
+                        `${window.location.origin}/invite#${result.token}`,
+                      );
+                    })
+                  }
+                >
+                  {t(current ? "reissueInvitation" : "issueInvitation")}
+                </Button>
+              ) : (
+                <p>{t("householdMemberLimitReached")}</p>
+              )}
+              {current?.status === "active" && (
+                <Button
+                  variant="secondary"
+                  disabled={
+                    action.busy ||
+                    offline ||
+                    refreshing ||
+                    Boolean(error) ||
+                    Boolean(action.error)
+                  }
+                  onClick={() =>
+                    void action.run(async () => {
+                      setLink("");
+                      setCopyState(undefined);
+                      await controller.revokeInvitation(actor);
+                      if (!action.isLive()) return;
+                    })
+                  }
+                >
+                  {t("revokeInvitation")}
+                </Button>
+              )}
+            </>
+          ) : null}
           {offline && <p role="status">{t("householdOffline")}</p>}
           {error && (
             <div className="access-notice">

@@ -89,5 +89,15 @@ export type HouseholdState = {
   actorKey?: string;
   household?: Household;
   invitation?: Invitation;
+  invitationLoadStatus?: "loading" | "ready" | "error";
+  invitationError?: ApiFailure;
   error?: ApiFailure;
 };
+
+export class HouseholdStatePolicy {
+  static forActor(state: HouseholdState, actorKey: string): HouseholdState {
+    return state.actorKey === actorKey
+      ? state
+      : { status: "loading", actorKey };
+  }
+}
