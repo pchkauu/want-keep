@@ -5,7 +5,7 @@
 
 Вызывать OpenAI через ограниченный бюджетом доменный контракт.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализованы Responses API gateway, точный семейный бюджет, долговечные AI-попытки, возобновление budget-waiting заданий и операторская сверка. Применение предложений, чеки, инсайты, UI и production остаются профильным задачам.
 
 **Зависимости:** `task-0.8`, `task-3.1`, `task-1.5`.
 
@@ -13,12 +13,16 @@
 
 ### Изменение и контракты
 
-Использовать официальный Go SDK Responses API через gateway; модели/цены и token limits закрепить по исследованию. Хранить разговор в Want Keep, отправлять store=false, учитывать фактическую retention OpenAI. До запроса атомарно резервировать верхнюю оценку стоимости, после ответа сверять usage; неизвестную оплату держать зарезервированной до сверки. Ограничить параллелизм, повторы и месячный период бюджета. Применить evidence/openai.md: mode=explicit без cache breakpoints, store=false/foreground, Standard short-context, заранее подсчитать полный input, ограничить output с reasoning и резервировать cache-write максимум. Usage.input_tokens_details.cached_tokens/cache_write_tokens сверять раздельно; отсутствие write count — консервативный charge, не ноль. SDK retries=0, family concurrency≤2, модель/цены/права вне пользовательского текста. Невалидный usage/счёт выше резерва/неизвестный outcome останавливают новые вызовы до сверки; без автоматического повышения $50. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели.
+Использовать официальный Go SDK Responses API через gateway; модели/цены и token limits закрепить по исследованию. Хранить разговор в Want Keep, отправлять store=false, учитывать фактическую retention OpenAI. До запроса атомарно резервировать верхнюю оценку стоимости, после ответа сверять usage; неизвестную оплату держать зарезервированной до сверки. Ограничить параллелизм, повторы и месячный период бюджета. Применить evidence/openai.md: mode=explicit без cache breakpoints, store=false/foreground, Standard short-context, заранее подсчитать полный input, ограничить output с reasoning и резервировать cache-write максимум. Usage.input_tokens_details.cached_tokens/cache_write_tokens сверять раздельно; отсутствие write count — консервативный charge, не ноль. SDK retries=0, family concurrency≤2, модель/цены/права вне пользовательского текста. Невалидный usage/счёт выше резерва/неизвестный outcome останавливают новые вызовы до сверки; без автоматического повышения $50. Исследование task-0.8 завершено: использовать gpt-5.6-terra xhigh и финальную strict-схему из evidence/openai.prompts.json; Luna/Sol/MiniMax/DeepSeek автоматически не подключать. Финальный xhigh eval 206/206 не заменяет runtime/locale проверки. reasoning.effort=xhigh; никаких автоматических downgrade при лимите $50. Статус записи формирует приложение, не объяснение модели. Доверенный resumer возвращает ожидающие budget jobs в ready только после освобождения лимита/слота или начала нового UTC-месяца; транзакционная проверка резерва выполняется повторно. После одной повторной попытки следующий retryable отказ завершает job постоянной ошибкой.
 
 ### Границы изменений
 
 - `backend/internal/ai/`
 - `backend/internal/gateways/openai/`
+- `backend/internal/storage/ai_gateway.go`
+- `backend/migrations/016_ai_gateway_budget.sql`
+- `backend/cmd/worker/`
+- `backend/cmd/ai-reconcile/`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -113,7 +117,7 @@ make test-integration AREA=ai-budget
 
 Конкурентные запросы, неизвестный outcome, смена месяца, недоступность и неверная usage не позволяют незаметно превысить разрешённый бюджет.
 
-Основа task-1.1 уже предоставляет make. make docs-check проверяет документацию и исследовательский инструмент; production AI integration/E2E suites ещё не реализованы. Модельный eval и приёмка приложения фиксируются раздельно.
+Зависимости task-0.8, task-3.1 и task-1.5 включены в базу. Реализацию и точные границы подтверждает evidence/task-5.1-openai-gateway.md; обязательны make check, AI-budget/jobs/audit/ledger/storage/privacy integration и race suites. Live OpenAI и production не проверялись.
 
 ### Передача следующему агенту
 
@@ -125,7 +129,7 @@ make test-integration AREA=ai-budget
 
 Call OpenAI through a budget-controlled domain contract.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** The Responses API gateway, exact household budget, durable AI attempts, budget-waiting resumption and operator reconciliation are implemented. Proposal application, receipts, insights, UI and production remain with their owning tasks.
 
 **Dependencies:** `task-0.8`, `task-3.1`, `task-1.5`.
 
@@ -133,12 +137,16 @@ Call OpenAI through a budget-controlled domain contract.
 
 ### Change and contracts
 
-Use the official Go Responses API SDK behind a gateway; pin models/prices and token limits from research. Store conversations in Want Keep, request store=false and account for actual OpenAI retention. Atomically reserve a conservative cost ceiling before calls, reconcile usage afterward and keep unknown charges reserved until reconciliation. Bound concurrency, retries and the monthly spending period. Apply evidence/openai.en.md: explicit mode with no cache breakpoints, store=false/foreground, Standard short context, pre-count full input, bound output including reasoning and reserve cache-write ceilings. Reconcile usage.input_tokens_details.cached_tokens/cache_write_tokens separately; absent write count retains a conservative charge, not zero. SDK retries=0, family concurrency≤2; models/prices/authority are outside user text. Invalid usage, over-reservation cost and unknown outcomes stop new calls pending reconciliation; never raise USD 50 automatically. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation.
+Use the official Go Responses API SDK behind a gateway; pin models/prices and token limits from research. Store conversations in Want Keep, request store=false and account for actual OpenAI retention. Atomically reserve a conservative cost ceiling before calls, reconcile usage afterward and keep unknown charges reserved until reconciliation. Bound concurrency, retries and the monthly spending period. Apply evidence/openai.en.md: explicit mode with no cache breakpoints, store=false/foreground, Standard short context, pre-count full input, bound output including reasoning and reserve cache-write ceilings. Reconcile usage.input_tokens_details.cached_tokens/cache_write_tokens separately; absent write count retains a conservative charge, not zero. SDK retries=0, family concurrency≤2; models/prices/authority are outside user text. Invalid usage, over-reservation cost and unknown outcomes stop new calls pending reconciliation; never raise USD 50 automatically. task-0.8 research is complete: use gpt-5.6-terra xhigh and the final strict schema in evidence/openai.prompts.json; do not automatically enable Luna/Sol/MiniMax/DeepSeek. The final xhigh evaluation 206/206 does not replace runtime/locale checks. reasoning.effort=xhigh; no automatic downgrade at the USD 50 cap. The application supplies persistence status, not the model explanation. A trusted resumer returns budget-waiting jobs to ready only after budget/slot capacity becomes available or a new UTC month starts; the transactional reservation check runs again. After one retry, the next retryable rejection fails the job permanently.
 
 ### Change boundaries
 
 - `backend/internal/ai/`
 - `backend/internal/gateways/openai/`
+- `backend/internal/storage/ai_gateway.go`
+- `backend/migrations/016_ai_gateway_budget.sql`
+- `backend/cmd/worker/`
+- `backend/cmd/ai-reconcile/`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -233,7 +241,7 @@ make test-integration AREA=ai-budget
 
 Concurrent calls, unknown outcomes, month rollover, outage and invalid usage cannot silently exceed the authorized budget.
 
-The task-1.1 foundation already provides make. make docs-check validates documentation and research tooling; production AI integration/E2E suites are not implemented. Model evaluation and application acceptance are recorded separately.
+Dependencies task-0.8, task-3.1 and task-1.5 are included in the base. Evidence and exact boundaries are in evidence/task-5.1-openai-gateway.en.md; make check plus AI-budget/jobs/audit/ledger/storage/privacy integration and race suites are required. Live OpenAI and production were not tested.
 
 ### Handoff to the next agent
 

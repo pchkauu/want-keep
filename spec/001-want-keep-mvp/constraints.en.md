@@ -110,3 +110,9 @@ An invitation does not assign principal or provide financial access before atomi
 ### Accounts storage boundary (task-2.1)
 
 The accounts API registers commands before session-bound execution and reuses the identity → household lock order. Reads use repeatable-read snapshots without financial write locks. Migration 007 preserves 001–006 and marks old unproven balances as legacy. Only admitted import transactions may create imported products, source observations or aliases; public commands cannot forge them. Ledger projections and immutable provider observations have separate persistence and semantics. Account ownership never grants ownership of a bank session. See [accounts contract](contracts.en.md#task-21--accounts-and-opening-balances) and [verification boundaries](evidence/task-2.1-accounts.en.md).
+
+## OpenAI task-5.1
+
+`ai/domain` owns exact cost, usage and states; `ai/application` owns reservation, execution and reconciliation; `gateways/openai` is the sole SDK import location; storage hides SQL. The worker composes these boundaries but never applies an AI proposal. Architecture checks reject SDK, HTTP and pgx imports in domain/application.
+
+Migration 016 adds append-only attempts and state history only. The household lock serializes the family budget and two slots. An external-started marker commits before IO; provider IO always stays outside transactions. Completion commits in the same household transaction as the job receipt. A trusted resumer only moves eligible budget-waiting jobs back to `ready`; reservation and slot checks run again under the same lock. The maintenance role may read attempts, append reconciliation and change only permitted unresolved-job fields; the application role cannot update immutable history. [Contract and verification](evidence/task-5.1-openai-gateway.en.md).
