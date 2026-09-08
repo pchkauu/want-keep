@@ -40,7 +40,7 @@ func goldenToken() ingestion.JobToken {
 
 func TestGoldenContractPreservesMeaningAndPrecision(t *testing.T) {
 	manifest, err := contract.DecodeManifest(fixture(t, "manifest.json"), "bybit")
-	if err != nil || manifest.Version != "10" || len(manifest.Logs) != 3 {
+	if err != nil || manifest.Version != "10" || len(manifest.Logs) != 5 {
 		t.Fatal(manifest, err)
 	}
 	result, err := contract.DecodeResult(fixture(t, "golden-page.json"), goldenToken())
@@ -49,6 +49,9 @@ func TestGoldenContractPreservesMeaningAndPrecision(t *testing.T) {
 	}
 	if result.Page == nil || len(result.Page.Records) != 17 || result.Page.Coverage.State() != "partial" {
 		t.Fatal("golden page lost records or coverage")
+	}
+	if err = manifest.RequirePage(*result.Page); err != nil {
+		t.Fatal("golden page exceeded its manifest", err)
 	}
 	amounts := map[string]string{}
 	for _, record := range result.Page.Records {
@@ -120,5 +123,26 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 				t.Fatal("invalid contract accepted")
 			}
 		})
+	}
+}
+
+func TestDecoderUsesOpenAPIUnicodeCharacterLimits(t *testing.T) {
+	var value map[string]any
+	if err := json.Unmarshal(fixture(t, "golden-page.json"), &value); err != nil {
+		t.Fatal(err)
+	}
+	records := value["page"].(map[string]any)["records"].([]any)
+	records[0].(map[string]any)["account"].(map[string]any)["name"] = strings.Repeat("ё", 1500)
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = contract.DecodeResult(encoded, goldenToken()); err != nil {
+		t.Fatal("valid Unicode text was measured as bytes", err)
+	}
+	records[0].(map[string]any)["account"].(map[string]any)["name"] = strings.Repeat("ё", 2001)
+	encoded, _ = json.Marshal(value)
+	if _, err = contract.DecodeResult(encoded, goldenToken()); err == nil {
+		t.Fatal("text beyond the OpenAPI character limit was accepted")
 	}
 }

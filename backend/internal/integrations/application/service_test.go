@@ -62,17 +62,39 @@ func TestEvidenceIsDurableBeforeCommitAndFailureClosesTheBoundary(t *testing.T) 
 	}
 }
 
-func TestProviderFailureKeepsTypedReasonWithoutFinancialApply(t *testing.T) {
-	gate := &gateFake{failure: func(_ context.Context, _ household.Principal, _ jobs.Job, _ string, apply func(context.Context) error) (bool, error) {
-		return true, apply(context.Background())
-	}}
-	service, _ := application.NewService(gate, evidenceFake{save: func(context.Context, ingestion.EvidenceBatch) error { return nil }}, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
-	job := issued()
-	token, _ := application.TokenFromJob(job)
-	failure := ingestion.ProviderFailure{Token: token, Kind: ingestion.MFARequired, Evidence: []ingestion.Evidence{rawEvidence()}}
-	applied, got, err := service.Ingest(context.Background(), principal(), job, &gatewayFake{result: ingestion.Result{Failure: &failure}})
-	if err != nil || !applied || got == nil || got.Kind != ingestion.MFARequired || gate.commitCalls != 0 || gate.failureCalls != 1 {
-		t.Fatal("typed provider failure crossed financial apply", applied, got, err)
+func TestProviderFailureMapsToRecoverableJobOutcome(t *testing.T) {
+	tests := []struct {
+		name       string
+		failure    ingestion.ProviderFailure
+		wantState  jobs.State
+		wantReason jobs.Reason
+		wantDelay  time.Duration
+	}{
+		{name: "reauthentication", failure: ingestion.ProviderFailure{Kind: ingestion.ReauthenticationRequired}, wantState: jobs.Waiting, wantReason: jobs.ReauthRequired},
+		{name: "mfa", failure: ingestion.ProviderFailure{Kind: ingestion.MFARequired}, wantState: jobs.Waiting, wantReason: jobs.ReauthRequired},
+		{name: "captcha", failure: ingestion.ProviderFailure{Kind: ingestion.CaptchaRequired}, wantState: jobs.Waiting, wantReason: jobs.ReauthRequired},
+		{name: "rate limit", failure: ingestion.ProviderFailure{Kind: ingestion.RateLimited, Retryable: true, RetryAfterSeconds: 3600}, wantState: jobs.Ready, wantReason: jobs.TemporaryFailure, wantDelay: time.Hour},
+		{name: "temporary default", failure: ingestion.ProviderFailure{Kind: ingestion.TemporaryFailure, Retryable: true}, wantState: jobs.Ready, wantReason: jobs.TemporaryFailure, wantDelay: 5 * time.Second},
+		{name: "temporary requested", failure: ingestion.ProviderFailure{Kind: ingestion.TemporaryFailure, Retryable: true, RetryAfterSeconds: 86400}, wantState: jobs.Ready, wantReason: jobs.TemporaryFailure, wantDelay: 24 * time.Hour},
+		{name: "permanent", failure: ingestion.ProviderFailure{Kind: ingestion.PermanentFailure}, wantState: jobs.Failed, wantReason: jobs.PermanentFailure},
+		{name: "unsupported", failure: ingestion.ProviderFailure{Kind: ingestion.UnsupportedCapability}, wantState: jobs.Failed, wantReason: jobs.PermanentFailure},
+		{name: "contract", failure: ingestion.ProviderFailure{Kind: ingestion.ContractViolation}, wantState: jobs.Failed, wantReason: jobs.PermanentFailure},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gate := &gateFake{failure: func(_ context.Context, _ household.Principal, _ jobs.Job, _ string, _ jobs.State, _ jobs.Reason, _ time.Duration, apply func(context.Context) error) (bool, error) {
+				return true, apply(context.Background())
+			}}
+			service, _ := application.NewService(gate, evidenceFake{save: func(context.Context, ingestion.EvidenceBatch) error { return nil }}, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+			job := issued()
+			token, _ := application.TokenFromJob(job)
+			test.failure.Token = token
+			test.failure.Evidence = []ingestion.Evidence{rawEvidence()}
+			applied, got, err := service.Ingest(context.Background(), principal(), job, &gatewayFake{result: ingestion.Result{Failure: &test.failure}})
+			if err != nil || !applied || got == nil || got.Kind != test.failure.Kind || gate.commitCalls != 0 || gate.failureCalls != 1 || gate.outcomeState != test.wantState || gate.outcomeReason != test.wantReason || gate.outcomeDelay != test.wantDelay {
+				t.Fatal("typed provider failure mapped incorrectly", applied, got, gate.outcomeState, gate.outcomeReason, gate.outcomeDelay, err)
+			}
+		})
 	}
 }
 
@@ -88,11 +110,37 @@ func TestReadFencePrecedesEveryGatewayCall(t *testing.T) {
 	}
 }
 
+func TestManifestCapabilitiesFencePageBeforeEvidence(t *testing.T) {
+	token, _ := application.TokenFromJob(issued())
+	coverage, _ := reporting.NewCoverage(reporting.Complete, nil)
+	page := ingestion.Page{
+		Token: token, Complete: true, Coverage: coverage, Evidence: []ingestion.Evidence{rawEvidence()},
+		Records: []ingestion.Record{{
+			Kind: ingestion.AccountRecordKind,
+			Account: &ingestion.AccountRecord{
+				Reference:    ingestion.AccountReference{ExternalAccountID: "external", Product: "current", AssetCode: "RUB"},
+				LogNamespace: "undeclared",
+				EvidenceID:   "raw",
+			},
+			CanonicalPayload: []byte(`{"recordType":"account"}`),
+		}},
+	}
+	stored := false
+	service, _ := application.NewService(&gateFake{}, evidenceFake{save: func(context.Context, ingestion.EvidenceBatch) error { stored = true; return nil }}, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+	applied, failure, err := service.Ingest(context.Background(), principal(), issued(), &gatewayFake{result: ingestion.Result{Page: &page}})
+	if applied || failure != nil || !errors.Is(err, ingestion.ErrInvalidContract) || stored {
+		t.Fatal("out-of-manifest record crossed the evidence boundary", applied, failure, stored, err)
+	}
+}
+
 type gateFake struct {
 	commitCalls, failureCalls int
+	outcomeState              jobs.State
+	outcomeReason             jobs.Reason
+	outcomeDelay              time.Duration
 	beforeRead                func(context.Context, household.Principal, jobs.Job) error
 	commit                    func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error)
-	failure                   func(context.Context, household.Principal, jobs.Job, string, func(context.Context) error) (bool, error)
+	failure                   func(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error)
 }
 
 func (g *gateFake) BeforeRead(ctx context.Context, p household.Principal, job jobs.Job) error {
@@ -108,12 +156,13 @@ func (g *gateFake) CommitPage(ctx context.Context, p household.Principal, job jo
 	}
 	return g.commit(ctx, p, job, page, apply)
 }
-func (g *gateFake) CommitFailure(ctx context.Context, p household.Principal, job jobs.Job, evidence string, apply func(context.Context) error) (bool, error) {
+func (g *gateFake) CommitProviderOutcome(ctx context.Context, p household.Principal, job jobs.Job, evidence string, state jobs.State, reason jobs.Reason, delay time.Duration, apply func(context.Context) error) (bool, error) {
 	g.failureCalls++
+	g.outcomeState, g.outcomeReason, g.outcomeDelay = state, reason, delay
 	if g.failure == nil {
 		return false, errors.New("unexpected failure commit")
 	}
-	return g.failure(ctx, p, job, evidence, apply)
+	return g.failure(ctx, p, job, evidence, state, reason, delay, apply)
 }
 
 type evidenceFake struct {
@@ -147,12 +196,16 @@ func (sourceFake) Apply(context.Context, household.Principal, ledger.SourceInput
 }
 
 type gatewayFake struct {
-	result ingestion.Result
-	calls  int
+	result   ingestion.Result
+	manifest *ingestion.Manifest
+	calls    int
 }
 
 func (g *gatewayFake) Manifest(context.Context) (ingestion.Manifest, error) {
 	g.calls++
+	if g.manifest != nil {
+		return *g.manifest, nil
+	}
 	return ingestion.Manifest{Provider: "raiffeisen", Version: "10", Actions: []ingestion.ReadAction{ingestion.ReadAccounts}, Products: []string{"current"}, Logs: []ingestion.CapabilityLog{{Product: "current", Namespace: "accounts", RecordKinds: []ingestion.RecordKind{ingestion.AccountRecordKind}}}}, nil
 }
 func (g *gatewayFake) Read(context.Context, ingestion.JobToken) (ingestion.Result, error) {

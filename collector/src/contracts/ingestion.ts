@@ -19,7 +19,7 @@ const RAW_DIGEST = /^[0-9a-f]{64}$/;
 const DECIMAL = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/;
 const ASSET = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const INSTANT =
-  /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$/;
+  /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,9}))?Z$/;
 const DATE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 
 const providers = new Set([
@@ -186,6 +186,16 @@ export function capabilitySupports(
   kind: components["schemas"]["RecordKind"],
 ): boolean {
   parseCapabilityManifest(manifest);
+  return supportsCapability(manifest, action, product, namespace, kind);
+}
+
+function supportsCapability(
+  manifest: CapabilityManifest,
+  action: CapabilityManifest["actions"][number],
+  product: CapabilityManifest["products"][number],
+  namespace: string,
+  kind: components["schemas"]["RecordKind"],
+): boolean {
   return (
     manifest.actions.includes(action) &&
     manifest.products.includes(product) &&
@@ -196,6 +206,64 @@ export function capabilitySupports(
         log.recordKinds.includes(kind),
     )
   );
+}
+
+function requireCapabilities(
+  manifest: CapabilityManifest,
+  result: SyncResult,
+  request: SyncRequest,
+): void {
+  if (result.page === undefined) return;
+  if (
+    request.replayRange !== undefined &&
+    !manifest.actions.includes("read_history")
+  )
+    fail();
+  if (result.page.nextCursor !== undefined && !manifest.history.paginated)
+    fail();
+  if (
+    request.replayRange !== undefined &&
+    manifest.history.maximumLookbackDays !== undefined
+  ) {
+    const from = parseInstant(request.replayRange.from);
+    const to = parseInstant(request.replayRange.to);
+    const maximum =
+      BigInt(manifest.history.maximumLookbackDays) *
+      24n *
+      60n *
+      60n *
+      1_000_000_000n;
+    if (to - from > maximum) fail();
+  }
+  for (const record of result.page.records) {
+    let supported = false;
+    if (record.account !== undefined) {
+      supported = supportsCapability(
+        manifest,
+        "read_accounts",
+        record.account.product,
+        record.account.logNamespace,
+        "account",
+      );
+    } else if (record.balanceSnapshot !== undefined) {
+      supported = supportsCapability(
+        manifest,
+        "read_balances",
+        record.balanceSnapshot.product,
+        record.balanceSnapshot.logNamespace,
+        "balance_snapshot",
+      );
+    } else if (record.transaction !== undefined) {
+      supported = supportsCapability(
+        manifest,
+        "read_transactions",
+        record.transaction.product,
+        record.transaction.logNamespace,
+        "transaction",
+      );
+    }
+    if (!supported) fail();
+  }
 }
 
 export class SyntheticGateway {
@@ -216,6 +284,7 @@ export class SyntheticGateway {
     const expected = parseSyncRequest(request);
     if (this.#index >= this.#results.length) fail();
     const result = parseSyncResult(this.#results[this.#index], expected);
+    requireCapabilities(this.#manifest, result, expected);
     this.#index += 1;
     return structuredClone(result);
   }
@@ -251,6 +320,7 @@ function page(value: unknown, expected: SyncRequest): void {
   ]);
   echoedToken(object, expected);
   textOrEmpty(object.cursor);
+  equal(object.cursor, expected.cursor ?? "");
   optionalText(object.nextCursor);
   boolean(object.complete);
   if (object.complete === true && object.nextCursor !== undefined) fail();
@@ -426,6 +496,7 @@ function accountRecord(value: unknown, evidenceIDs: Set<string>): void {
   const object = strictObject(value, [
     "externalAccountId",
     "product",
+    "logNamespace",
     "assetCode",
     "network",
     "name",
@@ -436,12 +507,14 @@ function accountRecord(value: unknown, evidenceIDs: Set<string>): void {
   requiredKeys(object, [
     "externalAccountId",
     "product",
+    "logNamespace",
     "assetCode",
     "name",
     "openingDate",
     "evidenceId",
   ]);
   accountReference(object);
+  text(object.logNamespace);
   text(object.name);
   date(object.openingDate);
   evidenceReference(object.evidenceId, evidenceIDs);
@@ -453,6 +526,7 @@ function balanceRecord(value: unknown, evidenceIDs: Set<string>): void {
   const object = strictObject(value, [
     "externalAccountId",
     "product",
+    "logNamespace",
     "assetCode",
     "network",
     "sourceAsOf",
@@ -469,6 +543,7 @@ function balanceRecord(value: unknown, evidenceIDs: Set<string>): void {
   requiredKeys(object, [
     "externalAccountId",
     "product",
+    "logNamespace",
     "assetCode",
     "sourceAsOf",
     "owned",
@@ -482,6 +557,7 @@ function balanceRecord(value: unknown, evidenceIDs: Set<string>): void {
     "evidenceId",
   ]);
   accountReference(object);
+  text(object.logNamespace);
   instant(object.sourceAsOf);
   for (const field of ["owned", "available", "locked", "debt", "creditLimit"])
     sourceAmount(object[field], object.assetCode);
@@ -618,7 +694,7 @@ function evidence(value: unknown): Set<string> {
     ]);
     requiredKeys(object, ["id", "mediaType", "data", "sha256", "locator"]);
     const id = string(object.id);
-    if (id.length < 1 || id.length > 128 || ids.has(id)) fail();
+    if (id.length < 1 || Array.from(id).length > 128 || ids.has(id)) fail();
     ids.add(id);
     oneOf(
       object.mediaType,
@@ -726,11 +802,9 @@ function bindingKey(value: components["schemas"]["DeploymentBinding"]): string {
 function replayRange(value: unknown): void {
   const object = strictObject(value, ["from", "to"]);
   requiredKeys(object, ["from", "to"]);
-  instant(object.from);
-  instant(object.to);
-  const from = Date.parse(object.from as string);
-  const to = Date.parse(object.to as string);
-  if (from >= to || to - from > 90 * 24 * 60 * 60 * 1_000) fail();
+  const from = parseInstant(object.from);
+  const to = parseInstant(object.to);
+  if (from >= to || to - from > 90n * 24n * 60n * 60n * 1_000_000_000n) fail();
 }
 
 function accountReference(object: Record<string, unknown>): void {
@@ -814,12 +888,16 @@ function uniqueArray(
 }
 
 function text(value: unknown, maximum = MAX_TEXT): asserts value is string {
-  if (typeof value !== "string" || value.length < 1 || value.length > maximum)
+  if (
+    typeof value !== "string" ||
+    value.length < 1 ||
+    Array.from(value).length > maximum
+  )
     fail();
 }
 
 function textOrEmpty(value: unknown): asserts value is string {
-  if (typeof value !== "string" || value.length > MAX_TEXT) fail();
+  if (typeof value !== "string" || Array.from(value).length > MAX_TEXT) fail();
 }
 
 function optionalText(value: unknown): void {
@@ -871,12 +949,41 @@ function uuid(value: unknown): void {
 }
 
 function instant(value: unknown): void {
+  parseInstant(value);
+}
+
+function parseInstant(value: unknown): bigint {
+  if (typeof value !== "string") fail();
+  const match = INSTANT.exec(value);
+  if (match === null) fail();
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
   if (
-    typeof value !== "string" ||
-    !INSTANT.test(value) ||
-    !Number.isFinite(Date.parse(value))
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth(year, month) ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
   )
     fail();
+  const parsed = new Date(0);
+  parsed.setUTCFullYear(year, month - 1, day);
+  parsed.setUTCHours(hour, minute, second, 0);
+  if (!Number.isFinite(parsed.valueOf())) fail();
+  const fraction = (match[7] ?? "").padEnd(9, "0");
+  return BigInt(parsed.valueOf()) * 1_000_000n + BigInt(fraction || "0");
+}
+
+function daysInMonth(year: number, month: number): number {
+  if (month === 2)
+    return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28;
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
 }
 
 function date(value: unknown): void {

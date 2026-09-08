@@ -280,7 +280,15 @@ components:
       type: object
       additionalProperties: false
       required:
-        [externalAccountId, product, assetCode, name, openingDate, evidenceId]
+        [
+          externalAccountId,
+          product,
+          logNamespace,
+          assetCode,
+          name,
+          openingDate,
+          evidenceId,
+        ]
       properties:
         externalAccountId:
           type: string
@@ -288,6 +296,10 @@ components:
           maxLength: 2000
         product:
           $ref: "#/components/schemas/Product"
+        logNamespace:
+          type: string
+          minLength: 1
+          maxLength: 2000
         assetCode:
           $ref: "#/components/schemas/AssetCode"
         network:
@@ -316,6 +328,7 @@ components:
         [
           externalAccountId,
           product,
+          logNamespace,
           assetCode,
           sourceAsOf,
           owned,
@@ -335,6 +348,10 @@ components:
           maxLength: 2000
         product:
           $ref: "#/components/schemas/Product"
+        logNamespace:
+          type: string
+          minLength: 1
+          maxLength: 2000
         assetCode:
           $ref: "#/components/schemas/AssetCode"
         network:

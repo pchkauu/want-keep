@@ -11,18 +11,28 @@
   "logs": [
     {
       "product": "current",
+      "namespace": "accounts",
+      "recordKinds": ["account", "balance_snapshot"]
+    },
+    {
+      "product": "current",
       "namespace": "payments",
-      "recordKinds": ["account", "balance_snapshot", "transaction"]
+      "recordKinds": ["transaction"]
+    },
+    {
+      "product": "wallet",
+      "namespace": "accounts",
+      "recordKinds": ["account", "balance_snapshot"]
     },
     {
       "product": "wallet",
       "namespace": "trades",
-      "recordKinds": ["account", "balance_snapshot", "transaction"]
+      "recordKinds": ["transaction"]
     },
     {
       "product": "wallet",
       "namespace": "mining",
-      "recordKinds": ["account", "balance_snapshot", "transaction"]
+      "recordKinds": ["transaction"]
     }
   ],
   "history": {

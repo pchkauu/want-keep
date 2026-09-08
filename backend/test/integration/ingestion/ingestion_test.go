@@ -7,10 +7,55 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
+	application "github.com/pchkauu/want-keep/backend/internal/integrations/application"
 	ingestion "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 )
+
+func TestProviderFailuresPersistRecoverableJobOutcomes(t *testing.T) {
+	tests := []struct {
+		name       string
+		kind       ingestion.FailureKind
+		retryable  bool
+		retryAfter int
+		wantState  string
+		wantReason string
+		wantDelay  bool
+	}{
+		{name: "reauthentication", kind: ingestion.MFARequired, wantState: "waiting", wantReason: "reauth_required"},
+		{name: "rate limit", kind: ingestion.RateLimited, retryable: true, retryAfter: 60, wantState: "ready", wantReason: "temporary_failure", wantDelay: true},
+		{name: "permanent", kind: ingestion.ContractViolation, wantState: "failed", wantReason: "permanent_failure"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
+			job := f.issued()
+			token, _ := application.TokenFromJob(job)
+			gateway := f.gateway(job)
+			gateway.result = ingestion.Result{Failure: &ingestion.ProviderFailure{
+				Token: token, Kind: test.kind, Retryable: test.retryable, RetryAfterSeconds: test.retryAfter,
+				Evidence: []ingestion.Evidence{gateway.result.Page.Evidence[0]},
+			}}
+			applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
+			if err != nil || !applied || failure == nil || failure.Kind != test.kind {
+				t.Fatal("provider failure was not committed", applied, failure, err)
+			}
+			var state, reason string
+			var availableAt time.Time
+			if err = f.admin.QueryRow(testContext, `SELECT state,reason,available_at FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID).Scan(&state, &reason, &availableAt); err != nil {
+				t.Fatal(err)
+			}
+			if state != test.wantState || reason != test.wantReason {
+				t.Fatal("provider outcome lost its lifecycle", state, reason)
+			}
+			if test.wantDelay && time.Until(availableAt) < 50*time.Second {
+				t.Fatal("provider retry delay was discarded", availableAt)
+			}
+		})
+	}
+}
 
 func TestGoldenPageRoundTripsThroughPostgreSQLWithoutDuplicateEffects(t *testing.T) {
 	f := newFixture(t)

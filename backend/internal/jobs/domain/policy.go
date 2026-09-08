@@ -45,6 +45,9 @@ func (r Reason) Waiting() bool {
 type RetryPolicy struct{ Base, Maximum time.Duration }
 
 func DefaultRetryPolicy() RetryPolicy { return RetryPolicy{5 * time.Second, 5 * time.Minute} }
+
+const MaxRetryDelay = 24 * time.Hour
+
 func (p RetryPolicy) Delay(attempt int, jitter float64) time.Duration {
 	if attempt < 1 {
 		attempt = 1

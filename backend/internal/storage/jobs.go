@@ -185,7 +185,7 @@ func (s *Store) FailJob(ctx context.Context, p household.Principal, j jobs.Job) 
 	return s.transitionJob(ctx, p, j, jobs.Failed, jobs.PermanentFailure, 0)
 }
 func (s *Store) RetryJob(ctx context.Context, p household.Principal, j jobs.Job, delay time.Duration, ambiguous bool) error {
-	if delay < 0 || delay > time.Hour {
+	if delay < 0 || delay > jobs.MaxRetryDelay {
 		return jobs.ErrInvalidJob
 	}
 	state := jobs.Ready

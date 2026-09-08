@@ -37,6 +37,7 @@ type Repository interface {
 	ImportOmissions(context.Context, household.Principal, string) ([]string, error)
 	FinishJob(context.Context, household.Principal, jobs.Job) error
 	FailJob(context.Context, household.Principal, jobs.Job) error
+	SetJobOutcome(context.Context, household.Principal, jobs.Job, jobs.State, jobs.Reason, time.Duration) error
 	SyncDue(context.Context, string) (bool, error)
 	AdvanceSyncSchedule(context.Context, string) error
 }
@@ -301,13 +302,13 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 	return applied && err == nil, err
 }
 
-// CommitFailure records a terminal provider failure while the exact admission,
+// CommitProviderOutcome records a provider outcome while the exact admission,
 // connection generation, job attempt and lease remain current.
-func (s *Service) CommitFailure(ctx context.Context, p household.Principal, issued jobs.Job, evidence string, apply func(context.Context) error) (bool, error) {
+func (s *Service) CommitProviderOutcome(ctx context.Context, p household.Principal, issued jobs.Job, evidence string, state jobs.State, reason jobs.Reason, delay time.Duration, apply func(context.Context) error) (bool, error) {
 	if issued.HouseholdID != p.HouseholdID() {
 		return false, household.ErrForbidden
 	}
-	if evidence == "" || len(evidence) > 2000 || issued.Binding.Validate() != nil {
+	if evidence == "" || len(evidence) > 2000 || issued.Binding.Validate() != nil || delay < 0 || delay > jobs.MaxRetryDelay || apply == nil {
 		return false, jobs.ErrInvalidJob
 	}
 	applied := false
@@ -319,7 +320,7 @@ func (s *Service) CommitFailure(ctx context.Context, p household.Principal, issu
 			if err := apply(ctx); err != nil {
 				return err
 			}
-			if err := s.repository.FailJob(ctx, p, issued); err != nil {
+			if err := s.repository.SetJobOutcome(ctx, p, issued, state, reason, delay); err != nil {
 				return err
 			}
 			applied = true
@@ -330,6 +331,12 @@ func (s *Service) CommitFailure(ctx context.Context, p household.Principal, issu
 		return false, s.quarantineResult(ctx, p, issued.ID, evidence)
 	}
 	return applied && err == nil, err
+}
+
+// CommitFailure retains the existing terminal boundary used by replay
+// reconciliation. Provider adapters should use CommitProviderOutcome.
+func (s *Service) CommitFailure(ctx context.Context, p household.Principal, issued jobs.Job, evidence string, apply func(context.Context) error) (bool, error) {
+	return s.CommitProviderOutcome(ctx, p, issued, evidence, jobs.Failed, jobs.PermanentFailure, 0, apply)
 }
 
 func (s *Service) quarantineResult(ctx context.Context, p household.Principal, jobID, evidence string) error {

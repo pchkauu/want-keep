@@ -507,6 +507,7 @@ type AccountRecord struct {
 	AssetCode         AssetCode          `json:"assetCode"`
 	EvidenceId        string             `json:"evidenceId"`
 	ExternalAccountId string             `json:"externalAccountId"`
+	LogNamespace      string             `json:"logNamespace"`
 	Name              string             `json:"name"`
 	Network           *string            `json:"network,omitempty"`
 	OpeningDate       openapi_types.Date `json:"openingDate"`
@@ -527,6 +528,7 @@ type BalanceSnapshotRecord struct {
 	ExternalAccountId string                         `json:"externalAccountId"`
 	Freshness         BalanceSnapshotRecordFreshness `json:"freshness"`
 	Locked            SourceAmount                   `json:"locked"`
+	LogNamespace      string                         `json:"logNamespace"`
 	Network           *string                        `json:"network,omitempty"`
 	OwnAvailable      bool                           `json:"ownAvailable"`
 	Owned             SourceAmount                   `json:"owned"`

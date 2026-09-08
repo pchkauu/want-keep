@@ -43,7 +43,7 @@ type JobToken struct {
 }
 
 func (t JobToken) Validate() error {
-	if t.JobID == "" || t.LeaseToken == "" || len(t.LeaseToken) > MaxTextLength || t.ConnectionID == "" || t.Attempt < 1 || t.Attempt > 100 || t.ConnectionGeneration < 1 || t.ConnectionGeneration > uint64(MaxAdmissionRevision) || t.AdmissionRevision < 1 || t.AdmissionRevision > MaxAdmissionRevision || len(t.Cursor) > MaxTextLength || t.Binding.ContractVersion != ContractVersion || t.Binding.Validate() != nil {
+	if t.JobID == "" || !validBoundedText(t.LeaseToken, true) || t.ConnectionID == "" || t.Attempt < 1 || t.Attempt > 100 || t.ConnectionGeneration < 1 || t.ConnectionGeneration > uint64(MaxAdmissionRevision) || t.AdmissionRevision < 1 || t.AdmissionRevision > MaxAdmissionRevision || !validBoundedText(t.Cursor, false) || t.Binding.ContractVersion != ContractVersion || t.Binding.Validate() != nil {
 		return ErrInvalidContract
 	}
 	if t.ReplayFrom.IsZero() != t.ReplayTo.IsZero() || !t.ReplayFrom.IsZero() && (!t.ReplayFrom.Before(t.ReplayTo) || t.ReplayTo.Sub(t.ReplayFrom) > 90*24*time.Hour) {
@@ -129,6 +129,56 @@ func (m Manifest) Validate(provider string) error {
 	return nil
 }
 
+// RequirePage rejects results outside the connector capabilities reviewed for
+// the exact admitted build. It is a consistency fence; D-43 remains the source
+// of server-side deployment authorization.
+func (m Manifest) RequirePage(page Page) error {
+	if err := m.Validate(page.Token.Binding.Provider); err != nil {
+		return err
+	}
+	if err := page.Validate(); err != nil {
+		return err
+	}
+	actions := make(map[ReadAction]bool, len(m.Actions))
+	for _, action := range m.Actions {
+		actions[action] = true
+	}
+	logs := make(map[string]map[RecordKind]bool, len(m.Logs))
+	for _, log := range m.Logs {
+		key := log.Product + "\x00" + log.Namespace
+		logs[key] = make(map[RecordKind]bool, len(log.RecordKinds))
+		for _, kind := range log.RecordKinds {
+			logs[key][kind] = true
+		}
+	}
+	if !page.Token.ReplayFrom.IsZero() {
+		if !actions[ReadHistory] || m.MaximumLookbackDays > 0 && page.Token.ReplayTo.Sub(page.Token.ReplayFrom) > time.Duration(m.MaximumLookbackDays)*24*time.Hour {
+			return ErrInvalidContract
+		}
+	}
+	if page.NextCursor != "" && !m.Paginated {
+		return ErrInvalidContract
+	}
+	for _, record := range page.Records {
+		var action ReadAction
+		var product, namespace string
+		switch record.Kind {
+		case AccountRecordKind:
+			action, product, namespace = ReadAccounts, record.Account.Reference.Product, record.Account.LogNamespace
+		case BalanceRecordKind:
+			action, product, namespace = ReadBalances, record.Balance.Reference.Product, record.Balance.LogNamespace
+		case TransactionRecordKind:
+			action, product, namespace = ReadTransactions, record.Transaction.Product, record.Transaction.LogNamespace
+		default:
+			return ErrInvalidContract
+		}
+		if !actions[action] || !logs[product+"\x00"+namespace][record.Kind] {
+			return ErrInvalidContract
+		}
+	}
+	return nil
+}
+
 func ValidProduct(product string) bool {
 	switch product {
 	case "current", "debit_card", "credit_card", "savings", "deposit", "wallet", "funding", "spot", "earn", "coinhold", "crypto_card", "futures", "mining":
@@ -145,7 +195,7 @@ type Evidence struct {
 
 func (e Evidence) Validate() error {
 	digest := sha256.Sum256(e.Data)
-	if len(e.ID) < 1 || len(e.ID) > 128 || !validText(e.Locator) || !sha256Syntax.MatchString(e.Digest) || len(e.Data) < 1 || len(e.Data) > MaxEvidenceBytes || e.Digest != hex.EncodeToString(digest[:]) {
+	if !validTextLimit(e.ID, 128) || !validText(e.Locator) || !sha256Syntax.MatchString(e.Digest) || len(e.Data) < 1 || len(e.Data) > MaxEvidenceBytes || e.Digest != hex.EncodeToString(digest[:]) {
 		return ErrInvalidContract
 	}
 	switch e.MediaType {
@@ -222,7 +272,7 @@ type AccountReference struct {
 }
 
 func (r AccountReference) Validate() error {
-	if !validText(r.ExternalAccountID) || !ValidProduct(r.Product) || len(r.Network) > MaxTextLength || len(r.AssetCode) < 1 || len(r.AssetCode) > 64 {
+	if !validText(r.ExternalAccountID) || !ValidProduct(r.Product) || !validBoundedText(r.Network, false) || len(r.AssetCode) < 1 || len(r.AssetCode) > 64 {
 		return ErrInvalidContract
 	}
 	return nil
@@ -235,15 +285,17 @@ func (r AccountReference) Key() string {
 type CardAlias struct{ ID, Label, LastFour string }
 
 type AccountRecord struct {
-	Reference   AccountReference
-	Name        string
-	OpeningDate calendar.Date
-	Aliases     []CardAlias
-	EvidenceID  string
+	Reference    AccountReference
+	Name         string
+	LogNamespace string
+	OpeningDate  calendar.Date
+	Aliases      []CardAlias
+	EvidenceID   string
 }
 
 type BalanceSnapshot struct {
 	Reference                      AccountReference
+	LogNamespace                   string
 	SourceAsOf                     calendar.Instant
 	Owned, Available, Locked, Debt Amount
 	CreditLimit                    Amount
@@ -288,7 +340,7 @@ type Page struct {
 }
 
 func (p Page) Validate() error {
-	if err := p.Token.Validate(); err != nil || len(p.NextCursor) > MaxTextLength || len(p.Evidence) < 1 || len(p.Evidence) > MaxEvidencePerPage || len(p.Records) > MaxRecordsPerPage {
+	if err := p.Token.Validate(); err != nil || !validBoundedText(p.NextCursor, false) || len(p.Evidence) < 1 || len(p.Evidence) > MaxEvidencePerPage || len(p.Records) > MaxRecordsPerPage {
 		return ErrInvalidContract
 	}
 	if _, err := reporting.NewCoverage(p.Coverage.State(), p.Coverage.Reasons()); err != nil {
@@ -333,7 +385,7 @@ func (p Page) Validate() error {
 		if record.Account != nil {
 			count++
 			evidenceID = record.Account.EvidenceID
-			if err := record.Account.Reference.Validate(); err != nil || descriptors[record.Account.Reference.Key()] {
+			if err := record.Account.Reference.Validate(); err != nil || !validText(record.Account.LogNamespace) || descriptors[record.Account.Reference.Key()] {
 				return ErrInvalidContract
 			}
 			descriptors[record.Account.Reference.Key()] = true
@@ -341,7 +393,7 @@ func (p Page) Validate() error {
 		if record.Balance != nil {
 			count++
 			evidenceID = record.Balance.EvidenceID
-			if err := record.Balance.Reference.Validate(); err != nil {
+			if err := record.Balance.Reference.Validate(); err != nil || !validText(record.Balance.LogNamespace) {
 				return ErrInvalidContract
 			}
 			references[record.Balance.Reference.Key()] = true
@@ -397,7 +449,7 @@ type ProviderFailure struct {
 }
 
 func (f ProviderFailure) Validate() error {
-	if err := f.Token.Validate(); err != nil || len(f.Evidence) < 1 || len(f.Evidence) > MaxEvidencePerPage || len(f.SafeMessage) > MaxTextLength || f.RetryAfterSeconds < 0 || f.RetryAfterSeconds > 86400 {
+	if err := f.Token.Validate(); err != nil || len(f.Evidence) < 1 || len(f.Evidence) > MaxEvidencePerPage || !validBoundedText(f.SafeMessage, false) || f.RetryAfterSeconds < 0 || f.RetryAfterSeconds > 86400 {
 		return ErrInvalidContract
 	}
 	switch f.Kind {
@@ -483,5 +535,16 @@ func SortedGapReasons(coverage reporting.Coverage, extra ...string) []string {
 }
 
 func validText(value string) bool {
-	return len(value) > 0 && len(value) <= MaxTextLength && utf8.ValidString(value) && strings.TrimSpace(value) != ""
+	return validTextLimit(value, MaxTextLength) && strings.TrimSpace(value) != ""
+}
+
+func validTextLimit(value string, maximum int) bool {
+	return value != "" && utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum
+}
+
+func validBoundedText(value string, required bool) bool {
+	if value == "" {
+		return !required
+	}
+	return utf8.ValidString(value) && utf8.RuneCountInString(value) <= MaxTextLength
 }

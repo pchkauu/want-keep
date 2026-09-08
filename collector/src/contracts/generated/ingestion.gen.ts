@@ -114,6 +114,7 @@ export interface components {
     AccountRecord: {
       externalAccountId: string;
       product: components["schemas"]["Product"];
+      logNamespace: string;
       assetCode: components["schemas"]["AssetCode"];
       network?: string;
       name: string;
@@ -125,6 +126,7 @@ export interface components {
     BalanceSnapshotRecord: {
       externalAccountId: string;
       product: components["schemas"]["Product"];
+      logNamespace: string;
       assetCode: components["schemas"]["AssetCode"];
       network?: string;
       /** Format: date-time */

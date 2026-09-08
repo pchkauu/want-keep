@@ -66,6 +66,36 @@ describe("collector ingestion contract v10", () => {
     expect(() => parseSyncResult(stale, parseSyncRequest(request))).toThrow(
       "invalid ingestion contract",
     );
+
+    const wrongCursor = structuredClone(golden) as {
+      page: Record<string, unknown>;
+    };
+    wrongCursor.page.cursor = "another-page";
+    expect(() =>
+      parseSyncResult(wrongCursor, parseSyncRequest(request)),
+    ).toThrow("invalid ingestion contract");
+  });
+
+  it("enforces the manifest against every returned record", () => {
+    const missingBalances = structuredClone(manifest) as { actions: string[] };
+    missingBalances.actions = missingBalances.actions.filter(
+      (action) => action !== "read_balances",
+    );
+    expect(() =>
+      new SyntheticGateway(missingBalances, [golden]).read(request),
+    ).toThrow("invalid ingestion contract");
+
+    const wrongNamespace = structuredClone(golden) as {
+      page: { records: Array<{ account?: { logNamespace: string } }> };
+    };
+    const account = wrongNamespace.page.records.find(
+      (record) => record.account !== undefined,
+    )?.account;
+    if (account === undefined) throw new Error("invalid test fixture");
+    account.logNamespace = "undeclared";
+    expect(() =>
+      new SyntheticGateway(manifest, [wrongNamespace]).read(request),
+    ).toThrow("invalid ingestion contract");
   });
 
   it("keeps decimal values as strings and unsupported assets explicit", () => {
@@ -120,6 +150,34 @@ describe("collector ingestion contract v10", () => {
     expect(() =>
       parseSyncResult(invalidDate, parseSyncRequest(request)),
     ).toThrow();
+
+    const invalidInstant = structuredClone(golden) as {
+      page: {
+        records: Array<{ balanceSnapshot?: { sourceAsOf: string } }>;
+      };
+    };
+    const snapshot = invalidInstant.page.records.find(
+      (record) => record.balanceSnapshot !== undefined,
+    )?.balanceSnapshot;
+    if (snapshot === undefined) throw new Error("invalid test fixture");
+    snapshot.sourceAsOf = "2026-02-30T00:00:00Z";
+    expect(() =>
+      parseSyncResult(invalidInstant, parseSyncRequest(request)),
+    ).toThrow();
+
+    const unicode = structuredClone(golden) as {
+      page: { records: Array<{ account?: { name: string } }> };
+    };
+    const namedAccount = unicode.page.records.find(
+      (record) => record.account !== undefined,
+    )?.account;
+    if (namedAccount === undefined) throw new Error("invalid test fixture");
+    namedAccount.name = "ё".repeat(1_500);
+    expect(() =>
+      parseSyncResult(unicode, parseSyncRequest(request)),
+    ).not.toThrow();
+    namedAccount.name = "ё".repeat(2_001);
+    expect(() => parseSyncResult(unicode, parseSyncRequest(request))).toThrow();
 
     const missingDescriptor = structuredClone(golden) as {
       page: { records: Array<{ recordType: string }> };

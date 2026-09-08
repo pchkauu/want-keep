@@ -7,6 +7,7 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"time"
 
 	accounts "github.com/pchkauu/want-keep/backend/internal/accounts/application"
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
@@ -33,7 +34,7 @@ type EvidenceStore interface {
 type Gate interface {
 	BeforeRead(context.Context, household.Principal, jobs.Job) error
 	CommitPage(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error)
-	CommitFailure(context.Context, household.Principal, jobs.Job, string, func(context.Context) error) (bool, error)
+	CommitProviderOutcome(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error)
 }
 
 type AccountImporter interface {
@@ -94,6 +95,9 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 		if !ingestion.SameToken(token, result.Page.Token) {
 			return false, nil, ingestion.ErrInvalidContract
 		}
+		if err = manifest.RequirePage(*result.Page); err != nil {
+			return false, nil, err
+		}
 		batch, references, err := s.stage(ctx, result.Page.Evidence)
 		if err != nil {
 			return false, nil, err
@@ -111,8 +115,25 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 	if err != nil {
 		return false, nil, err
 	}
-	applied, err := s.gate.CommitFailure(ctx, p, issued, batch.PageReference, func(context.Context) error { return nil })
+	state, reason, delay := providerFailureOutcome(*result.Failure, issued.Attempt)
+	applied, err := s.gate.CommitProviderOutcome(ctx, p, issued, batch.PageReference, state, reason, delay, func(context.Context) error { return nil })
 	return applied, result.Failure, err
+}
+
+func providerFailureOutcome(failure ingestion.ProviderFailure, attempt int) (jobs.State, jobs.Reason, time.Duration) {
+	switch failure.Kind {
+	case ingestion.ReauthenticationRequired, ingestion.MFARequired, ingestion.CaptchaRequired:
+		return jobs.Waiting, jobs.ReauthRequired, 0
+	case ingestion.RateLimited:
+		return jobs.Ready, jobs.TemporaryFailure, time.Duration(failure.RetryAfterSeconds) * time.Second
+	case ingestion.TemporaryFailure:
+		if failure.RetryAfterSeconds > 0 {
+			return jobs.Ready, jobs.TemporaryFailure, time.Duration(failure.RetryAfterSeconds) * time.Second
+		}
+		return jobs.Ready, jobs.TemporaryFailure, jobs.DefaultRetryPolicy().Delay(attempt, 1)
+	default:
+		return jobs.Failed, jobs.PermanentFailure, 0
+	}
 }
 
 func TokenFromJob(job jobs.Job) (ingestion.JobToken, error) {

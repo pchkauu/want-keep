@@ -268,20 +268,20 @@ func recordFromGenerated(source generated.IngestionRecord) (ingestion.Record, er
 
 func accountFromGenerated(source generated.AccountRecord) (ingestion.AccountRecord, error) {
 	reference, err := reference(string(source.ExternalAccountId), string(source.Product), optional(source.Network), source.AssetCode)
-	if err != nil || !validText(source.Name) || !validEvidenceID(source.EvidenceId) {
+	if err != nil || !validText(source.LogNamespace) || !validText(source.Name) || !validEvidenceID(source.EvidenceId) {
 		return ingestion.AccountRecord{}, ingestion.ErrInvalidContract
 	}
 	date, err := calendar.ParseDate(source.OpeningDate.Time.Format(time.DateOnly))
 	if err != nil {
 		return ingestion.AccountRecord{}, err
 	}
-	result := ingestion.AccountRecord{Reference: reference, Name: source.Name, OpeningDate: date, EvidenceID: source.EvidenceId}
+	result := ingestion.AccountRecord{Reference: reference, LogNamespace: source.LogNamespace, Name: source.Name, OpeningDate: date, EvidenceID: source.EvidenceId}
 	if source.Aliases != nil {
 		if len(*source.Aliases) > 32 {
 			return result, ingestion.ErrInvalidContract
 		}
 		for _, alias := range *source.Aliases {
-			if !validText(alias.Id) || len(alias.Label) < 1 || len(alias.Label) > 100 || !utf8.ValidString(alias.Label) || longDigits.MatchString(alias.Label) || !lastFour.MatchString(alias.LastFour) {
+			if !validText(alias.Id) || !validTextLimit(alias.Label, 100) || longDigits.MatchString(alias.Label) || !lastFour.MatchString(alias.LastFour) {
 				return result, ingestion.ErrInvalidContract
 			}
 			result.Aliases = append(result.Aliases, ingestion.CardAlias{ID: alias.Id, Label: alias.Label, LastFour: alias.LastFour})
@@ -292,7 +292,7 @@ func accountFromGenerated(source generated.AccountRecord) (ingestion.AccountReco
 
 func balanceFromGenerated(source generated.BalanceSnapshotRecord) (ingestion.BalanceSnapshot, error) {
 	reference, err := reference(source.ExternalAccountId, string(source.Product), optional(source.Network), source.AssetCode)
-	if err != nil || !validEvidenceID(source.EvidenceId) || source.SourceAsOf.IsZero() {
+	if err != nil || !validText(source.LogNamespace) || !validEvidenceID(source.EvidenceId) || source.SourceAsOf.IsZero() {
 		return ingestion.BalanceSnapshot{}, ingestion.ErrInvalidContract
 	}
 	asOf, err := instant(source.SourceAsOf)
@@ -316,7 +316,7 @@ func balanceFromGenerated(source generated.BalanceSnapshotRecord) (ingestion.Bal
 		}
 		converted = append(converted, value)
 	}
-	return ingestion.BalanceSnapshot{Reference: reference, SourceAsOf: asOf, Owned: converted[0], Available: converted[1], Locked: converted[2], Debt: converted[3], CreditLimit: converted[4], OwnAvailable: source.OwnAvailable, Coverage: coverage, Freshness: freshness, EvidenceID: source.EvidenceId}, nil
+	return ingestion.BalanceSnapshot{Reference: reference, LogNamespace: source.LogNamespace, SourceAsOf: asOf, Owned: converted[0], Available: converted[1], Locked: converted[2], Debt: converted[3], CreditLimit: converted[4], OwnAvailable: source.OwnAvailable, Coverage: coverage, Freshness: freshness, EvidenceID: source.EvidenceId}, nil
 }
 
 func amountFromGenerated(source generated.SourceAmount, assetCode string) (ingestion.Amount, error) {
@@ -355,7 +355,7 @@ func transactionFromGenerated(source generated.TransactionRecord) (ingestion.Tra
 			return ingestion.TransactionRecord{}, err
 		}
 	}
-	if result.Classification != "new" && result.Classification != "correction" && result.Classification != "ambiguous" || !validProviderState(result.ProviderState) || !validEconomicType(result.EconomicType) || (result.FeeKnowledge != "known" && result.FeeKnowledge != "unknown") || len(result.Merchant) > ingestion.MaxTextLength || len(result.Note) > ingestion.MaxTextLength || !utf8.ValidString(result.Merchant+result.Note) || result.EconomicType != "trade_result" && result.PnLBasis != "" || result.PnLBasis != "" && result.PnLBasis != "gross" && result.PnLBasis != "net" {
+	if result.Classification != "new" && result.Classification != "correction" && result.Classification != "ambiguous" || !validProviderState(result.ProviderState) || !validEconomicType(result.EconomicType) || (result.FeeKnowledge != "known" && result.FeeKnowledge != "unknown") || !validOptionalText(result.Merchant, ingestion.MaxTextLength) || !validOptionalText(result.Note, ingestion.MaxTextLength) || result.EconomicType != "trade_result" && result.PnLBasis != "" || result.PnLBasis != "" && result.PnLBasis != "gross" && result.PnLBasis != "net" {
 		return ingestion.TransactionRecord{}, ingestion.ErrInvalidContract
 	}
 	for _, posting := range source.Postings {
@@ -416,7 +416,7 @@ func validPosting(posting ingestion.Posting) bool {
 	if posting.Treatment != "" && posting.Treatment != "movement" && posting.Treatment != "included" && posting.Treatment != "valuation" {
 		return false
 	}
-	return len(posting.FeeID) <= ingestion.MaxTextLength
+	return validOptionalText(posting.FeeID, ingestion.MaxTextLength)
 }
 
 func validProviderState(value string) bool {
@@ -442,10 +442,18 @@ func validDecimal(value string) bool {
 }
 
 func validText(value string) bool {
-	return len(value) > 0 && len(value) <= ingestion.MaxTextLength && utf8.ValidString(value) && strings.TrimSpace(value) != ""
+	return validTextLimit(value, ingestion.MaxTextLength) && strings.TrimSpace(value) != ""
 }
 
-func validEvidenceID(value string) bool { return len(value) > 0 && len(value) <= 128 }
+func validTextLimit(value string, maximum int) bool {
+	return value != "" && utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum
+}
+
+func validOptionalText(value string, maximum int) bool {
+	return value == "" || utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum
+}
+
+func validEvidenceID(value string) bool { return validTextLimit(value, 128) }
 
 func optional(value *string) string {
 	if value == nil {
