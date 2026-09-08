@@ -27,6 +27,7 @@ ErrorCode:
   - merchant_alias_conflict
   - invalid_availability
   - version_conflict
+  - matching_conflict
   - decision_conflict
   - no_change
   - duplicate_command

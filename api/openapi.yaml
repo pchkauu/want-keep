@@ -12,6 +12,12 @@ servers:
 security:
 - sessionCookie: []
 paths:
+  /matching:
+    $ref: "./paths/matching.yaml#/~1matching"
+  /matching/{matchingId}:
+    $ref: "./paths/matching.yaml#/~1matching~1{matchingId}"
+  /matching/{matchingId}/resolve:
+    $ref: "./paths/matching.yaml#/~1matching~1{matchingId}~1resolve"
   "/auth/login/options":
     "$ref": "./paths/auth.yaml#/~1auth~1login~1options"
   "/auth/login/verify":
@@ -219,6 +225,26 @@ components:
     Limit:
       "$ref": "./components.yaml#/parameters/Limit"
   schemas:
+    MatchingKind:
+      $ref: "./schemas/matching.yaml#/MatchingKind"
+    MatchingState:
+      $ref: "./schemas/matching.yaml#/MatchingState"
+    MatchingMember:
+      $ref: "./schemas/matching.yaml#/MatchingMember"
+    MatchingCandidate:
+      $ref: "./schemas/matching.yaml#/MatchingCandidate"
+    MatchingCase:
+      $ref: "./schemas/matching.yaml#/MatchingCase"
+    MatchingPage:
+      $ref: "./schemas/matching.yaml#/MatchingPage"
+    MatchingResolution:
+      $ref: "./schemas/matching.yaml#/MatchingResolution"
+    EffectParticipation:
+      $ref: "./schemas/matching.yaml#/EffectParticipation"
+    EffectContribution:
+      $ref: "./schemas/matching.yaml#/EffectContribution"
+    RelatedCorrection:
+      $ref: "./schemas/matching.yaml#/RelatedCorrection"
     ExcludeInput:
       $ref: './schemas/transactions.yaml#/ExcludeInput'
     DecisionRevision:

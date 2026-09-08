@@ -108,3 +108,22 @@ flowchart LR
   K --> D[One allowance matrix]
   D --> P
 ```
+
+## Task-2.4: from facts to one effect
+
+```mermaid
+flowchart LR
+  A[Manual entry / trusted normalization] --> B[Household transaction and current rights]
+  I[CommitPage: admission / generation / lease] --> B
+  B --> C[D-39 idempotency]
+  C --> D{Proven correspondence?}
+  D -->|Yes| E[Validate composition and field protections]
+  D -->|Probable candidate only| F[Retain waiting and evidence without a second effect]
+  F --> G[Member: link or separate with revisions]
+  G --> E
+  E --> H[Decision + journal revisions + projections + review/outbox]
+  H --> J[Command outcome / checkpoint]
+  H --> K[History and compound undo]
+```
+
+Original statuses and dates remain in history. Incomplete search and waiting produce matching_unresolved; source observations stay separate. Stale import jobs enter quarantine before this flow. Bank IO and document recognition are connected by their owning tasks.

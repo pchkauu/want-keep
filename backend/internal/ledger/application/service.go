@@ -28,12 +28,12 @@ type FactsRepository interface {
 
 type Service struct {
 	repository FactsRepository
-	writer     *Writer
+	writer     JournalWriter
 	now        func() calendar.Instant
 	newID      func() string
 }
 
-func NewService(r FactsRepository, w *Writer, now func() calendar.Instant, newID func() string) *Service {
+func NewService(r FactsRepository, w JournalWriter, now func() calendar.Instant, newID func() string) *Service {
 	return &Service{r, w, now, newID}
 }
 
@@ -180,6 +180,8 @@ func (s *Service) append(ctx context.Context, p household.Principal, r ledger.Re
 
 func (s *Service) reject(err error) error {
 	switch {
+	case errors.Is(err, ledger.ErrMatchingConflict):
+		return commands.Rejection{Code: "matching_conflict"}
 	case errors.Is(err, ledger.ErrFeatureUnavailable):
 		return commands.Rejection{Code: "feature_unavailable"}
 	case errors.Is(err, ledger.ErrSourceAmbiguous):

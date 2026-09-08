@@ -108,7 +108,12 @@ func TestHTTPTransfersExchangeAndUnsupportedFeatures(t *testing.T) {
 		t.Fatal("transfer became expense")
 	}
 	in["existingTransactions"] = []any{map[string]any{"transactionId": out.Result.Id, "expectedRevision": 1}}
-	c.call("POST", "/transfers", uuid.NewString(), in, 422)
+	failed := decode[generated.CommandFailed](t, c.call("POST", "/transfers", uuid.NewString(), in, 202))
+	if failed.Status != "failed" || failed.Error.Code != "invalid_transaction" {
+		t.Fatal("incomplete existing transfer was accepted", failed)
+	}
+	f.balance(a, "owned", "18990")
+	f.balance(b, "owned", "1000")
 	in["existingTransactions"] = []any{}
 	in["toAccountId"] = crypto
 	in["sent"] = map[string]any{"amount": "9000", "asset": "RUB"}
@@ -127,7 +132,7 @@ func TestHTTPTransfersExchangeAndUnsupportedFeatures(t *testing.T) {
 	f.balance(fee, "owned", "0.99999")
 	manual := c.input(a, "RUB", "12000")
 	manual["categoryId"] = uuid.NewString()
-	failed := decode[generated.CommandFailed](t, c.call("POST", "/transactions", uuid.NewString(), manual, 202))
+	failed = decode[generated.CommandFailed](t, c.call("POST", "/transactions", uuid.NewString(), manual, 202))
 	if failed.Error.Code != "not_found" {
 		t.Fatal("unknown category was not rejected", failed)
 	}

@@ -1,0 +1,46 @@
+# Task-2.4 — transfer links and one payment
+
+The backend/API implements matching cases, links, effect participation and compound undo. Base: `ff9dcc79eff6c8d35a38aedb39b95532b48672b6`; branch: `feat/task-2.4-transfer-matching`. Task-2.3 is included. Contract version 10 is extended in [contracts.en.md](../contracts.en.md); migrations 013 and 014 are additive. No dependencies are added.
+
+Matching owns search/composition, ledger owns monetary effects/decisions, accounts owns projections. Proven correspondence requires complete namespace/ID and compatible monetary sides; amount/date/file hash alone create clarification. A waiting possible duplicate adds no second effect. Original records remain independent. User confirmation, group corrections and undo use all revisions and the existing authenticated command transaction. Bank facts use the same JournalWriter inside CommitPage. Normalized input contains verified structured data only; this task does not implement real parsers, collectors or OpenAI.
+
+## Verification
+
+Required matrix: `make check`; `make test-integration AREA=matching`; `make test-matching-race`; audit/ledger/accounts/storage/identity/household integration/race; `make test-integration AREA=privacy`; `git diff --check`. Matching integration and race are in CI; missing PostgreSQL fails the suite. Tests use digest-pinned PostgreSQL 17.11, isolated databases and the unprivileged role. Exact results belong to the published SHA and are recorded in the PR/final report.
+
+Matching tests cover HTTP → Go → SQL → JSON for six assets; no second effect, link/separate, history, restart/undo, separate BTC/ETH fees, both arrival orders and missing counterparts. Fenced source tests cover pending → posted, hold removal, late fees, source revision replay, independent reversal, conflicting amounts without a new effect and quarantine after admission revocation. Structured IDs are searched beyond the probable window; different blockchain movements and accounts remain distinct.
+
+HTTP tests cover a manual transfer and two bank cases, compound amount corrections and undo preserving a later independent note, compound exclusion/undo, cursor scope, household isolation, field spoofing and Origin/CSRF. Two members answer concurrently through a barrier: one outcome wins. Rollback retains no partial revisions; after restart the original key recovers the outcome and changed payloads are rejected. A normalized receipt with a synthetic accepted attachment and a bank fact retain authorship and multiple evidence references for one RUB 300 expense. This is not actual file recognition testing.
+
+Additional checks passed for the existing-transfer API: RUB 1000 + fee 10 and RUB 9000 → USDT 100 + fee RUB 50, incomplete composition rejection without changes, same-key replay, truncated searches above 100 candidates, separate-purchase undo retaining candidates, migration over 012 and matching history after D-41 cleanup. The base includes PR #79: 26 local Chromium catalog/token checks passed; this is not product-screen acceptance.
+
+## Acceptance boundaries
+
+| Criteria | Task-2.4 verification | Subsequent tasks |
+| --- | --- | --- |
+| AC-006/007/063 | Transfer/exchange composition, principal without income/expense, late sides/fees and lifecycle | Live adapters, reports and currency valuation |
+| AC-008/093 | One payment from normalized inputs, file/source evidence, authors and replay | Receipt recognition, chat and clarification UI |
+| AC-019/064 | Typed link/separate, versions, field protection and persisted review requests | Actual OpenAI execution and UX |
+| AC-079/082 | Household accounts/payers and explicit internal-money links without inferred debt | Full reimbursements and UI |
+
+SDD remains **Ready for development**. Production, bank IO, Chrome/Arc, recognition, chat/OpenAI, refunds, debt and reports are not claimed verified. Working-app acceptance and operational readiness remain separate stages.
+
+Review regressions cover per-component carrier/date stability on note edits, date correction and undo, exclusion of a mixed included/excluded group, source conflict projection/review/outbox refresh, recovery of the former amount and coordinated updates of both sides. They also cover rejection of distinct verified payment IDs/blockchain movements and Russian reasons at the 2000-character boundary. These are HTTP and isolated PostgreSQL checks with no external IO.
+
+Additional HTTP/PostgreSQL race regressions cover automatic-link undo after posted/cancelled/reversed, retained postings and holds, restored waiting cases and a separately confirmed transfer followed by its late counterpart. The rejected duplicate persists until explicit undo; source replay adds no effect.
+
+Regressions also cover independent date changes after linking and their later undo, fee-before-principal and replay, a separate fee, restoring two candidates and 100 candidates with incomplete coverage. Migration checks cover pre-funding records, immutable matching decision bases and retention after command cleanup. The derived contribution field cannot become a protected user override.
+
+Additional checks cover unchanged relatedChanges amounts during an independent date edit, late correspondence with a missing side or existing payment/transfer evidence, import replay and retained explicit separate decisions.
+
+After PR #81, #82 and #83, versions 010–012 belong to durable jobs, balance reconciliation and classification. The undeployed matching migrations are renumbered 013–014 with classification fields retained in audit constraints; target files 001–012 remain byte-identical. No deployed data is migrated. Previous isolated candidate databases are not reused to verify the new sequence.
+
+Explicit rejected pairs are checked against every member of an already linked candidate. Late evidence cannot reintroduce a rejected participant through a third record: the confirmed separate purchase retains its effect and new source evidence. Automatic linking also checks the complete expanded composition.
+
+Task-2.5 compatibility: bank reconciliation uses single-effect participation and retains `matching_unresolved` coverage. Historical component lifecycle is restored from audit and confirmed source posting time, then the existing domain component assignment is applied. A later posting does not change a hold at an earlier cutoff; unknown state cannot authorize a balancing adjustment. The matching JournalWriter uses the reconciliation trigger; HTTP linking refreshes the comparison without creating an observation or adjustment.
+
+Task-2.6 compatibility: matching retains category, merchant_identity and receipt_items with their protections and provenance. Contradicting protected classifications require correction; link undo retains later independent classification. A compound monetary correction must preserve the exact receipt-item total. Related receipt items are supplied in `relatedChanges[].receiptItems` together with the corresponding principal; all changes commit atomically. Matching migrations 013–014 expand audit constraints with the combined field set; target migrations 001–012 remain unchanged.
+
+Compound decisions and grouped source updates use the ledger batch boundary: persist every revision and projection, then reconcile each affected account once in stable order. An intermediate group version cannot remain the final comparison. Protected fields agree across all evidence for a monetary component independently of its carrier; an unclassified record cannot authorize conflicting confirmed values on two other records. Regressions cover two imported accounts, correction/undo/source update, three evidence records, permutations and group expansion.
+
+Late ambiguous evidence on an already accounted record uses `retained` participation: its independent contribution survives pending a decision; `waiting` applies to a new fact with no additional contribution. Both require clarification and prevent uncertain funds from funding reserves. Unprotected fields and bank lifecycle continue through the existing source merge. Confirming a separate operation and undo preserve the corresponding contribution, including holds and reversals. Failed automatic assignment records `matching_conflict` with the source evidence. Migration015 extends the allowed state;001–014 remain unchanged. Undeployed Go/TypeScript models update together.

@@ -42,6 +42,7 @@ func (r Revision) Correct(c Correction) (Revision, []Field, error) {
 		proposed := slices.Clone(*c.Fees)
 		for i, p := range proposed {
 			if i < len(old) && p.AccountID == old[i].AccountID && p.Money.Asset() == old[i].Money.Asset() {
+				p.FeeID = old[i].FeeID
 				if p.Funding == "" {
 					p.Funding = old[i].Funding
 				}

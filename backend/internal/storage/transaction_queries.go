@@ -118,13 +118,20 @@ func (s *Store) TransactionCoverage(ctx context.Context, p household.Principal) 
 	if err != nil {
 		return reporting.Coverage{}, err
 	}
-	var sources bool
-	err = q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM want_keep.connections WHERE household_id=$1)`, p.HouseholdID()).Scan(&sources)
+	var sources, matching bool
+	err = q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM want_keep.connections WHERE household_id=$1), EXISTS(SELECT 1 FROM want_keep.matching_cases c JOIN want_keep.matching_revisions r ON(r.household_id,r.id,r.revision)=(c.household_id,c.id,c.revision) WHERE c.household_id=$1 AND r.state IN ('clarification','waiting_side','conflict'))`, p.HouseholdID()).Scan(&sources, &matching)
 	if err != nil {
 		return reporting.Coverage{}, err
 	}
+	reasons := []string{}
 	if sources {
-		return reporting.NewCoverage(reporting.Partial, []string{"source_history_not_reconciled"})
+		reasons = append(reasons, "source_history_not_reconciled")
+	}
+	if matching {
+		reasons = append(reasons, "matching_unresolved")
+	}
+	if len(reasons) > 0 {
+		return reporting.NewCoverage(reporting.Partial, reasons)
 	}
 	return reporting.NewCoverage(reporting.Complete, nil)
 }

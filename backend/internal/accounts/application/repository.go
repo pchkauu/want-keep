@@ -10,6 +10,7 @@ import (
 )
 
 type Repository interface {
+	AccountUnresolvedMatching(context.Context, household.Principal, string) (bool, error)
 	CreateAccount(context.Context, account.Account) error
 	Account(context.Context, household.Principal, string) (account.Account, error)
 	RecordBalance(context.Context, account.Balance) error

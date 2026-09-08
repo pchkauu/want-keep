@@ -825,6 +825,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/matching": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["matching_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/matching/{matchingId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["matching_read"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/matching/{matchingId}/resolve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["matching_resolve"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/me": {
     parameters: {
       query?: never;
@@ -1680,7 +1728,7 @@ export interface paths {
     put?: never;
     /**
      * Record a new internal transfer or exchange
-     * @description Both native legs and all known fees are explicit. existingTransactions must be empty in task-2.2; linking returns feature_unavailable without an effect.
+     * @description Both native legs and known fees are explicit. Nonempty existingTransactions links exactly the existing components with current revisions; amounts and date must match the selected primary and movement. It never creates a missing side or silently changes a fee.
      */
     post: operations["transactions_transfer"];
     delete?: never;
@@ -2193,6 +2241,24 @@ export interface components {
       money: components["schemas"]["Money"];
       treatment: components["schemas"]["PostingTreatment"];
     };
+    EffectContribution: {
+      at: components["schemas"]["Instant"];
+      carrierId: components["schemas"]["ID"];
+      carrierPosition: number;
+      position: number;
+      /** @enum {string} */
+      role: "payment" | "outgoing" | "incoming" | "fee";
+      /** @enum {string} */
+      state: "draft" | "pending" | "posted" | "reversed" | "cancelled";
+    };
+    /** @description Waiting retains new facts with no additional effect. Retained keeps an already accepted independent contribution while late evidence awaits a decision. Both expose incomplete coverage. Linked components reference one active carrier; source lifecycle and accounting exclusion remain independent. */
+    EffectParticipation: {
+      components: components["schemas"]["EffectContribution"][];
+      groupId: components["schemas"]["ID"];
+      kind: components["schemas"]["MatchingKind"];
+      /** @enum {string} */
+      state: "waiting" | "retained" | "linked";
+    };
     EmptyInput: Record<string, never>;
     EnrollmentInput:
       | components["schemas"]["ExistingEnrollmentInput"]
@@ -2250,6 +2316,7 @@ export interface components {
       | "merchant_alias_conflict"
       | "invalid_availability"
       | "version_conflict"
+      | "matching_conflict"
       | "decision_conflict"
       | "no_change"
       | "duplicate_command"
@@ -2281,6 +2348,7 @@ export interface components {
     ExcludeInput: {
       expectedRevision: components["schemas"]["Revision"];
       reason: string;
+      relatedRevisions?: components["schemas"]["DecisionRevision"][];
     };
     /** @description Exact executed ratio is sent divided by received; retain both native amounts without persisting a rounded rate or including fees in principal. */
     ExecutedExchange: {
@@ -2494,7 +2562,9 @@ export interface components {
       | "category"
       | "merchant_identity"
       | "receipt_items"
-      | "legacy_all";
+      | "legacy_all"
+      | "matching"
+      | "contribution";
     /** @enum {string} */
     Locale: "ru" | "en";
     LocalizedCategoryName: {
@@ -2520,6 +2590,62 @@ export interface components {
       attemptId: components["schemas"]["ID"];
       credential: components["schemas"]["AuthenticationCredential"];
     };
+    MatchingCandidate: {
+      reason: string;
+      revision: components["schemas"]["Revision"];
+      transactionId: components["schemas"]["ID"];
+    };
+    MatchingCase: {
+      actorId: components["schemas"]["ID"];
+      candidates: components["schemas"]["MatchingCandidate"][];
+      candidatesComplete: boolean;
+      decisionId?: components["schemas"]["ID"];
+      id: components["schemas"]["ID"];
+      kind: components["schemas"]["MatchingKind"];
+      members: components["schemas"]["MatchingMember"][];
+      primaryId: components["schemas"]["ID"];
+      reason: string;
+      recordedAt: components["schemas"]["Instant"];
+      revision: components["schemas"]["Revision"];
+      state: components["schemas"]["MatchingState"];
+    };
+    /** @enum {string} */
+    MatchingKind: "payment" | "transfer" | "exchange";
+    MatchingMember: {
+      evidence: components["schemas"]["DecisionEvidence"][];
+      revision: components["schemas"]["Revision"];
+      transactionId: components["schemas"]["ID"];
+    };
+    MatchingPage: {
+      items: components["schemas"]["MatchingCase"][];
+      nextCursor?: string;
+    };
+    MatchingResolution: {
+      /** @enum {string} */
+      decision: "link" | "separate";
+      expectedRevision: components["schemas"]["Revision"];
+      expectedRevisions: components["schemas"]["DecisionRevision"][];
+      kind?: components["schemas"]["MatchingKind"];
+      primaryId?: components["schemas"]["ID"];
+      reason: string;
+    } & (
+      | {
+          /** @enum {string} */
+          decision?: "link";
+        }
+      | {
+          /** @enum {string} */
+          decision?: "separate";
+        }
+    );
+    /** @enum {string} */
+    MatchingState:
+      | "clarification"
+      | "waiting_side"
+      | "linked"
+      | "separate"
+      | "unlinked"
+      | "conflict";
     /** @description Private no-store response. The session-bound CSRF token is held in memory, not URL or persistent browser storage. */
     Me: {
       csrfToken: string;
@@ -2946,6 +3072,14 @@ export interface components {
       nextCursor?: string;
       quality: components["schemas"]["DataQuality"];
     };
+    /** @description Complete protected monetary groups and dependent receipt items for related operations. A revision-only participant validates the group without overwriting metadata. All current group members are required for monetary changes; receipt totals remain consistent with each changed principal. */
+    RelatedCorrection: {
+      expectedRevision: components["schemas"]["Revision"];
+      fees?: components["schemas"]["Posting"][];
+      principal?: components["schemas"]["Posting"][];
+      receiptItems?: components["schemas"]["ReceiptItemsChange"];
+      transactionId: components["schemas"]["ID"];
+    };
     Report: {
       amounts: components["schemas"]["ExplainableAmount"][];
       context: components["schemas"]["ReportContext"];
@@ -3110,7 +3244,11 @@ export interface components {
     SourceTransactionFact: {
       /** @enum {string} */
       conflictAtImport:
-        "none" | "protected_fields" | "invalid_merge" | "legacy_protection";
+        | "none"
+        | "protected_fields"
+        | "invalid_merge"
+        | "legacy_protection"
+        | "matching_conflict";
       /** @enum {string} */
       feeKnowledge: "known" | "unknown";
       merchant: string;
@@ -3184,6 +3322,7 @@ export interface components {
       /** @enum {string} */
       origin: "manual" | "source" | "legacy";
       originalTransactionId?: components["schemas"]["ID"];
+      participation?: components["schemas"]["EffectParticipation"];
       payer: components["schemas"]["Payer"];
       /** @enum {string} */
       pnlBasis?: "gross" | "net";
@@ -3237,6 +3376,7 @@ export interface components {
       principal?: components["schemas"]["Posting"][];
       reason: string;
       receiptItems?: components["schemas"]["ReceiptItemsChange"];
+      relatedChanges?: components["schemas"]["RelatedCorrection"][];
     } & (
       | unknown
       | unknown
@@ -3269,7 +3409,8 @@ export interface components {
       before?: components["schemas"]["Transaction"];
       decisionId?: components["schemas"]["ID"];
       /** @enum {string} */
-      decisionKind?: "correction" | "exclusion" | "undo" | "automated";
+      decisionKind?:
+        "correction" | "exclusion" | "undo" | "automated" | "matching";
       evidence: components["schemas"]["DecisionEvidence"][];
       fields: components["schemas"]["LedgerField"][];
       reason: string;
@@ -3295,13 +3436,12 @@ export interface components {
       amount: components["schemas"]["PositiveMoney"];
       funding: components["schemas"]["PostingFunding"];
     };
+    /** @description The route target is the initial primary. A linked group keeps its primary. All participants and current revisions are required. Refund linking is feature_unavailable. Native amounts are validated without correction. */
     TransactionLink: {
-      expectedRevision: components["schemas"]["Revision"];
+      expectedRevisions: components["schemas"]["DecisionRevision"][];
       /** @enum {string} */
       kind: "transfer" | "exchange" | "receipt_match" | "refund";
       reason: string;
-      relatedExpectedRevision: components["schemas"]["Revision"];
-      relatedTransactionId: components["schemas"]["ID"];
     };
     TransactionPage: {
       items: components["schemas"]["Transaction"][];
@@ -5580,6 +5720,120 @@ export interface operations {
       403: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
       409: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  matching_list: {
+    parameters: {
+      query?: {
+        /** @description Opaque, bound to family, visibility and filters. */
+        cursor?: components["parameters"]["Cursor"];
+        limit?: components["parameters"]["Limit"];
+        state?: components["schemas"]["MatchingState"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Current authorized result. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MatchingPage"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  matching_read: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        matchingId: components["schemas"]["ID"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Current authorized result. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MatchingCase"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+      429: components["responses"]["Problem"];
+      500: components["responses"]["Problem"];
+      503: components["responses"]["Problem"];
+    };
+  };
+  matching_resolve: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Client-generated before submission. Unique within household + actor; same ID is used for status lookup. A different operation or payload with the same key is rejected. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+        /** @description Session-bound token; validate Origin as well. Exceptions use ceremony-bound challenge/state. */
+        "X-CSRF-Token": components["parameters"]["CSRF"];
+      };
+      path: {
+        matchingId: components["schemas"]["ID"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MatchingResolution"];
+      };
+    };
+    responses: {
+      /** @description Current authorized result. */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommandStatus"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      /** @description Expired command detail with authorized compact outcome. */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ExpiredCommand"];
+        };
+      };
       422: components["responses"]["Problem"];
       429: components["responses"]["Problem"];
       500: components["responses"]["Problem"];

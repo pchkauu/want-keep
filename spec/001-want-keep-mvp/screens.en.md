@@ -306,17 +306,17 @@ Task: [task-7.2](tasks/task-7.2.md), [task-2.6](tasks/task-2.6.md).
 
 **Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
 
-**Explanation and details:** Before/after history shows actor, time, decisionId, rationale, bank and accounting states, classification, protected fields, origin and selective undo. Raw source merchant is separate from merchantId; an AI proposal remains a proposal and cannot change the fact without a command.
+**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason. A group exposes participants, evidence, effect carriers, matching_unresolved waiting and conflicts. Candidate completeness is explicit; primary does not imply override priority. Link/resolve and compound corrections use all participant revisions; undo preserves independent edits and bank states. Classification retains category, merchantId and receipt items separately from source merchant text; an AI proposal cannot change the fact without a command.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
-Forms: FORM-06, FORM-07, FORM-08, FORM-09.
+Forms: FORM-06, FORM-07, FORM-08, FORM-09, FORM-05.
 
 States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, UISTATE-08, UISTATE-12, UISTATE-13, UISTATE-09, UISTATE-10, UISTATE-11, UISTATE-16, UISTATE-14.
 
-REQ: REQ-010, REQ-012, REQ-067, REQ-072, REQ-014, REQ-016. AC: AC-010, AC-012, AC-081, AC-086, AC-014, AC-016.
+REQ: REQ-010, REQ-012, REQ-067, REQ-072, REQ-006, REQ-007, REQ-008, REQ-014, REQ-016. AC: AC-010, AC-012, AC-081, AC-086, AC-006, AC-007, AC-008, AC-093, AC-014, AC-016.
 
-Task: [task-7.2](tasks/task-7.2.md), [task-2.3](tasks/task-2.3.md), [task-2.6](tasks/task-2.6.md).
+Task: [task-7.2](tasks/task-7.2.md), [task-2.3](tasks/task-2.3.md), [task-2.4](tasks/task-2.4.md), [task-2.6](tasks/task-2.6.md).
 
 ### SCR-011 — Receipt
 
@@ -956,7 +956,7 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 **Fields:** From/to accounts, dates, both amounts/currencies, fees/fee account, existing movements.
 
-**Validation and permissions:** Either member; distinct accounts in one household; principal excluded from income/expenses, fees separate, including a third asset. Task-2.2 creates new movements only; nonempty existingTransactions receives 422 feature_unavailable without a partial effect. Task-2.4 implements existing-record matching.
+**Validation and permissions:** Either member; distinct household accounts; one outgoing and one incoming side. Principal is excluded from income/expenses; separate fees may use a third asset. Empty existingTransactions creates new movement. A nonempty list supplies all participant IDs/revisions (up to 100); amounts, fees and primary date are checked without creating missing sides. Transfer/exchange/payment links require version checks; ambiguity remains in matching; separate-purchase confirmation releases waiting once.
 
 **Outcome:** Ledger movements linked; no actual transfer or asset purchase.
 

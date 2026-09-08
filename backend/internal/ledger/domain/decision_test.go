@@ -125,3 +125,40 @@ func TestMatchingSourceDoesNotConflictWithFinancialProvenance(t *testing.T) {
 		t.Fatal("contradicting source not detected")
 	}
 }
+
+func TestDerivedContributionDoesNotProtectOrSupersedeAssociation(t *testing.T) {
+	initial := (examples{}).expense()
+	changed := initial.WithDecision(ledger.Decision{ID: "derived", Kind: "correction", ActorID: "b", Reason: "Recalculate date", At: initial.PostedAt}, []ledger.Field{ledger.ContributionField})
+	if _, protected := changed.Protections[ledger.ContributionField]; protected || changed.Validate() != nil {
+		t.Fatal("derived calculation became a protected choice")
+	}
+	later := changed.Clone()
+	later.Revision = 4
+	later.FieldVersions[ledger.ContributionField] = 4
+	entry := ledger.DecisionEntry{OperationID: initial.OperationID, Before: 1, After: 2, Fields: []ledger.Field{ledger.ContributionField}}
+	if _, err := later.UndoFields(entry, initial, nil); err != nil {
+		t.Fatal("derived calculation blocked undo", err)
+	}
+	entry.Fields = []ledger.Field{ledger.MatchingField}
+	later.FieldVersions[ledger.MatchingField] = 4
+	if _, err := later.UndoFields(entry, initial, nil); !errors.Is(err, ledger.ErrDecisionConflict) {
+		t.Fatal("association ABA accepted", err)
+	}
+	changed.Protections[ledger.ContributionField] = ledger.Protection{DecisionID: "invalid", Revision: 2}
+	if changed.Validate() == nil {
+		t.Fatal("derived field protection accepted")
+	}
+}
+
+func TestFundingBasisPreservesUncertainty(t *testing.T) {
+	for _, pair := range [][2]ledger.FundingKind{{"", ledger.OwnFunds}, {ledger.OwnFunds, ""}, {ledger.CreditFunds, ledger.CreditFunds}, {ledger.UnknownFunds, ledger.UnknownFunds}} {
+		if !pair[0].SameBasis(pair[1]) {
+			t.Fatal("equivalent basis rejected", pair)
+		}
+	}
+	for _, pair := range [][2]ledger.FundingKind{{"", ledger.UnknownFunds}, {"", ledger.CreditFunds}, {ledger.OwnFunds, ledger.CreditFunds}, {ledger.UnknownFunds, ledger.OwnFunds}} {
+		if pair[0].SameBasis(pair[1]) {
+			t.Fatal("uncertain or credit funds treated as own", pair)
+		}
+	}
+}

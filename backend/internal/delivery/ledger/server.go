@@ -17,6 +17,7 @@ import (
 	identity "github.com/pchkauu/want-keep/backend/internal/identity/domain"
 	application "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
+	matching "github.com/pchkauu/want-keep/backend/internal/matching/application"
 )
 
 type Sessions interface {
@@ -27,6 +28,7 @@ type ReadTransactions interface {
 	WithinFinancialRead(context.Context, household.Principal, func(context.Context) error) error
 }
 type Server struct {
+	matching  *matching.Service
 	service   *application.Service
 	queries   *application.Queries
 	mutations *commands.Authenticated
@@ -39,8 +41,8 @@ type Server struct {
 	mux       *http.ServeMux
 }
 
-func New(s *application.Service, q *application.Queries, e *commands.Executor, cq *commands.Queries, sessions Sessions, reads ReadTransactions, c security.Config, now func() calendar.Instant) (*Server, error) {
-	if s == nil || q == nil || e == nil || cq == nil || sessions == nil || reads == nil || now == nil {
+func New(s *application.Service, m *matching.Service, q *application.Queries, e *commands.Executor, cq *commands.Queries, sessions Sessions, reads ReadTransactions, c security.Config, now func() calendar.Instant) (*Server, error) {
+	if s == nil || m == nil || q == nil || e == nil || cq == nil || sessions == nil || reads == nil || now == nil {
 		return nil, ledger.ErrInvalidRevision
 	}
 	g, err := security.New(c)
@@ -51,7 +53,7 @@ func New(s *application.Service, q *application.Queries, e *commands.Executor, c
 	if err != nil {
 		return nil, err
 	}
-	h := &Server{service: s, queries: q, mutations: commands.NewAuthenticated(e, sessions), commands: cq, sessions: sessions, reads: reads, guard: g, boundary: b, now: now, mux: http.NewServeMux()}
+	h := &Server{service: s, matching: m, queries: q, mutations: commands.NewAuthenticated(e, sessions), commands: cq, sessions: sessions, reads: reads, guard: g, boundary: b, now: now, mux: http.NewServeMux()}
 	h.mux.HandleFunc("GET /api/v1/transactions", h.list)
 	h.mux.HandleFunc("POST /api/v1/transactions", h.create)
 	h.mux.HandleFunc("GET /api/v1/transactions/{transactionId}", h.read)
@@ -61,6 +63,10 @@ func New(s *application.Service, q *application.Queries, e *commands.Executor, c
 	h.mux.HandleFunc("POST /api/v1/transactions/{transactionId}/exclude", h.exclude)
 	h.mux.HandleFunc("GET /api/v1/transactions/{transactionId}/history", h.history)
 	h.mux.HandleFunc("GET /api/v1/transactions/{transactionId}/revisions/{revision}", h.revision)
+	h.mux.HandleFunc("POST /api/v1/transactions/{transactionId}/links", h.link)
+	h.mux.HandleFunc("GET /api/v1/matching", h.matchingList)
+	h.mux.HandleFunc("GET /api/v1/matching/{matchingId}", h.matchingRead)
+	h.mux.HandleFunc("POST /api/v1/matching/{matchingId}/resolve", h.matchingResolve)
 	return h, nil
 }
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -95,6 +101,8 @@ func (s *Server) write(w http.ResponseWriter, status int, value any) {
 func (s *Server) problem(w http.ResponseWriter, err error) {
 	r := (contract.ErrorConverter{}).ToResponse(err, uuid.NewString())
 	switch {
+	case errors.Is(err, ledger.ErrMatchingConflict):
+		r.Status, r.Body.Code, r.Body.Message = 409, "matching_conflict", "Review the current participants and amounts before linking."
 	case errors.Is(err, ledger.ErrNotFound):
 		r.Status, r.Body.Code, r.Body.Message = 404, "not_found", "Transaction not found."
 	case errors.Is(err, ledger.ErrFeatureUnavailable):

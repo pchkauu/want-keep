@@ -23,6 +23,7 @@ import (
 	identity "github.com/pchkauu/want-keep/backend/internal/identity/domain"
 	"github.com/pchkauu/want-keep/backend/internal/identity/webauthn"
 	journal "github.com/pchkauu/want-keep/backend/internal/ledger/application"
+	matching "github.com/pchkauu/want-keep/backend/internal/matching/application"
 )
 
 type client struct {
@@ -77,7 +78,7 @@ func (f *fixture) client(p household.Principal) *client {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	lh, err := ledgerdelivery.New(f.ledgerService(), journal.NewQueries(f.store), f.executor, queries, sessions, f.store, security.Config{Environment: "test", Origin: "http://localhost"}, func() calendar.Instant { return f.now })
+	lh, err := ledgerdelivery.New(f.ledgerService(), matching.NewService(f.store, f.writer, func() calendar.Instant { return f.now }, uuid.NewString), journal.NewQueries(f.store), f.executor, queries, sessions, f.store, security.Config{Environment: "test", Origin: "http://localhost"}, func() calendar.Instant { return f.now })
 	if err != nil {
 		f.t.Fatal(err)
 	}

@@ -17,6 +17,14 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 		return generated.Transaction{}, err
 	}
 	out := generated.Transaction{Id: r.OperationID, Revision: int64(r.Revision), ActorId: string(r.ActorID), HouseholdId: string(p.HouseholdID()), Type: generated.TransactionType(r.Type), State: generated.TransactionState(r.State), OccurredAt: r.OccurredAt.String(), CashDate: r.CashDate.String(), AiState: "waiting", Origin: "legacy", FeeKnowledge: "unknown", Postings: []generated.Posting{}, ReceiptItems: []generated.ReceiptItem{}, Sources: []generated.SourceReference{}, BalanceEffects: []generated.TransactionBalanceEffect{}, EconomicComponents: []generated.EconomicComponent{}, Holds: []generated.TransactionHold{}}
+	if r.Participation.GroupID != "" {
+		v := r.Participation
+		dto := generated.EffectParticipation{GroupId: v.GroupID, Kind: generated.MatchingKind(v.Kind), State: generated.EffectParticipationState(v.State), Components: []generated.EffectContribution{}}
+		for _, c := range v.Parts {
+			dto.Components = append(dto.Components, generated.EffectContribution{Position: c.Position, CarrierId: c.CarrierID, CarrierPosition: c.CarrierPosition, Role: generated.EffectContributionRole(c.Role), State: generated.EffectContributionState(c.State), At: c.At.String()})
+		}
+		out.Participation = &dto
+	}
 	out.AccountingState = generated.TransactionAccountingState(r.Accounting())
 	out.ProtectedFields = []generated.FieldProtection{}
 	out.SourceConflict = r.SourceConflict

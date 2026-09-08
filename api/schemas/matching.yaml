@@ -1,0 +1,124 @@
+---
+MatchingKind:
+  type: string
+  enum: [payment, transfer, exchange]
+MatchingState:
+  type: string
+  enum: [clarification, waiting_side, linked, separate, unlinked, conflict]
+MatchingMember:
+  type: object
+  additionalProperties: false
+  properties:
+    transactionId: { $ref: './money.yaml#/ID' }
+    revision: { $ref: './money.yaml#/Revision' }
+    evidence:
+      type: array
+      items: { $ref: './transactions.yaml#/DecisionEvidence' }
+  required: [transactionId, revision, evidence]
+MatchingCandidate:
+  type: object
+  additionalProperties: false
+  properties:
+    transactionId: { $ref: './money.yaml#/ID' }
+    revision: { $ref: './money.yaml#/Revision' }
+    reason: { type: string, minLength: 1, maxLength: 2000 }
+  required: [transactionId, revision, reason]
+MatchingCase:
+  type: object
+  additionalProperties: false
+  properties:
+    id: { $ref: './money.yaml#/ID' }
+    revision: { $ref: './money.yaml#/Revision' }
+    primaryId: { $ref: './money.yaml#/ID' }
+    kind: { $ref: './matching.yaml#/MatchingKind' }
+    state: { $ref: './matching.yaml#/MatchingState' }
+    actorId: { $ref: './money.yaml#/ID' }
+    recordedAt: { $ref: './money.yaml#/Instant' }
+    reason: { type: string, minLength: 1, maxLength: 2000 }
+    decisionId: { $ref: './money.yaml#/ID' }
+    candidatesComplete: { type: boolean }
+    members:
+      type: array
+      minItems: 1
+      maxItems: 100
+      items: { $ref: './matching.yaml#/MatchingMember' }
+    candidates:
+      type: array
+      maxItems: 100
+      items: { $ref: './matching.yaml#/MatchingCandidate' }
+  required: [id, revision, primaryId, kind, state, actorId, recordedAt, reason, candidatesComplete, members, candidates]
+MatchingPage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items: { $ref: './matching.yaml#/MatchingCase' }
+    nextCursor: { type: string }
+  required: [items]
+MatchingResolution:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision: { $ref: './money.yaml#/Revision' }
+    decision: { type: string, enum: [link, separate] }
+    kind: { $ref: './matching.yaml#/MatchingKind' }
+    primaryId: { $ref: './money.yaml#/ID' }
+    expectedRevisions:
+      type: array
+      minItems: 1
+      maxItems: 100
+      items: { $ref: './transactions.yaml#/DecisionRevision' }
+    reason: { type: string, minLength: 1, maxLength: 2000 }
+  required: [expectedRevision, decision, expectedRevisions, reason]
+  oneOf:
+  - properties:
+      decision: { type: string, enum: [link] }
+    required: [kind, primaryId]
+  - properties:
+      decision: { type: string, enum: [separate] }
+    not:
+      anyOf:
+      - required: [kind]
+      - required: [primaryId]
+EffectParticipation:
+  type: object
+  additionalProperties: false
+  properties:
+    groupId: { $ref: './money.yaml#/ID' }
+    kind: { $ref: './matching.yaml#/MatchingKind' }
+    state: { type: string, enum: [waiting, retained, linked] }
+    components:
+      type: array
+      items: { $ref: './matching.yaml#/EffectContribution' }
+  required: [groupId, kind, state, components]
+  description: Waiting retains new facts with no additional effect. Retained keeps an already accepted independent contribution while late evidence awaits a decision. Both expose incomplete coverage. Linked components reference one active carrier; source lifecycle and accounting exclusion remain independent.
+EffectContribution:
+  type: object
+  additionalProperties: false
+  properties:
+    position: { type: integer, minimum: 0, maximum: 999 }
+    carrierId: { $ref: './money.yaml#/ID' }
+    carrierPosition: { type: integer, minimum: 0, maximum: 999 }
+    role: { type: string, enum: [payment, outgoing, incoming, fee] }
+    state: { type: string, enum: [draft, pending, posted, reversed, cancelled] }
+    at: { $ref: './money.yaml#/Instant' }
+  required: [position, carrierId, carrierPosition, role, state, at]
+RelatedCorrection:
+  type: object
+  additionalProperties: false
+  properties:
+    transactionId: { $ref: './money.yaml#/ID' }
+    expectedRevision: { $ref: './money.yaml#/Revision' }
+    principal:
+      type: array
+      minItems: 1
+      maxItems: 1000
+      items: { $ref: './transactions.yaml#/Posting' }
+    fees:
+      type: array
+      maxItems: 1000
+      items: { $ref: './transactions.yaml#/Posting' }
+    receiptItems: { $ref: './transactions.yaml#/ReceiptItemsChange' }
+  required: [transactionId, expectedRevision]
+  description: Complete protected monetary groups and dependent receipt items for related operations. A revision-only participant validates the group without overwriting metadata. All current group members are required for monetary changes; receipt totals remain consistent with each changed principal.

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"sort"
 
@@ -49,6 +50,9 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 	sort.Slice(changes, func(i, j int) bool { return changes[i].OperationID < changes[j].OperationID })
 	d := ledger.Decision{ID: s.newID(), Kind: kind, Reason: reason, ActorID: p.UserID(), At: s.now()}
 	next := make([]ledger.Revision, 0, len(changes))
+	unchanged := map[string]string{}
+	changedGroups := map[string]bool{}
+	financialGroups := map[string]bool{}
 	for i, in := range changes {
 		if in.Exclude && in.Correction != (ledger.Correction{}) {
 			return command.Result{}, commands.Rejection{Code: "invalid_request"}
@@ -70,14 +74,29 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 				return command.Result{}, commands.Rejection{Code: "feature_unavailable"}
 			}
 			if r.Accounting() == ledger.ExcludedFromAccounting {
-				return command.Result{}, commands.Rejection{Code: "no_change"}
+				if len(changes) == 1 || r.Participation.GroupID == "" {
+					return command.Result{}, commands.Rejection{Code: "no_change"}
+				}
+				unchanged[r.OperationID] = r.Participation.GroupID
+				updated = r.Clone()
+				fields = []ledger.Field{ledger.MatchingField}
+			} else {
+				updated = r.Clone()
+				updated.AccountingState = ledger.ExcludedFromAccounting
+				fields = []ledger.Field{ledger.AccountingField}
+				changedGroups[r.Participation.GroupID] = true
 			}
-			updated = r.Clone()
-			updated.AccountingState = ledger.ExcludedFromAccounting
-			fields = []ledger.Field{ledger.AccountingField}
 			d.Kind = "exclusion"
 		} else {
 			updated, fields, err = r.Correct(in.Correction)
+			if errors.Is(err, ledger.ErrNoChange) && len(changes) > 1 && r.Participation.GroupID != "" {
+				unchanged[r.OperationID] = r.Participation.GroupID
+				updated = r.Clone()
+				fields = []ledger.Field{ledger.MatchingField}
+				err = nil
+			} else if err == nil {
+				changedGroups[r.Participation.GroupID] = true
+			}
 			if err != nil {
 				return command.Result{}, s.rejectDecision(err)
 			}
@@ -106,13 +125,32 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 				return command.Result{}, commands.Rejection{Code: "source_conflict"}
 			}
 		}
+		if slices.Contains(fields, ledger.PrincipalField) || slices.Contains(fields, ledger.FeesField) || slices.Contains(fields, ledger.AccountingField) {
+			financialGroups[r.Participation.GroupID] = true
+		}
 		if updated.OccurredAt.Time().After(s.now().Time()) {
 			return command.Result{}, commands.Rejection{Code: "invalid_request"}
 		}
 		next = append(next, updated.WithDecision(d, fields))
 		d.Entries = append(d.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: fields})
 	}
-	return s.persistDecision(ctx, p, d, next)
+	for _, group := range unchanged {
+		if !changedGroups[group] {
+			return command.Result{}, commands.Rejection{Code: "no_change"}
+		}
+	}
+	// A repeated monetary value only supplies a revision check for an independent
+	// edit. The matching writer adds any actual derived participant changes.
+	retained, entries := next[:0], d.Entries[:0]
+	for i, r := range next {
+		if group, noop := unchanged[r.OperationID]; noop && !financialGroups[group] {
+			continue
+		}
+		retained = append(retained, r)
+		entries = append(entries, d.Entries[i])
+	}
+	d.Entries = entries
+	return s.persistDecision(ctx, p, d, retained)
 }
 
 func (s *Service) Undo(ctx context.Context, p household.Principal, id string, expected []ExpectedRevision, reason string) (command.Result, error) {
@@ -182,29 +220,8 @@ func (s *Service) current(ctx context.Context, p household.Principal, id string,
 	return r, nil
 }
 func (s *Service) persistDecision(ctx context.Context, p household.Principal, d ledger.Decision, next []ledger.Revision) (command.Result, error) {
-	seen := map[ledger.Evidence]bool{}
-	for _, entry := range d.Entries {
-		refs, err := s.repository.RevisionEvidence(ctx, p, entry.OperationID, entry.Before)
-		if err != nil {
-			return command.Result{}, err
-		}
-		for _, ref := range refs {
-			if !seen[ref] {
-				d.Evidence = append(d.Evidence, ref)
-				seen[ref] = true
-			}
-		}
-	}
-	if err := d.Validate(); err != nil {
+	if err := s.writer.AppendDecision(ctx, p, d, next); err != nil {
 		return command.Result{}, s.rejectDecision(err)
-	}
-	if err := s.repository.SaveDecision(ctx, d); err != nil {
-		return command.Result{}, s.reject(err)
-	}
-	for _, r := range next {
-		if err := s.writer.Append(ctx, p, r, r.Revision-1); err != nil {
-			return command.Result{}, s.rejectDecision(err)
-		}
 	}
 	r := next[0]
 	return command.Result{ResourceType: "transaction", ResourceID: r.OperationID, Revision: r.Revision}, nil

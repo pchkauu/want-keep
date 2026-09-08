@@ -13,6 +13,7 @@ import (
 // Source facts are immutable normalization evidence. Decimal strings preserve the
 // exact input; executable postings continue to use PostgreSQL NUMERIC.
 type storedSourceFact struct {
+	Correspondence                                             *ledger.Correspondence
 	OperationID                                                string
 	ActorID                                                    household.UserID
 	Reason                                                     string
@@ -26,6 +27,7 @@ type storedSourceFact struct {
 	Postings                                                   []storedSourcePosting
 }
 type storedSourcePosting struct {
+	FeeID             string
 	AccountID, Amount string
 	Asset             money.Asset
 	Role              ledger.Role
@@ -44,9 +46,9 @@ func (s *Store) SaveSourceFact(ctx context.Context, record ledger.SourceRecord, 
 	if err = r.Validate(); err != nil {
 		return err
 	}
-	f := storedSourceFact{OperationID: r.OperationID, ActorID: r.ActorID, Reason: r.Reason, Type: r.Type, State: r.State, PostedAt: r.PostedAt.String(), OccurredAt: r.OccurredAt.String(), CashDate: r.CashDate.String(), ExpenseMonth: r.ExpenseMonth.String(), Timezone: r.Timezone.String(), FeeKnowledge: r.FeeKnowledge, PnLBasis: r.PnLBasis, Merchant: r.Merchant, Note: r.Note, AttachmentID: r.AttachmentID, AllocationReason: r.AllocationReason, PayerState: r.PayerState, PayerMemberID: r.PayerMemberID}
+	f := storedSourceFact{Correspondence: r.Correspondence, OperationID: r.OperationID, ActorID: r.ActorID, Reason: r.Reason, Type: r.Type, State: r.State, PostedAt: r.PostedAt.String(), OccurredAt: r.OccurredAt.String(), CashDate: r.CashDate.String(), ExpenseMonth: r.ExpenseMonth.String(), Timezone: r.Timezone.String(), FeeKnowledge: r.FeeKnowledge, PnLBasis: r.PnLBasis, Merchant: r.Merchant, Note: r.Note, AttachmentID: r.AttachmentID, AllocationReason: r.AllocationReason, PayerState: r.PayerState, PayerMemberID: r.PayerMemberID}
 	for _, p := range r.Postings {
-		f.Postings = append(f.Postings, storedSourcePosting{p.AccountID, p.Money.Amount(), p.Money.Asset(), p.Role, p.Funding, p.Treatment})
+		f.Postings = append(f.Postings, storedSourcePosting{p.FeeID, p.AccountID, p.Money.Amount(), p.Money.Asset(), p.Role, p.Funding, p.Treatment})
 	}
 	data, err := json.Marshal(f)
 	if err != nil {
@@ -94,7 +96,7 @@ func (s *Store) sourceFact(ctx context.Context, p household.Principal, id string
 	return result, rows.Err()
 }
 func (f storedSourceFact) domain() (ledger.Revision, error) {
-	r := ledger.Revision{OperationID: f.OperationID, Revision: 1, ActorID: f.ActorID, Reason: f.Reason, Type: f.Type, State: f.State, Origin: "source", FeeKnowledge: f.FeeKnowledge, PnLBasis: f.PnLBasis, Merchant: f.Merchant, Note: f.Note, AttachmentID: f.AttachmentID, AllocationReason: f.AllocationReason, PayerState: f.PayerState, PayerMemberID: f.PayerMemberID}
+	r := ledger.Revision{Correspondence: f.Correspondence, OperationID: f.OperationID, Revision: 1, ActorID: f.ActorID, Reason: f.Reason, Type: f.Type, State: f.State, Origin: "source", FeeKnowledge: f.FeeKnowledge, PnLBasis: f.PnLBasis, Merchant: f.Merchant, Note: f.Note, AttachmentID: f.AttachmentID, AllocationReason: f.AllocationReason, PayerState: f.PayerState, PayerMemberID: f.PayerMemberID}
 	var err error
 	r.OccurredAt, err = calendar.ParseInstant(f.OccurredAt)
 	if err != nil {
@@ -127,7 +129,7 @@ func (f storedSourceFact) domain() (ledger.Revision, error) {
 		if e != nil {
 			return r, e
 		}
-		r.Postings = append(r.Postings, ledger.Posting{AccountID: p.AccountID, Money: m, Role: p.Role, Funding: p.Funding, Treatment: p.Treatment})
+		r.Postings = append(r.Postings, ledger.Posting{FeeID: p.FeeID, AccountID: p.AccountID, Money: m, Role: p.Role, Funding: p.Funding, Treatment: p.Treatment})
 	}
 	return r, r.Validate()
 }

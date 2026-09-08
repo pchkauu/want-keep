@@ -45,6 +45,13 @@ func (s *Projector) Rebuild(ctx context.Context, p household.Principal, id strin
 			break
 		}
 	}
+	unresolved, err := s.repository.AccountUnresolvedMatching(ctx, p, id)
+	if err != nil {
+		return err
+	}
+	if unresolved {
+		coverage, _ = reporting.NewCoverage(reporting.Partial, append(coverage.Reasons(), "matching_unresolved"))
+	}
 	for i, field := range []string{"owned", "available", "locked", "debt"} {
 		if err = s.repository.RecordBalance(ctx, account.Balance{AccountID: id, Field: field, Amount: values.Fields()[i], Coverage: coverage, Freshness: reporting.UnknownFreshness, ObservedAt: o.At}); err != nil {
 			return err

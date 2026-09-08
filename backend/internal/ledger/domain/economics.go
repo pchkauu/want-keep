@@ -78,7 +78,7 @@ func (r Revision) validateEconomics() error {
 		return nil
 	}
 	// Drafts may retain incomplete legs, but an executable movement must be complete.
-	if r.State == Draft && len(principal) < 2 {
+	if (r.State == Draft || r.Correspondence != nil && r.Correspondence.Kind == string(r.Type) || r.Participation.State == "linked" && r.Participation.Kind == ParticipationKind(r.Type)) && len(principal) == 1 {
 		return nil
 	}
 	if len(principal) != 2 || principal[0].AccountID == principal[1].AccountID || principal[0].Money.Sign()*principal[1].Money.Sign() != -1 {
@@ -148,10 +148,13 @@ func (r Revision) Components() ([]EconomicComponent, error) {
 		return nil, err
 	}
 	result := []EconomicComponent{}
-	if r.State != Posted || r.Accounting() == ExcludedFromAccounting {
+	if r.Accounting() == ExcludedFromAccounting {
 		return result, nil
 	}
-	for _, p := range r.Postings {
+	for i, p := range r.Postings {
+		if !r.Contributes(i) || r.ContributionState(i) != Posted || r.InternalPrincipal(i) {
+			continue
+		}
 		kind := string(p.Role)
 		switch p.Role {
 		case Principal:

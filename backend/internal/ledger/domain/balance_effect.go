@@ -17,11 +17,12 @@ func (r Revision) BalanceEffects() ([]BalanceEffect, error) {
 		return nil, err
 	}
 	result := []BalanceEffect{}
-	if r.Accounting() == ExcludedFromAccounting || r.State != Posted && r.State != Pending || r.Type == Opening {
+	if r.Accounting() == ExcludedFromAccounting || r.Type == Opening {
 		return result, nil
 	}
-	for _, p := range r.Postings {
-		if !p.MovesMoney() {
+	for i, p := range r.Postings {
+		state := r.ContributionState(i)
+		if !r.Contributes(i) || !p.MovesMoney() || state != Posted && state != Pending {
 			continue
 		}
 		zero, err := money.NewMoney("0", p.Money.Asset())
@@ -29,7 +30,7 @@ func (r Revision) BalanceEffects() ([]BalanceEffect, error) {
 			return nil, err
 		}
 		z, _ := reporting.KnownAmount(zero)
-		e := BalanceEffect{AccountID: p.AccountID, At: r.OccurredAt, Owned: z, Available: z, Locked: z, Debt: z}
+		e := BalanceEffect{AccountID: p.AccountID, At: r.ContributionAt(i), Owned: z, Available: z, Locked: z, Debt: z}
 		inverse, err := zero.Subtract(p.Money)
 		if err != nil {
 			return nil, err
@@ -37,7 +38,7 @@ func (r Revision) BalanceEffects() ([]BalanceEffect, error) {
 		value, _ := reporting.KnownAmount(p.Money)
 		negative, _ := reporting.KnownAmount(inverse)
 		unknown, _ := reporting.MissingAmount(reporting.Unknown, "funding_split_unknown")
-		if r.State == Pending {
+		if state == Pending {
 			if p.Money.Sign() >= 0 {
 				continue
 			}

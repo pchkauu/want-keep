@@ -32,6 +32,7 @@ import (
 	identity "github.com/pchkauu/want-keep/backend/internal/identity/domain"
 	"github.com/pchkauu/want-keep/backend/internal/identity/webauthn"
 	journal "github.com/pchkauu/want-keep/backend/internal/ledger/application"
+	matching "github.com/pchkauu/want-keep/backend/internal/matching/application"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 	reporting "github.com/pchkauu/want-keep/backend/internal/reporting/domain"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
@@ -202,7 +203,8 @@ func (f *fixture) client(p household.Principal) *client {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	ledger, err := ledgerdelivery.New(f.ledgerService(), journal.NewQueries(f.store), f.executor, commandQueries, sessions, f.store, config, func() calendar.Instant { return f.now })
+	matcher := matching.NewService(f.store, journal.NewWriter(f.store, f.store), func() calendar.Instant { return f.now }, uuid.NewString)
+	ledger, err := ledgerdelivery.New(f.ledgerService(), matcher, journal.NewQueries(f.store), f.executor, commandQueries, sessions, f.store, config, func() calendar.Instant { return f.now })
 	if err != nil {
 		f.t.Fatal(err)
 	}

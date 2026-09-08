@@ -2,9 +2,7 @@ package storage
 
 import (
 	"context"
-	"errors"
 
-	"github.com/jackc/pgx/v5"
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -68,7 +66,6 @@ func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal,
 	effects := []account.Effect{}
 	related := []string{}
 	uncertain := false
-	at, ns := splitInstant(asOf)
 	for _, reference := range references {
 		current, err := s.LedgerRevision(ctx, p, reference.id, reference.revision)
 		if err != nil {
@@ -82,30 +79,25 @@ func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal,
 			continue
 		}
 		effective := current.Clone()
-		if current.Type != ledger.Adjustment {
-			var historical uint64
-			err = q.QueryRow(ctx, `SELECT r.revision FROM want_keep.ledger_revision_audit r WHERE r.household_id=$1 AND r.operation_id=$2 AND (r.recorded_at,r.recorded_ns)<=($3,$4) ORDER BY r.revision DESC LIMIT 1`, p.HouseholdID(), reference.id, at, ns).Scan(&historical)
-			historicalKnown := err == nil
-			if historicalKnown {
-				state, loadErr := s.LedgerRevision(ctx, p, reference.id, historical)
-				if loadErr != nil {
-					return account.Amounts{}, reporting.Coverage{}, nil, loadErr
-				}
-				effective.State = state.State
-				effective.PostedAt = state.PostedAt
-				if effective.State != ledger.Posted && effective.State != ledger.Reversed {
-					effective.PostedAt = calendar.Instant{}
-				}
-			} else if !errors.Is(err, pgx.ErrNoRows) {
+		if current.Participation.State == "linked" {
+			groupEffects, incomplete, err := s.historicalMatchingEffects(ctx, q, p, current, accountID, entry.Asset, openingAt, asOf)
+			if err != nil {
 				return account.Amounts{}, reporting.Coverage{}, nil, err
 			}
-			postedBySource := current.Origin == "source" && current.State == ledger.Posted && current.PostedAt.String() != "" && !current.PostedAt.Time().After(asOf.Time())
-			if postedBySource && (!historicalKnown || effective.State == ledger.Draft || effective.State == ledger.Pending) {
-				effective.State = ledger.Posted
-				effective.PostedAt = current.PostedAt
-				historicalKnown = true
+			effects = append(effects, groupEffects...)
+			if len(groupEffects) > 0 {
+				related = append(related, current.OperationID)
 			}
-			if current.Origin == "source" && current.State == ledger.Reversed && current.PostedAt.String() != "" && !current.PostedAt.Time().After(asOf.Time()) && (!historicalKnown || effective.State != ledger.Reversed) {
+			uncertain = uncertain || incomplete
+			continue
+		}
+		if current.Type != ledger.Adjustment {
+			var historicalKnown, reversedUnknown bool
+			effective, historicalKnown, reversedUnknown, err = s.historicalLedgerState(ctx, q, p, current, asOf)
+			if err != nil {
+				return account.Amounts{}, reporting.Coverage{}, nil, err
+			}
+			if reversedUnknown {
 				effect, uncertaintyErr := s.historicalUncertainty(ctx, q, p, current, accountID, entry.Asset, openingAt, asOf, true)
 				if uncertaintyErr != nil {
 					return account.Amounts{}, reporting.Coverage{}, nil, uncertaintyErr
@@ -160,6 +152,13 @@ func (s *Store) HistoricalProjection(ctx context.Context, p household.Principal,
 			break
 		}
 	}
+	unresolved, err := s.AccountUnresolvedMatching(ctx, p, accountID)
+	if err != nil {
+		return account.Amounts{}, reporting.Coverage{}, nil, err
+	}
+	if unresolved {
+		reasons = append(reasons, "matching_unresolved")
+	}
 	coverage := reporting.Coverage{}
 	if len(reasons) == 0 {
 		coverage, _ = reporting.NewCoverage(reporting.Complete, nil)
@@ -213,6 +212,9 @@ func (s *Store) historicalUncertainty(ctx context.Context, q reader, p household
 			possible := candidate.Clone()
 			possible.AccountingState = ledger.IncludedInAccounting
 			possible.State = state
+			for i := range possible.Participation.Parts {
+				possible.Participation.Parts[i].State = state
+			}
 			if state == ledger.Pending {
 				possible.PostedAt = calendar.Instant{}
 			} else if possible.PostedAt.String() == "" {
