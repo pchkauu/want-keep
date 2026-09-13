@@ -21,6 +21,7 @@ import (
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 	reporting "github.com/pchkauu/want-keep/backend/internal/reporting/domain"
+	transaction "github.com/pchkauu/want-keep/backend/internal/transaction/domain"
 )
 
 type ProviderGateway interface {
@@ -128,7 +129,7 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 			return s.applyPage(tx, p, issued, *result.Page, batch.FetchedAt, references)
 		})
 		if err != nil {
-			if errors.Is(err, admission.ErrCommitOutcomeUnknown) {
+			if errors.Is(err, transaction.ErrCommitOutcomeUnknown) {
 				recovered, recoverErr := s.recoverCommit(ctx, p, issued, batch, admission.PageResult, ingestion.EvidenceApplied, err)
 				return recovered, nil, recoverErr
 			}
@@ -150,7 +151,7 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 	state, reason, delay := providerFailureOutcome(*result.Failure, issued.Attempt)
 	applied, err := s.gate.CommitProviderOutcome(ctx, p, issued, batch.PageReference, state, reason, delay, func(context.Context) error { return nil })
 	if err != nil {
-		if errors.Is(err, admission.ErrCommitOutcomeUnknown) {
+		if errors.Is(err, transaction.ErrCommitOutcomeUnknown) {
 			recovered, recoverErr := s.recoverCommit(ctx, p, issued, batch, admission.ProviderOutcomeResult, ingestion.EvidenceProviderOutcome, err)
 			return recovered, result.Failure, recoverErr
 		}

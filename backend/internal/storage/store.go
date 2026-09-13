@@ -9,8 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	transaction "github.com/pchkauu/want-keep/backend/internal/transaction/domain"
 )
 
 var ErrStorage = errors.New("storage operation failed")
@@ -130,7 +130,7 @@ func (s *Store) transact(ctx context.Context, fn func(context.Context, *transact
 		if errors.Is(err, pgx.ErrTxCommitRollback) {
 			return err
 		}
-		return errors.Join(admission.ErrCommitOutcomeUnknown, err)
+		return errors.Join(transaction.ErrCommitOutcomeUnknown, err)
 	}
 	return nil
 }

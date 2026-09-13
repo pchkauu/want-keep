@@ -17,6 +17,7 @@ import (
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	reporting "github.com/pchkauu/want-keep/backend/internal/reporting/domain"
+	transaction "github.com/pchkauu/want-keep/backend/internal/transaction/domain"
 )
 
 func TestEvidenceIsDurableBeforeCommitAndFailureClosesTheBoundary(t *testing.T) {
@@ -213,7 +214,7 @@ func TestProviderFailureCommitErrorRetainsEvidenceWithFreshContext(t *testing.T)
 }
 
 func TestCommitUnknownUsesReceiptWithoutGuessingEvidenceDisposition(t *testing.T) {
-	commitError := errors.Join(admission.ErrCommitOutcomeUnknown, errors.New("connection lost"))
+	commitError := errors.Join(transaction.ErrCommitOutcomeUnknown, errors.New("connection lost"))
 	for _, test := range []struct {
 		name      string
 		confirmed bool
@@ -250,7 +251,7 @@ func TestCommitUnknownUsesReceiptWithoutGuessingEvidenceDisposition(t *testing.T
 				if !applied || failure != nil || err != nil || disposition != test.wantState {
 					t.Fatal("confirmed receipt did not recover commit", applied, failure, disposition, err)
 				}
-			} else if applied || failure != nil || !errors.Is(err, admission.ErrCommitOutcomeUnknown) || disposition != "" {
+			} else if applied || failure != nil || !errors.Is(err, transaction.ErrCommitOutcomeUnknown) || disposition != "" {
 				t.Fatal("unknown commit was guessed", applied, failure, disposition, err)
 			}
 			if gate.rejectCalls != 0 || gate.receiptCalls != 1 {
@@ -263,7 +264,7 @@ func TestCommitUnknownUsesReceiptWithoutGuessingEvidenceDisposition(t *testing.T
 func TestProviderOutcomeCommitUnknownUsesReceipt(t *testing.T) {
 	gate := &gateFake{
 		failure: func(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error) {
-			return false, admission.ErrCommitOutcomeUnknown
+			return false, transaction.ErrCommitOutcomeUnknown
 		},
 		receipt: func(_ context.Context, _ household.Principal, _ jobs.Job, _ string, kind admission.ResultKind) (bool, error) {
 			return kind == admission.ProviderOutcomeResult, nil

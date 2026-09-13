@@ -10,8 +10,6 @@ import (
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 )
 
-var ErrCommitOutcomeUnknown = errors.New("transaction commit outcome unknown")
-
 type ResultKind string
 
 const (
