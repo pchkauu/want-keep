@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
+	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
 	attachment "github.com/pchkauu/want-keep/backend/internal/attachments/domain"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	category "github.com/pchkauu/want-keep/backend/internal/categories/domain"
@@ -22,8 +23,7 @@ type FactsRepository interface {
 	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
 	RequireLedgerPayer(context.Context, household.Principal, household.MembershipID) error
 	Attachment(context.Context, household.Principal, string) (attachment.Attachment, error)
-	Category(context.Context, household.Principal, string) (category.Category, error)
-	Merchant(context.Context, household.Principal, string) (category.Merchant, error)
+	ClassificationStates(context.Context, household.Principal, []string, []string) (map[string]category.State, map[string]category.State, error)
 }
 
 type Service struct {
@@ -40,7 +40,7 @@ func NewService(r FactsRepository, w JournalWriter, now func() calendar.Instant,
 
 type AllocationResolver interface {
 	Resolve(context.Context, household.Principal, string, string) (ledger.AllocationInput, bool, error)
-	ResolveAt(context.Context, household.Principal, string, string, calendar.Instant) (ledger.AllocationInput, bool, error)
+	ResolveAtBoundary(context.Context, household.Principal, []allocation.Condition, uint64) (map[allocation.Condition]ledger.AllocationInput, error)
 	ResolveSource(context.Context, household.Principal, string) (ledger.AllocationInput, bool, error)
 	ActiveMemberIDs(context.Context, household.Principal) ([]household.MembershipID, error)
 }
@@ -187,21 +187,29 @@ func (s *Service) requireActiveClassification(ctx context.Context, p household.P
 			ids[item.CategoryID] = true
 		}
 	}
+	categoryIDs := make([]string, 0, len(ids))
 	for id := range ids {
-		entry, err := s.repository.Category(ctx, p, id)
-		if err != nil {
-			return s.reject(err)
+		categoryIDs = append(categoryIDs, id)
+	}
+	merchantIDs := []string{}
+	if r.MerchantID != "" {
+		merchantIDs = append(merchantIDs, r.MerchantID)
+	}
+	categories, merchants, err := s.repository.ClassificationStates(ctx, p, categoryIDs, merchantIDs)
+	if err != nil {
+		return s.reject(err)
+	}
+	for _, id := range categoryIDs {
+		state, found := categories[id]
+		if !found {
+			return commands.Rejection{Code: "not_found"}
 		}
-		if entry.State != category.Active {
+		if state != category.Active {
 			return commands.Rejection{Code: "category_archived"}
 		}
 	}
 	if r.MerchantID != "" {
-		entry, err := s.repository.Merchant(ctx, p, r.MerchantID)
-		if err != nil {
-			return s.reject(err)
-		}
-		if entry.State != category.Active {
+		if merchants[r.MerchantID] != category.Active {
 			return commands.Rejection{Code: "not_found"}
 		}
 	}

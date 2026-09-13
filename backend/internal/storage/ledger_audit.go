@@ -6,23 +6,18 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 )
 
-func (s *Store) FirstLedgerRecordedAt(ctx context.Context, p household.Principal, operationID string) (calendar.Instant, error) {
+func (s *Store) FirstLedgerRuleBoundary(ctx context.Context, p household.Principal, operationID string) (uint64, error) {
 	q, err := s.reader(ctx, p)
 	if err != nil {
-		return calendar.Instant{}, err
+		return 0, err
 	}
-	var at time.Time
-	var ns int16
-	err = q.QueryRow(ctx, `SELECT recorded_at,recorded_ns FROM want_keep.ledger_revision_audit WHERE household_id=$1 AND operation_id=$2 AND revision=1`, p.HouseholdID(), operationID).Scan(&at, &ns)
-	if err != nil {
-		return calendar.Instant{}, err
-	}
-	return restoreInstant(at, ns)
+	var boundary uint64
+	err = q.QueryRow(ctx, `SELECT allocation_rule_boundary FROM want_keep.ledger_revision_audit WHERE household_id=$1 AND operation_id=$2 AND revision=1`, p.HouseholdID(), operationID).Scan(&boundary)
+	return boundary, err
 }
 
 func (s *Store) SaveDecision(ctx context.Context, d ledger.Decision) error {
@@ -158,7 +153,16 @@ func (s *Store) saveLedgerAudit(ctx context.Context, r ledger.Revision) error {
 	if r.RecordedAt.String() != "" {
 		at, ns = splitInstant(r.RecordedAt)
 	}
-	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_revision_audit(household_id,operation_id,revision,accounting_state,decision_id,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,NULLIF($5,'')::uuid,COALESCE($6,clock_timestamp()),COALESCE($7,0))`, family, r.OperationID, r.Revision, r.Accounting(), r.DecisionID, at, ns)
+	var boundary uint64
+	if r.Revision == 1 {
+		err = scope.tx.QueryRow(ctx, `SELECT allocation_rule_sequence FROM want_keep.households WHERE id=$1`, family).Scan(&boundary)
+	} else {
+		err = scope.tx.QueryRow(ctx, `SELECT allocation_rule_boundary FROM want_keep.ledger_revision_audit WHERE household_id=$1 AND operation_id=$2 AND revision=1`, family, r.OperationID).Scan(&boundary)
+	}
+	if err != nil {
+		return err
+	}
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ledger_revision_audit(household_id,operation_id,revision,accounting_state,decision_id,recorded_at,recorded_ns,allocation_rule_boundary) VALUES($1,$2,$3,$4,NULLIF($5,'')::uuid,COALESCE($6,clock_timestamp()),COALESCE($7,0),$8)`, family, r.OperationID, r.Revision, r.Accounting(), r.DecisionID, at, ns, boundary)
 	if err != nil {
 		return err
 	}

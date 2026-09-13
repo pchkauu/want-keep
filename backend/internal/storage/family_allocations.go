@@ -7,7 +7,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
-	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
@@ -75,8 +74,16 @@ func (s *Store) SaveAllocationRule(ctx context.Context, rule allocation.Rule, ex
 }
 
 func (s *Store) insertAllocationRuleRevision(ctx context.Context, scope *transactionScope, rule allocation.Rule) error {
+	var sequence uint64
+	err := scope.tx.QueryRow(ctx, `UPDATE want_keep.households SET allocation_rule_sequence=allocation_rule_sequence+1 WHERE id=$1 AND allocation_rule_sequence<$2 RETURNING allocation_rule_sequence`, rule.HouseholdID, allocation.MaxRevision).Scan(&sequence)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return commands.Rejection{Code: "version_conflict"}
+	}
+	if err != nil {
+		return err
+	}
 	recordedAt, recordedNS := splitInstant(rule.RecordedAt)
-	_, err := scope.tx.Exec(ctx, `INSERT INTO want_keep.allocation_rule_revisions(household_id,rule_id,revision,priority,state,merchant_id,category_id,actor_id,command_id,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')::uuid,NULLIF($7,'')::uuid,$8,NULLIF($9,'')::uuid,$10,$11)`, rule.HouseholdID, rule.ID, rule.Revision, rule.Priority, rule.State, rule.Condition.MerchantID, rule.Condition.CategoryID, rule.ActorID, commands.CurrentCommandID(ctx), recordedAt, recordedNS)
+	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.allocation_rule_revisions(household_id,rule_id,revision,rule_sequence,priority,state,merchant_id,category_id,actor_id,command_id,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,$6,NULLIF($7,'')::uuid,NULLIF($8,'')::uuid,$9,NULLIF($10,'')::uuid,$11,$12)`, rule.HouseholdID, rule.ID, rule.Revision, sequence, rule.Priority, rule.State, rule.Condition.MerchantID, rule.Condition.CategoryID, rule.ActorID, commands.CurrentCommandID(ctx), recordedAt, recordedNS)
 	if err != nil {
 		return err
 	}
@@ -152,31 +159,37 @@ ORDER BY e.priority,e.id`, principal.HouseholdID(), nullableUUID(merchantID), nu
 	return scanAllocationRules(rows, principal.HouseholdID())
 }
 
-func (s *Store) MatchingAllocationRulesAt(ctx context.Context, principal household.Principal, merchantID, categoryID string, at calendar.Instant) ([]allocation.Rule, error) {
+func (s *Store) AllocationRulesAtBoundary(ctx context.Context, principal household.Principal, conditions []allocation.Condition, boundary uint64) ([]allocation.Rule, error) {
 	q, err := s.reader(ctx, principal)
 	if err != nil {
 		return nil, err
 	}
-	if at.String() == "" {
+	if boundary > allocation.MaxRevision || len(conditions) == 0 {
 		return nil, allocation.ErrInvalidRule
 	}
-	recordedAt, recordedNS := splitInstant(at)
-	rows, err := q.Query(ctx, `WITH historical AS (
- SELECT DISTINCT ON (rule_id) household_id,rule_id,revision,priority,state,merchant_id,category_id,actor_id,recorded_at,recorded_ns
- FROM want_keep.allocation_rule_revisions
- WHERE household_id=$1 AND (recorded_at,recorded_ns)<=($4,$5)
- ORDER BY rule_id,revision DESC
-), eligible AS (
- SELECT * FROM historical
- WHERE state='active' AND (merchant_id IS NULL OR merchant_id=$2::uuid) AND (category_id IS NULL OR category_id=$3::uuid)
-), best AS (SELECT MIN(priority) AS priority FROM eligible)
-SELECT e.rule_id,e.revision,e.priority,e.state,COALESCE(e.merchant_id::text,''),COALESCE(e.category_id::text,''),e.actor_id,e.recorded_at,e.recorded_ns,
- array_agg(s.member_id::text ORDER BY s.position),array_agg(s.share::text ORDER BY s.position)
-FROM eligible e
-JOIN best b ON b.priority=e.priority
-JOIN want_keep.allocation_rule_shares s ON (s.household_id,s.rule_id,s.revision)=(e.household_id,e.rule_id,e.revision)
-GROUP BY e.household_id,e.rule_id,e.revision,e.priority,e.state,e.merchant_id,e.category_id,e.actor_id,e.recorded_at,e.recorded_ns
-ORDER BY e.priority,e.rule_id`, principal.HouseholdID(), nullableUUID(merchantID), nullableUUID(categoryID), recordedAt, recordedNS)
+	merchantIDs := make([]string, len(conditions))
+	categoryIDs := make([]string, len(conditions))
+	for index, condition := range conditions {
+		if condition.MerchantID == "" && condition.CategoryID == "" {
+			return nil, allocation.ErrInvalidRule
+		}
+		merchantIDs[index], categoryIDs[index] = condition.MerchantID, condition.CategoryID
+	}
+	rows, err := q.Query(ctx, `WITH requested(merchant_id,category_id) AS (
+	 SELECT NULLIF(merchant_id,'')::uuid,NULLIF(category_id,'')::uuid FROM unnest($3::text[],$4::text[]) AS r(merchant_id,category_id)
+	), historical AS (
+	 SELECT DISTINCT ON (rule_id) household_id,rule_id,revision,priority,state,merchant_id,category_id,actor_id,recorded_at,recorded_ns
+	 FROM want_keep.allocation_rule_revisions
+	 WHERE household_id=$1 AND rule_sequence<=$2
+	 ORDER BY rule_id,rule_sequence DESC
+	)
+	SELECT e.rule_id,e.revision,e.priority,e.state,COALESCE(e.merchant_id::text,''),COALESCE(e.category_id::text,''),e.actor_id,e.recorded_at,e.recorded_ns,
+	 array_agg(s.member_id::text ORDER BY s.position),array_agg(s.share::text ORDER BY s.position)
+	FROM historical e
+	JOIN want_keep.allocation_rule_shares s ON (s.household_id,s.rule_id,s.revision)=(e.household_id,e.rule_id,e.revision)
+	WHERE e.state='active' AND EXISTS(SELECT 1 FROM requested r WHERE (e.merchant_id IS NULL OR e.merchant_id=r.merchant_id) AND (e.category_id IS NULL OR e.category_id=r.category_id))
+	GROUP BY e.household_id,e.rule_id,e.revision,e.priority,e.state,e.merchant_id,e.category_id,e.actor_id,e.recorded_at,e.recorded_ns
+	ORDER BY e.priority,e.rule_id`, principal.HouseholdID(), boundary, merchantIDs, categoryIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -336,19 +349,48 @@ func (s *Store) saveLedgerAllocation(ctx context.Context, revision ledger.Revisi
 }
 
 func (s *Store) loadLedgerAllocations(ctx context.Context, q reader, principal household.Principal, revision *ledger.Revision) error {
-	family, operationID, revisionNumber := principal.HouseholdID(), revision.OperationID, revision.Revision
-	rows, err := q.Query(ctx, `SELECT position,COALESCE(item_id::text,''),state,purpose,mode,origin,reason,fallback_mode,fallback_purpose,fallback_origin,fallback_reason FROM want_keep.ledger_allocation_snapshots WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY position`, family, operationID, revisionNumber)
+	revisions := []ledger.Revision{*revision}
+	if err := s.loadLedgerAllocationsMany(ctx, q, principal, revisions); err != nil {
+		return err
+	}
+	*revision = revisions[0]
+	return nil
+}
+
+func (s *Store) loadLedgerAllocationsMany(ctx context.Context, q reader, principal household.Principal, revisions []ledger.Revision) error {
+	if len(revisions) == 0 {
+		return nil
+	}
+	operationIDs := make([]string, len(revisions))
+	revisionNumbers := make([]int64, len(revisions))
+	for index, revision := range revisions {
+		operationIDs[index] = revision.OperationID
+		revisionNumbers[index] = int64(revision.Revision)
+	}
+	family := principal.HouseholdID()
+	sets := storedAllocationSets{}
+	rows, err := q.Query(ctx, `WITH requested(operation_id,revision) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]))
+	 SELECT a.operation_id::text,a.revision,a.position,COALESCE(a.item_id::text,''),a.state,a.purpose,a.mode,a.origin,a.reason,a.fallback_mode,a.fallback_purpose,a.fallback_origin,a.fallback_reason
+	 FROM want_keep.ledger_allocation_snapshots a JOIN requested r USING(operation_id,revision)
+	 WHERE a.household_id=$1 ORDER BY a.operation_id,a.revision,a.position`, family, operationIDs, revisionNumbers)
 	if err != nil {
 		return err
 	}
-	snapshots := storedAllocationSnapshots{}
 	for rows.Next() {
 		stored := &storedAllocationSnapshot{}
+		var operationID string
+		var revisionNumber uint64
 		var position int
 		var basis ledger.AllocationInput
-		if err = rows.Scan(&position, &stored.itemID, &stored.value.State, &stored.value.Purpose, &stored.value.Mode, &stored.value.Origin, &stored.value.Reason, &basis.Mode, &basis.Purpose, &basis.Origin, &basis.Reason); err != nil {
+		if err = rows.Scan(&operationID, &revisionNumber, &position, &stored.itemID, &stored.value.State, &stored.value.Purpose, &stored.value.Mode, &stored.value.Origin, &stored.value.Reason, &basis.Mode, &basis.Purpose, &basis.Origin, &basis.Reason); err != nil {
 			rows.Close()
 			return err
+		}
+		key := storedAllocationKey{operationID: operationID, revision: revisionNumber}
+		snapshots := sets[key]
+		if snapshots == nil {
+			snapshots = storedAllocationSnapshots{}
+			sets[key] = snapshots
 		}
 		if _, exists := snapshots[position]; exists {
 			rows.Close()
@@ -364,67 +406,89 @@ func (s *Store) loadLedgerAllocations(ctx context.Context, q reader, principal h
 		return err
 	}
 	rows.Close()
-	if len(snapshots) == 0 {
-		return nil
-	}
-	rows, err = q.Query(ctx, `SELECT snapshot_position,member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,position`, family, operationID, revisionNumber)
+	rows, err = q.Query(ctx, `WITH requested(operation_id,revision) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]))
+	 SELECT a.operation_id::text,a.revision,a.snapshot_position,a.member_id,a.amount::text,a.asset,a.share::text
+	 FROM want_keep.ledger_allocation_inputs a JOIN requested r USING(operation_id,revision)
+	 WHERE a.household_id=$1 ORDER BY a.operation_id,a.revision,a.snapshot_position,a.position`, family, operationIDs, revisionNumbers)
 	if err != nil {
 		return err
 	}
-	if err = scanAllocationInputs(rows, snapshots, false); err != nil {
+	if err = scanAllocationInputs(rows, sets, false); err != nil {
 		return err
 	}
-	rows, err = q.Query(ctx, `SELECT snapshot_position,member_id,amount::text,asset,share::text FROM want_keep.ledger_allocation_fallback_inputs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,position`, family, operationID, revisionNumber)
+	rows, err = q.Query(ctx, `WITH requested(operation_id,revision) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]))
+	 SELECT a.operation_id::text,a.revision,a.snapshot_position,a.member_id,a.amount::text,a.asset,a.share::text
+	 FROM want_keep.ledger_allocation_fallback_inputs a JOIN requested r USING(operation_id,revision)
+	 WHERE a.household_id=$1 ORDER BY a.operation_id,a.revision,a.snapshot_position,a.position`, family, operationIDs, revisionNumbers)
 	if err != nil {
 		return err
 	}
-	if err = scanAllocationInputs(rows, snapshots, true); err != nil {
+	if err = scanAllocationInputs(rows, sets, true); err != nil {
 		return err
 	}
-	rows, err = q.Query(ctx, `SELECT snapshot_position,member_id,asset,amount::text FROM want_keep.ledger_allocation_member_amounts WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,member_id,asset`, family, operationID, revisionNumber)
+	rows, err = q.Query(ctx, `WITH requested(operation_id,revision) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]))
+	 SELECT a.operation_id::text,a.revision,a.snapshot_position,a.member_id,a.asset,a.amount::text
+	 FROM want_keep.ledger_allocation_member_amounts a JOIN requested r USING(operation_id,revision)
+	 WHERE a.household_id=$1 ORDER BY a.operation_id,a.revision,a.snapshot_position,a.member_id,a.asset`, family, operationIDs, revisionNumbers)
 	if err != nil {
 		return err
 	}
-	if err = scanAllocationMemberAmounts(rows, snapshots); err != nil {
+	if err = scanAllocationMemberAmounts(rows, sets); err != nil {
 		return err
 	}
-	rows, err = q.Query(ctx, `SELECT snapshot_position,asset,amount::text FROM want_keep.ledger_allocation_unallocated WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,asset`, family, operationID, revisionNumber)
+	rows, err = q.Query(ctx, `WITH requested(operation_id,revision) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]))
+	 SELECT a.operation_id::text,a.revision,a.snapshot_position,a.asset,a.amount::text
+	 FROM want_keep.ledger_allocation_unallocated a JOIN requested r USING(operation_id,revision)
+	 WHERE a.household_id=$1 ORDER BY a.operation_id,a.revision,a.snapshot_position,a.asset`, family, operationIDs, revisionNumbers)
 	if err != nil {
 		return err
 	}
-	if err = scanAllocationUnallocated(rows, snapshots); err != nil {
+	if err = scanAllocationUnallocated(rows, sets); err != nil {
 		return err
 	}
-	rows, err = q.Query(ctx, `SELECT snapshot_position,rule_id,rule_revision FROM want_keep.ledger_allocation_rule_refs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,rule_id`, family, operationID, revisionNumber)
+	rows, err = q.Query(ctx, `WITH requested(operation_id,revision) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]))
+	 SELECT a.operation_id::text,a.revision,a.snapshot_position,a.rule_id,a.rule_revision
+	 FROM want_keep.ledger_allocation_rule_refs a JOIN requested r USING(operation_id,revision)
+	 WHERE a.household_id=$1 ORDER BY a.operation_id,a.revision,a.snapshot_position,a.rule_id`, family, operationIDs, revisionNumbers)
 	if err != nil {
 		return err
 	}
-	if err = scanAllocationRuleRefs(rows, snapshots, false); err != nil {
+	if err = scanAllocationRuleRefs(rows, sets, false); err != nil {
 		return err
 	}
-	rows, err = q.Query(ctx, `SELECT snapshot_position,rule_id,rule_revision FROM want_keep.ledger_allocation_fallback_rule_refs WHERE household_id=$1 AND operation_id=$2 AND revision=$3 ORDER BY snapshot_position,rule_id`, family, operationID, revisionNumber)
+	rows, err = q.Query(ctx, `WITH requested(operation_id,revision) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]))
+	 SELECT a.operation_id::text,a.revision,a.snapshot_position,a.rule_id,a.rule_revision
+	 FROM want_keep.ledger_allocation_fallback_rule_refs a JOIN requested r USING(operation_id,revision)
+	 WHERE a.household_id=$1 ORDER BY a.operation_id,a.revision,a.snapshot_position,a.rule_id`, family, operationIDs, revisionNumbers)
 	if err != nil {
 		return err
 	}
-	if err = scanAllocationRuleRefs(rows, snapshots, true); err != nil {
+	if err = scanAllocationRuleRefs(rows, sets, true); err != nil {
 		return err
 	}
-	aggregate, err := snapshots.at(0)
-	if err != nil {
-		return err
-	}
-	if aggregate.itemID != "" || aggregate.value.Validate() != nil {
-		return ledger.ErrInvalidAllocation
-	}
-	revision.Allocation = aggregate.value
-	for position, stored := range snapshots {
-		if position == 0 {
+	for index := range revisions {
+		revision := &revisions[index]
+		snapshots := sets[storedAllocationKey{operationID: revision.OperationID, revision: revision.Revision}]
+		if len(snapshots) == 0 {
 			continue
 		}
-		if position > len(revision.ReceiptItems) || stored.itemID != revision.ReceiptItems[position-1].ID || stored.value.Validate() != nil {
+		aggregate, loadErr := snapshots.at(0)
+		if loadErr != nil {
+			return loadErr
+		}
+		if aggregate.itemID != "" || aggregate.value.Validate() != nil {
 			return ledger.ErrInvalidAllocation
 		}
-		revision.ReceiptItems[position-1].Allocation = stored.value
+		revision.Allocation = aggregate.value
+		for position, stored := range snapshots {
+			if position == 0 {
+				continue
+			}
+			if position > len(revision.ReceiptItems) || stored.itemID != revision.ReceiptItems[position-1].ID || stored.value.Validate() != nil {
+				return ledger.ErrInvalidAllocation
+			}
+			revision.ReceiptItems[position-1].Allocation = stored.value
+		}
 	}
 	return nil
 }
@@ -436,6 +500,13 @@ type storedAllocationSnapshot struct {
 
 type storedAllocationSnapshots map[int]*storedAllocationSnapshot
 
+type storedAllocationKey struct {
+	operationID string
+	revision    uint64
+}
+
+type storedAllocationSets map[storedAllocationKey]storedAllocationSnapshots
+
 func (s storedAllocationSnapshots) at(position int) (*storedAllocationSnapshot, error) {
 	snapshot, ok := s[position]
 	if !ok {
@@ -444,16 +515,18 @@ func (s storedAllocationSnapshots) at(position int) (*storedAllocationSnapshot, 
 	return snapshot, nil
 }
 
-func scanAllocationInputs(rows pgx.Rows, snapshots storedAllocationSnapshots, basis bool) error {
+func scanAllocationInputs(rows pgx.Rows, sets storedAllocationSets, basis bool) error {
 	defer rows.Close()
 	for rows.Next() {
+		var operationID string
+		var revision uint64
 		var position int
 		var input ledger.AllocationMemberInput
 		var amount, asset, share *string
-		if err := rows.Scan(&position, &input.MemberID, &amount, &asset, &share); err != nil {
+		if err := rows.Scan(&operationID, &revision, &position, &input.MemberID, &amount, &asset, &share); err != nil {
 			return err
 		}
-		snapshot, err := snapshots.at(position)
+		snapshot, err := sets[storedAllocationKey{operationID: operationID, revision: revision}].at(position)
 		if err != nil {
 			return err
 		}
@@ -479,16 +552,18 @@ func scanAllocationInputs(rows pgx.Rows, snapshots storedAllocationSnapshots, ba
 	return rows.Err()
 }
 
-func scanAllocationMemberAmounts(rows pgx.Rows, snapshots storedAllocationSnapshots) error {
+func scanAllocationMemberAmounts(rows pgx.Rows, sets storedAllocationSets) error {
 	defer rows.Close()
 	for rows.Next() {
+		var operationID string
+		var revision uint64
 		var position int
 		var member ledger.MemberAmount
 		var asset, amount string
-		if err := rows.Scan(&position, &member.MemberID, &asset, &amount); err != nil {
+		if err := rows.Scan(&operationID, &revision, &position, &member.MemberID, &asset, &amount); err != nil {
 			return err
 		}
-		snapshot, err := snapshots.at(position)
+		snapshot, err := sets[storedAllocationKey{operationID: operationID, revision: revision}].at(position)
 		if err != nil {
 			return err
 		}
@@ -501,15 +576,17 @@ func scanAllocationMemberAmounts(rows pgx.Rows, snapshots storedAllocationSnapsh
 	return rows.Err()
 }
 
-func scanAllocationUnallocated(rows pgx.Rows, snapshots storedAllocationSnapshots) error {
+func scanAllocationUnallocated(rows pgx.Rows, sets storedAllocationSets) error {
 	defer rows.Close()
 	for rows.Next() {
+		var operationID string
+		var revision uint64
 		var position int
 		var asset, amount string
-		if err := rows.Scan(&position, &asset, &amount); err != nil {
+		if err := rows.Scan(&operationID, &revision, &position, &asset, &amount); err != nil {
 			return err
 		}
-		snapshot, err := snapshots.at(position)
+		snapshot, err := sets[storedAllocationKey{operationID: operationID, revision: revision}].at(position)
 		if err != nil {
 			return err
 		}
@@ -522,15 +599,17 @@ func scanAllocationUnallocated(rows pgx.Rows, snapshots storedAllocationSnapshot
 	return rows.Err()
 }
 
-func scanAllocationRuleRefs(rows pgx.Rows, snapshots storedAllocationSnapshots, basis bool) error {
+func scanAllocationRuleRefs(rows pgx.Rows, sets storedAllocationSets, basis bool) error {
 	defer rows.Close()
 	for rows.Next() {
+		var operationID string
+		var revision uint64
 		var position int
 		var ref ledger.AllocationRuleRef
-		if err := rows.Scan(&position, &ref.ID, &ref.Revision); err != nil {
+		if err := rows.Scan(&operationID, &revision, &position, &ref.ID, &ref.Revision); err != nil {
 			return err
 		}
-		snapshot, err := snapshots.at(position)
+		snapshot, err := sets[storedAllocationKey{operationID: operationID, revision: revision}].at(position)
 		if err != nil {
 			return err
 		}

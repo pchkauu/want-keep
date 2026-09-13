@@ -1,3 +1,11 @@
+ALTER TABLE want_keep.households
+ ADD COLUMN allocation_rule_sequence bigint NOT NULL DEFAULT 0
+ CHECK(allocation_rule_sequence BETWEEN 0 AND 9007199254740991);
+
+ALTER TABLE want_keep.ledger_revision_audit
+ ADD COLUMN allocation_rule_boundary bigint NOT NULL DEFAULT 0
+ CHECK(allocation_rule_boundary BETWEEN 0 AND 9007199254740991);
+
 CREATE TABLE want_keep.allocation_rules (
  household_id uuid NOT NULL,
  id uuid NOT NULL,
@@ -20,6 +28,7 @@ CREATE TABLE want_keep.allocation_rule_revisions (
  household_id uuid NOT NULL,
  rule_id uuid NOT NULL,
  revision want_keep.revision NOT NULL,
+ rule_sequence want_keep.revision NOT NULL,
  priority integer NOT NULL CHECK(priority BETWEEN 1 AND 1000),
  state text NOT NULL CHECK(state IN ('active','archived')),
  merchant_id uuid,
@@ -29,6 +38,7 @@ CREATE TABLE want_keep.allocation_rule_revisions (
  recorded_at timestamptz NOT NULL,
  recorded_ns want_keep.submicro NOT NULL,
  PRIMARY KEY(household_id,rule_id,revision),
+ UNIQUE(household_id,rule_sequence),
  FOREIGN KEY(household_id,rule_id) REFERENCES want_keep.allocation_rules(household_id,id) DEFERRABLE INITIALLY DEFERRED,
  FOREIGN KEY(household_id,merchant_id) REFERENCES want_keep.merchants(household_id,id),
  FOREIGN KEY(household_id,category_id) REFERENCES want_keep.categories(household_id,id),

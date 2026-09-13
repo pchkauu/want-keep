@@ -192,6 +192,21 @@ func TestTrustedClassificationUsesOnlyFactTimeRules(t *testing.T) {
 		}
 	})
 
+	t.Run("same instant later rule is not retroactive", func(t *testing.T) {
+		fixture := newFixture(t)
+		client := fixture.client(fixture.p)
+		category := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Same instant category"}, http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:01:00Z")
+		created := createExpense(t, client, fixture.account(money.RUB, "1000"), money.RUB, "100", "", unresolved())
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": category.Result.Id}, "active", 10, "60", "40", 0), http.StatusAccepted))
+		fixture.now = instant("2026-09-08T12:02:00Z")
+		decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{"expectedRevision": 1, "reason": "Confirm category", "category": map[string]any{"action": "set", "id": category.Result.Id}}, http.StatusAccepted))
+		allocation := readTransaction(t, client, created.Result.Id).Allocation
+		if allocation.State != "unresolved" || len(allocation.Rules) != 0 {
+			t.Fatalf("same-instant later rule changed earlier fact: %+v", allocation)
+		}
+	})
+
 	t.Run("explicit allocation remains protected", func(t *testing.T) {
 		fixture := newFixture(t)
 		client := fixture.client(fixture.p)
@@ -572,6 +587,59 @@ func TestMixedReceiptDirectAllocationAndValidation(t *testing.T) {
 	refreshed := readTransaction(t, first, created.Result.Id)
 	if refreshed.ReceiptItems[0].Allocation.Origin != "explicit_item" || refreshed.ReceiptItems[0].Allocation.Reason != "Ambiguous shared item" {
 		t.Fatalf("correction changed explicit unresolved item = %+v", refreshed.ReceiptItems[0].Allocation)
+	}
+}
+
+func TestClassificationPreservesExplicitItemAndResolvesOtherItem(t *testing.T) {
+	fixture := newFixture(t)
+	client := fixture.client(fixture.p)
+	category := decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/categories", uuid.NewString(), map[string]any{"name": "Shared item rule"}, http.StatusAccepted))
+	decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/allocation-rules", uuid.NewString(), ruleInputForCondition(client, map[string]any{"categoryId": category.Result.Id}, "active", 10, "60", "40", 0), http.StatusAccepted))
+	created := createExpense(t, client, fixture.account(money.RUB, "1000"), money.RUB, "100", "", unresolved())
+	firstItem, secondItem := uuid.NewString(), uuid.NewString()
+	items := func(secondCategory string) map[string]any {
+		second := map[string]any{"id": secondItem, "name": "Rule item", "quantity": "1", "gross": map[string]any{"amount": "60", "asset": "RUB"}}
+		if secondCategory != "" {
+			second["categoryId"] = secondCategory
+		}
+		return map[string]any{"action": "replace", "totalDiscount": map[string]any{"amount": "0", "asset": "RUB"}, "items": []any{
+			map[string]any{"id": firstItem, "name": "Personal item", "quantity": "1", "gross": map[string]any{"amount": "40", "asset": "RUB"}}, second,
+		}}
+	}
+	decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{"expectedRevision": 1, "reason": "Attach items", "receiptItems": items("")}, http.StatusAccepted))
+	decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/allocations", uuid.NewString(), map[string]any{
+		"expectedRevision": 2,
+		"reason":           "Confirm personal item",
+		"allocation":       unresolved(),
+		"items":            []any{map[string]any{"itemId": firstItem, "allocation": personal(string(fixture.members[0].ID), "40")}},
+	}, http.StatusAccepted))
+	decode[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/corrections", uuid.NewString(), map[string]any{"expectedRevision": 3, "reason": "Classify remaining item", "receiptItems": items(category.Result.Id)}, http.StatusAccepted))
+	transaction := readTransaction(t, client, created.Result.Id)
+	if transaction.Allocation.State != "resolved" || transaction.ReceiptItems[0].Allocation.Origin != "explicit_item" || transaction.ReceiptItems[1].Allocation.Origin != "rule" {
+		t.Fatalf("mixed protected allocation = %+v", transaction)
+	}
+	assertMemberAmounts(t, fixture, transaction.Allocation, "76", "24")
+}
+
+func TestTransactionListHydratesAllocationsForWholePage(t *testing.T) {
+	fixture := newFixture(t)
+	client := fixture.client(fixture.p)
+	accountID := fixture.account(money.RUB, "1000")
+	first := createExpense(t, client, accountID, money.RUB, "100", "", equalShared())
+	second := createExpense(t, client, accountID, money.RUB, "200", "", equalShared())
+	page := decode[generated.TransactionPage](t, client.call(http.MethodGet, "/transactions?limit=50", "", nil, http.StatusOK))
+	seen := map[string]generated.AllocationSnapshot{}
+	for _, transaction := range page.Items {
+		seen[transaction.Id] = transaction.Allocation
+	}
+	for _, expected := range []struct {
+		id, amount string
+	}{{first.Result.Id, "50"}, {second.Result.Id, "100"}} {
+		allocation, ok := seen[expected.id]
+		if !ok {
+			t.Fatalf("transaction %s missing from page", expected.id)
+		}
+		assertMemberAmounts(t, fixture, allocation, expected.amount, expected.amount)
 	}
 }
 

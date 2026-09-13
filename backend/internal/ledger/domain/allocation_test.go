@@ -402,6 +402,43 @@ func TestAllocationInputOrderIsSemanticNoChange(t *testing.T) {
 	}
 }
 
+func TestAllocationDecimalScaleIsSemanticNoChange(t *testing.T) {
+	revision := expenseRevision(mustAllocationMoney(t, "100", money.RUB))
+	members := []household.MembershipID{"member-a", "member-b"}
+	for _, test := range []struct {
+		name    string
+		first   AllocationInput
+		changed AllocationInput
+	}{
+		{
+			name:    "shares",
+			first:   AllocationInput{Mode: AllocationByShares, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0], Share: "50"}, {MemberID: members[1], Share: "50.0"}}},
+			changed: AllocationInput{Mode: AllocationByShares, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0], Share: "50.00"}, {MemberID: members[1], Share: "50"}}},
+		},
+		{
+			name: "amounts",
+			first: AllocationInput{Mode: AllocationByAmounts, Purpose: AllocationShared, Members: []AllocationMemberInput{
+				{MemberID: members[0], Amount: allocationMoneyPtr(t, "50", money.RUB)},
+				{MemberID: members[1], Amount: allocationMoneyPtr(t, "50.0", money.RUB)},
+			}},
+			changed: AllocationInput{Mode: AllocationByAmounts, Purpose: AllocationShared, Members: []AllocationMemberInput{
+				{MemberID: members[0], Amount: allocationMoneyPtr(t, "50.00", money.RUB)},
+				{MemberID: members[1], Amount: allocationMoneyPtr(t, "50", money.RUB)},
+			}},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			allocated, err := revision.WithAllocation(test.first, nil, members)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err = allocated.Correct(Correction{Allocation: &AllocationChange{Allocation: test.changed, Members: members}}); err != ErrNoChange {
+				t.Fatalf("decimal scale change error = %v", err)
+			}
+		})
+	}
+}
+
 func TestAllocationExcludesMatchedInternalAndNonCarrierPrincipal(t *testing.T) {
 	for _, tc := range []struct {
 		name         string

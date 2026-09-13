@@ -96,44 +96,62 @@ func (s *Service) Preview(ctx context.Context, principal household.Principal, me
 }
 
 func (s *Service) Resolve(ctx context.Context, principal household.Principal, merchantID, categoryID string) (ledger.AllocationInput, bool, error) {
-	return s.resolve(ctx, principal, merchantID, categoryID, calendar.Instant{})
-}
-
-func (s *Service) ResolveAt(ctx context.Context, principal household.Principal, merchantID, categoryID string, at calendar.Instant) (ledger.AllocationInput, bool, error) {
-	if at.String() == "" {
-		return ledger.AllocationInput{}, false, commands.Rejection{Code: "invalid_request"}
-	}
-	return s.resolve(ctx, principal, merchantID, categoryID, at)
-}
-
-func (s *Service) resolve(ctx context.Context, principal household.Principal, merchantID, categoryID string, at calendar.Instant) (ledger.AllocationInput, bool, error) {
 	if merchantID == "" && categoryID == "" {
 		return ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "no_matching_rule"}, false, nil
 	}
 	if err := s.requireConditions(ctx, principal, allocation.Condition{MerchantID: merchantID, CategoryID: categoryID}, true); err != nil {
 		return ledger.AllocationInput{}, false, err
 	}
-	var rules []allocation.Rule
-	var err error
-	if at.String() == "" {
-		rules, err = s.repository.MatchingAllocationRules(ctx, principal, merchantID, categoryID)
-	} else {
-		rules, err = s.repository.MatchingAllocationRulesAt(ctx, principal, merchantID, categoryID, at)
-	}
+	rules, err := s.repository.MatchingAllocationRules(ctx, principal, merchantID, categoryID)
 	if err != nil {
 		return ledger.AllocationInput{}, false, s.reject(err)
 	}
-	resolution := allocation.Resolve(rules, merchantID, categoryID)
+	input, matched := allocationInput(allocation.Resolve(rules, merchantID, categoryID))
+	return input, matched, nil
+}
+
+func (s *Service) ResolveAtBoundary(ctx context.Context, principal household.Principal, conditions []allocation.Condition, boundary uint64) (map[allocation.Condition]ledger.AllocationInput, error) {
+	if boundary > allocation.MaxRevision {
+		return nil, commands.Rejection{Code: "invalid_request"}
+	}
+	unique := map[allocation.Condition]bool{}
+	for _, condition := range conditions {
+		if condition.MerchantID != "" || condition.CategoryID != "" {
+			unique[condition] = true
+		}
+	}
+	result := make(map[allocation.Condition]ledger.AllocationInput, len(unique))
+	if len(unique) == 0 {
+		return result, nil
+	}
+	requested := make([]allocation.Condition, 0, len(unique))
+	for condition := range unique {
+		requested = append(requested, condition)
+	}
+	rules, err := s.repository.AllocationRulesAtBoundary(ctx, principal, requested, boundary)
+	if err != nil {
+		return nil, s.reject(err)
+	}
+	for condition := range unique {
+		input, matched := allocationInput(allocation.Resolve(rules, condition.MerchantID, condition.CategoryID))
+		if matched {
+			result[condition] = input
+		}
+	}
+	return result, nil
+}
+
+func allocationInput(resolution allocation.Resolution) (ledger.AllocationInput, bool) {
 	if resolution.State != "resolved" {
 		input := ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: resolution.Reason, Origin: ledger.AllocationUnknownOrigin}
 		if resolution.Reason != "rule_conflict" {
-			return input, false, nil
+			return input, false
 		}
 		input.Origin = ledger.AllocationRule
 		for _, rule := range resolution.Rules {
 			input.RuleRefs = append(input.RuleRefs, ledger.AllocationRuleRef{ID: rule.ID, Revision: rule.Revision})
 		}
-		return input, true, nil
+		return input, true
 	}
 	input := ledger.AllocationInput{Mode: ledger.AllocationByShares, Purpose: ledger.AllocationShared, Origin: ledger.AllocationRule, Reason: "allocation_rule"}
 	if len(resolution.Shares) == 1 {
@@ -145,7 +163,7 @@ func (s *Service) resolve(ctx context.Context, principal household.Principal, me
 	for _, rule := range resolution.Rules {
 		input.RuleRefs = append(input.RuleRefs, ledger.AllocationRuleRef{ID: rule.ID, Revision: rule.Revision})
 	}
-	return input, true, nil
+	return input, true
 }
 
 func (s *Service) ResolveSource(ctx context.Context, principal household.Principal, merchantName string) (ledger.AllocationInput, bool, error) {

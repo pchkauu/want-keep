@@ -6,7 +6,7 @@ import (
 	"slices"
 	"sort"
 
-	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
+	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -22,7 +22,7 @@ type DecisionRepository interface {
 	LatestSourceFact(context.Context, household.Principal, string) (*ledger.Revision, error)
 	DecisionSourceFact(context.Context, household.Principal, string, string) (*ledger.Revision, error)
 	RevisionEvidence(context.Context, household.Principal, string, uint64) ([]ledger.Evidence, error)
-	FirstLedgerRecordedAt(context.Context, household.Principal, string) (calendar.Instant, error)
+	FirstLedgerRuleBoundary(context.Context, household.Principal, string) (uint64, error)
 }
 
 type Change struct {
@@ -164,7 +164,7 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 			}
 		}
 		if kind == "correction" && in.Correction.Allocation == nil && s.shouldResolveAllocation(r, fields) {
-			basis, basisErr := s.repository.FirstLedgerRecordedAt(ctx, p, r.OperationID)
+			basis, basisErr := s.repository.FirstLedgerRuleBoundary(ctx, p, r.OperationID)
 			if basisErr != nil {
 				return command.Result{}, s.reject(basisErr)
 			}
@@ -221,35 +221,58 @@ func (s *Service) shouldResolveAllocation(revision ledger.Revision, fields []led
 	if s.allocations == nil || !slices.Contains(fields, ledger.CategoryField) && !slices.Contains(fields, ledger.MerchantIDField) && !slices.Contains(fields, ledger.ReceiptItemsField) {
 		return false
 	}
-	if _, protected := revision.Protections[ledger.AllocationField]; protected {
-		return false
-	}
 	return revision.Allocation.State != "" && (revision.Allocation.State != ledger.AllocationNotApplicable || revision.Allocation.Basis != nil)
 }
 
-func (s *Service) resolveAllocationAt(ctx context.Context, p household.Principal, revision ledger.Revision, at calendar.Instant) (ledger.Revision, bool, error) {
-	fallback, fallbackMatched, err := s.allocations.ResolveAt(ctx, p, revision.MerchantID, revision.CategoryID, at)
+func (s *Service) resolveAllocationAt(ctx context.Context, p household.Principal, revision ledger.Revision, boundary uint64) (ledger.Revision, bool, error) {
+	fallback, existingItems, err := revision.AllocationBases()
+	if err != nil {
+		return revision, false, s.rejectDecision(err)
+	}
+	preservedItems := make(map[string]ledger.AllocationInput, len(existingItems))
+	for _, item := range existingItems {
+		if item.Allocation.Origin == ledger.AllocationExplicitItem {
+			preservedItems[item.ItemID] = item.Allocation
+		}
+	}
+	conditions := []allocation.Condition{}
+	fallbackCondition := allocation.Condition{MerchantID: revision.MerchantID, CategoryID: revision.CategoryID}
+	if fallback.Origin != ledger.AllocationExplicitPurchase {
+		conditions = append(conditions, fallbackCondition)
+	}
+	if fallback.Origin != ledger.AllocationExplicitPurchase {
+		for _, item := range revision.ReceiptItems {
+			if _, preserved := preservedItems[item.ID]; !preserved {
+				conditions = append(conditions, allocation.Condition{MerchantID: revision.MerchantID, CategoryID: item.CategoryID})
+			}
+		}
+	}
+	resolvedInputs, err := s.allocations.ResolveAtBoundary(ctx, p, conditions, boundary)
 	if err != nil {
 		return revision, false, err
 	}
-	if !fallbackMatched {
-		fallback = ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "allocation_unresolved"}
+	if fallback.Origin != ledger.AllocationExplicitPurchase {
+		var matched bool
+		fallback, matched = resolvedInputs[fallbackCondition]
+		if !matched {
+			fallback = ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "allocation_unresolved"}
+		}
 	}
 	items := make([]ledger.ItemAllocationInput, 0, len(revision.ReceiptItems))
-	matched := fallbackMatched
 	for _, item := range revision.ReceiptItems {
-		resolved, itemMatched, resolveErr := s.allocations.ResolveAt(ctx, p, revision.MerchantID, item.CategoryID, at)
-		if resolveErr != nil {
-			return revision, false, resolveErr
-		}
-		if !itemMatched {
+		if preserved, ok := preservedItems[item.ID]; ok {
+			items = append(items, ledger.ItemAllocationInput{ItemID: item.ID, Allocation: preserved})
 			continue
 		}
-		matched = true
-		items = append(items, ledger.ItemAllocationInput{ItemID: item.ID, Allocation: resolved})
+		if fallback.Origin != ledger.AllocationExplicitPurchase {
+			resolved, ok := resolvedInputs[allocation.Condition{MerchantID: revision.MerchantID, CategoryID: item.CategoryID}]
+			if ok {
+				items = append(items, ledger.ItemAllocationInput{ItemID: item.ID, Allocation: resolved})
+			}
+		}
 	}
 	var members []household.MembershipID
-	if matched {
+	if fallback.Mode != "" && fallback.Mode != ledger.AllocationUnknown || len(items) > 0 {
 		members, err = s.allocations.ActiveMemberIDs(ctx, p)
 		if err != nil {
 			return revision, false, err

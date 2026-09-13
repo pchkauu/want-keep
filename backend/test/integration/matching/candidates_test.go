@@ -160,6 +160,10 @@ func TestUndoRetainsCandidateSelection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			_, err = f.admin.Exec(testContext, `INSERT INTO want_keep.ledger_revision_audit(household_id,operation_id,revision,accounting_state,allocation_rule_boundary) SELECT household_id,operation_id,revision,'included',0 FROM want_keep.operation_revisions r WHERE household_id=$1 AND reason='Distinct retained expense'`, f.family.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
 			r := f.revision(uuid.NewString(), account, "-300", money.RUB, 1)
 			if _, err = f.write(r, request()); err != nil {
 				t.Fatal(err)

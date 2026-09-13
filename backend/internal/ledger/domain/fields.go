@@ -1,6 +1,11 @@
 package domain
 
-import "slices"
+import (
+	"math/big"
+	"slices"
+
+	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
+)
 
 func (r Revision) rolePostings(role Role) []Posting {
 	out := []Posting{}
@@ -131,17 +136,17 @@ func allocationEqual(a, b AllocationSnapshot) bool {
 	}
 	for i := range a.Inputs {
 		left, right := a.Inputs[i], b.Inputs[i]
-		if left.MemberID != right.MemberID || left.Share != right.Share || (left.Amount == nil) != (right.Amount == nil) || left.Amount != nil && (left.Amount.Asset() != right.Amount.Asset() || left.Amount.Amount() != right.Amount.Amount()) {
+		if left.MemberID != right.MemberID || !sameDecimal(left.Share, right.Share) || (left.Amount == nil) != (right.Amount == nil) || left.Amount != nil && !sameMoney(*left.Amount, *right.Amount) {
 			return false
 		}
 	}
 	for i := range a.Members {
-		if a.Members[i].MemberID != b.Members[i].MemberID || a.Members[i].Money.Asset() != b.Members[i].Money.Asset() || a.Members[i].Money.Amount() != b.Members[i].Money.Amount() {
+		if a.Members[i].MemberID != b.Members[i].MemberID || !sameMoney(a.Members[i].Money, b.Members[i].Money) {
 			return false
 		}
 	}
 	for i := range a.Unallocated {
-		if a.Unallocated[i].Asset() != b.Unallocated[i].Asset() || a.Unallocated[i].Amount() != b.Unallocated[i].Amount() {
+		if !sameMoney(a.Unallocated[i], b.Unallocated[i]) {
 			return false
 		}
 	}
@@ -155,9 +160,23 @@ func allocationInputEqual(a, b AllocationInput) bool {
 	}
 	for i := range a.Members {
 		left, right := a.Members[i], b.Members[i]
-		if left.MemberID != right.MemberID || left.Share != right.Share || (left.Amount == nil) != (right.Amount == nil) || left.Amount != nil && (left.Amount.Asset() != right.Amount.Asset() || left.Amount.Amount() != right.Amount.Amount()) {
+		if left.MemberID != right.MemberID || !sameDecimal(left.Share, right.Share) || (left.Amount == nil) != (right.Amount == nil) || left.Amount != nil && !sameMoney(*left.Amount, *right.Amount) {
 			return false
 		}
 	}
 	return true
+}
+
+func sameMoney(left, right money.Money) bool {
+	compared, err := left.Compare(right)
+	return err == nil && compared == 0
+}
+
+func sameDecimal(left, right string) bool {
+	if left == "" || right == "" {
+		return left == right
+	}
+	leftValue, leftOK := new(big.Rat).SetString(left)
+	rightValue, rightOK := new(big.Rat).SetString(right)
+	return leftOK && rightOK && leftValue.Cmp(rightValue) == 0
 }

@@ -582,6 +582,13 @@ func (r Revision) allocationBases() (AllocationInput, []ItemAllocationInput, []h
 	return fallback, items, active, nil
 }
 
+// AllocationBases returns the persisted purchase and item inputs used to
+// rebuild an allocation after classification changes.
+func (r Revision) AllocationBases() (AllocationInput, []ItemAllocationInput, error) {
+	fallback, items, _, err := r.allocationBases()
+	return fallback, items, err
+}
+
 func (r Revision) suspendAllocation(fallback AllocationInput, items []ItemAllocationInput) (Revision, error) {
 	next := r.Clone()
 	next.Allocation = NotApplicableAllocation()

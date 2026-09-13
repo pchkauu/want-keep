@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"sort"
 
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -10,6 +11,11 @@ import (
 )
 
 type Projector struct{ repository Repository }
+
+type RevisionChange struct {
+	Revision ledger.Revision
+	Previous *ledger.Revision
+}
 
 func NewProjector(r Repository) *Projector { return &Projector{r} }
 func (s *Projector) Rebuild(ctx context.Context, p household.Principal, id string) error {
@@ -71,8 +77,42 @@ func (s *Projector) Apply(ctx context.Context, p household.Principal, r ledger.R
 			}
 			continue
 		}
-		if err = s.applyLegacy(ctx, p, id, r, previous); err != nil {
+		if err = s.applyLegacyAccount(ctx, p, id, r, previous); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// ApplyBatch rebuilds each account with an opening once after every revision is stored.
+// Legacy accounts still receive each proven delta in revision order.
+func (s *Projector) ApplyBatch(ctx context.Context, p household.Principal, changes []RevisionChange) error {
+	byAccount := map[string][]RevisionChange{}
+	for _, change := range changes {
+		for _, id := range change.Revision.AffectedAccounts(change.Previous) {
+			byAccount[id] = append(byAccount[id], change)
+		}
+	}
+	ids := make([]string, 0, len(byAccount))
+	for id := range byAccount {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		_, exists, err := s.repository.Opening(ctx, p, id)
+		if err != nil {
+			return err
+		}
+		if exists {
+			if err = s.Rebuild(ctx, p, id); err != nil {
+				return err
+			}
+			continue
+		}
+		for _, change := range byAccount[id] {
+			if err = s.applyLegacyAccount(ctx, p, id, change.Revision, change.Previous); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -80,7 +120,7 @@ func (s *Projector) Apply(ctx context.Context, p household.Principal, r ledger.R
 
 // Historical projections without an opening cannot be reconstructed. Preserve their
 // original basis and update only proven components; an unknown component stays unknown.
-func (s *Projector) applyLegacy(ctx context.Context, p household.Principal, id string, r ledger.Revision, previous *ledger.Revision) error {
+func (s *Projector) applyLegacyAccount(ctx context.Context, p household.Principal, id string, r ledger.Revision, previous *ledger.Revision) error {
 	for _, entry := range []struct {
 		revision *ledger.Revision
 		subtract bool
