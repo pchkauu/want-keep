@@ -247,6 +247,110 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 	}
 }
 
+func TestDecoderRejectsMissingRequiredFields(t *testing.T) {
+	original := fixture(t, "golden-page.json")
+	for name, mutate := range map[string]func(map[string]any){
+		"result outcome": func(root map[string]any) { delete(root, "outcome") },
+		"page records":   func(root map[string]any) { delete(root["page"].(map[string]any), "records") },
+		"page complete":  func(root map[string]any) { delete(root["page"].(map[string]any), "complete") },
+		"binding provider": func(root map[string]any) {
+			delete(root["page"].(map[string]any)["binding"].(map[string]any), "provider")
+		},
+		"coverage gaps": func(root map[string]any) {
+			delete(root["page"].(map[string]any)["coverage"].(map[string]any), "gaps")
+		},
+		"evidence locator": func(root map[string]any) {
+			delete(root["page"].(map[string]any)["evidence"].([]any)[0].(map[string]any), "locator")
+		},
+		"account name": func(root map[string]any) {
+			delete(root["page"].(map[string]any)["records"].([]any)[0].(map[string]any)["account"].(map[string]any), "name")
+		},
+		"card alias label": func(root map[string]any) {
+			account := root["page"].(map[string]any)["records"].([]any)[0].(map[string]any)["account"].(map[string]any)
+			delete(account["aliases"].([]any)[0].(map[string]any), "label")
+		},
+		"balance ownAvailable": func(root map[string]any) {
+			delete(root["page"].(map[string]any)["records"].([]any)[1].(map[string]any)["balanceSnapshot"].(map[string]any), "ownAvailable")
+		},
+		"known amount": func(root map[string]any) {
+			balance := root["page"].(map[string]any)["records"].([]any)[1].(map[string]any)["balanceSnapshot"].(map[string]any)
+			delete(balance["owned"].(map[string]any), "amount")
+		},
+		"transaction fee knowledge": func(root map[string]any) {
+			delete(firstTransaction(root), "feeKnowledge")
+		},
+		"posting role": func(root map[string]any) {
+			delete(firstTransaction(root)["postings"].([]any)[0].(map[string]any), "role")
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var root map[string]any
+			_ = json.Unmarshal(original, &root)
+			mutate(root)
+			data, _ := json.Marshal(root)
+			if _, err := contract.DecodeResult(data, goldenToken()); err == nil {
+				t.Fatal("missing required field was accepted")
+			}
+		})
+	}
+
+	manifestRaw := fixture(t, "manifest.json")
+	for name, mutate := range map[string]func(map[string]any){
+		"manifest actions":  func(root map[string]any) { delete(root, "actions") },
+		"history paginated": func(root map[string]any) { delete(root["history"].(map[string]any), "paginated") },
+		"log record kinds":  func(root map[string]any) { delete(root["logs"].([]any)[0].(map[string]any), "recordKinds") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			var root map[string]any
+			_ = json.Unmarshal(manifestRaw, &root)
+			mutate(root)
+			data, _ := json.Marshal(root)
+			if _, err := contract.DecodeManifest(data, "bybit"); err == nil {
+				t.Fatal("missing manifest field was accepted")
+			}
+		})
+	}
+}
+
+func TestCanonicalRecordIgnoresPageLocalEvidenceIdentity(t *testing.T) {
+	original, err := contract.DecodeResult(fixture(t, "golden-page.json"), goldenToken())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var root map[string]any
+	_ = json.Unmarshal(fixture(t, "golden-page.json"), &root)
+	page := root["page"].(map[string]any)
+	page["evidence"].([]any)[0].(map[string]any)["id"] = "replayed-evidence"
+	page["evidence"].([]any)[0].(map[string]any)["locator"] = "synthetic:replayed"
+	for _, raw := range page["records"].([]any) {
+		record := raw.(map[string]any)
+		for _, field := range []string{"account", "balanceSnapshot", "transaction"} {
+			if payload, ok := record[field].(map[string]any); ok {
+				payload["evidenceId"] = "replayed-evidence"
+			}
+		}
+	}
+	encoded, _ := json.Marshal(root)
+	replayed, err := contract.DecodeResult(encoded, goldenToken())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index := range original.Page.Records {
+		if string(original.Page.Records[index].CanonicalPayload) != string(replayed.Page.Records[index].CanonicalPayload) {
+			t.Fatalf("record %d canonical payload depends on evidence identity", index)
+		}
+	}
+}
+
+func firstTransaction(root map[string]any) map[string]any {
+	for _, raw := range root["page"].(map[string]any)["records"].([]any) {
+		if transaction, ok := raw.(map[string]any)["transaction"].(map[string]any); ok {
+			return transaction
+		}
+	}
+	panic("fixture has no transaction")
+}
+
 func TestProviderFailureRequiresExactCursorEcho(t *testing.T) {
 	var golden map[string]any
 	if err := json.Unmarshal(fixture(t, "golden-page.json"), &golden); err != nil {
@@ -282,6 +386,12 @@ func TestProviderFailureRequiresExactCursorEcho(t *testing.T) {
 	encoded, _ = json.Marshal(failure)
 	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
 		t.Fatal("missing provider failure cursor was accepted")
+	}
+	payload["cursor"] = ""
+	delete(payload, "retryable")
+	encoded, _ = json.Marshal(failure)
+	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+		t.Fatal("missing provider failure retryable flag was accepted")
 	}
 }
 

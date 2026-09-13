@@ -40,6 +40,7 @@ type Gate interface {
 	BeforeRead(context.Context, household.Principal, jobs.Job) error
 	CommitPage(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error)
 	CommitProviderOutcome(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error)
+	ResultReceipt(context.Context, household.Principal, jobs.Job, string, admission.ResultKind) (bool, error)
 	RetainRejectedResult(context.Context, household.Principal, jobs.Job, string) error
 }
 
@@ -124,6 +125,10 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 			return s.applyPage(tx, p, issued, *result.Page, batch.FetchedAt, references)
 		})
 		if err != nil {
+			if errors.Is(err, admission.ErrCommitOutcomeUnknown) {
+				recovered, recoverErr := s.recoverCommit(ctx, p, issued, batch, admission.PageResult, ingestion.EvidenceApplied, err)
+				return recovered, nil, recoverErr
+			}
 			return false, nil, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
 		}
 		state := ingestion.EvidenceStale
@@ -142,6 +147,10 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 	state, reason, delay := providerFailureOutcome(*result.Failure, issued.Attempt)
 	applied, err := s.gate.CommitProviderOutcome(ctx, p, issued, batch.PageReference, state, reason, delay, func(context.Context) error { return nil })
 	if err != nil {
+		if errors.Is(err, admission.ErrCommitOutcomeUnknown) {
+			recovered, recoverErr := s.recoverCommit(ctx, p, issued, batch, admission.ProviderOutcomeResult, ingestion.EvidenceProviderOutcome, err)
+			return recovered, result.Failure, recoverErr
+		}
 		return false, result.Failure, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
 	}
 	disposition := ingestion.EvidenceStale
@@ -149,6 +158,19 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 		disposition = ingestion.EvidenceProviderOutcome
 	}
 	return applied, result.Failure, s.setEvidenceDisposition(ctx, batch, disposition)
+}
+
+func (s *Service) recoverCommit(ctx context.Context, p household.Principal, issued jobs.Job, batch ingestion.EvidenceBatch, kind admission.ResultKind, disposition ingestion.EvidenceDispositionState, commitErr error) (bool, error) {
+	var confirmed bool
+	readErr := s.withEvidenceLifecycleContext(ctx, func(lifecycle context.Context) error {
+		var err error
+		confirmed, err = s.gate.ResultReceipt(lifecycle, p, issued, batch.PageReference, kind)
+		return err
+	})
+	if readErr != nil || !confirmed {
+		return false, errors.Join(commitErr, readErr)
+	}
+	return true, s.setEvidenceDisposition(ctx, batch, disposition)
 }
 
 func providerFailureOutcome(failure ingestion.ProviderFailure, attempt int) (jobs.State, jobs.Reason, time.Duration) {

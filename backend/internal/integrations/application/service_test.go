@@ -127,6 +127,81 @@ func TestProviderFailureCommitErrorRetainsEvidenceWithFreshContext(t *testing.T)
 	}
 }
 
+func TestCommitUnknownUsesReceiptWithoutGuessingEvidenceDisposition(t *testing.T) {
+	commitError := errors.Join(admission.ErrCommitOutcomeUnknown, errors.New("connection lost"))
+	for _, test := range []struct {
+		name      string
+		confirmed bool
+		readError error
+		wantState ingestion.EvidenceDispositionState
+	}{
+		{name: "confirmed page", confirmed: true, wantState: ingestion.EvidenceApplied},
+		{name: "missing receipt"},
+		{name: "readback failed", readError: errors.New("read unavailable")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var disposition ingestion.EvidenceDispositionState
+			gate := &gateFake{
+				commit: func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error) {
+					return false, commitError
+				},
+				receipt: func(context.Context, household.Principal, jobs.Job, string, admission.ResultKind) (bool, error) {
+					return test.confirmed, test.readError
+				},
+			}
+			evidence := evidenceFake{
+				save: func(_ context.Context, batch ingestion.EvidenceBatch) error { return batch.Validate() },
+				disposition: func(_ context.Context, value ingestion.EvidenceDisposition) error {
+					disposition = value.State
+					return nil
+				},
+			}
+			service, _ := application.NewService(gate, evidence, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+			job := issued()
+			token, _ := application.TokenFromJob(job)
+			result := page(token)
+			applied, failure, err := service.Ingest(context.Background(), principal(), job, &gatewayFake{result: ingestion.Result{Page: &result}})
+			if test.confirmed {
+				if !applied || failure != nil || err != nil || disposition != test.wantState {
+					t.Fatal("confirmed receipt did not recover commit", applied, failure, disposition, err)
+				}
+			} else if applied || failure != nil || !errors.Is(err, admission.ErrCommitOutcomeUnknown) || disposition != "" {
+				t.Fatal("unknown commit was guessed", applied, failure, disposition, err)
+			}
+			if gate.rejectCalls != 0 || gate.receiptCalls != 1 {
+				t.Fatal("commit recovery used the rejection path", gate.rejectCalls, gate.receiptCalls)
+			}
+		})
+	}
+}
+
+func TestProviderOutcomeCommitUnknownUsesReceipt(t *testing.T) {
+	gate := &gateFake{
+		failure: func(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error) {
+			return false, admission.ErrCommitOutcomeUnknown
+		},
+		receipt: func(_ context.Context, _ household.Principal, _ jobs.Job, _ string, kind admission.ResultKind) (bool, error) {
+			return kind == admission.ProviderOutcomeResult, nil
+		},
+	}
+	var disposition ingestion.EvidenceDispositionState
+	evidence := evidenceFake{
+		save: func(_ context.Context, batch ingestion.EvidenceBatch) error { return batch.Validate() },
+		disposition: func(_ context.Context, value ingestion.EvidenceDisposition) error {
+			disposition = value.State
+			return nil
+		},
+	}
+	service, _ := application.NewService(gate, evidence, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+	job := issued()
+	token, _ := application.TokenFromJob(job)
+	failure := ingestion.ProviderFailure{Token: token, Kind: ingestion.MFARequired, Evidence: []ingestion.Evidence{rawEvidence()}}
+	applied, got, err := service.Ingest(context.Background(), principal(), job, &gatewayFake{result: ingestion.Result{Failure: &failure}})
+	if !applied || got == nil || err != nil || disposition != ingestion.EvidenceProviderOutcome || gate.rejectCalls != 0 {
+		t.Fatal("provider outcome receipt did not recover commit", applied, got, disposition, err)
+	}
+}
+
 func TestProviderFailureMapsToRecoverableJobOutcome(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -213,14 +288,23 @@ func TestManifestCapabilitiesFencePageBeforeEvidence(t *testing.T) {
 
 type gateFake struct {
 	commitCalls, failureCalls int
-	rejectCalls               int
+	rejectCalls, receiptCalls int
 	outcomeState              jobs.State
 	outcomeReason             jobs.Reason
 	outcomeDelay              time.Duration
 	beforeRead                func(context.Context, household.Principal, jobs.Job) error
 	commit                    func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error)
 	failure                   func(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error)
+	receipt                   func(context.Context, household.Principal, jobs.Job, string, admission.ResultKind) (bool, error)
 	reject                    func(context.Context, household.Principal, jobs.Job, string) error
+}
+
+func (g *gateFake) ResultReceipt(ctx context.Context, p household.Principal, job jobs.Job, evidence string, kind admission.ResultKind) (bool, error) {
+	g.receiptCalls++
+	if g.receipt == nil {
+		return false, nil
+	}
+	return g.receipt(ctx, p, job, evidence, kind)
 }
 
 func (g *gateFake) BeforeRead(ctx context.Context, p household.Principal, job jobs.Job) error {

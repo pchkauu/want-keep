@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -238,6 +239,8 @@ func (g *fixtureGateway) Read(context.Context, ingestion.JobToken) (ingestion.Re
 type fileEvidenceStore struct {
 	path string
 	fail bool
+	mu   sync.Mutex
+	last ingestion.EvidenceBatch
 }
 
 func (s *fileEvidenceStore) Save(_ context.Context, batch ingestion.EvidenceBatch) error {
@@ -247,6 +250,9 @@ func (s *fileEvidenceStore) Save(_ context.Context, batch ingestion.EvidenceBatc
 	if err := batch.Validate(); err != nil {
 		return err
 	}
+	s.mu.Lock()
+	s.last = batch
+	s.mu.Unlock()
 	prefix := s.batchPrefix(batch.HouseholdID, batch.JobID, batch.PageReference)
 	for _, item := range batch.Items {
 		name := prefix + string(batch.Disposition) + "_" + s.safeName(item.Reference)
@@ -259,6 +265,12 @@ func (s *fileEvidenceStore) Save(_ context.Context, batch ingestion.EvidenceBatc
 		}
 	}
 	return nil
+}
+
+func (s *fileEvidenceStore) Last() ingestion.EvidenceBatch {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.last
 }
 
 func (s *fileEvidenceStore) SetDisposition(_ context.Context, disposition ingestion.EvidenceDisposition) error {

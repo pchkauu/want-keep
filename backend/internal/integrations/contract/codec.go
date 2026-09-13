@@ -32,7 +32,7 @@ var (
 
 func DecodeManifest(data []byte, provider string) (ingestion.Manifest, error) {
 	var source generated.CapabilityManifest
-	if err := decodeStrict(data, &source); err != nil {
+	if err := decodeStrict(data, &source, validManifestShape); err != nil {
 		return ingestion.Manifest{}, err
 	}
 	result := ingestion.Manifest{Provider: string(source.Provider), Version: string(source.ContractVersion), Paginated: source.History.Paginated}
@@ -96,11 +96,8 @@ func DecodeResult(data []byte, expected ingestion.JobToken) (ingestion.Result, e
 		return ingestion.Result{}, err
 	}
 	var source generated.SyncResult
-	if err := decodeStrict(data, &source); err != nil {
+	if err := decodeStrict(data, &source, validResultShape); err != nil {
 		return ingestion.Result{}, err
-	}
-	if !resultCursorPresent(data, string(source.Outcome)) {
-		return ingestion.Result{}, ingestion.ErrInvalidContract
 	}
 	if !source.Outcome.Valid() || (source.Page == nil) == (source.Failure == nil) {
 		return ingestion.Result{}, ingestion.ErrInvalidContract
@@ -122,26 +119,6 @@ func DecodeResult(data []byte, expected ingestion.JobToken) (ingestion.Result, e
 		return ingestion.Result{}, ingestion.ErrInvalidContract
 	}
 	return result, nil
-}
-
-func resultCursorPresent(data []byte, outcome string) bool {
-	var envelope struct {
-		Page    map[string]json.RawMessage `json:"page"`
-		Failure map[string]json.RawMessage `json:"failure"`
-	}
-	if json.Unmarshal(data, &envelope) != nil {
-		return false
-	}
-	switch outcome {
-	case "page":
-		_, present := envelope.Page["cursor"]
-		return present
-	case "failure":
-		_, present := envelope.Failure["cursor"]
-		return present
-	default:
-		return false
-	}
 }
 
 func pageFromGenerated(source generated.SyncPage, expected ingestion.JobToken) (ingestion.Page, error) {
@@ -246,11 +223,7 @@ func coverageFromGenerated(source generated.Coverage) (reporting.Coverage, error
 }
 
 func recordFromGenerated(source generated.IngestionRecord) (ingestion.Record, error) {
-	canonical, err := json.Marshal(source)
-	if err != nil {
-		return ingestion.Record{}, ingestion.ErrInvalidContract
-	}
-	result := ingestion.Record{Kind: ingestion.RecordKind(source.RecordType), CanonicalPayload: canonical}
+	result := ingestion.Record{Kind: ingestion.RecordKind(source.RecordType)}
 	count := 0
 	if source.Account != nil {
 		count++
@@ -295,7 +268,43 @@ func recordFromGenerated(source generated.IngestionRecord) (ingestion.Record, er
 	default:
 		return ingestion.Record{}, ingestion.ErrInvalidContract
 	}
+	canonical, err := canonicalRecord(source)
+	if err != nil {
+		return ingestion.Record{}, err
+	}
+	result.CanonicalPayload = canonical
 	return result, nil
+}
+
+func canonicalRecord(source generated.IngestionRecord) ([]byte, error) {
+	encoded, err := json.Marshal(source)
+	if err != nil {
+		return nil, ingestion.ErrInvalidContract
+	}
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(encoded, &envelope) != nil {
+		return nil, ingestion.ErrInvalidContract
+	}
+	for _, field := range []string{"account", "balanceSnapshot", "transaction"} {
+		raw, ok := envelope[field]
+		if !ok {
+			continue
+		}
+		var payload map[string]json.RawMessage
+		if json.Unmarshal(raw, &payload) != nil {
+			return nil, ingestion.ErrInvalidContract
+		}
+		delete(payload, "evidenceId")
+		envelope[field], err = json.Marshal(payload)
+		if err != nil {
+			return nil, ingestion.ErrInvalidContract
+		}
+	}
+	encoded, err = json.Marshal(envelope)
+	if err != nil {
+		return nil, ingestion.ErrInvalidContract
+	}
+	return encoded, nil
 }
 
 func accountFromGenerated(source generated.AccountRecord) (ingestion.AccountRecord, error) {
@@ -416,14 +425,14 @@ func instant(value string) (calendar.Instant, error) {
 	return calendar.ParseInstant(value)
 }
 
-func decodeStrict(data []byte, target any) error {
+func decodeStrict(data []byte, target any, validShape func(any) bool) error {
 	if len(data) == 0 || len(data) > MaxEncodedResultBytes || !validJSONUnicode(data) {
 		return ingestion.ErrInvalidContract
 	}
 	var shape any
 	shapeDecoder := json.NewDecoder(bytes.NewReader(data))
 	shapeDecoder.UseNumber()
-	if err := shapeDecoder.Decode(&shape); err != nil || jsonValueContainsNull(shape) {
+	if err := shapeDecoder.Decode(&shape); err != nil || jsonValueContainsNull(shape) || !validShape(shape) {
 		return ingestion.ErrInvalidContract
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
@@ -436,6 +445,176 @@ func decodeStrict(data []byte, target any) error {
 		return ingestion.ErrInvalidContract
 	}
 	return nil
+}
+
+func validManifestShape(value any) bool {
+	root, ok := requiredObject(value, "provider", "contractVersion", "actions", "products", "logs", "history")
+	if !ok {
+		return false
+	}
+	logs, ok := root["logs"].([]any)
+	if !ok {
+		return false
+	}
+	for _, value := range logs {
+		if _, ok = requiredObject(value, "product", "namespace", "recordKinds"); !ok {
+			return false
+		}
+	}
+	_, ok = requiredObject(root["history"], "paginated")
+	return ok
+}
+
+func validResultShape(value any) bool {
+	root, ok := requiredObject(value, "outcome")
+	if !ok {
+		return false
+	}
+	outcome, ok := root["outcome"].(string)
+	if !ok {
+		return false
+	}
+	field := outcome
+	if field != "page" && field != "failure" {
+		return false
+	}
+	payload, ok := requiredObject(root[field], "jobId", "attempt", "leaseToken", "connectionGeneration", "binding", "admissionRevision", "cursor")
+	if !ok || !validBindingShape(payload["binding"]) {
+		return false
+	}
+	if field == "failure" {
+		if _, ok = requiredObject(payload, "kind", "retryable", "evidence"); !ok {
+			return false
+		}
+		return validEvidenceList(payload["evidence"])
+	}
+	if _, ok = requiredObject(payload, "complete", "coverage", "evidence", "records"); !ok || !validCoverageShape(payload["coverage"]) || !validEvidenceList(payload["evidence"]) {
+		return false
+	}
+	records, ok := payload["records"].([]any)
+	if !ok {
+		return false
+	}
+	for _, record := range records {
+		if !validRecordShape(record) {
+			return false
+		}
+	}
+	return true
+}
+
+func validBindingShape(value any) bool {
+	_, ok := requiredObject(value, "provider", "environment", "adapterBuildDigest", "collectorImageDigest", "contractVersion", "allowlistRevision", "nonSecretConfigRevision", "operatorPermissionRevision")
+	return ok
+}
+
+func validCoverageShape(value any) bool {
+	_, ok := requiredObject(value, "state", "gaps")
+	return ok
+}
+
+func validEvidenceList(value any) bool {
+	items, ok := value.([]any)
+	if !ok {
+		return false
+	}
+	for _, item := range items {
+		if _, ok = requiredObject(item, "id", "mediaType", "data", "sha256", "locator"); !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func validRecordShape(value any) bool {
+	record, ok := requiredObject(value, "recordType")
+	if !ok {
+		return false
+	}
+	kind, ok := record["recordType"].(string)
+	if !ok {
+		return false
+	}
+	switch kind {
+	case "account":
+		payload, valid := requiredObject(record["account"], "externalAccountId", "product", "logNamespace", "assetCode", "name", "openingDate", "evidenceId")
+		if !valid {
+			return false
+		}
+		if aliases, exists := payload["aliases"]; exists {
+			items, valid := aliases.([]any)
+			if !valid {
+				return false
+			}
+			for _, item := range items {
+				if _, valid = requiredObject(item, "id", "label", "lastFour"); !valid {
+					return false
+				}
+			}
+		}
+		return true
+	case "balance_snapshot":
+		payload, valid := requiredObject(record["balanceSnapshot"], "externalAccountId", "product", "logNamespace", "assetCode", "sourceAsOf", "owned", "available", "locked", "debt", "creditLimit", "ownAvailable", "coverage", "freshness", "evidenceId")
+		if !valid || !validCoverageShape(payload["coverage"]) {
+			return false
+		}
+		for _, field := range []string{"owned", "available", "locked", "debt", "creditLimit"} {
+			if !validAmountShape(payload[field]) {
+				return false
+			}
+		}
+		return true
+	case "transaction":
+		payload, valid := requiredObject(record["transaction"], "externalAccountId", "product", "logNamespace", "providerRecordId", "classification", "providerState", "economicType", "occurredAt", "feeKnowledge", "evidenceId", "postings")
+		if !valid {
+			return false
+		}
+		postings, valid := payload["postings"].([]any)
+		if !valid {
+			return false
+		}
+		for _, posting := range postings {
+			if _, valid = requiredObject(posting, "externalAccountId", "product", "assetCode", "money", "role"); !valid {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+func validAmountShape(value any) bool {
+	amount, ok := requiredObject(value, "state", "assetCode")
+	if !ok {
+		return false
+	}
+	state, ok := amount["state"].(string)
+	if !ok {
+		return false
+	}
+	if state == "known" {
+		_, ok = amount["amount"]
+		return ok
+	}
+	if state == "unknown" || state == "unavailable" {
+		_, ok = amount["reason"]
+		return ok
+	}
+	return false
+}
+
+func requiredObject(value any, fields ...string) (map[string]any, bool) {
+	object, ok := value.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	for _, field := range fields {
+		if _, ok = object[field]; !ok {
+			return nil, false
+		}
+	}
+	return object, true
 }
 
 func jsonValueContainsNull(value any) bool {

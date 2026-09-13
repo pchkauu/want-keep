@@ -148,7 +148,10 @@ sequenceDiagram
     G->>G: Атомарно сохранить waiting/retry/failed
   else binding/revision/generation/lease/cursor актуальны
     G->>A: CommitPage: resolve accounts + source revisions + observations/postings
-    A-->>G: Audit/outbox/checkpoint атомарно
+    A-->>G: Audit/outbox/checkpoint + immutable receipt атомарно
+    opt Подтверждение commit потеряно
+      G->>G: Readback receipt; без доказательства оставить staged
+    end
     opt account/source ambiguity
       A->>Q: Evidence + source_ambiguous/transaction_unresolved
       A-->>G: Partial coverage без неподтверждённого эффекта
@@ -160,4 +163,4 @@ sequenceDiagram
   end
 ```
 
-Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Provider failure также повторяет issued cursor; sync-result boundary отклоняет запоздалый outcome прежней страницы, а общая lease identity продолжает heartbeat после продвижения checkpoint. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи. Подтверждённый provider mapping `RUR → RUB` сохраняет raw code в evidence/metadata и использует RUB в финансовом домене.
+Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Provider failure также повторяет issued cursor; sync-result boundary отклоняет запоздалый outcome прежней страницы, а общая lease identity продолжает heartbeat после продвижения checkpoint. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи. Подтверждённый provider mapping `RUR → RUB` сохраняет raw code в evidence/metadata и использует RUB в финансовом домене. Повтор с новым evidence ID/locator и тем же нормализованным payload/raw digest не создаёт source revision. Неизвестный результат commit подтверждается только атомарной receipt; без неё evidence остаётся staged.

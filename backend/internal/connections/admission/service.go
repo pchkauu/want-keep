@@ -10,6 +10,31 @@ import (
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 )
 
+var ErrCommitOutcomeUnknown = errors.New("transaction commit outcome unknown")
+
+type ResultKind string
+
+const (
+	PageResult            ResultKind = "page"
+	ProviderOutcomeResult ResultKind = "provider_outcome"
+)
+
+func (k ResultKind) Valid() bool { return k == PageResult || k == ProviderOutcomeResult }
+
+type ResultReceipt struct {
+	HouseholdID household.HouseholdID
+	JobID       string
+	LeaseToken  string
+	Attempt     int
+	InputCursor string
+	EvidenceRef string
+	Kind        ResultKind
+}
+
+func (r ResultReceipt) Matches(p household.Principal, issued jobs.Job, evidence string, kind ResultKind) bool {
+	return kind.Valid() && r.Kind == kind && r.HouseholdID == p.HouseholdID() && r.JobID == issued.ID && r.LeaseToken == issued.LeaseToken && r.Attempt == issued.Attempt && r.InputCursor == issued.Cursor && r.EvidenceRef == evidence
+}
+
 type Connection struct {
 	HouseholdID   household.HouseholdID
 	ID, Provider  string
@@ -38,6 +63,8 @@ type Repository interface {
 	FinishJob(context.Context, household.Principal, jobs.Job) error
 	FailJob(context.Context, household.Principal, jobs.Job) error
 	SetJobOutcome(context.Context, household.Principal, jobs.Job, jobs.State, jobs.Reason, time.Duration) error
+	SaveResultReceipt(context.Context, household.Principal, jobs.Job, string, ResultKind) error
+	ResultReceipt(context.Context, household.Principal, jobs.Job, string) (ResultReceipt, bool, error)
 	SyncDue(context.Context, string) (bool, error)
 	AdvanceSyncSchedule(context.Context, string) error
 }
@@ -291,6 +318,9 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 					return err
 				}
 			}
+			if err = s.repository.SaveResultReceipt(ctx, p, issued, page.EvidenceRef, PageResult); err != nil {
+				return err
+			}
 			applied = true
 			return nil
 		})
@@ -326,6 +356,9 @@ func (s *Service) CommitProviderOutcome(ctx context.Context, p household.Princip
 			if err := s.repository.SetJobOutcome(ctx, p, issued, state, reason, delay); err != nil {
 				return err
 			}
+			if err := s.repository.SaveResultReceipt(ctx, p, issued, evidence, ProviderOutcomeResult); err != nil {
+				return err
+			}
 			applied = true
 			return nil
 		})
@@ -334,6 +367,17 @@ func (s *Service) CommitProviderOutcome(ctx context.Context, p household.Princip
 		return false, s.quarantineResult(ctx, p, issued.ID, evidence)
 	}
 	return applied && err == nil, err
+}
+
+func (s *Service) ResultReceipt(ctx context.Context, p household.Principal, issued jobs.Job, evidence string, kind ResultKind) (bool, error) {
+	if issued.HouseholdID != p.HouseholdID() || evidence == "" || len(evidence) > 2000 || !kind.Valid() {
+		return false, jobs.ErrInvalidJob
+	}
+	receipt, found, err := s.repository.ResultReceipt(ctx, p, issued, evidence)
+	if err != nil || !found {
+		return false, err
+	}
+	return receipt.Matches(p, issued, evidence, kind), nil
 }
 
 // RetainRejectedResult associates evidence that was staged before a page failed

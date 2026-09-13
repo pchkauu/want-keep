@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	application "github.com/pchkauu/want-keep/backend/internal/integrations/application"
 	ingestion "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
@@ -45,6 +46,10 @@ func TestProviderFailuresPersistRecoverableJobOutcomes(t *testing.T) {
 			applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
 			if err != nil || !applied || failure == nil || failure.Kind != test.kind {
 				t.Fatal("provider failure was not committed", applied, failure, err)
+			}
+			confirmed, receiptErr := f.gate.ResultReceipt(testContext, f.p, job, f.evidence.Last().PageReference, admission.ProviderOutcomeResult)
+			if receiptErr != nil || !confirmed {
+				t.Fatal("provider outcome receipt was not readable", confirmed, receiptErr)
 			}
 			var state, reason string
 			var availableAt time.Time
@@ -281,11 +286,35 @@ func contains(values []string, target string) bool {
 
 func TestGoldenPageRoundTripsThroughPostgreSQLWithoutDuplicateEffects(t *testing.T) {
 	f := newFixture(t)
-	for range 2 {
+	for attempt := range 2 {
 		job := f.issued()
-		applied, failure, err := f.service.Ingest(testContext, f.p, job, f.gateway(job))
+		gateway := f.gateway(job)
+		if attempt == 1 {
+			gateway = f.gatewayWithMutation(job, func(root map[string]any) {
+				page := root["page"].(map[string]any)
+				page["evidence"].([]any)[0].(map[string]any)["id"] = "replayed-evidence"
+				page["evidence"].([]any)[0].(map[string]any)["locator"] = "synthetic:replayed"
+				for _, raw := range page["records"].([]any) {
+					record := raw.(map[string]any)
+					for _, field := range []string{"account", "balanceSnapshot", "transaction"} {
+						if payload, ok := record[field].(map[string]any); ok {
+							payload["evidenceId"] = "replayed-evidence"
+						}
+					}
+				}
+			})
+		}
+		applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
 		if err != nil || !applied || failure != nil {
 			t.Fatal(applied, failure, err)
+		}
+		confirmed, err := f.gate.ResultReceipt(testContext, f.p, job, f.evidence.Last().PageReference, admission.PageResult)
+		if err != nil || !confirmed {
+			t.Fatal("committed page receipt was not readable", confirmed, err)
+		}
+		wrongKind, err := f.gate.ResultReceipt(testContext, f.p, job, f.evidence.Last().PageReference, admission.ProviderOutcomeResult)
+		if err != nil || wrongKind {
+			t.Fatal("receipt matched a different outcome kind", wrongKind, err)
 		}
 	}
 	if f.count("accounts") != 6 || f.count("account_observations") != 6 || f.count("card_aliases") != 1 {
@@ -325,6 +354,26 @@ func TestGoldenPageRoundTripsThroughPostgreSQLWithoutDuplicateEffects(t *testing
 	}
 	if files, _ := os.ReadDir(f.evidence.path); len(files) != 2 {
 		t.Fatalf("raw evidence was not retained for both deliveries: %d", len(files))
+	}
+}
+
+func TestResultReceiptIsImmutableForApplicationRole(t *testing.T) {
+	f := newFixture(t)
+	job := f.issued()
+	if applied, failure, err := f.service.Ingest(testContext, f.p, job, f.gateway(job)); err != nil || !applied || failure != nil {
+		t.Fatal("page was not committed", applied, failure, err)
+	}
+	connection, err := f.admin.Acquire(testContext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Release()
+	if _, err = connection.Exec(testContext, "SET ROLE want_keep_app"); err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Exec(testContext, "RESET ROLE")
+	if _, err = connection.Exec(testContext, `UPDATE want_keep.ingestion_result_receipts SET attempt=attempt+1 WHERE household_id=$1 AND job_id=$2`, f.family.ID, job.ID); err == nil {
+		t.Fatal("application role changed immutable ingestion receipt")
 	}
 }
 

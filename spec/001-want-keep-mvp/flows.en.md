@@ -148,7 +148,10 @@ sequenceDiagram
     G->>G: Atomically retain waiting/retry/failed
   else binding/revision/generation/lease/cursor are current
     G->>A: CommitPage: resolve accounts + source revisions + observations/postings
-    A-->>G: Audit/outbox/checkpoint atomically
+    A-->>G: Audit/outbox/checkpoint + immutable receipt atomically
+    opt Commit acknowledgement is lost
+      G->>G: Read receipt; leave staged without proof
+    end
     opt account/source ambiguity
       A->>Q: Evidence + source_ambiguous/transaction_unresolved
       A-->>G: Partial coverage without an unconfirmed effect
@@ -160,4 +163,4 @@ sequenceDiagram
   end
 ```
 
-A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. A provider failure also echoes the issued cursor; the sync-result boundary rejects a delayed outcome from an earlier page, while the shared lease identity keeps heartbeat valid after checkpoint advancement. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records. A confirmed `RUR → RUB` provider mapping preserves the raw code in evidence/metadata and uses RUB in the financial domain.
+A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. A provider failure also echoes the issued cursor; the sync-result boundary rejects a delayed outcome from an earlier page, while the shared lease identity keeps heartbeat valid after checkpoint advancement. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records. A confirmed `RUR → RUB` provider mapping preserves the raw code in evidence/metadata and uses RUB in the financial domain. A replay with a new evidence ID/locator and the same normalized payload/raw digest creates no source revision. Only the atomic receipt proves an unknown commit outcome; without it evidence remains staged.
