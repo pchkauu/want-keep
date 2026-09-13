@@ -221,11 +221,14 @@ func (s *Service) retainRejectedEvidence(ctx context.Context, p household.Princi
 	gateErr := s.withEvidenceLifecycleContext(ctx, func(lifecycle context.Context) error {
 		return s.gate.RetainRejectedResult(lifecycle, p, issued, batch.PageReference)
 	})
+	if gateErr != nil {
+		return errors.Join(ingestion.ErrEvidence, gateErr)
+	}
 	storeErr := s.setEvidenceDisposition(ctx, batch, ingestion.EvidenceRejected)
-	if gateErr == nil && storeErr == nil {
+	if storeErr == nil {
 		return nil
 	}
-	return errors.Join(ingestion.ErrEvidence, gateErr, storeErr)
+	return errors.Join(ingestion.ErrEvidence, storeErr)
 }
 
 func (s *Service) setEvidenceDisposition(ctx context.Context, batch ingestion.EvidenceBatch, state ingestion.EvidenceDispositionState) error {

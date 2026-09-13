@@ -157,10 +157,11 @@ sequenceDiagram
       A-->>G: Partial coverage без неподтверждённого эффекта
     end
   else page отклонена после staging
-    G->>Q: Durable rejected_result через отдельный lifecycle context; staged остаётся при сбое
+    G->>Q: Durable retention через отдельный lifecycle context
+    Q-->>G: Только успех переводит staged в rejected_result
   else результат устарел
     G->>Q: Evidence reference + safe reason
   end
 ```
 
-Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Provider failure также повторяет issued cursor; sync-result boundary отклоняет запоздалый outcome прежней страницы, а общая lease identity продолжает heartbeat после продвижения checkpoint. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи. Подтверждённый provider mapping `RUR → RUB` сохраняет raw code в evidence/metadata и использует RUB в финансовом домене. Повтор с новым evidence ID/locator и тем же нормализованным payload/raw digest не создаёт source revision. Неизвестный результат commit подтверждается только атомарной receipt; без неё evidence остаётся staged.
+Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Provider failure также повторяет issued cursor; sync-result boundary отклоняет запоздалый outcome прежней страницы, а общая lease identity продолжает heartbeat после продвижения checkpoint. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Совокупный набор gaps после объединения с checkpoint ограничен 100 значениями; переполнение откатывает страницу. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи. Подтверждённый provider mapping `RUR → RUB` сохраняет raw code в evidence/metadata и использует RUB в финансовом домене. Повтор с новым evidence ID/locator, эквивалентными пустыми optional-полями и тем же нормализованным payload/raw digest не создаёт source revision. Неизвестный результат commit подтверждается только атомарной receipt; без неё evidence остаётся staged.

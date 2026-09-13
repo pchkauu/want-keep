@@ -310,6 +310,9 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 				return err
 			}
 			page = page.WithOmissions(append(append([]string{}, current.Gaps...), omissions...))
+			if err = page.Validate(); err != nil {
+				return err
+			}
 			if err = s.repository.SaveCheckpoint(ctx, issued, page.NextCursor, page.Coverage, page.Gaps); err != nil {
 				return err
 			}

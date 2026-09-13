@@ -214,6 +214,29 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 				}
 			}
 		},
+		"known amount with forbidden reason": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			records[1].(map[string]any)["balanceSnapshot"].(map[string]any)["owned"].(map[string]any)["reason"] = ""
+		},
+		"unknown amount with forbidden value": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			for _, raw := range records {
+				balance, ok := raw.(map[string]any)["balanceSnapshot"].(map[string]any)
+				if ok && balance["available"].(map[string]any)["state"] == "unknown" {
+					balance["available"].(map[string]any)["amount"] = ""
+					return
+				}
+			}
+		},
+		"empty optional enum": func(root map[string]any) {
+			firstTransaction(root)["pnlBasis"] = ""
+		},
+		"empty posting enum": func(root map[string]any) {
+			firstTransaction(root)["postings"].([]any)[0].(map[string]any)["funding"] = ""
+		},
+		"empty posting treatment": func(root map[string]any) {
+			firstTransaction(root)["postings"].([]any)[0].(map[string]any)["treatment"] = ""
+		},
 		"null required cursor": func(root map[string]any) {
 			root["page"].(map[string]any)["cursor"] = nil
 		},
@@ -327,6 +350,27 @@ func TestCanonicalRecordIgnoresPageLocalEvidenceIdentity(t *testing.T) {
 		for _, field := range []string{"account", "balanceSnapshot", "transaction"} {
 			if payload, ok := record[field].(map[string]any); ok {
 				payload["evidenceId"] = "replayed-evidence"
+				if payload["network"] == "" {
+					delete(payload, "network")
+				}
+				if field == "account" {
+					if _, present := payload["aliases"]; !present {
+						payload["aliases"] = []any{}
+					}
+				}
+				if field == "transaction" {
+					for _, optional := range []string{"merchant", "note"} {
+						if _, present := payload[optional]; !present {
+							payload[optional] = ""
+						}
+					}
+					for _, posting := range payload["postings"].([]any) {
+						value := posting.(map[string]any)
+						if value["network"] == "" {
+							delete(value, "network")
+						}
+					}
+				}
 			}
 		}
 	}
@@ -371,6 +415,12 @@ func TestProviderFailureRequiresExactCursorEcho(t *testing.T) {
 		t.Fatal("valid provider failure was rejected", err)
 	}
 	payload := failure["failure"].(map[string]any)
+	payload["safeMessage"] = ""
+	encoded, _ = json.Marshal(failure)
+	if _, err := contract.DecodeResult(encoded, goldenToken()); err != nil {
+		t.Fatal("empty optional safe message was rejected", err)
+	}
+	delete(payload, "safeMessage")
 	payload["retryable"] = nil
 	encoded, _ = json.Marshal(failure)
 	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
@@ -392,6 +442,19 @@ func TestProviderFailureRequiresExactCursorEcho(t *testing.T) {
 	encoded, _ = json.Marshal(failure)
 	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
 		t.Fatal("missing provider failure retryable flag was accepted")
+	}
+	payload["retryable"] = true
+	payload["kind"] = "temporary_failure"
+	payload["retryAfterSeconds"] = 0
+	encoded, _ = json.Marshal(failure)
+	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+		t.Fatal("explicit zero retry delay was accepted")
+	}
+	payload["retryable"] = false
+	payload["kind"] = "mfa_required"
+	encoded, _ = json.Marshal(failure)
+	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+		t.Fatal("explicit zero retry delay bypassed absent-only semantics")
 	}
 }
 

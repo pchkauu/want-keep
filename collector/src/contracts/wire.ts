@@ -211,7 +211,7 @@ function failure(value: unknown, expected: SyncRequest): void {
     ]),
   );
   boolean(object.retryable);
-  optionalText(object.safeMessage);
+  optionalTextOrEmpty(object.safeMessage);
   if (object.retryAfterSeconds !== undefined)
     integer(object.retryAfterSeconds, 1, 86_400);
   if (

@@ -350,9 +350,10 @@ describe("collector ingestion contract v10", () => {
     expect(() => parseSyncResult(failure, expectedRequest)).toThrow();
 
     const validFailure = structuredClone(failure) as {
-      failure: { retryable: boolean; cursor?: string };
+      failure: { retryable: boolean; cursor?: string; safeMessage?: string };
     };
     validFailure.failure.retryable = false;
+    validFailure.failure.safeMessage = "";
     expect(() => parseSyncResult(validFailure, expectedRequest)).not.toThrow();
     validFailure.failure.cursor = "stale-cursor";
     expect(() => parseSyncResult(validFailure, expectedRequest)).toThrow(

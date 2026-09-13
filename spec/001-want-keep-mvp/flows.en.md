@@ -157,10 +157,11 @@ sequenceDiagram
       A-->>G: Partial coverage without an unconfirmed effect
     end
   else page is rejected after staging
-    G->>Q: Durable rejected_result in a separate lifecycle context; retain staged on failure
+    G->>Q: Durable retention in a separate lifecycle context
+    Q-->>G: Only success moves staged to rejected_result
   else result is stale
     G->>Q: Evidence reference + safe reason
   end
 ```
 
-A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. A provider failure also echoes the issued cursor; the sync-result boundary rejects a delayed outcome from an earlier page, while the shared lease identity keeps heartbeat valid after checkpoint advancement. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records. A confirmed `RUR → RUB` provider mapping preserves the raw code in evidence/metadata and uses RUB in the financial domain. A replay with a new evidence ID/locator and the same normalized payload/raw digest creates no source revision. Only the atomic receipt proves an unknown commit outcome; without it evidence remains staged.
+A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. A provider failure also echoes the issued cursor; the sync-result boundary rejects a delayed outcome from an earlier page, while the shared lease identity keeps heartbeat valid after checkpoint advancement. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. The cumulative gap set after merging the checkpoint is capped at 100 values; overflow rolls the page back. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records. A confirmed `RUR → RUB` provider mapping preserves the raw code in evidence/metadata and uses RUB in the financial domain. A replay with a new evidence ID/locator, equivalent empty optional fields and the same normalized payload/raw digest creates no source revision. Only the atomic receipt proves an unknown commit outcome; without it evidence remains staged.

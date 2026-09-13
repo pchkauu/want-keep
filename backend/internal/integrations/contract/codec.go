@@ -159,6 +159,9 @@ func failureFromGenerated(source generated.ProviderFailure, expected ingestion.J
 	}
 	result := ingestion.ProviderFailure{Token: token, Kind: ingestion.FailureKind(source.Kind), Retryable: source.Retryable, Evidence: evidence}
 	if source.RetryAfterSeconds != nil {
+		if *source.RetryAfterSeconds < 1 || *source.RetryAfterSeconds > 86400 {
+			return ingestion.ProviderFailure{}, ingestion.ErrInvalidContract
+		}
 		result.RetryAfterSeconds = *source.RetryAfterSeconds
 	}
 	if source.SafeMessage != nil {
@@ -277,6 +280,7 @@ func recordFromGenerated(source generated.IngestionRecord) (ingestion.Record, er
 }
 
 func canonicalRecord(source generated.IngestionRecord) ([]byte, error) {
+	source = normalizeCanonicalRecord(source)
 	encoded, err := json.Marshal(source)
 	if err != nil {
 		return nil, ingestion.ErrInvalidContract
@@ -305,6 +309,40 @@ func canonicalRecord(source generated.IngestionRecord) ([]byte, error) {
 		return nil, ingestion.ErrInvalidContract
 	}
 	return encoded, nil
+}
+
+func normalizeCanonicalRecord(source generated.IngestionRecord) generated.IngestionRecord {
+	if source.Account != nil {
+		value := *source.Account
+		value.Network = nilIfEmpty(value.Network)
+		if value.Aliases != nil && len(*value.Aliases) == 0 {
+			value.Aliases = nil
+		}
+		source.Account = &value
+	}
+	if source.BalanceSnapshot != nil {
+		value := *source.BalanceSnapshot
+		value.Network = nilIfEmpty(value.Network)
+		source.BalanceSnapshot = &value
+	}
+	if source.Transaction != nil {
+		value := *source.Transaction
+		value.Merchant = nilIfEmpty(value.Merchant)
+		value.Note = nilIfEmpty(value.Note)
+		value.Postings = append([]generated.TransactionPosting(nil), value.Postings...)
+		for index := range value.Postings {
+			value.Postings[index].Network = nilIfEmpty(value.Postings[index].Network)
+		}
+		source.Transaction = &value
+	}
+	return source
+}
+
+func nilIfEmpty(value *string) *string {
+	if value != nil && *value == "" {
+		return nil
+	}
+	return value
 }
 
 func accountFromGenerated(source generated.AccountRecord) (ingestion.AccountRecord, error) {
@@ -396,7 +434,7 @@ func transactionFromGenerated(source generated.TransactionRecord) (ingestion.Tra
 			return ingestion.TransactionRecord{}, err
 		}
 	}
-	if result.Classification != "new" && result.Classification != "correction" && result.Classification != "ambiguous" || !validProviderState(result.ProviderState) || !validEconomicType(result.EconomicType) || (result.FeeKnowledge != "known" && result.FeeKnowledge != "unknown") || !validOptionalText(result.Merchant, ingestion.MaxTextLength) || !validOptionalText(result.Note, ingestion.MaxTextLength) || result.EconomicType != "trade_result" && result.PnLBasis != "" || result.PnLBasis != "" && result.PnLBasis != "gross" && result.PnLBasis != "net" {
+	if result.Classification != "new" && result.Classification != "correction" && result.Classification != "ambiguous" || !validProviderState(result.ProviderState) || !validEconomicType(result.EconomicType) || (result.FeeKnowledge != "known" && result.FeeKnowledge != "unknown") || !validOptionalText(result.Merchant, ingestion.MaxTextLength) || !validOptionalText(result.Note, ingestion.MaxTextLength) || source.PnlBasis != nil && !source.PnlBasis.Valid() || result.EconomicType != "trade_result" && source.PnlBasis != nil {
 		return ingestion.TransactionRecord{}, ingestion.ErrInvalidContract
 	}
 	for _, posting := range source.Postings {
@@ -405,7 +443,7 @@ func transactionFromGenerated(source generated.TransactionRecord) (ingestion.Tra
 			return ingestion.TransactionRecord{}, ingestion.ErrInvalidContract
 		}
 		p := ingestion.Posting{Reference: ref, Amount: posting.Money, Role: string(posting.Role), Funding: optionalEnum(posting.Funding), Treatment: optionalEnum(posting.Treatment)}
-		if !validPosting(p) {
+		if posting.Funding != nil && !posting.Funding.Valid() || posting.Treatment != nil && !posting.Treatment.Valid() || !validPosting(p) {
 			return ingestion.TransactionRecord{}, ingestion.ErrInvalidContract
 		}
 		result.Postings = append(result.Postings, p)
@@ -594,12 +632,14 @@ func validAmountShape(value any) bool {
 		return false
 	}
 	if state == "known" {
-		_, ok = amount["amount"]
-		return ok
+		_, hasAmount := amount["amount"]
+		_, hasReason := amount["reason"]
+		return hasAmount && !hasReason
 	}
 	if state == "unknown" || state == "unavailable" {
-		_, ok = amount["reason"]
-		return ok
+		_, hasAmount := amount["amount"]
+		_, hasReason := amount["reason"]
+		return hasReason && !hasAmount
 	}
 	return false
 }

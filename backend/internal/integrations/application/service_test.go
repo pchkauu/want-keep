@@ -96,6 +96,33 @@ func TestRejectedPageRetainsOwnedEvidenceDisposition(t *testing.T) {
 	}
 }
 
+func TestRejectedEvidenceStaysStagedWhenRetentionFails(t *testing.T) {
+	commitError := errors.New("invalid account projection")
+	retentionError := errors.New("rejection storage unavailable")
+	finalized := false
+	gate := &gateFake{
+		commit: func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error) {
+			return false, commitError
+		},
+		reject: func(context.Context, household.Principal, jobs.Job, string) error { return retentionError },
+	}
+	evidence := evidenceFake{
+		save: func(_ context.Context, batch ingestion.EvidenceBatch) error { return batch.Validate() },
+		disposition: func(context.Context, ingestion.EvidenceDisposition) error {
+			finalized = true
+			return nil
+		},
+	}
+	service, _ := application.NewService(gate, evidence, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+	job := issued()
+	token, _ := application.TokenFromJob(job)
+	result := page(token)
+	applied, failure, err := service.Ingest(context.Background(), principal(), job, &gatewayFake{result: ingestion.Result{Page: &result}})
+	if applied || failure != nil || !errors.Is(err, commitError) || !errors.Is(err, retentionError) || finalized {
+		t.Fatal("unretained rejection left staged evidence", applied, failure, finalized, err)
+	}
+}
+
 func TestProviderFailureCommitErrorRetainsEvidenceWithFreshContext(t *testing.T) {
 	commitError := errors.New("provider outcome unavailable")
 	ctx, cancel := context.WithCancel(context.Background())
