@@ -199,21 +199,31 @@ func (s *Store) BeginAIGeneration(ctx context.Context, p household.Principal, jo
 		if err != nil || current.State != ai.Reserved || current.ExternalStarted || current.Reservation == nil || current.BudgetMonth == nil {
 			return errors.Join(err, ai.ErrInvalidAttempt)
 		}
+		blocked, _, err := s.aiBudgetGate(ctx, scope.tx, p.HouseholdID())
+		if err != nil {
+			return err
+		}
+		if blocked {
+			gateErr = aiapp.ErrBudgetBlocked
+			return s.refuseAIReservation(ctx, scope.tx, p.HouseholdID(), attemptID, current, *current.Reservation, "budget_blocked", now)
+		}
 		generationMonth := startOfUTCMonth(now)
+		used, usageErr := s.aiMonthUsage(ctx, scope.tx, p.HouseholdID(), now)
+		if usageErr != nil {
+			return usageErr
+		}
+		total := used
 		if !current.BudgetMonth.Equal(generationMonth) {
-			used, usageErr := s.aiMonthUsage(ctx, scope.tx, p.HouseholdID(), now)
-			if usageErr != nil {
-				return usageErr
-			}
-			total, addErr := used.Add(*current.Reservation)
+			moved, addErr := used.Add(*current.Reservation)
 			if addErr != nil {
 				return addErr
 			}
+			total = moved
 			current.BudgetMonth = &generationMonth
-			if comparison, _ := total.Compare(ai.MustCost("50")); comparison > 0 {
-				gateErr = aiapp.ErrBudgetExhausted
-				return s.refuseAIReservation(ctx, scope.tx, p.HouseholdID(), attemptID, current, *current.Reservation, "budget_exhausted", now)
-			}
+		}
+		if comparison, _ := total.Compare(ai.MustCost("50")); comparison > 0 {
+			gateErr = aiapp.ErrBudgetExhausted
+			return s.refuseAIReservation(ctx, scope.tx, p.HouseholdID(), attemptID, current, *current.Reservation, "budget_exhausted", now)
 		}
 		current.Revision++
 		current.ExternalStarted = true
@@ -315,16 +325,6 @@ func (s *Store) MarkAIUnknown(ctx context.Context, p household.Principal, job jo
 	current.State, current.Code = ai.Unknown, code
 	current.Reconciliation = "pending"
 	current.ProviderID, current.ProviderModel, current.ObservedUsage = observation.ID, observation.Model, observation.Usage
-	if observation.Usage != nil {
-		if usage, exact := observation.Usage.Exact(); exact {
-			current.Usage = &usage
-			actual, conservative, costErr := ai.TerraPricing().Actual(usage)
-			if costErr != nil {
-				return costErr
-			}
-			current.Actual, current.Conservative = &actual, conservative
-		}
-	}
 	current.RecordedAt = now
 	return s.insertAIState(ctx, scope.tx, p.HouseholdID(), attemptID, current)
 }
