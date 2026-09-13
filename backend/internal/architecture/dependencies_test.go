@@ -82,6 +82,10 @@ import _ "net/http"
 
 import _ "github.com/pchkauu/want-keep/backend/internal/ai"
 `)
+	writeGoFile(t, internalRoot, "accounts/application/openai_sdk.go", `package application
+
+import _ "github.com/openai/openai-go/v3"
+`)
 	writeGoFile(t, internalRoot, "storage/repository.go", `package storage
 
 import _ "github.com/pchkauu/want-keep/backend/internal/delivery"
@@ -98,6 +102,7 @@ import _ "github.com/pchkauu/want-keep/backend/internal/delivery"
 	want := []string{
 		`accounts/application/ai_service.go: application layer must not import "github.com/pchkauu/want-keep/backend/internal/ai"`,
 		`accounts/application/http_service.go: application layer must not import "net/http"`,
+		`accounts/application/openai_sdk.go: application layer must not import "github.com/openai/openai-go/v3"`,
 		`accounts/application/stored_service.go: application layer must not import "github.com/pchkauu/want-keep/backend/internal/storage"`,
 		`accounts/domain/coordinated_account.go: domain layer must not import "github.com/pchkauu/want-keep/backend/internal/accounts/application"`,
 		`accounts/domain/decimal_account.go: domain layer must not import "github.com/cockroachdb/apd/v3"`,
@@ -219,6 +224,9 @@ func owningLayer(relative string) string {
 }
 
 func forbiddenImport(layer, importPath string) bool {
+	if (layer == "domain" || layer == "application") && importPath == modulePath+"/internal/ai" {
+		return true
+	}
 	for _, prefix := range []string{"attachments/files", "attachments/processor", "connections/credentials", "privacy/cryptobox"} {
 		if (layer == "domain" || layer == "application" || layer == "ai") && packageOrSubpackage(importPath, modulePath+"/internal/"+prefix) {
 			return true
@@ -232,10 +240,10 @@ func forbiddenImport(layer, importPath string) bool {
 		if strings.HasPrefix(importPath, modulePath+"/internal/connections/admission") {
 			return true
 		}
-		return isForbiddenInnerImport(importPath, "application", "delivery", "storage", "integrations", "gateways", "ai")
+		return isForbiddenInnerImport(importPath, "application", "delivery", "storage", "integrations", "gateways")
 	case "application":
-		return isForbiddenInnerImport(importPath, "delivery", "storage", "integrations", "gateways", "ai")
-	case "storage", "integrations", "gateways", "ai":
+		return isForbiddenInnerImport(importPath, "delivery", "storage", "integrations", "gateways")
+	case "storage", "integrations", "gateways":
 		return importsInternalLayer(importPath, "delivery")
 	}
 	return false

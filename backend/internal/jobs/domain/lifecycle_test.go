@@ -104,6 +104,7 @@ func TestJobRecoveryPolicy(t *testing.T) {
 	now := time.Date(2026, 9, 8, 0, 0, 0, 0, time.UTC)
 	for _, test := range []struct {
 		name                                                  string
+		kind                                                  Kind
 		state                                                 State
 		attempt                                               int
 		external, canceled, active, liveLease, futureDeadline bool
@@ -117,6 +118,7 @@ func TestJobRecoveryPolicy(t *testing.T) {
 		{name: "unstarted revoked", state: Ready, futureDeadline: true, dependency: HandlerUnavailable, want: Outcome{Failed, MembershipRevoked, 0}, changed: true},
 		{name: "unstarted canceled", state: Ready, canceled: true, active: true, dependency: HandlerUnavailable, want: Outcome{Canceled, Cancellation, 0}, changed: true},
 		{name: "retry exhausted", state: Running, attempt: 5, active: true, futureDeadline: true, dependency: HandlerUnavailable, want: Outcome{Failed, AttemptsExhausted, 5}, changed: true},
+		{name: "unstarted AI revoked", kind: AI, state: Running, attempt: 1, futureDeadline: true, want: Outcome{Failed, MembershipRevoked, 1}, changed: true},
 		{name: "unknown survives cancel and expiry", state: Running, attempt: 5, external: true, canceled: true, dependency: HandlerUnavailable, want: Outcome{Unresolved, ExternalUnknown, 5}, changed: true},
 		{name: "crashed attempt remains consumed", state: Running, attempt: 2, active: true, futureDeadline: true, dependency: HandlerUnavailable, want: Outcome{Waiting, HandlerUnavailable, 2}, changed: true},
 		{name: "live attempt untouched", state: Running, attempt: 1, active: true, liveLease: true, futureDeadline: true, dependency: HandlerUnavailable, want: Outcome{Running, "", 1}},
@@ -124,7 +126,7 @@ func TestJobRecoveryPolicy(t *testing.T) {
 		{name: "unresolved untouched", state: Unresolved, attempt: 5, external: true, want: Outcome{Unresolved, "", 5}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			j := Job{State: test.state, Attempt: test.attempt, MaxAttempts: 5, ExternalStarted: test.external, CancelRequested: test.canceled, Deadline: now, LeaseUntil: now}
+			j := Job{Kind: test.kind, State: test.state, Attempt: test.attempt, MaxAttempts: 5, ExternalStarted: test.external, CancelRequested: test.canceled, Deadline: now, LeaseUntil: now}
 			if test.futureDeadline {
 				j.Deadline = now.Add(time.Hour)
 			}
