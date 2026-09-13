@@ -4,13 +4,17 @@ package aibudget_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	aiapp "github.com/pchkauu/want-keep/backend/internal/ai/application"
 	ai "github.com/pchkauu/want-keep/backend/internal/ai/domain"
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	jobapp "github.com/pchkauu/want-keep/backend/internal/jobs/application"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 )
 
@@ -114,4 +118,53 @@ func TestRecoveryTerminatesUnstartedAIJobForRevokedMember(t *testing.T) {
 	if err != nil || len(claimed) != 0 {
 		t.Fatalf("revoked job reclaimed: %d/%v", len(claimed), err)
 	}
+}
+
+func TestPreGenerationRepositoryFailuresDoNotExhaustJob(t *testing.T) {
+	f := newFixture(t)
+	f.enqueueReviewJobs(1)
+	repository := &failingReviewRepository{Repository: f.store, remaining: 5}
+	gateway := &fakeGateway{result: completedResult()}
+	handler := aiapp.NewHandler(repository, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
+	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
+	queue := aiapp.NewGatewayQueue(f.store, time.Minute)
+	for range 5 {
+		if err := worker.Step(testContext); err == nil {
+			t.Fatal("repository failure was not returned")
+		}
+		var state, reason string
+		var attempt int
+		if err := f.admin.QueryRow(testContext, `SELECT state,reason,attempt FROM want_keep.jobs WHERE kind='ai'`).Scan(&state, &reason, &attempt); err != nil || state != "waiting" || reason != "gateway_unavailable" || attempt != 0 {
+			t.Fatalf("pre-generation failure consumed attempt: %s/%s/%d %v", state, reason, attempt, err)
+		}
+		if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET available_at=clock_timestamp() WHERE kind='ai'`); err != nil {
+			t.Fatal(err)
+		}
+		if err := queue.Step(testContext); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := worker.Step(testContext); err != nil {
+		t.Fatal(err)
+	}
+	var state string
+	if err := f.admin.QueryRow(testContext, `SELECT state FROM want_keep.jobs WHERE kind='ai'`).Scan(&state); err != nil || state != "succeeded" {
+		t.Fatalf("review did not recover: %s %v", state, err)
+	}
+	if gateway.countCalls.Load() != 1 || gateway.generateCalls.Load() != 1 {
+		t.Fatalf("provider calls after recovery: count=%d generation=%d", gateway.countCalls.Load(), gateway.generateCalls.Load())
+	}
+}
+
+type failingReviewRepository struct {
+	aiapp.Repository
+	remaining int
+}
+
+func (r *failingReviewRepository) ReviewInput(ctx context.Context, principal household.Principal, job jobs.Job) (json.RawMessage, error) {
+	if r.remaining > 0 {
+		r.remaining--
+		return nil, errors.New("synthetic repository failure")
+	}
+	return r.Repository.ReviewInput(ctx, principal, job)
 }

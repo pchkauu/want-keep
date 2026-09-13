@@ -278,7 +278,7 @@ func classifyError(err error, generation bool) error {
 			}
 		}
 		if !generation && (status == http.StatusUnauthorized || status == http.StatusForbidden) {
-			return aiapp.GatewayFailure{Code: "provider_configuration_invalid", Retryable: true}
+			return aiapp.GatewayFailure{Code: "provider_configuration_invalid"}
 		}
 		return aiapp.GatewayFailure{
 			Code:      "provider_rejected",

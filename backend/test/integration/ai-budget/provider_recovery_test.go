@@ -254,45 +254,33 @@ func TestKnownRetryableFailureAllowsOnlyOneNewAttempt(t *testing.T) {
 	}
 }
 
-func TestPrecountConfigurationFailureWaitsAndRecovers(t *testing.T) {
+func TestPrecountConfigurationFailureStopsWithoutAutomaticRetry(t *testing.T) {
 	f := newFixture(t)
 	f.enqueueReviewJobs(1)
 	gateway := &fakeGateway{
 		result:   completedResult(),
-		countErr: aiapp.GatewayFailure{Code: "provider_configuration_invalid", Retryable: true},
+		countErr: aiapp.GatewayFailure{Code: "provider_configuration_invalid"},
 	}
 	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
 	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
 	if err := worker.Step(testContext); err != nil {
 		t.Fatal(err)
 	}
-	var state, reason string
-	if err := f.admin.QueryRow(testContext, `SELECT state,reason FROM want_keep.jobs WHERE kind='ai'`).Scan(&state, &reason); err != nil || state != "waiting" || reason != "gateway_unavailable" {
-		t.Fatalf("precount outage did not wait: %s/%s %v", state, reason, err)
-	}
-	gateway.countErr = nil
-	gateway.generateErr = aiapp.GatewayFailure{Code: "provider_rate_limited", Retryable: true, ConfirmedNoCharge: true}
-	if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET available_at=clock_timestamp() WHERE kind='ai'`); err != nil {
+	var jobState, jobReason, attemptState, attemptCode string
+	if err := f.admin.QueryRow(testContext, `SELECT j.state,j.reason,s.state,s.code FROM want_keep.jobs j JOIN want_keep.ai_attempts a ON (a.household_id,a.job_id)=(j.household_id,j.id) JOIN LATERAL(SELECT state,code FROM want_keep.ai_attempt_states current WHERE (current.household_id,current.attempt_id)=(a.household_id,a.id) ORDER BY revision DESC LIMIT 1) s ON true WHERE j.kind='ai'`).Scan(&jobState, &jobReason, &attemptState, &attemptCode); err != nil {
 		t.Fatal(err)
+	}
+	if jobState != "failed" || jobReason != "permanent_failure" || attemptState != "known_rejection" || attemptCode != "provider_configuration_invalid" {
+		t.Fatalf("configuration rejection mismatch: %s/%s %s/%s", jobState, jobReason, attemptState, attemptCode)
 	}
 	if err := aiapp.NewGatewayQueue(f.store, time.Minute).Step(testContext); err != nil {
 		t.Fatal(err)
 	}
-	for step := range 2 {
-		if err := worker.Step(testContext); err != nil {
-			t.Fatal(err)
-		}
-		if step == 0 {
-			if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET available_at=clock_timestamp() WHERE kind='ai' AND state='ready'`); err != nil {
-				t.Fatal(err)
-			}
-		}
+	if err := worker.Step(testContext); err != nil {
+		t.Fatal(err)
 	}
-	if gateway.countCalls.Load() != 3 || gateway.generateCalls.Load() != 2 {
-		t.Fatalf("provider attempts after precount recovery: count=%d generation=%d", gateway.countCalls.Load(), gateway.generateCalls.Load())
-	}
-	if err := f.admin.QueryRow(testContext, `SELECT state FROM want_keep.jobs WHERE kind='ai'`).Scan(&state); err != nil || state != "failed" {
-		t.Fatalf("provider retry allowance mismatch: %s %v", state, err)
+	if gateway.countCalls.Load() != 1 || gateway.generateCalls.Load() != 0 {
+		t.Fatalf("configuration rejection retried: count=%d generation=%d", gateway.countCalls.Load(), gateway.generateCalls.Load())
 	}
 }
 

@@ -183,9 +183,6 @@ func TestProviderHTTPFailuresPreserveChargeUncertainty(t *testing.T) {
 				var failure aiapp.GatewayFailure
 				wantUnknown := call.name == "generation" && (testCase.status == http.StatusRequestTimeout || testCase.status == http.StatusTooManyRequests || testCase.status >= 500)
 				wantRetryable := testCase.retryable && !wantUnknown
-				if call.name == "count" && (testCase.status == http.StatusUnauthorized || testCase.status == http.StatusForbidden) {
-					wantRetryable = true
-				}
 				if testCase.status == http.StatusTooManyRequests {
 					wantRetryable = false
 				}
