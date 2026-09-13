@@ -22,7 +22,7 @@ Ledger хранит неизменяемые снимки распределен
 - `backend/internal/storage/`
 - `backend/internal/delivery/allocation/`
 - `backend/internal/delivery/ledger/`
-- `backend/migrations/016_family_allocations.sql`
+- `backend/migrations/017_family_allocations.sql`
 - `api/`
 - `backend/test/integration/family-allocation/`
 
@@ -277,7 +277,7 @@ Ledger stores immutable allocation snapshots by MembershipID independently from 
 - `backend/internal/storage/`
 - `backend/internal/delivery/allocation/`
 - `backend/internal/delivery/ledger/`
-- `backend/migrations/016_family_allocations.sql`
+- `backend/migrations/017_family_allocations.sql`
 - `api/`
 - `backend/test/integration/family-allocation/`
 

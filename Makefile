@@ -15,7 +15,7 @@ E2E_WEB_DIR ?= web
 
 .DEFAULT_GOAL := help
 
-.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts test-go test-web test-collector test-integration test-storage-race test-identity-race test-household-race test-accounts-race test-ledger-race test-audit-race test-matching-race test-categories-race test-family-allocation-race test-reconciliation-race test-jobs-race test-contract e2e eval-ai check-deploy backup-check restore-check
+.PHONY: help bootstrap check format-check format-check-go lint typecheck test test-tooling build docs-check check-contracts generate-contracts generate-ai-runtime-contract check-ai-runtime-contract test-go test-web test-collector test-integration test-storage-race test-identity-race test-household-race test-accounts-race test-ledger-race test-audit-race test-matching-race test-categories-race test-family-allocation-race test-reconciliation-race test-jobs-race test-ai-budget-race test-contract e2e eval-ai check-deploy backup-check restore-check
 
 help:
 	@echo "Want Keep repository commands"
@@ -31,7 +31,7 @@ bootstrap:
 	$(NPM) ci --prefix web
 	$(NPM) ci --prefix collector
 
-check: format-check lint typecheck test build docs-check check-contracts
+check: format-check lint typecheck test build docs-check check-contracts check-ai-runtime-contract
 
 format-check: format-check-go
 	$(NPM) --prefix web run format:check
@@ -80,6 +80,12 @@ generate-contracts:
 	@if [ ! -f api/openapi.yaml ] || [ ! -f api/oapi-codegen.yaml ] || [ ! -f scripts/generate-openapi.sh ]; then \
 		echo "OpenAPI generation is unavailable until task-1.2 supplies source, config and generator." >&2; exit 2; fi
 	sh scripts/generate-openapi.sh
+
+generate-ai-runtime-contract:
+	$(PYTHON) scripts/generate-openai-runtime.py --output backend/internal/gateways/openai/runtime_contract.json
+
+check-ai-runtime-contract:
+	sh scripts/check-openai-runtime.sh
 
 test-go:
 	cd backend && $(GO) test $(PKG)
@@ -189,3 +195,6 @@ test-reconciliation-race:
 
 test-jobs-race:
 	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/jobs/...
+
+test-ai-budget-race:
+	cd backend && $(GO) test -count=1 -race -tags=integration ./test/integration/ai-budget/...

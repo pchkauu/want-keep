@@ -98,14 +98,19 @@ func (j Job) Recover(now time.Time, membershipActive bool, dependency Reason) (O
 		out.State, out.Reason = Unresolved, ExternalUnknown
 	case j.CancelRequested:
 		out.State, out.Reason = Canceled, Cancellation
+	case !membershipActive:
+		out.Reason = MembershipRevoked
 	case j.State == Ready && j.Attempt == 0 && membershipActive && dependency.Waiting():
 		out.State, out.Reason = Waiting, dependency
 	case !now.Before(j.Deadline):
 		out.Reason = DeadlineExceeded
+	case j.Kind == AI && j.State == Running && !j.ExternalStarted:
+		out.State, out.Reason = Ready, TemporaryFailure
+		if out.Attempt > 0 {
+			out.Attempt--
+		}
 	case j.Attempt >= j.MaxAttempts:
 		out.Reason = AttemptsExhausted
-	case !membershipActive:
-		out.Reason = MembershipRevoked
 	case dependency.Waiting():
 		out.State, out.Reason = Waiting, dependency
 	case j.State == Running:
