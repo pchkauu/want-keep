@@ -13,6 +13,7 @@ type SourceRepository interface {
 	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
 	SaveSourceFact(context.Context, ledger.SourceRecord, ledger.Revision, string) error
 	Source(context.Context, household.Principal, ledger.SourceKey) (ledger.SourceRecord, bool, error)
+	HistoricalSourceRevision(context.Context, household.Principal, ledger.SourceRecord, string) (uint64, bool, error)
 	SaveSource(context.Context, ledger.SourceRecord, ledger.SourceInput) (ledger.SourceRecord, error)
 	RecordProvenance(context.Context, ledger.SourceRecord, ledger.SourceInput) error
 	RecordSourceAmbiguity(context.Context, ledger.SourceInput) error
@@ -63,16 +64,32 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		return ledger.SourceOutcome{}, err
 	}
 	var duplicate bool
+	provenance := current
 	if exists {
-		current, duplicate, err = current.Next(input)
-		if err != nil {
-			return ledger.SourceOutcome{}, err
+		if current.Ambiguous && input.Classification == "ambiguous" && current.PayloadHash != input.PayloadHash {
+			var revision uint64
+			revision, duplicate, err = s.repository.HistoricalSourceRevision(ctx, p, current, input.PayloadHash)
+			if err != nil {
+				return ledger.SourceOutcome{}, err
+			}
+			if duplicate {
+				provenance.Revision = revision
+				provenance.PayloadHash = input.PayloadHash
+			}
+		}
+		if !duplicate {
+			current, duplicate, err = current.Next(input)
+			if err != nil {
+				return ledger.SourceOutcome{}, err
+			}
+			provenance = current
 		}
 	} else {
 		current = ledger.SourceRecord{Key: input.Key, Revision: 1, PayloadHash: input.PayloadHash, Ambiguous: input.Classification != "new"}
 		if input.Operation != nil && !current.Ambiguous {
 			current.OperationID = input.Operation.OperationID
 		}
+		provenance = current
 	}
 	if !duplicate && input.Operation != nil && current.OperationID != "" && current.OperationID != input.Operation.OperationID {
 		current.Ambiguous = true
@@ -88,8 +105,9 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		if err != nil {
 			return ledger.SourceOutcome{}, err
 		}
+		provenance = current
 	}
-	if err = s.repository.RecordProvenance(ctx, current, input); err != nil {
+	if err = s.repository.RecordProvenance(ctx, provenance, input); err != nil {
 		if errors.Is(err, ledger.ErrSourceAmbiguous) {
 			return ledger.SourceOutcome{Record: ledger.SourceRecord{Key: input.Key, Ambiguous: true}}, s.recordAmbiguity(ctx, input)
 		}

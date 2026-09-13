@@ -37,6 +37,9 @@ func TestProviderFailuresPersistRecoverableJobOutcomes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
 			job := f.issued()
+			if err := f.store.BeginExternal(testContext, f.p, job); err != nil {
+				t.Fatal(err)
+			}
 			token, _ := application.TokenFromJob(job)
 			gateway := f.gateway(job)
 			gateway.result = ingestion.Result{Failure: &ingestion.ProviderFailure{
@@ -52,12 +55,13 @@ func TestProviderFailuresPersistRecoverableJobOutcomes(t *testing.T) {
 				t.Fatal("provider outcome receipt was not readable", confirmed, receiptErr)
 			}
 			var state, reason string
+			var externalStarted bool
 			var availableAt time.Time
-			if err = f.admin.QueryRow(testContext, `SELECT state,reason,available_at FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID).Scan(&state, &reason, &availableAt); err != nil {
+			if err = f.admin.QueryRow(testContext, `SELECT state,reason,external_started,available_at FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID).Scan(&state, &reason, &externalStarted, &availableAt); err != nil {
 				t.Fatal(err)
 			}
-			if state != test.wantState || reason != test.wantReason {
-				t.Fatal("provider outcome lost its lifecycle", state, reason)
+			if state != test.wantState || reason != test.wantReason || externalStarted {
+				t.Fatal("provider outcome lost its lifecycle", state, reason, externalStarted)
 			}
 			if test.wantDelay && time.Until(availableAt) < 50*time.Second {
 				t.Fatal("provider retry delay was discarded", availableAt)
@@ -272,6 +276,40 @@ func TestSamePageSourceIdentityIsPreflightedBeforeFinancialApply(t *testing.T) {
 				t.Fatal("same-page ambiguity coverage mismatch", coverage, gaps)
 			}
 		})
+	}
+}
+
+func TestConflictingSamePageSourceReplayDoesNotAdvanceHistory(t *testing.T) {
+	f := newFixture(t)
+	for range 2 {
+		job := f.issued()
+		gateway := f.gatewayWithMutation(job, func(root map[string]any) {
+			page := root["page"].(map[string]any)
+			records := page["records"].([]any)
+			for _, raw := range records {
+				record := raw.(map[string]any)
+				transaction, ok := record["transaction"].(map[string]any)
+				if !ok || transaction["providerRecordId"] != "expense-1" {
+					continue
+				}
+				encoded, _ := json.Marshal(record)
+				var conflicting map[string]any
+				_ = json.Unmarshal(encoded, &conflicting)
+				conflicting["transaction"].(map[string]any)["postings"].([]any)[0].(map[string]any)["money"] = "-700"
+				page["records"] = append(records, conflicting)
+				return
+			}
+		})
+		applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
+		if err != nil || !applied || failure != nil {
+			t.Fatal("conflicting source group replay failed", applied, failure, err)
+		}
+	}
+	if revisions := f.count("source_revisions"); revisions != 4 {
+		t.Fatalf("conflicting replay changed source history: revisions=%d", revisions)
+	}
+	if postings := f.count("postings"); postings != 4 {
+		t.Fatalf("conflicting replay changed financial effect: postings=%d", postings)
 	}
 }
 

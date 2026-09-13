@@ -59,6 +59,7 @@ type Repository interface {
 	Job(context.Context, household.Principal, string) (jobs.Job, error)
 	DatabaseTime(context.Context) (time.Time, error)
 	FenceSyncResult(context.Context, household.Principal, jobs.Job) error
+	AcknowledgeExternalResult(context.Context, household.Principal, jobs.Job) error
 	Quarantine(context.Context, jobs.Job, string, string) error
 	SaveCheckpoint(context.Context, jobs.Job, string, string, []string) error
 	ImportOmissions(context.Context, household.Principal, string) ([]string, error)
@@ -357,6 +358,9 @@ func (s *Service) CommitProviderOutcome(ctx context.Context, p household.Princip
 				return err
 			}
 			if err := s.repository.Quarantine(ctx, issued, evidence, "provider_outcome"); err != nil {
+				return err
+			}
+			if err := s.repository.AcknowledgeExternalResult(ctx, p, issued); err != nil {
 				return err
 			}
 			if err := s.repository.SetJobOutcome(ctx, p, issued, state, reason, delay); err != nil {

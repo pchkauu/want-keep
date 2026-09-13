@@ -326,7 +326,7 @@ func (s *Store) SaveResultReceipt(ctx context.Context, p household.Principal, j 
 		j.HouseholdID != p.HouseholdID() || evidence == "" || len(evidence) > 2000 || !kind.Valid() {
 		return ErrTransactionRequired
 	}
-	tag, err := scope.tx.Exec(ctx, `INSERT INTO want_keep.ingestion_result_receipts(household_id,id,job_id,lease_token,attempt,input_cursor,evidence_ref,kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(household_id,job_id,evidence_ref) DO NOTHING`, p.HouseholdID(), newID(), j.ID, j.LeaseToken, j.Attempt, j.Cursor, evidence, kind)
+	tag, err := scope.tx.Exec(ctx, `INSERT INTO want_keep.ingestion_result_receipts(household_id,id,job_id,lease_token,attempt,input_cursor,evidence_ref,kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(household_id,job_id,lease_token,attempt,input_cursor,evidence_ref) DO NOTHING`, p.HouseholdID(), newID(), j.ID, j.LeaseToken, j.Attempt, j.Cursor, evidence, kind)
 	if err != nil || tag.RowsAffected() == 1 {
 		return err
 	}
@@ -334,7 +334,7 @@ func (s *Store) SaveResultReceipt(ctx context.Context, p household.Principal, j 
 	var attempt int
 	var cursor string
 	var storedKind admission.ResultKind
-	if err = scope.tx.QueryRow(ctx, `SELECT lease_token,attempt,input_cursor,kind FROM want_keep.ingestion_result_receipts WHERE household_id=$1 AND job_id=$2 AND evidence_ref=$3`, p.HouseholdID(), j.ID, evidence).Scan(&lease, &attempt, &cursor, &storedKind); err != nil {
+	if err = scope.tx.QueryRow(ctx, `SELECT lease_token,attempt,input_cursor,kind FROM want_keep.ingestion_result_receipts WHERE household_id=$1 AND job_id=$2 AND lease_token=$3 AND attempt=$4 AND input_cursor=$5 AND evidence_ref=$6`, p.HouseholdID(), j.ID, j.LeaseToken, j.Attempt, j.Cursor, evidence).Scan(&lease, &attempt, &cursor, &storedKind); err != nil {
 		return err
 	}
 	if lease != j.LeaseToken || attempt != j.Attempt || cursor != j.Cursor || storedKind != kind {
