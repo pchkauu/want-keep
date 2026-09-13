@@ -61,11 +61,11 @@ func (h *Handler) Prepare(ctx context.Context, execution jobapp.Execution) (joba
 	if err != nil {
 		return h.recordKnownFailure(ctx, execution, request.ID, ai.MustCost("0"), "reservation_invalid", false, 0)
 	}
-	if err = h.repository.ReserveAIAttempt(ctx, execution.Principal, job, request.ID, counted, reservation, now); err != nil {
+	if err = h.repository.ReserveAIAttempt(ctx, execution.Principal, job, request.ID, counted, reservation, h.now().UTC()); err != nil {
 		return h.waitOrFail(err)
 	}
 	if err = h.repository.BeginAIGeneration(ctx, execution.Principal, job, request.ID, h.now().UTC()); err != nil {
-		return jobapp.Result{}, err
+		return h.waitOrFail(err)
 	}
 	providerResult, err := h.gateway.Generate(ctx, request)
 	if err != nil {

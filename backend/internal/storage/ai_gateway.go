@@ -128,7 +128,7 @@ func (s *Store) StartAIAttempt(ctx context.Context, p household.Principal, job j
 			return aiapp.ErrConcurrency
 		}
 		at, ns := splitAICallTime(now)
-		_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ai_attempts(household_id,id,job_id,actor_id,resource_id,resource_revision,purpose,model,qualification,request_fingerprint,prompt_fingerprint,schema_fingerprint,config_fingerprint,allowed_input,maximum_output_tokens,budget_month,created_at,created_ns) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,date_trunc('month',$16::timestamptz)::date,$16,$17)`, p.HouseholdID(), request.ID, job.ID, p.UserID(), request.ResourceID, request.ResourceRevision, request.Purpose, request.Model, request.Qualification, requestFingerprint, request.PromptFingerprint, request.SchemaFingerprint, request.ConfigFingerprint, request.Input, request.MaximumOutputTokens, at, ns)
+		_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ai_attempts(household_id,id,job_id,actor_id,resource_id,resource_revision,purpose,model,qualification,request_fingerprint,prompt_fingerprint,schema_fingerprint,config_fingerprint,allowed_input,maximum_output_tokens,created_at,created_ns) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`, p.HouseholdID(), request.ID, job.ID, p.UserID(), request.ResourceID, request.ResourceRevision, request.Purpose, request.Model, request.Qualification, requestFingerprint, request.PromptFingerprint, request.SchemaFingerprint, request.ConfigFingerprint, request.Input, request.MaximumOutputTokens, at, ns)
 		if err != nil {
 			return err
 		}
@@ -150,6 +150,8 @@ func (s *Store) ReserveAIAttempt(ctx context.Context, p household.Principal, job
 		if err != nil || current.State != ai.Counting {
 			return errors.Join(err, ai.ErrInvalidAttempt)
 		}
+		budgetMonth := startOfUTCMonth(now)
+		current.BudgetMonth = &budgetMonth
 		blocked, _, err := s.aiBudgetGate(ctx, scope.tx, p.HouseholdID())
 		if err != nil {
 			return err
@@ -178,7 +180,7 @@ func (s *Store) ReserveAIAttempt(ctx context.Context, p household.Principal, job
 			gateErr = aiapp.ErrBudgetExhausted
 			return s.refuseAIReservation(ctx, scope.tx, p.HouseholdID(), attemptID, current, reservation, "budget_exhausted", now)
 		}
-		return s.insertAIState(ctx, scope.tx, p.HouseholdID(), attemptID, aiState{Revision: current.Revision + 1, State: ai.Reserved, Counted: &counted, Reservation: &reservation, RecordedAt: now})
+		return s.insertAIState(ctx, scope.tx, p.HouseholdID(), attemptID, aiState{Revision: current.Revision + 1, State: ai.Reserved, Counted: &counted, Reservation: &reservation, BudgetMonth: &budgetMonth, RecordedAt: now})
 	})
 	if err != nil {
 		return err
@@ -187,14 +189,31 @@ func (s *Store) ReserveAIAttempt(ctx context.Context, p household.Principal, job
 }
 
 func (s *Store) BeginAIGeneration(ctx context.Context, p household.Principal, job jobs.Job, attemptID string, now time.Time) error {
-	return s.WithinHousehold(ctx, p, func(ctx context.Context) error {
+	var gateErr error
+	err := s.WithinHousehold(ctx, p, func(ctx context.Context) error {
 		if _, err := s.FenceJob(ctx, p, job); err != nil {
 			return err
 		}
 		scope, _ := s.familyScope(ctx)
 		current, err := s.lockAIState(ctx, scope.tx, p.HouseholdID(), attemptID)
-		if err != nil || current.State != ai.Reserved || current.ExternalStarted {
+		if err != nil || current.State != ai.Reserved || current.ExternalStarted || current.Reservation == nil || current.BudgetMonth == nil {
 			return errors.Join(err, ai.ErrInvalidAttempt)
+		}
+		generationMonth := startOfUTCMonth(now)
+		if !current.BudgetMonth.Equal(generationMonth) {
+			used, usageErr := s.aiMonthUsage(ctx, scope.tx, p.HouseholdID(), now)
+			if usageErr != nil {
+				return usageErr
+			}
+			total, addErr := used.Add(*current.Reservation)
+			if addErr != nil {
+				return addErr
+			}
+			current.BudgetMonth = &generationMonth
+			if comparison, _ := total.Compare(ai.MustCost("50")); comparison > 0 {
+				gateErr = aiapp.ErrBudgetExhausted
+				return s.refuseAIReservation(ctx, scope.tx, p.HouseholdID(), attemptID, current, *current.Reservation, "budget_exhausted", now)
+			}
 		}
 		current.Revision++
 		current.ExternalStarted = true
@@ -211,6 +230,10 @@ func (s *Store) BeginAIGeneration(ctx context.Context, p household.Principal, jo
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	return gateErr
 }
 
 func (s *Store) AIOutcomeRetryAllowed(ctx context.Context, p household.Principal, job jobs.Job) (bool, error) {
@@ -311,6 +334,7 @@ type aiState struct {
 	State           ai.State
 	Counted         *int64
 	Reservation     *ai.Cost
+	BudgetMonth     *time.Time
 	ExternalStarted bool
 	ProviderID      string
 	ProviderModel   string
@@ -327,7 +351,7 @@ type aiState struct {
 }
 
 func (s *Store) lockAIState(ctx context.Context, tx pgx.Tx, family household.HouseholdID, id string) (aiState, error) {
-	return scanAIState(tx.QueryRow(ctx, `SELECT revision,state,counted_input_tokens,reservation_usd::text,external_started,COALESCE(provider_id,''),COALESCE(provider_model,''),input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,observed_usage,actual_usd::text,conservative_cost,structured_output,validation_state,code,reconciliation_state,COALESCE(evidence_ref,''),recorded_at,recorded_ns FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, family, id))
+	return scanAIState(tx.QueryRow(ctx, `SELECT revision,state,counted_input_tokens,reservation_usd::text,budget_month,external_started,COALESCE(provider_id,''),COALESCE(provider_model,''),input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,observed_usage,actual_usd::text,conservative_cost,structured_output,validation_state,code,reconciliation_state,COALESCE(evidence_ref,''),recorded_at,recorded_ns FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, family, id))
 }
 
 func scanAIState(row pgx.Row) (aiState, error) {
@@ -337,7 +361,7 @@ func scanAIState(row pgx.Row) (aiState, error) {
 	var observed []byte
 	var at time.Time
 	var ns int16
-	err := row.Scan(&state.Revision, &state.State, &state.Counted, &reservation, &state.ExternalStarted, &state.ProviderID, &state.ProviderModel, &input, &cached, &writes, &output, &reasoning, &observed, &actual, &state.Conservative, &state.Output, &state.Validation, &state.Code, &state.Reconciliation, &state.EvidenceRef, &at, &ns)
+	err := row.Scan(&state.Revision, &state.State, &state.Counted, &reservation, &state.BudgetMonth, &state.ExternalStarted, &state.ProviderID, &state.ProviderModel, &input, &cached, &writes, &output, &reasoning, &observed, &actual, &state.Conservative, &state.Output, &state.Validation, &state.Code, &state.Reconciliation, &state.EvidenceRef, &at, &ns)
 	if err != nil {
 		return state, err
 	}
@@ -406,7 +430,7 @@ func (s *Store) insertAIState(ctx context.Context, tx pgx.Tx, family household.H
 		}
 		observed = encoded
 	}
-	_, err := tx.Exec(ctx, `INSERT INTO want_keep.ai_attempt_states(household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,external_started,provider_id,provider_model,input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,observed_usage,actual_usd,conservative_cost,structured_output,validation_state,code,reconciliation_state,evidence_ref,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,NULLIF($8,''),NULLIF($9,''),$10,$11,$12,$13,$14,$15,$16::numeric,$17,$18,$19,$20,$21,NULLIF($22,''),$23,$24)`, family, attemptID, state.Revision, state.State, state.Counted, reservation, state.ExternalStarted, state.ProviderID, state.ProviderModel, input, cached, writes, output, reasoning, observed, actual, state.Conservative, structured, state.Validation, state.Code, defaultReconciliation(state.Reconciliation), state.EvidenceRef, at, ns)
+	_, err := tx.Exec(ctx, `INSERT INTO want_keep.ai_attempt_states(household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,budget_month,external_started,provider_id,provider_model,input_tokens,cached_tokens,cache_write_tokens,output_tokens,reasoning_tokens,observed_usage,actual_usd,conservative_cost,structured_output,validation_state,code,reconciliation_state,evidence_ref,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,$6::numeric,$7,$8,NULLIF($9,''),NULLIF($10,''),$11,$12,$13,$14,$15,$16,$17::numeric,$18,$19,$20,$21,$22,NULLIF($23,''),$24,$25)`, family, attemptID, state.Revision, state.State, state.Counted, reservation, state.BudgetMonth, state.ExternalStarted, state.ProviderID, state.ProviderModel, input, cached, writes, output, reasoning, observed, actual, state.Conservative, structured, state.Validation, state.Code, defaultReconciliation(state.Reconciliation), state.EvidenceRef, at, ns)
 	return err
 }
 
@@ -422,10 +446,15 @@ func splitAICallTime(value time.Time) (time.Time, int16) {
 	return value.Truncate(time.Microsecond), int16(value.Nanosecond() % 1000)
 }
 
+func startOfUTCMonth(value time.Time) time.Time {
+	value = value.UTC()
+	return time.Date(value.Year(), value.Month(), 1, 0, 0, 0, 0, time.UTC)
+}
+
 func (s *Store) writeAISettlement(ctx context.Context, tx pgx.Tx, family household.HouseholdID, attemptID string, current aiState, settlement aiapp.Settlement, now time.Time) error {
 	next := aiState{
 		Revision: current.Revision + 1, State: settlement.Result.State, Counted: current.Counted,
-		Reservation: &settlement.Reservation, ExternalStarted: current.ExternalStarted,
+		Reservation: &settlement.Reservation, BudgetMonth: current.BudgetMonth, ExternalStarted: current.ExternalStarted,
 		ProviderID: settlement.Result.ProviderID, ProviderModel: settlement.Result.ProviderModel, Usage: &settlement.Result.Usage,
 		Actual: settlement.Actual, Conservative: settlement.Conservative, Output: settlement.Result.Output,
 		Code: settlement.Result.Code, RecordedAt: now,
@@ -453,7 +482,7 @@ func (s *Store) aiBudgetGate(ctx context.Context, tx pgx.Tx, family household.Ho
 
 func (s *Store) aiMonthUsage(ctx context.Context, tx pgx.Tx, family household.HouseholdID, now time.Time) (ai.Cost, error) {
 	var value string
-	err := tx.QueryRow(ctx, `WITH latest AS (SELECT DISTINCT ON(s.attempt_id) s.* FROM want_keep.ai_attempt_states s WHERE s.household_id=$1 ORDER BY s.attempt_id,s.revision DESC) SELECT COALESCE(sum(CASE WHEN l.actual_usd IS NOT NULL THEN l.actual_usd WHEN l.state IN ('reserved','unknown') THEN l.reservation_usd ELSE 0 END),0)::text FROM latest l JOIN want_keep.ai_attempts a ON (a.household_id,a.id)=(l.household_id,l.attempt_id) WHERE a.budget_month=date_trunc('month',$2::timestamptz)::date`, family, now.UTC()).Scan(&value)
+	err := tx.QueryRow(ctx, `WITH latest AS (SELECT DISTINCT ON(s.attempt_id) s.* FROM want_keep.ai_attempt_states s WHERE s.household_id=$1 ORDER BY s.attempt_id,s.revision DESC) SELECT COALESCE(sum(CASE WHEN l.actual_usd IS NOT NULL THEN l.actual_usd WHEN l.state IN ('reserved','unknown') THEN l.reservation_usd ELSE 0 END),0)::text FROM latest l WHERE l.budget_month=date_trunc('month',$2::timestamptz)::date`, family, now.UTC()).Scan(&value)
 	if err != nil {
 		return ai.Cost{}, err
 	}
@@ -480,7 +509,7 @@ func (s *Store) ResumeAIBudgetWaiting(ctx context.Context, now time.Time) (int64
 	 SELECT a.household_id,
 	  COALESCE(bool_or(l.reconciliation_state='pending' OR l.external_started AND l.state='reserved' AND (j.state!='running' OR j.lease_until IS NULL OR j.lease_until<=clock_timestamp())),false) blocked,
 	  count(*) FILTER(WHERE l.state IN ('counting','reserved')) active,
-	  COALESCE(sum(CASE WHEN a.budget_month=date_trunc('month',$1::timestamptz)::date THEN CASE WHEN l.actual_usd IS NOT NULL THEN l.actual_usd WHEN l.state IN ('reserved','unknown') THEN l.reservation_usd ELSE 0 END ELSE 0 END),0) used
+		  COALESCE(sum(CASE WHEN l.budget_month=date_trunc('month',$1::timestamptz)::date THEN CASE WHEN l.actual_usd IS NOT NULL THEN l.actual_usd WHEN l.state IN ('reserved','unknown') THEN l.reservation_usd ELSE 0 END ELSE 0 END),0) used
 	 FROM want_keep.ai_attempts a JOIN latest l ON (l.household_id,l.attempt_id)=(a.household_id,a.id) JOIN want_keep.jobs j ON (j.household_id,j.id)=(a.household_id,a.job_id)
 	 GROUP BY a.household_id
 	), pending AS (
@@ -488,7 +517,7 @@ func (s *Store) ResumeAIBudgetWaiting(ctx context.Context, now time.Time) (int64
 	 FROM want_keep.jobs j
 	 LEFT JOIN family_gate g ON g.household_id=j.household_id
 	 LEFT JOIN LATERAL (
-	  SELECT a.budget_month,l.code,l.reservation_usd
+		  SELECT l.budget_month,l.code,l.reservation_usd
 	  FROM want_keep.ai_attempts a JOIN latest l ON (l.household_id,l.attempt_id)=(a.household_id,a.id)
 	  WHERE (a.household_id,a.job_id)=(j.household_id,j.id)
 	  ORDER BY a.created_at DESC,a.created_ns DESC,a.id DESC LIMIT 1

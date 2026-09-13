@@ -57,8 +57,12 @@ func (s *Store) recoverJobs(ctx context.Context, tx pgx.Tx, kind string, depende
 			if err = s.releaseSafeAIJobAttempts(ctx, tx, item.job.HouseholdID, item.job.ID, "job_terminated_before_send", item.now); err != nil {
 				return err
 			}
+		} else if item.job.Kind == jobs.AI && !item.job.ExternalStarted && item.job.State == jobs.Running {
+			if err = s.releaseSafeAIJobAttempts(ctx, tx, item.job.HouseholdID, item.job.ID, "recovered_before_send", item.now); err != nil {
+				return err
+			}
 		}
-		tag, updateErr := tx.Exec(ctx, `UPDATE want_keep.jobs SET state=$5,reason=$6,external_started=CASE WHEN $5='unresolved' THEN external_started ELSE false END WHERE household_id=$1 AND id=$2 AND state=$3 AND attempt=$4`, item.job.HouseholdID, item.job.ID, item.job.State, item.job.Attempt, item.outcome.State, item.outcome.Reason)
+		tag, updateErr := tx.Exec(ctx, `UPDATE want_keep.jobs SET state=$5,reason=$6,attempt=$7,external_started=CASE WHEN $5='unresolved' THEN external_started ELSE false END WHERE household_id=$1 AND id=$2 AND state=$3 AND attempt=$4`, item.job.HouseholdID, item.job.ID, item.job.State, item.job.Attempt, item.outcome.State, item.outcome.Reason, item.outcome.Attempt)
 		if updateErr != nil {
 			return updateErr
 		}

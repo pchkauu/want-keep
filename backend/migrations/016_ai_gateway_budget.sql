@@ -9,7 +9,6 @@ CREATE TABLE want_keep.ai_attempts (
  config_fingerprint text NOT NULL CHECK(config_fingerprint ~ '^[0-9a-f]{64}$'),
  allowed_input jsonb NOT NULL CHECK(jsonb_typeof(allowed_input)='array'),
  maximum_output_tokens bigint NOT NULL CHECK(maximum_output_tokens BETWEEN 1 AND 8192),
- budget_month date NOT NULL CHECK(budget_month=date_trunc('month',budget_month)::date),
  created_at timestamptz NOT NULL, created_ns want_keep.submicro NOT NULL,
  PRIMARY KEY(household_id,id), UNIQUE(id), UNIQUE(household_id,job_id,id),
  FOREIGN KEY(household_id,job_id) REFERENCES want_keep.jobs(household_id,id),
@@ -22,6 +21,7 @@ CREATE TABLE want_keep.ai_attempt_states (
  state text NOT NULL CHECK(state IN ('counting','reserved','completed','refused','incomplete','schema_error','known_rejection','unknown')),
  counted_input_tokens bigint CHECK(counted_input_tokens BETWEEN 1 AND 262144),
  reservation_usd numeric CHECK(reservation_usd>=0 AND length(reservation_usd::text)<=128 AND reservation_usd::text NOT IN ('NaN','Infinity','-Infinity')),
+ budget_month date CHECK(budget_month=date_trunc('month',budget_month)::date),
  external_started boolean NOT NULL DEFAULT false,
  provider_id text CHECK(provider_id IS NULL OR length(provider_id) BETWEEN 1 AND 200),
  provider_model text CHECK(provider_model IS NULL OR length(provider_model) BETWEEN 1 AND 200),
@@ -45,6 +45,7 @@ CREATE TABLE want_keep.ai_attempt_states (
 	CHECK((state='counting')=(counted_input_tokens IS NULL AND reservation_usd IS NULL)),
 	CHECK(state='counting' OR counted_input_tokens IS NOT NULL OR state IN ('known_rejection','refused')),
 	CHECK(state IN ('counting','known_rejection','refused') OR reservation_usd IS NOT NULL),
+	CHECK(state IN ('counting','known_rejection') OR budget_month IS NOT NULL),
 	CHECK((input_tokens IS NULL AND cached_tokens IS NULL AND output_tokens IS NULL AND reasoning_tokens IS NULL) OR (input_tokens IS NOT NULL AND cached_tokens IS NOT NULL AND output_tokens IS NOT NULL AND reasoning_tokens IS NOT NULL)),
 	CHECK(state NOT IN ('completed','incomplete','schema_error') OR actual_usd IS NOT NULL),
  CHECK(state NOT IN ('completed','refused','incomplete','schema_error') OR provider_id IS NOT NULL AND provider_model IS NOT NULL),
@@ -54,7 +55,7 @@ CREATE TABLE want_keep.ai_attempt_states (
 );
 
 CREATE INDEX ai_attempt_job ON want_keep.ai_attempts(household_id,job_id,created_at,id);
-CREATE INDEX ai_attempt_budget ON want_keep.ai_attempts(household_id,budget_month,id);
+CREATE INDEX ai_attempt_budget ON want_keep.ai_attempt_states(household_id,budget_month,attempt_id,revision DESC) WHERE budget_month IS NOT NULL;
 CREATE INDEX ai_attempt_state_latest ON want_keep.ai_attempt_states(household_id,attempt_id,revision DESC);
 
 CREATE TRIGGER immutable_history BEFORE UPDATE OR DELETE ON want_keep.ai_attempts
@@ -111,7 +112,19 @@ BEGIN
  FROM want_keep.ai_attempt_states s
  WHERE (s.household_id,s.attempt_id)=(v_family,p_attempt_id)
  ORDER BY s.revision DESC LIMIT 1 FOR UPDATE;
- IF NOT FOUND OR NOT v_state.external_started THEN
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'invalid AI reconciliation state' USING ERRCODE = '22023';
+ END IF;
+
+ IF v_state.reconciliation_state='resolved' THEN
+  IF v_state.actual_usd IS NOT DISTINCT FROM p_actual
+     AND v_state.evidence_ref IS NOT DISTINCT FROM p_evidence_ref THEN
+   RETURN;
+  END IF;
+  RAISE EXCEPTION 'conflicting AI reconciliation replay' USING ERRCODE = '22023';
+ END IF;
+
+ IF NOT v_state.external_started THEN
   RAISE EXCEPTION 'invalid AI reconciliation state' USING ERRCODE = '22023';
  END IF;
 
@@ -132,7 +145,7 @@ BEGIN
  END IF;
 
  INSERT INTO want_keep.ai_attempt_states(
-  household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,
+  household_id,attempt_id,revision,state,counted_input_tokens,reservation_usd,budget_month,
   external_started,provider_id,provider_model,input_tokens,cached_tokens,
   cache_write_tokens,output_tokens,reasoning_tokens,observed_usage,actual_usd,conservative_cost,
   structured_output,validation_state,code,reconciliation_state,evidence_ref,
@@ -140,7 +153,7 @@ BEGIN
  ) VALUES (
   v_family,p_attempt_id,v_state.revision+1,
   CASE WHEN v_terminal THEN v_state.state ELSE 'unknown' END,v_state.counted_input_tokens,
-  v_state.reservation_usd,false,v_state.provider_id,v_state.provider_model,
+  v_state.reservation_usd,v_state.budget_month,false,v_state.provider_id,v_state.provider_model,
   v_state.input_tokens,v_state.cached_tokens,v_state.cache_write_tokens,
   v_state.output_tokens,v_state.reasoning_tokens,v_state.observed_usage,p_actual,false,
   v_state.structured_output,

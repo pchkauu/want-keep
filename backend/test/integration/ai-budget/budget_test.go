@@ -95,6 +95,64 @@ func TestTwoActiveProviderCallsAreAllowed(t *testing.T) {
 	}
 }
 
+func TestGenerationRechecksBudgetMonthAtProviderBoundary(t *testing.T) {
+	t.Run("moves reservation to generation month", func(t *testing.T) {
+		f := newFixture(t)
+		job := f.newReviewJobs(1)[0]
+		request := f.request(job)
+		reservation, err := ai.TerraPricing().Reservation(100, 2048)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = f.store.StartAIAttempt(testContext, f.p, job, request, strings.Repeat("d", 64), f.now.Time()); err != nil {
+			t.Fatal(err)
+		}
+		if err = f.store.ReserveAIAttempt(testContext, f.p, job, request.ID, 100, reservation, f.now.Time()); err != nil {
+			t.Fatal(err)
+		}
+		nextMonth := f.now.Time().Add(2 * time.Minute)
+		if err = f.store.BeginAIGeneration(testContext, f.p, job, request.ID, nextMonth); err != nil {
+			t.Fatal(err)
+		}
+		var month string
+		if err = f.admin.QueryRow(testContext, `SELECT budget_month::text FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, f.family.ID, request.ID).Scan(&month); err != nil || month != "2026-10-01" {
+			t.Fatalf("generation budget month: %s, %v", month, err)
+		}
+	})
+
+	t.Run("refuses when generation month has no budget", func(t *testing.T) {
+		f := newFixture(t)
+		claimed := f.newReviewJobs(2)
+		crossing := f.request(claimed[0])
+		reservation, err := ai.TerraPricing().Reservation(100, 2048)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = f.store.StartAIAttempt(testContext, f.p, claimed[0], crossing, strings.Repeat("d", 64), f.now.Time()); err != nil {
+			t.Fatal(err)
+		}
+		if err = f.store.ReserveAIAttempt(testContext, f.p, claimed[0], crossing.ID, 100, reservation, f.now.Time()); err != nil {
+			t.Fatal(err)
+		}
+		nextMonth := f.now.Time().Add(2 * time.Minute)
+		existing := f.request(claimed[1])
+		if err = f.store.StartAIAttempt(testContext, f.p, claimed[1], existing, strings.Repeat("e", 64), nextMonth); err != nil {
+			t.Fatal(err)
+		}
+		if err = f.store.ReserveAIAttempt(testContext, f.p, claimed[1], existing.ID, 100, ai.MustCost("49.99"), nextMonth); err != nil {
+			t.Fatal(err)
+		}
+		if err = f.store.BeginAIGeneration(testContext, f.p, claimed[0], crossing.ID, nextMonth); !errors.Is(err, aiapp.ErrBudgetExhausted) {
+			t.Fatalf("cross-month generation exceeded budget: %v", err)
+		}
+		var state, code, month string
+		var external bool
+		if err = f.admin.QueryRow(testContext, `SELECT state,code,budget_month::text,external_started FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2 ORDER BY revision DESC LIMIT 1`, f.family.ID, crossing.ID).Scan(&state, &code, &month, &external); err != nil || state != "known_rejection" || code != "budget_exhausted" || month != "2026-10-01" || external {
+			t.Fatalf("cross-month refusal: %s/%s/%s/%t, %v", state, code, month, external, err)
+		}
+	})
+}
+
 func TestGatewayWaitingJobResumesWhenGatewayBecomesAvailable(t *testing.T) {
 	f := newFixture(t)
 	job := f.newReviewJobs(1)[0]
@@ -380,6 +438,27 @@ func TestReconciliationRejectsLiveLeaseAndTransitionsExpiredCall(t *testing.T) {
 	if jobState != "failed" || attemptState != "unknown" || reconciliation != "resolved" || actual != "0.25" || external {
 		t.Fatalf("expired reconciliation transition: %s/%s/%s/%s/%t", jobState, attemptState, reconciliation, actual, external)
 	}
+	var statesBefore int
+	if err := f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2`, f.family.ID, request.ID).Scan(&statesBefore); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Reconcile(testContext, request.ID, aiapp.Charged, ai.MustCost("0.25"), "provider-dashboard:synthetic-expired"); err != nil {
+		t.Fatalf("identical reconciliation replay failed: %v", err)
+	}
+	var statesAfter int
+	if err := f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.ai_attempt_states WHERE household_id=$1 AND attempt_id=$2`, f.family.ID, request.ID).Scan(&statesAfter); err != nil || statesAfter != statesBefore {
+		t.Fatalf("identical reconciliation replay wrote state: %d/%d, %v", statesBefore, statesAfter, err)
+	}
+	for _, conflict := range []struct {
+		actual, evidence string
+	}{
+		{"0.26", "provider-dashboard:synthetic-expired"},
+		{"0.25", "provider-dashboard:different"},
+	} {
+		if err := service.Reconcile(testContext, request.ID, aiapp.Charged, ai.MustCost(conflict.actual), conflict.evidence); !errors.Is(err, aiapp.ErrInvalidReconciliation) {
+			t.Fatalf("conflicting reconciliation replay accepted: %+v, %v", conflict, err)
+		}
+	}
 }
 
 func TestReconciliationResolvesTerminalOverReservation(t *testing.T) {
@@ -563,6 +642,41 @@ func TestRecoveryReleasesOnlyAttemptsThatNeverReachedProvider(t *testing.T) {
 				t.Fatalf("orphaned attempt not released: %s/%s/%s", jobState, attemptState, code)
 			}
 		})
+	}
+}
+
+func TestRepeatedPreGenerationRecoveryDoesNotExhaustReview(t *testing.T) {
+	f := newFixture(t)
+	f.enqueueReviewJobs(1)
+	for cycle := range 5 {
+		claimed, err := f.store.ClaimJobs(testContext, string(jobs.AI), 1, time.Minute)
+		if err != nil || len(claimed) != 1 {
+			t.Fatalf("claim cycle %d: %#v, %v", cycle, claimed, err)
+		}
+		request := f.request(claimed[0])
+		if err = f.store.StartAIAttempt(testContext, f.p, claimed[0], request, strings.Repeat("d", 64), f.now.Time()); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = f.admin.Exec(testContext, `UPDATE want_keep.jobs SET lease_until=clock_timestamp()-INTERVAL '1 second' WHERE household_id=$1 AND id=$2`, f.family.ID, claimed[0].ID); err != nil {
+			t.Fatal(err)
+		}
+		if err = f.store.RecoverJobs(testContext, jobs.AI); err != nil {
+			t.Fatal(err)
+		}
+		var state string
+		var attempt int
+		if err = f.admin.QueryRow(testContext, `SELECT state,attempt FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, claimed[0].ID).Scan(&state, &attempt); err != nil || state != "ready" || attempt != 0 {
+			t.Fatalf("recovery cycle %d: %s/%d, %v", cycle, state, attempt, err)
+		}
+	}
+	gateway := &fakeGateway{result: completedResult()}
+	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
+	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
+	if err := worker.Step(testContext); err != nil {
+		t.Fatal(err)
+	}
+	if gateway.generateCalls.Load() != 1 {
+		t.Fatalf("review did not run after safe recoveries: %d", gateway.generateCalls.Load())
 	}
 }
 

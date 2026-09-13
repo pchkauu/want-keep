@@ -281,6 +281,20 @@ func TestProposalValidationRejectsUnknownOrTrailingData(t *testing.T) {
 			t.Fatalf("invalid proposal accepted: %s", data)
 		}
 	}
+	for _, field := range []string{"kind", "amount", "fee", "asset", "target", "month"} {
+		var envelope map[string][]map[string]any
+		if err := json.Unmarshal(valid, &envelope); err != nil {
+			t.Fatal(err)
+		}
+		delete(envelope["results"][0], field)
+		data, err := json.Marshal(envelope)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = validateProposal(data, expected); err == nil {
+			t.Fatalf("proposal without required %s accepted", field)
+		}
+	}
 }
 
 func TestProposalValidationSupportsUSDCAndBindsSource(t *testing.T) {

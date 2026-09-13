@@ -52,6 +52,12 @@ func proposalExpectation(data []byte) (proposalInputCase, error) {
 }
 
 func validateProposal(data []byte, expected proposalInputCase) error {
+	var raw struct {
+		Results []map[string]json.RawMessage `json:"results"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil || len(raw.Results) != 1 || !hasRequiredNullableFields(raw.Results[0]) {
+		return errors.New("invalid proposal")
+	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var envelope proposalEnvelope
@@ -81,6 +87,15 @@ func validateProposal(data []byte, expected proposalInputCase) error {
 		}
 	}
 	return nil
+}
+
+func hasRequiredNullableFields(result map[string]json.RawMessage) bool {
+	for _, field := range [...]string{"kind", "amount", "fee", "asset", "target", "month"} {
+		if _, exists := result[field]; !exists {
+			return false
+		}
+	}
+	return true
 }
 
 func oneOf(value string, allowed ...string) bool {
