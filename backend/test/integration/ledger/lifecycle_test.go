@@ -106,6 +106,7 @@ func TestCreditPurchaseRepaymentAndUnknownSplit(t *testing.T) {
 		opening := f.revision(openingID, creditID, "0", money.RUB, 1)
 		opening.Type = ledger.Opening
 		opening.ExpenseMonth = calendar.Month{}
+		opening.Allocation = ledger.NotApplicableAllocation()
 		if err := f.store.AppendRevision(ctx, opening, 0); err != nil {
 			return err
 		}

@@ -52,6 +52,9 @@ func TestPaymentHasOneEffectAndPreservesOriginals(t *testing.T) {
 				t.Fatal(err)
 			}
 			count += len(effects)
+			if r.OperationID == "b" && r.Allocation.State != ledger.AllocationNotApplicable {
+				t.Fatalf("%s non-carrier allocation = %+v", asset, r.Allocation)
+			}
 			if len(effects) > 0 {
 				m, _ := effects[0].Owned.Value()
 				if m.Amount() != "-0.1234567890123456789" {
@@ -61,6 +64,28 @@ func TestPaymentHasOneEffectAndPreservesOriginals(t *testing.T) {
 		}
 		if count != 1 || a.Participation.GroupID != "" || b.Participation.GroupID != "" {
 			t.Fatal("duplicate effect or input mutation")
+		}
+	}
+}
+
+func TestPaymentReallocatesPreviouslyUnresolvedParticipants(t *testing.T) {
+	f := fixture{t}
+	a, b := f.fact("a", "account", "-300", money.RUB), f.fact("b", "account", "-300", money.RUB)
+	var err error
+	for _, revision := range []*ledger.Revision{&a, &b} {
+		*revision, err = revision.WithAllocation(ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "allocation_unresolved"}, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	b.Participation = ledger.Participation{GroupID: "candidate", Kind: "payment", State: "waiting"}
+	_, revisions, err := f.group(matching.Payment, "a").Assign([]ledger.Revision{a, b}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, revision := range revisions {
+		if err := revision.Validate(); err != nil {
+			t.Fatalf("%s: %v allocation=%+v participation=%+v", revision.OperationID, err, revision.Allocation, revision.Participation)
 		}
 	}
 }
@@ -91,6 +116,12 @@ func TestTransferAndExchangeKeepNativeEffects(t *testing.T) {
 				}
 			}
 			components += len(cs)
+			if r.OperationID == "a" && (r.Allocation.State != ledger.AllocationUnresolved || len(r.Allocation.Unallocated) != 1 || r.Allocation.Unallocated[0].Asset() != money.BTC) {
+				t.Fatalf("fee-only allocation = %+v", r.Allocation)
+			}
+			if r.OperationID == "b" && r.Allocation.State != ledger.AllocationNotApplicable {
+				t.Fatalf("incoming allocation = %+v", r.Allocation)
+			}
 		}
 		if components != 1 {
 			t.Fatal("fee duplicated")

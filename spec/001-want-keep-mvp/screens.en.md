@@ -282,7 +282,7 @@ Task: [task-7.2](tasks/task-7.2.md), [task-7.7](tasks/task-7.7.md), [task-7.15](
 
 **Next action:** Open SCR-010; enter FORM-04 or receipt in SCR-024.
 
-**Explanation and details:** Category, merchant and item filters are independent; uncategorized expense remains visible. Items form one payment without a duplicate total. Transfers/exchanges are marked as movements excluded from income/expense; filters never change accounting semantics.
+**Explanation and details:** Category, merchant and item filters are independent; uncategorized expense remains visible. Items form one payment without a duplicate total. Member amounts and unallocated are a MembershipID view of one household fact; payer, owner and actor are separate. Transfers/exchanges are marked as movements excluded from income/expense; filters never change accounting semantics.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -292,7 +292,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 REQ: REQ-006, REQ-008, REQ-014, REQ-067. AC: AC-006, AC-008, AC-014, AC-081.
 
-Task: [task-7.2](tasks/task-7.2.md), [task-2.6](tasks/task-2.6.md).
+Task: [task-7.2](tasks/task-7.2.md), [task-2.6](tasks/task-2.6.md), [task-2.8](tasks/task-2.8.md).
 
 ### SCR-010 — Transaction details
 
@@ -306,7 +306,7 @@ Task: [task-7.2](tasks/task-7.2.md), [task-2.6](tasks/task-2.6.md).
 
 **Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
 
-**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason. A group exposes participants, evidence, effect carriers, matching_unresolved waiting and conflicts. Candidate completeness is explicit; primary does not imply override priority. Link/resolve and compound corrections use all participant revisions; undo preserves independent edits and bank states. Classification retains category, merchantId and receipt items separately from source merchant text; an AI proposal cannot change the fact without a command.
+**Explanation and details:** Before/after history exposes actor, decisionId, source and protected fields. Allocation shows personal/shared purpose, exact member amounts, unallocated, applied rule revisions and items. Explicit item value wins over purchase, then merchant/category rule and equal for an explicitly shared expense. A source update cannot erase the user choice; changing an amount-based allocation requires a consistent correction while share-based allocation recalculates. Matching retains one household and member effect carrier; undo checks every participant revision.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -316,7 +316,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 REQ: REQ-010, REQ-012, REQ-067, REQ-072, REQ-006, REQ-007, REQ-008, REQ-014, REQ-016. AC: AC-010, AC-012, AC-081, AC-086, AC-006, AC-007, AC-008, AC-093, AC-014, AC-016.
 
-Task: [task-7.2](tasks/task-7.2.md), [task-2.3](tasks/task-2.3.md), [task-2.4](tasks/task-2.4.md), [task-2.6](tasks/task-2.6.md).
+Task: [task-7.2](tasks/task-7.2.md), [task-2.3](tasks/task-2.3.md), [task-2.4](tasks/task-2.4.md), [task-2.6](tasks/task-2.6.md), [task-2.8](tasks/task-2.8.md).
 
 ### SCR-011 — Receipt
 
@@ -882,7 +882,7 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 **Next action:** Create/correct FORM-15; inspect affected transactions SCR-009.
 
-**Explanation and details:** Starter labels use stable RU/EN keys and a custom name is not translated. A merchant never becomes a subcategory; archival preserves history. An AI proposal requires user confirmation; a personal/shared rule never edits a partner personal plan.
+**Explanation and details:** Starter labels use stable RU/EN keys and a custom name is not translated. A merchant never becomes a subcategory; archival preserves history. Rules use merchant/category AND, priority and active-member shares; preview explains selected revisions or rule_conflict. A new rule affects only new facts. An AI proposal requires user confirmation; a personal/shared rule never edits a partner personal plan.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -892,7 +892,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 REQ: REQ-014, REQ-019, REQ-067. AC: AC-014, AC-019, AC-081.
 
-Task: [task-7.14](tasks/task-7.14.md), [task-2.6](tasks/task-2.6.md).
+Task: [task-7.14](tasks/task-7.14.md), [task-2.6](tasks/task-2.6.md), [task-2.8](tasks/task-2.8.md).
 
 ### SCR-035 — Accounting and backup health
 
@@ -948,7 +948,7 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 **Fields:** Type, account, date/time, amount/currency, category/subcategory, merchant, purpose/shares, note/receipt.
 
-**Validation and permissions:** Either member records on any household account; actor comes from session and payer is independent. Amount >0 and asset matches the account. An expense may reference active household category and merchant; allocation remains unresolved until task-2.8. Confirmed account/amount/date produce a posted household fact even without classification.
+**Validation and permissions:** Either member records on any household account; actor comes from session and payer is independent. Amount >0 and asset matches the account. An expense may contain active category/merchant references and typed allocation by current MembershipID; unknown purpose remains unallocated. Income rejects allocation. Confirmed account/amount/date produce posted and one household fact even without classification.
 
 **Outcome:** One transaction, visible allocation and AI status, linked receipt; confirmed outcome and link.
 
@@ -1034,8 +1034,8 @@ Task: [task-7.14](tasks/task-7.14.md).
 
 #### FORM-15 — Categories and rules
 
-**Fields:** Category/subcategory name, parent and state; merchant name, state and confirmed aliases. Rules/conditions and bulk application remain a separate contract.
+**Fields:** Category/subcategory name, parent and state; merchant name, state and confirmed aliases; merchant/category rule conditions, priority 1–1000, state and exact member shares; preview without persistence.
 
-**Validation and permissions:** Either member manages the household catalog. Two acyclic levels, unique active names and one active confirmed alias owner per household are enforced. Archival preserves history; restore rechecks conflicts. An AI proposal is not applied without a user command.
+**Validation and permissions:** Either member manages the household catalog and rules. Conditions within one rule use AND and lower priority wins. Equal-priority identical outcomes are compatible; different outcomes yield rule_conflict. Shares total exactly 100% across active members; expectedRevision, CSRF and the session actor are mandatory. A rule applies only to new facts and never rewrites history.
 
-**Outcome:** A versioned category or merchant is saved; no_change/conflict creates no effect. Historical references remain available.
+**Outcome:** A versioned category, merchant or rule is stored; preview exposes applied revisions or a safe unresolved reason. no_change/conflict creates no effect and historical references remain available.

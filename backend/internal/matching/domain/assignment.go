@@ -37,7 +37,8 @@ func (a *effectAssignment) assign(facts []ledger.Revision, allowPartial bool) (G
 	for _, r := range facts {
 		v := r.Clone()
 		v.Participation = ledger.Participation{}
-		if seen[r.OperationID] || v.Validate() != nil || !slices.Contains([]ledger.Type{ledger.Income, ledger.Expense, ledger.Transfer, ledger.Exchange}, r.Type) {
+		v, validationErr := v.RefreshAllocation()
+		if seen[r.OperationID] || validationErr != nil || v.Validate() != nil || !slices.Contains([]ledger.Type{ledger.Income, ledger.Expense, ledger.Transfer, ledger.Exchange}, r.Type) {
 			return a.group, nil, ErrInvalid
 		}
 		seen[r.OperationID] = true
@@ -109,6 +110,14 @@ func (a *effectAssignment) assign(facts []ledger.Revision, allowPartial bool) (G
 			p.State = c.state
 			p.At = c.carrier.OccurredAt
 		}
+		refreshed, err := r.RefreshAllocation()
+		if err != nil {
+			return a.group, nil, ErrConflict
+		}
+		if _, protected := r.Protections[ledger.AllocationField]; protected && !r.FieldEqual(refreshed, ledger.AllocationField) {
+			return a.group, nil, ErrConflict
+		}
+		*r = refreshed
 		if r.Validate() != nil {
 			return a.group, nil, ErrInvalid
 		}
@@ -231,7 +240,7 @@ func (a *effectAssignment) validatePrincipal(allowPartial bool) error {
 func (c *assignedComponent) observeProtectedFields(r ledger.Revision) error {
 	_, legacy := r.Protections[ledger.LegacyField]
 	legacy = legacy || r.HumanOverride && len(r.Protections) == 0
-	for _, field := range []ledger.Field{ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField} {
+	for _, field := range []ledger.Field{ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField, ledger.AllocationField} {
 		if _, protected := r.Protections[field]; !protected && !legacy {
 			continue
 		}

@@ -102,8 +102,11 @@ func NewWriterWithReconciliation(j Journal, a accounts.Repository, reconciler Re
 
 // Append must be called inside the household transaction, including the command or import fence.
 func (w *Writer) Append(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64) error {
-	affected, err := w.append(ctx, p, r, expected)
+	r, previous, affected, err := w.append(ctx, p, r, expected)
 	if err != nil {
+		return err
+	}
+	if err = accounts.NewProjector(w.accounts).Apply(ctx, p, r, previous); err != nil {
 		return err
 	}
 	return w.reconcile(ctx, p, affected)
@@ -123,14 +126,19 @@ func (w *Writer) AppendBatch(ctx context.Context, p household.Principal, revisio
 		seen[r.OperationID] = true
 	}
 	affected := map[string]bool{}
+	changes := make([]accounts.RevisionChange, 0, len(revisions))
 	for _, r := range revisions {
-		ids, err := w.append(ctx, p, r, r.Revision-1)
+		next, previous, ids, err := w.append(ctx, p, r, r.Revision-1)
 		if err != nil {
 			return err
 		}
+		changes = append(changes, accounts.RevisionChange{Revision: next, Previous: previous})
 		for _, id := range ids {
 			affected[id] = true
 		}
+	}
+	if err := accounts.NewProjector(w.accounts).ApplyBatch(ctx, p, changes); err != nil {
+		return err
 	}
 	ids := make([]string, 0, len(affected))
 	for id := range affected {
@@ -152,27 +160,37 @@ func (w *Writer) reconcile(ctx context.Context, p household.Principal, accounts 
 	return nil
 }
 
-func (w *Writer) append(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64) ([]string, error) {
+func (w *Writer) append(ctx context.Context, p household.Principal, r ledger.Revision, expected uint64) (ledger.Revision, *ledger.Revision, []string, error) {
 	if r.ActorID != p.UserID() {
-		return nil, household.ErrForbidden
+		return ledger.Revision{}, nil, nil, household.ErrForbidden
 	}
 	zone, err := w.journal.AccountTimezone(ctx, p)
 	if err != nil {
-		return nil, err
+		return ledger.Revision{}, nil, nil, err
 	}
 	if r.Timezone.String() != "" && r.Timezone != zone {
-		return nil, ledger.ErrInvalidRevision
+		return ledger.Revision{}, nil, nil, ledger.ErrInvalidRevision
 	}
 	r, err = r.InTimezone(zone)
 	if err != nil {
-		return nil, err
+		return ledger.Revision{}, nil, nil, err
+	}
+	if r.Allocation.State == "" {
+		reason := r.AllocationReason
+		if reason == "" {
+			reason = "allocation_unresolved"
+		}
+		r, err = r.WithAllocation(ledger.AllocationInput{Reason: reason}, nil, nil)
+		if err != nil {
+			return ledger.Revision{}, nil, nil, err
+		}
 	}
 	if err := r.Validate(); err != nil {
-		return nil, err
+		return ledger.Revision{}, nil, nil, err
 	}
 	current, exists, err := w.journal.CurrentLedgerRevision(ctx, p, r.OperationID)
 	if err != nil {
-		return nil, err
+		return ledger.Revision{}, nil, nil, err
 	}
 	actual := uint64(0)
 	var previous *ledger.Revision
@@ -181,14 +199,14 @@ func (w *Writer) append(ctx context.Context, p household.Principal, r ledger.Rev
 		previous = &current
 	}
 	if expected != actual || actual >= command.MaxRevision || r.Revision != actual+1 {
-		return nil, commands.Rejection{Code: "version_conflict"}
+		return ledger.Revision{}, nil, nil, commands.Rejection{Code: "version_conflict"}
 	}
 	if err = r.CheckSuccessor(previous); err != nil {
-		return nil, err
+		return ledger.Revision{}, nil, nil, err
 	}
 	if r.PayerState == "known" {
 		if err = w.journal.RequireLedgerPayer(ctx, p, r.PayerMemberID); err != nil {
-			return nil, err
+			return ledger.Revision{}, nil, nil, err
 		}
 	}
 	r.Postings = append([]ledger.Posting(nil), r.Postings...)
@@ -196,17 +214,17 @@ func (w *Writer) append(ctx context.Context, p household.Principal, r ledger.Rev
 	for _, id := range affected {
 		a, e := w.accounts.Account(ctx, p, id)
 		if e != nil {
-			return nil, e
+			return ledger.Revision{}, nil, nil, e
 		}
 		for i, posting := range r.Postings {
 			if posting.AccountID != id {
 				continue
 			}
 			if posting.Money.Asset() != a.Asset {
-				return nil, money.ErrAssetMismatch
+				return ledger.Revision{}, nil, nil, money.ErrAssetMismatch
 			}
 			if posting.Funding == ledger.CreditFunds && a.Product != "credit_card" {
-				return nil, ledger.ErrInvalidRevision
+				return ledger.Revision{}, nil, nil, ledger.ErrInvalidRevision
 			}
 			if posting.Funding == "" {
 				r.Postings[i].Funding = ledger.OwnFunds
@@ -217,13 +235,10 @@ func (w *Writer) append(ctx context.Context, p household.Principal, r ledger.Rev
 		}
 	}
 	if err = w.journal.AppendRevision(ctx, r, expected); err != nil {
-		return nil, err
-	}
-	if err = accounts.NewProjector(w.accounts).Apply(ctx, p, r, previous); err != nil {
-		return nil, err
+		return ledger.Revision{}, nil, nil, err
 	}
 	if r.Type == ledger.Opening {
-		return nil, nil
+		return r, previous, nil, nil
 	}
-	return affected, nil
+	return r, previous, affected, nil
 }

@@ -75,7 +75,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Следующее действие:** Открыть SCR-010; занести FORM-04 или чек в SCR-024.
 
-**Объяснение и детализация:** Фильтры category, merchant и item независимы; некатегоризированный расход остаётся видимым. Позиции образуют одну оплату без повторного итога. Переводы/обмены помечены как движения, исключённые из доходов/расходов; фильтр не меняет расчётную семантику.
+**Объяснение и детализация:** Фильтры category, merchant и item независимы; некатегоризированный расход остаётся видимым. Позиции образуют одну оплату без повторного итога. Личные суммы и unallocated являются разрезом одного семейного факта по MembershipID; payer, owner и actor показаны отдельно. Переводы/обмены помечены как движения, исключённые из доходов/расходов; фильтр не меняет расчётную семантику.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -95,7 +95,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Следующее действие:** Исправить FORM-06/07, вернуть FORM-08, явный долг FORM-09; чек → SCR-011.
 
-**Объяснение и детализация:** История до/после с автором, временем, decisionId и основаниями; отдельные банковское и учётное состояния. Защищённые поля сравниваются с нормализованным источником; review показывает безопасное обоснование и ссылки на evidence. Для выбранного решения видны возможность undo и причина отказа. Группа показывает участников, evidence, носителей эффекта, отдельное ожидание matching_unresolved и конфликт. Список кандидатов сообщает полноту; основная запись не означает приоритет правок. Link/resolve и составные исправления используют версии всех участников; undo сохраняет независимые правки и состояния банка. Классификация хранит категорию, merchantId и позиции чека отдельно от текста продавца источника; AI proposal не меняет факт без команды.
+**Объяснение и детализация:** История до/после показывает автора, decisionId, источник и защищённые поля. Распределение показывает personal/shared, точные суммы каждого участника, unallocated, применённые rule revisions и позиции. Явное значение позиции важнее покупки, затем merchant/category rule и equal для явно совместной траты. Source update не стирает пользовательский выбор; изменение amount-based распределения требует согласованной правки, share-based пересчитывается. Matching сохраняет один носитель семейного и персонального эффекта; undo проверяет revisions всех участников.
 
 **Права:** Оба участника видят и исправляют факты любого счёта семьи; actor из сессии.
 
@@ -155,7 +155,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Поля:** Тип, счёт, дата/время, сумма/валюта, категория/подкатегория, продавец, назначение и доли, комментарий/чек.
 
-**Проверки и права:** Оба участника заносят факт на любой счёт семьи; actor из сессии, payer отдельно. Сумма >0, актив совпадает со счётом. Для расхода можно назначить активные category и merchant своей семьи; allocation остаётся unresolved до task-2.8. Подтверждённые счёт/сумма/дата дают posted и семейный факт даже без классификации.
+**Проверки и права:** Оба участника заносят факт на любой счёт семьи; actor из сессии, payer отдельно. Сумма >0, актив совпадает со счётом. Расход может содержать активные category/merchant и typed allocation по текущим MembershipID; неизвестное назначение остаётся unallocated. Доход не принимает allocation. Подтверждённые счёт/сумма/дата дают posted и один семейный факт даже без классификации.
 
 **Результат:** Одна операция, видимые назначения и AI-статус, связь чека; подтверждённый результат и ссылка.
 
@@ -493,7 +493,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Next action:** Open SCR-010; enter FORM-04 or receipt in SCR-024.
 
-**Explanation and details:** Category, merchant and item filters are independent; uncategorized expense remains visible. Items form one payment without a duplicate total. Transfers/exchanges are marked as movements excluded from income/expense; filters never change accounting semantics.
+**Explanation and details:** Category, merchant and item filters are independent; uncategorized expense remains visible. Items form one payment without a duplicate total. Member amounts and unallocated are a MembershipID view of one household fact; payer, owner and actor are separate. Transfers/exchanges are marked as movements excluded from income/expense; filters never change accounting semantics.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -513,7 +513,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Next action:** Correct FORM-06/07, refund FORM-08, explicit debt FORM-09; receipt → SCR-011.
 
-**Explanation and details:** Before/after history with actor, time, decisionId and reasons; separate bank and accounting states. Protected fields can be compared with normalized source values; review shows a safe rationale and evidence references. Each decision exposes undo availability and rejection reason. A group exposes participants, evidence, effect carriers, matching_unresolved waiting and conflicts. Candidate completeness is explicit; primary does not imply override priority. Link/resolve and compound corrections use all participant revisions; undo preserves independent edits and bank states. Classification retains category, merchantId and receipt items separately from source merchant text; an AI proposal cannot change the fact without a command.
+**Explanation and details:** Before/after history exposes actor, decisionId, source and protected fields. Allocation shows personal/shared purpose, exact member amounts, unallocated, applied rule revisions and items. Explicit item value wins over purchase, then merchant/category rule and equal for an explicitly shared expense. A source update cannot erase the user choice; changing an amount-based allocation requires a consistent correction while share-based allocation recalculates. Matching retains one household and member effect carrier; undo checks every participant revision.
 
 **Permissions:** Both members read/correct facts for any household account; actor from session.
 
@@ -573,7 +573,7 @@ States: UISTATE-01, UISTATE-02, UISTATE-03, UISTATE-05, UISTATE-06, UISTATE-07, 
 
 **Fields:** Type, account, date/time, amount/currency, category/subcategory, merchant, purpose/shares, note/receipt.
 
-**Validation and permissions:** Either member records on any household account; actor comes from session and payer is independent. Amount >0 and asset matches the account. An expense may reference active household category and merchant; allocation remains unresolved until task-2.8. Confirmed account/amount/date produce a posted household fact even without classification.
+**Validation and permissions:** Either member records on any household account; actor comes from session and payer is independent. Amount >0 and asset matches the account. An expense may contain active category/merchant references and typed allocation by current MembershipID; unknown purpose remains unallocated. Income rejects allocation. Confirmed account/amount/date produce posted and one household fact even without classification.
 
 **Outcome:** One transaction, visible allocation and AI status, linked receipt; confirmed outcome and link.
 

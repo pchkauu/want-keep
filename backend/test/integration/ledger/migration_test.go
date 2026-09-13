@@ -8,6 +8,7 @@ import (
 	"testing/fstest"
 
 	"github.com/google/uuid"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 	"github.com/pchkauu/want-keep/backend/migrations"
@@ -59,6 +60,10 @@ func TestMigrationPreservesLegacyFactsAndImmutableHistory(t *testing.T) {
 	}
 	r.Revision = 2
 	r.Postings[0].Money = cash("-0.0000000000000000456", money.BTC)
+	r, err = r.WithAllocation(ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "allocation_unresolved"}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err = f.write(r, request()); err != nil {
 		t.Fatal(err)
 	}

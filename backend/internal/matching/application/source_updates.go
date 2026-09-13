@@ -108,6 +108,9 @@ func (s *Service) saveSourceUpdate(ctx context.Context, p household.Principal, g
 					r.FieldVersions[f] = r.Revision
 				}
 			}
+			if !old.FieldEqual(r, ledger.AllocationField) {
+				r.FieldVersions[ledger.AllocationField] = r.Revision
+			}
 			// Bank lifecycle/time refreshes the contribution without replacing the
 			// association decision. Real composition changes and conflicts still do.
 			if material || !old.Participation.SameCarriers(r.Participation) {

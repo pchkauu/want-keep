@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	accounts "github.com/pchkauu/want-keep/backend/internal/accounts/application"
+	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/application"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
@@ -120,7 +121,7 @@ func newFixtureForProvider(t *testing.T, provider string) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sources := journal.NewSources(store, writer)
+	sources := journal.NewSources(store, writer, allocation.NewService(store, func() calendar.Instant { return now }, uuid.NewString))
 	sourceWriter, err := application.NewSourceWriter(sources, store)
 	if err != nil {
 		t.Fatal(err)

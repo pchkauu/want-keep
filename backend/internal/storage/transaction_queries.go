@@ -78,11 +78,19 @@ func (s *Store) TransactionReferences(ctx context.Context, p household.Principal
 	}
 	result := make([]ledger.Revision, 0, len(refs))
 	for _, ref := range refs {
-		r, err := s.LedgerRevision(ctx, p, ref.id, ref.revision)
+		r, err := s.ledgerRevision(ctx, q, p, ref.id, ref.revision, false)
 		if err != nil {
 			return nil, nil, err
 		}
 		result = append(result, r)
+	}
+	if err = s.loadLedgerAllocationsMany(ctx, q, p, result); err != nil {
+		return nil, nil, err
+	}
+	for index := range result {
+		if err = result[index].Validate(); err != nil {
+			return nil, nil, err
+		}
 	}
 	var next *application.Cursor
 	if more {

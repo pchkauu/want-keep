@@ -57,7 +57,7 @@ func TestConfirmedSyncPageReconciliation(t *testing.T) {
 				t.Fatal(err)
 			}
 			r := app.Reconciliation{Job: issued, EvidenceRef: input.EvidenceRef, Outcome: "confirmed", Page: &admission.Page{EvidenceRef: input.EvidenceRef, NextCursor: "page2", Coverage: "complete", Complete: test.complete}}
-			source := journal.NewSources(f.store, f.writer)
+			source := journal.NewSources(f.store, f.writer, nil)
 			apply := func(ctx context.Context, p household.Principal) error {
 				_, err := source.Apply(ctx, p, input)
 				return err

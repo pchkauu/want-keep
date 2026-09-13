@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
+	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
 	attachment "github.com/pchkauu/want-keep/backend/internal/attachments/domain"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	category "github.com/pchkauu/want-keep/backend/internal/categories/domain"
@@ -22,19 +23,30 @@ type FactsRepository interface {
 	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
 	RequireLedgerPayer(context.Context, household.Principal, household.MembershipID) error
 	Attachment(context.Context, household.Principal, string) (attachment.Attachment, error)
-	Category(context.Context, household.Principal, string) (category.Category, error)
-	Merchant(context.Context, household.Principal, string) (category.Merchant, error)
+	ClassificationStates(context.Context, household.Principal, []string, []string) (map[string]category.State, map[string]category.State, error)
 }
 
 type Service struct {
-	repository FactsRepository
-	writer     JournalWriter
-	now        func() calendar.Instant
-	newID      func() string
+	repository  FactsRepository
+	writer      JournalWriter
+	allocations AllocationResolver
+	now         func() calendar.Instant
+	newID       func() string
 }
 
 func NewService(r FactsRepository, w JournalWriter, now func() calendar.Instant, newID func() string) *Service {
-	return &Service{r, w, now, newID}
+	return &Service{repository: r, writer: w, now: now, newID: newID}
+}
+
+type AllocationResolver interface {
+	Resolve(context.Context, household.Principal, string, string) (ledger.AllocationInput, bool, error)
+	ResolveAtBoundary(context.Context, household.Principal, []allocation.Condition, uint64) (map[allocation.Condition]ledger.AllocationInput, error)
+	ResolveSource(context.Context, household.Principal, string) (ledger.AllocationInput, bool, error)
+	ActiveMemberIDs(context.Context, household.Principal) ([]household.MembershipID, error)
+}
+
+func NewServiceWithAllocations(r FactsRepository, w JournalWriter, allocations AllocationResolver, now func() calendar.Instant, newID func() string) *Service {
+	return &Service{repository: r, writer: w, allocations: allocations, now: now, newID: newID}
 }
 
 type CreateInput struct {
@@ -47,6 +59,7 @@ type CreateInput struct {
 	PayerMemberID                                  household.MembershipID
 	Merchant, Note, AttachmentID, AllocationReason string
 	CategoryID, MerchantID                         string
+	Allocation                                     ledger.AllocationInput
 	Unsupported                                    bool
 }
 
@@ -56,6 +69,9 @@ func (s *Service) Create(ctx context.Context, p household.Principal, in CreateIn
 	}
 	if in.Type != ledger.Income && in.Type != ledger.Expense {
 		return command.Result{}, commands.Rejection{Code: "invalid_request"}
+	}
+	if in.Type == ledger.Income && in.Allocation.Mode != "" {
+		return command.Result{}, commands.Rejection{Code: "invalid_allocation"}
 	}
 	if err := in.Amount.Validate(); err != nil {
 		return command.Result{}, s.reject(err)
@@ -115,6 +131,46 @@ func (s *Service) Create(ctx context.Context, p household.Principal, in CreateIn
 		}
 	}
 	r.Postings = []ledger.Posting{{AccountID: in.AccountID, Money: amount, Role: ledger.Principal, Funding: in.Funding, Treatment: ledger.Movement}}
+	if in.Type == ledger.Income {
+		r.Allocation = ledger.NotApplicableAllocation()
+	} else {
+		allocation := in.Allocation
+		if allocation.Mode == "" {
+			allocation = ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "allocation_unresolved"}
+		}
+		if allocation.Mode == ledger.AllocationUnknown && s.allocations != nil {
+			resolved, ok, resolveErr := s.allocations.Resolve(ctx, p, in.MerchantID, in.CategoryID)
+			if resolveErr != nil {
+				return command.Result{}, resolveErr
+			}
+			if ok {
+				allocation = resolved
+			}
+		}
+		var members []household.MembershipID
+		if allocation.Mode != ledger.AllocationUnknown {
+			if s.allocations == nil {
+				return command.Result{}, commands.Rejection{Code: "feature_unavailable"}
+			}
+			members, err = s.allocations.ActiveMemberIDs(ctx, p)
+			if err != nil {
+				return command.Result{}, err
+			}
+			if allocation.Mode == ledger.AllocationEqual && allocation.Purpose == ledger.AllocationShared && len(allocation.Members) == 0 {
+				for _, memberID := range members {
+					allocation.Members = append(allocation.Members, ledger.AllocationMemberInput{MemberID: memberID})
+				}
+			}
+		}
+		r, err = r.WithAllocation(allocation, nil, members)
+		if err != nil {
+			return command.Result{}, s.reject(err)
+		}
+		if allocation.Origin == ledger.AllocationExplicitPurchase || allocation.Origin == ledger.AllocationExplicitItem {
+			r.Protections[ledger.AllocationField] = ledger.Protection{Revision: 1}
+			r.FieldVersions[ledger.AllocationField] = 1
+		}
+	}
 	if err = s.requireActiveClassification(ctx, p, r); err != nil {
 		return command.Result{}, err
 	}
@@ -131,21 +187,29 @@ func (s *Service) requireActiveClassification(ctx context.Context, p household.P
 			ids[item.CategoryID] = true
 		}
 	}
+	categoryIDs := make([]string, 0, len(ids))
 	for id := range ids {
-		entry, err := s.repository.Category(ctx, p, id)
-		if err != nil {
-			return s.reject(err)
+		categoryIDs = append(categoryIDs, id)
+	}
+	merchantIDs := []string{}
+	if r.MerchantID != "" {
+		merchantIDs = append(merchantIDs, r.MerchantID)
+	}
+	categories, merchants, err := s.repository.ClassificationStates(ctx, p, categoryIDs, merchantIDs)
+	if err != nil {
+		return s.reject(err)
+	}
+	for _, id := range categoryIDs {
+		state, found := categories[id]
+		if !found {
+			return commands.Rejection{Code: "not_found"}
 		}
-		if entry.State != category.Active {
+		if state != category.Active {
 			return commands.Rejection{Code: "category_archived"}
 		}
 	}
 	if r.MerchantID != "" {
-		entry, err := s.repository.Merchant(ctx, p, r.MerchantID)
-		if err != nil {
-			return s.reject(err)
-		}
-		if entry.State != category.Active {
+		if merchants[r.MerchantID] != category.Active {
 			return commands.Rejection{Code: "not_found"}
 		}
 	}
@@ -168,7 +232,7 @@ func (s *Service) manual(ctx context.Context, p household.Principal, at calendar
 	if err != nil {
 		return ledger.Revision{}, err
 	}
-	return ledger.Revision{OperationID: s.newID(), Revision: 1, ActorID: p.UserID(), Reason: "manual_record", State: ledger.Posted, OccurredAt: at, CashDate: date, ExpenseMonth: month, Timezone: zone, Origin: "manual", FeeKnowledge: ledger.KnownFees, Protections: map[ledger.Field]ledger.Protection{ledger.PrincipalField: {Revision: 1}, ledger.FeesField: {Revision: 1}, ledger.DateField: {Revision: 1}, ledger.PayerField: {Revision: 1}}, RecordedAt: s.now(), HumanOverride: true, PayerState: "not_applicable", AllocationReason: "allocation_unresolved"}, nil
+	return ledger.Revision{OperationID: s.newID(), Revision: 1, ActorID: p.UserID(), Reason: "manual_record", State: ledger.Posted, OccurredAt: at, CashDate: date, ExpenseMonth: month, Timezone: zone, Origin: "manual", FeeKnowledge: ledger.KnownFees, Protections: map[ledger.Field]ledger.Protection{ledger.PrincipalField: {Revision: 1}, ledger.FeesField: {Revision: 1}, ledger.DateField: {Revision: 1}, ledger.PayerField: {Revision: 1}}, FieldVersions: map[ledger.Field]uint64{}, RecordedAt: s.now(), HumanOverride: true, PayerState: "not_applicable", AllocationReason: "allocation_unresolved"}, nil
 }
 
 func (s *Service) append(ctx context.Context, p household.Principal, r ledger.Revision) (command.Result, error) {

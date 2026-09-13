@@ -242,6 +242,11 @@ func (s *Service) appendUnresolved(ctx context.Context, p household.Principal, g
 		state = "retained"
 	}
 	r.Participation = ledger.Participation{GroupID: g.ID, Kind: ledger.ParticipationKind(g.Kind), State: state}
+	var err error
+	r, err = r.RefreshAllocation()
+	if err != nil {
+		return err
+	}
 	return s.writer.Append(ctx, p, r, expected)
 }
 

@@ -1,6 +1,11 @@
 package domain
 
-import "slices"
+import (
+	"math/big"
+	"slices"
+
+	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
+)
 
 func (r Revision) rolePostings(role Role) []Posting {
 	out := []Posting{}
@@ -74,6 +79,8 @@ func (r Revision) FieldEqual(other Revision, field Field) bool {
 		return slices.EqualFunc(r.ReceiptItems, other.ReceiptItems, func(a, b ReceiptItem) bool {
 			return a.ID == b.ID && a.Name == b.Name && a.Quantity == b.Quantity && a.CategoryID == b.CategoryID && a.Gross.Asset() == b.Gross.Asset() && a.Gross.Amount() == b.Gross.Amount() && a.Discount.Asset() == b.Discount.Asset() && a.Discount.Amount() == b.Discount.Amount()
 		})
+	case AllocationField:
+		return allocationEqual(r.Allocation, other.Allocation) && slices.EqualFunc(r.ReceiptItems, other.ReceiptItems, func(a, b ReceiptItem) bool { return allocationEqual(a.Allocation, b.Allocation) })
 	}
 	return false
 }
@@ -104,8 +111,72 @@ func (r *Revision) CopyField(from Revision, field Field) error {
 		r.MerchantID = from.MerchantID
 	case ReceiptItemsField:
 		r.ReceiptItems = slices.Clone(from.ReceiptItems)
+	case AllocationField:
+		r.Allocation = from.Allocation.Clone()
+		for i := range r.ReceiptItems {
+			for _, item := range from.ReceiptItems {
+				if r.ReceiptItems[i].ID == item.ID {
+					r.ReceiptItems[i].Allocation = item.Allocation.Clone()
+				}
+			}
+		}
 	default:
 		return ErrInvalidRevision
 	}
 	return nil
+}
+
+func allocationEqual(a, b AllocationSnapshot) bool {
+	a, b = a.Clone(), b.Clone()
+	if a.State != b.State || a.Purpose != b.Purpose || a.Mode != b.Mode || a.Origin != b.Origin || a.Reason != b.Reason || len(a.Inputs) != len(b.Inputs) || len(a.Members) != len(b.Members) || len(a.Unallocated) != len(b.Unallocated) || !slices.Equal(a.RuleRefs, b.RuleRefs) {
+		return false
+	}
+	if (a.Basis == nil) != (b.Basis == nil) || a.Basis != nil && !allocationInputEqual(*a.Basis, *b.Basis) {
+		return false
+	}
+	for i := range a.Inputs {
+		left, right := a.Inputs[i], b.Inputs[i]
+		if left.MemberID != right.MemberID || !sameDecimal(left.Share, right.Share) || (left.Amount == nil) != (right.Amount == nil) || left.Amount != nil && !sameMoney(*left.Amount, *right.Amount) {
+			return false
+		}
+	}
+	for i := range a.Members {
+		if a.Members[i].MemberID != b.Members[i].MemberID || !sameMoney(a.Members[i].Money, b.Members[i].Money) {
+			return false
+		}
+	}
+	for i := range a.Unallocated {
+		if !sameMoney(a.Unallocated[i], b.Unallocated[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func allocationInputEqual(a, b AllocationInput) bool {
+	a, b = cloneAllocationInput(a), cloneAllocationInput(b)
+	if a.Mode != b.Mode || a.Purpose != b.Purpose || a.Reason != b.Reason || a.Origin != b.Origin || len(a.Members) != len(b.Members) || !slices.Equal(a.RuleRefs, b.RuleRefs) {
+		return false
+	}
+	for i := range a.Members {
+		left, right := a.Members[i], b.Members[i]
+		if left.MemberID != right.MemberID || !sameDecimal(left.Share, right.Share) || (left.Amount == nil) != (right.Amount == nil) || left.Amount != nil && !sameMoney(*left.Amount, *right.Amount) {
+			return false
+		}
+	}
+	return true
+}
+
+func sameMoney(left, right money.Money) bool {
+	compared, err := left.Compare(right)
+	return err == nil && compared == 0
+}
+
+func sameDecimal(left, right string) bool {
+	if left == "" || right == "" {
+		return left == right
+	}
+	leftValue, leftOK := new(big.Rat).SetString(left)
+	rightValue, rightOK := new(big.Rat).SetString(right)
+	return leftOK && rightOK && leftValue.Cmp(rightValue) == 0
 }
