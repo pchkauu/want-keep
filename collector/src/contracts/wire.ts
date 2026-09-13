@@ -91,6 +91,17 @@ export function parseSyncResult(
   value: unknown,
   expected: SyncRequest,
 ): SyncResult {
+  let encoded: string | undefined;
+  try {
+    encoded = JSON.stringify(value);
+  } catch {
+    fail();
+  }
+  if (
+    encoded === undefined ||
+    Buffer.byteLength(encoded, "utf8") > MAX_ENCODED_RESULT_BYTES
+  )
+    fail();
   const validatedExpected = parseSyncRequest(expected);
   const object = strictObject(value, ["outcome", "page", "failure"]);
   requiredKeys(object, ["outcome"]);

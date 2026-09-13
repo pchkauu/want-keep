@@ -74,6 +74,34 @@ func TestProviderFailuresPersistRecoverableJobOutcomes(t *testing.T) {
 	}
 }
 
+func TestProviderOutcomeWithoutExternalMarkerIsStale(t *testing.T) {
+	f := newFixture(t)
+	job := f.issued()
+	token, _ := application.TokenFromJob(job)
+	gateway := f.gateway(job)
+	gateway.result = ingestion.Result{Failure: &ingestion.ProviderFailure{
+		Token: token, Kind: ingestion.MFARequired,
+		Evidence: []ingestion.Evidence{gateway.result.Page.Evidence[0]},
+	}}
+
+	applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
+	if err != nil || applied || failure == nil {
+		t.Fatal("provider outcome without external marker was accepted", applied, failure, err)
+	}
+	providerOutcome, receiptErr := f.gate.ResultReceipt(testContext, f.p, job, f.evidence.Last().PageReference, admission.ProviderOutcomeResult)
+	if receiptErr != nil || providerOutcome {
+		t.Fatal("provider outcome receipt bypassed the external marker", providerOutcome, receiptErr)
+	}
+	stale, receiptErr := f.gate.ResultReceipt(testContext, f.p, job, f.evidence.Last().PageReference, admission.StaleResult)
+	if receiptErr != nil || !stale {
+		t.Fatal("unmarked provider outcome was not retained as stale", stale, receiptErr)
+	}
+	var state string
+	if err = f.admin.QueryRow(testContext, `SELECT state FROM want_keep.jobs WHERE household_id=$1 AND id=$2`, f.family.ID, job.ID).Scan(&state); err != nil || state != "running" {
+		t.Fatal("unmarked provider outcome changed the job", state, err)
+	}
+}
+
 func TestDelayedProviderFailureCannotOverrideAdvancedCursor(t *testing.T) {
 	f := newFixture(t)
 	job := f.issued()

@@ -133,6 +133,9 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 				recovered, recoverErr := s.recoverCommit(ctx, p, issued, batch, admission.PageResult, ingestion.EvidenceApplied, err)
 				return recovered, nil, recoverErr
 			}
+			if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
+				return false, nil, err
+			}
 			return false, nil, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
 		}
 		state := ingestion.EvidenceStale
@@ -154,6 +157,9 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 		if errors.Is(err, transaction.ErrCommitOutcomeUnknown) {
 			recovered, recoverErr := s.recoverCommit(ctx, p, issued, batch, admission.ProviderOutcomeResult, ingestion.EvidenceProviderOutcome, err)
 			return recovered, result.Failure, recoverErr
+		}
+		if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
+			return false, result.Failure, err
 		}
 		return false, result.Failure, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
 	}

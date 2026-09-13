@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
@@ -120,6 +121,64 @@ describe("collector ingestion contract v10", () => {
     const exposed = gateway.manifest() as { actions: string[] };
     exposed.actions.length = 0;
     expect(gateway.read(request).outcome).toBe("page");
+  });
+
+  it("enforces the encoded limit for object-form results", () => {
+    const oversized = structuredClone(golden) as {
+      page: {
+        evidence: Array<Record<string, unknown>>;
+        records: Array<{
+          account?: Record<string, unknown>;
+          transaction?: Record<string, unknown>;
+        }>;
+      };
+    };
+    const raw = Buffer.alloc((10 * 1024 * 1024) / 16);
+    const evidenceId = "raw-large-0";
+    oversized.page.evidence = Array.from({ length: 16 }, (_, index) => ({
+      id: `raw-large-${index}`,
+      mediaType: "application/json",
+      data: raw.toString("base64"),
+      sha256: createHash("sha256").update(raw).digest("hex"),
+      locator: `synthetic:large:${index}`,
+    }));
+    const account = oversized.page.records.find(
+      (record) =>
+        record.account?.externalAccountId === "acct-rub" &&
+        record.account.product === "current",
+    );
+    const transaction = oversized.page.records.find(
+      (record) =>
+        record.transaction?.externalAccountId === "acct-rub" &&
+        record.transaction.product === "current",
+    );
+    if (
+      account?.account === undefined ||
+      transaction?.transaction === undefined
+    )
+      throw new Error("invalid test fixture");
+    account.account.evidenceId = evidenceId;
+    transaction.transaction.evidenceId = evidenceId;
+    oversized.page.records = [account, transaction];
+    expect(() =>
+      parseSyncResult(oversized, parseSyncRequest(request)),
+    ).not.toThrow();
+
+    oversized.page.records = [
+      account,
+      ...Array.from({ length: 999 }, (_, index) => {
+        const record = structuredClone(transaction);
+        if (record.transaction === undefined)
+          throw new Error("invalid test fixture");
+        record.transaction.providerRecordId = `large-${index}`;
+        record.transaction.merchant = "m".repeat(2_000);
+        record.transaction.note = "n".repeat(2_000);
+        return record;
+      }),
+    ];
+    expect(() => parseSyncResult(oversized, parseSyncRequest(request))).toThrow(
+      "invalid ingestion contract",
+    );
   });
 
   it("keeps decimal values as strings and unsupported assets explicit", () => {

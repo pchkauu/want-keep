@@ -58,8 +58,11 @@ func (s *Store) BeginExternal(ctx context.Context, p household.Principal, j jobs
 
 func (s *Store) AcknowledgeExternalResult(ctx context.Context, p household.Principal, j jobs.Job) error {
 	current, err := s.FenceJob(ctx, p, j)
-	if err != nil || !current.ExternalStarted {
+	if err != nil {
 		return err
+	}
+	if !current.ExternalStarted {
+		return jobs.ErrStaleAttempt
 	}
 	scope, _ := s.familyScope(ctx)
 	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET external_started=false WHERE household_id=$1 AND id=$2 AND lease_token=$3 AND attempt=$4 AND state='running' AND external_started`, p.HouseholdID(), j.ID, j.LeaseToken, j.Attempt)

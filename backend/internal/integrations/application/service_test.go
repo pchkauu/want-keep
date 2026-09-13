@@ -124,6 +124,46 @@ func TestRejectedEvidenceStaysStagedWhenRetentionFails(t *testing.T) {
 	}
 }
 
+func TestStaleRetentionFailureNeverBecomesRejected(t *testing.T) {
+	retentionError := errors.New("stale quarantine unavailable")
+	for _, providerFailure := range []bool{false, true} {
+		t.Run(map[bool]string{false: "page", true: "provider outcome"}[providerFailure], func(t *testing.T) {
+			finalized := false
+			staleError := errors.Join(jobs.ErrStaleAttempt, retentionError)
+			gate := &gateFake{
+				commit: func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error) {
+					return false, staleError
+				},
+				failure: func(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error) {
+					return false, staleError
+				},
+			}
+			evidence := evidenceFake{
+				save: func(_ context.Context, batch ingestion.EvidenceBatch) error { return batch.Validate() },
+				disposition: func(context.Context, ingestion.EvidenceDisposition) error {
+					finalized = true
+					return nil
+				},
+			}
+			service, _ := application.NewService(gate, evidence, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+			job := issued()
+			token, _ := application.TokenFromJob(job)
+			result := ingestion.Result{}
+			if providerFailure {
+				result.Failure = &ingestion.ProviderFailure{Token: token, Kind: ingestion.MFARequired, Evidence: []ingestion.Evidence{rawEvidence()}}
+			} else {
+				page := page(token)
+				result.Page = &page
+			}
+
+			applied, _, err := service.Ingest(context.Background(), principal(), job, &gatewayFake{result: result})
+			if applied || !errors.Is(err, jobs.ErrStaleAttempt) || !errors.Is(err, retentionError) || gate.rejectCalls != 0 || finalized {
+				t.Fatal("stale evidence was misclassified as rejected", applied, gate.rejectCalls, finalized, err)
+			}
+		})
+	}
+}
+
 func TestStagedEvidenceCanBeFinalizedAfterRestart(t *testing.T) {
 	for _, test := range []struct {
 		kind admission.ResultKind

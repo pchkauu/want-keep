@@ -334,7 +334,10 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 	})
 	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
 		// The failed transaction has rolled back before retaining the stale evidence.
-		return false, s.quarantineResult(ctx, p, issued, page.EvidenceRef)
+		if quarantineErr := s.quarantineResult(ctx, p, issued, page.EvidenceRef); quarantineErr != nil {
+			return false, errors.Join(err, quarantineErr)
+		}
+		return false, nil
 	}
 	return applied && err == nil, err
 }
@@ -374,7 +377,10 @@ func (s *Service) CommitProviderOutcome(ctx context.Context, p household.Princip
 		})
 	})
 	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
-		return false, s.quarantineResult(ctx, p, issued, evidence)
+		if quarantineErr := s.quarantineResult(ctx, p, issued, evidence); quarantineErr != nil {
+			return false, errors.Join(err, quarantineErr)
+		}
+		return false, nil
 	}
 	return applied && err == nil, err
 }
