@@ -277,6 +277,9 @@ func classifyError(err error, generation bool) error {
 				return aiapp.GatewayFailure{Code: "provider_429_unclassified", OutcomeUnknown: generation}
 			}
 		}
+		if !generation && (status == http.StatusUnauthorized || status == http.StatusForbidden) {
+			return aiapp.GatewayFailure{Code: "provider_configuration_invalid", Retryable: true}
+		}
 		return aiapp.GatewayFailure{
 			Code:      "provider_rejected",
 			Retryable: !generation && (status == http.StatusRequestTimeout || status == http.StatusTooManyRequests || status >= 500),

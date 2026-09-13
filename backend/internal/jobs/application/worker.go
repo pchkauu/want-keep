@@ -136,15 +136,15 @@ func (w Worker) Step(ctx context.Context) (err error) {
 	if runErr != nil {
 		result = Result{State: jobs.Ready, Reason: jobs.TemporaryFailure}
 	}
-	if result.MinimumDelay < 0 || result.MinimumDelay > jobs.DefaultRetryPolicy().Maximum || result.State != jobs.Ready && result.MinimumDelay != 0 {
+	if result.MinimumDelay < 0 || result.MinimumDelay > jobs.DefaultRetryPolicy().Maximum || result.State != jobs.Ready && result.State != jobs.Waiting && result.MinimumDelay != 0 {
 		return jobs.ErrInvalidJob
 	}
 	delay := time.Duration(0)
 	if result.State == jobs.Ready {
 		delay = jobs.DefaultRetryPolicy().Delay(j.Attempt, rand.Float64())
-		if result.MinimumDelay > delay {
-			delay = result.MinimumDelay
-		}
+	}
+	if result.MinimumDelay > delay {
+		delay = result.MinimumDelay
 	}
 	if result.State == jobs.Succeeded || result.Apply != nil {
 		diagnostic.Stage = "commit"

@@ -94,6 +94,11 @@ BEGIN
   RAISE EXCEPTION 'AI attempt not found' USING ERRCODE = 'P0002';
  END IF;
 
+ PERFORM 1 FROM want_keep.households h WHERE h.id=v_family FOR UPDATE;
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'AI household not found' USING ERRCODE = 'P0002';
+ END IF;
+
  SELECT j.kind,j.state,j.external_started,j.lease_until INTO v_job
  FROM want_keep.jobs j
  WHERE (j.household_id,j.id)=(v_family,v_job_id)

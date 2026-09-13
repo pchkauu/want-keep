@@ -123,14 +123,14 @@ func (h *Handler) handleGatewayFailure(ctx context.Context, execution jobapp.Exe
 func (h *Handler) recordProviderRetry(execution jobapp.Execution, attemptID, code string, retryAfter time.Duration) (jobapp.Result, error) {
 	retryAfter = min(max(retryAfter, 0), jobs.DefaultRetryPolicy().Maximum)
 	settlement := Settlement{Result: ai.Result{State: ai.KnownRejection, Code: code}, Reservation: ai.MustCost("0")}
-	return jobapp.Result{State: jobs.Ready, Reason: jobs.TemporaryFailure, MinimumDelay: retryAfter, Apply: func(ctx context.Context, _ household.Principal) error {
+	return jobapp.Result{State: jobs.Waiting, Reason: jobs.GatewayUnavailable, MinimumDelay: retryAfter, Apply: func(ctx context.Context, _ household.Principal) error {
 		return h.repository.SaveAIOutcome(ctx, execution.Principal, execution.Job, attemptID, settlement, h.now().UTC())
 	}}, nil
 }
 
 func (h *Handler) recordProviderWait(execution jobapp.Execution, attemptID, code string) (jobapp.Result, error) {
 	settlement := Settlement{Result: ai.Result{State: ai.KnownRejection, Code: code}, Reservation: ai.MustCost("0")}
-	return jobapp.Result{State: jobs.Waiting, Reason: jobs.GatewayUnavailable, Apply: func(ctx context.Context, _ household.Principal) error {
+	return jobapp.Result{State: jobs.Waiting, Reason: jobs.GatewayUnavailable, MinimumDelay: jobs.DefaultRetryPolicy().Maximum, Apply: func(ctx context.Context, _ household.Principal) error {
 		return h.repository.SaveAIOutcome(ctx, execution.Principal, execution.Job, attemptID, settlement, h.now().UTC())
 	}}, nil
 }

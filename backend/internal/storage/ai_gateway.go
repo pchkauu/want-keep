@@ -509,6 +509,38 @@ func (s *Store) ResumeAIBudgetWaiting(ctx context.Context, now time.Time) (int64
 	return tag.RowsAffected(), nil
 }
 
+// ResumeAIGatewayWaiting preserves the job's original deadline and only
+// releases retries whose provider backoff has elapsed.
+func (s *Store) ResumeAIGatewayWaiting(ctx context.Context) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+	if _, err = tx.Exec(ctx, `WITH expired AS (
+	 SELECT household_id,id FROM want_keep.jobs
+	 WHERE kind='ai' AND state='waiting' AND reason='gateway_unavailable'
+	  AND COALESCE(run_deadline,deadline)<=clock_timestamp()
+	 ORDER BY available_at,id LIMIT 100 FOR UPDATE SKIP LOCKED
+	)
+	UPDATE want_keep.jobs j SET state='failed',reason='deadline_exceeded'
+	FROM expired e WHERE (j.household_id,j.id)=(e.household_id,e.id)`); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `WITH pending AS (
+	 SELECT household_id,id FROM want_keep.jobs
+	 WHERE kind='ai' AND state='waiting' AND reason='gateway_unavailable'
+	  AND NOT cancel_requested AND NOT external_started
+	  AND available_at<=clock_timestamp() AND COALESCE(run_deadline,deadline)>clock_timestamp()
+	 ORDER BY available_at,id LIMIT 100 FOR UPDATE SKIP LOCKED
+	)
+	UPDATE want_keep.jobs j SET state='ready',reason='',available_at=clock_timestamp()
+	FROM pending p WHERE (j.household_id,j.id)=(p.household_id,p.id)`); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *Store) releaseSafeInterruptedAttempts(ctx context.Context, tx *transactionScope, p household.Principal, job jobs.Job, now time.Time) error {
 	return s.releaseSafeAIJobAttempts(ctx, tx.tx, p.HouseholdID(), job.ID, "recovered_before_send", now)
 }

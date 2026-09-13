@@ -3,8 +3,6 @@ package application
 import (
 	"context"
 	"time"
-
-	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 )
 
 type GatewayQueue struct {
@@ -20,7 +18,7 @@ func (q *GatewayQueue) Step(ctx context.Context) error {
 	if q == nil || q.repository == nil {
 		return ErrInvalidGatewayQueue
 	}
-	return q.repository.ResumeWaiting(ctx, jobs.AI, jobs.GatewayUnavailable)
+	return q.repository.ResumeAIGatewayWaiting(ctx)
 }
 
 func (q *GatewayQueue) Run(ctx context.Context) error {

@@ -456,6 +456,69 @@ func TestReconciliationResolvesTerminalOverReservation(t *testing.T) {
 	}
 }
 
+func TestReconciliationSerializesWithReservationBudgetCheck(t *testing.T) {
+	f := newFixture(t)
+	jobsToRun := f.newReviewJobs(2)
+	pendingRequest := f.request(jobsToRun[1])
+	if err := f.store.StartAIAttempt(testContext, f.p, jobsToRun[1], pendingRequest, strings.Repeat("e", 64), f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+
+	billedRequest := f.request(jobsToRun[0])
+	reservation, err := ai.TerraPricing().Reservation(100, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = f.store.StartAIAttempt(testContext, f.p, jobsToRun[0], billedRequest, strings.Repeat("d", 64), f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	if err = f.store.ReserveAIAttempt(testContext, f.p, jobsToRun[0], billedRequest.ID, 100, reservation, f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	if err = f.store.BeginAIGeneration(testContext, f.p, jobsToRun[0], billedRequest.ID, f.now.Time()); err != nil {
+		t.Fatal(err)
+	}
+	initial := ai.MustCost("0.01")
+	settlement := aiapp.Settlement{Result: completedResult(), Reservation: reservation, Actual: &initial, NeedsReconciliation: true}
+	execution := jobapp.Execution{Job: jobsToRun[0], Principal: f.p}
+	if err = (jobapp.Executor{Repository: f.store}).CommitOutcome(testContext, execution, jobapp.Result{State: jobs.Succeeded, Apply: func(ctx context.Context, _ household.Principal) error {
+		return f.store.SaveAICompletion(ctx, f.p, jobsToRun[0], billedRequest.ID, settlement, f.now.Time())
+	}}, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	blocker, err := f.admin.Begin(testContext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer blocker.Rollback(testContext)
+	if _, err = blocker.Exec(testContext, `SELECT id FROM want_keep.households WHERE id=$1 FOR UPDATE`, f.family.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	reconciliationDone := make(chan error, 1)
+	service := aiapp.NewReconciliationService(f.maintenanceStore())
+	go func() {
+		reconciliationDone <- service.Reconcile(testContext, billedRequest.ID, aiapp.Charged, ai.MustCost("49.95"), "provider-dashboard:budget-lock")
+	}()
+	waitForDatabaseLock(t, f, "want_keep_maintenance", "reconcile_ai_attempt")
+
+	reservationDone := make(chan error, 1)
+	go func() {
+		reservationDone <- f.store.ReserveAIAttempt(testContext, f.p, jobsToRun[1], pendingRequest.ID, 100, ai.MustCost("0.1"), f.now.Time())
+	}()
+	waitForDatabaseLock(t, f, "want_keep_app", "want_keep.households")
+	if err = blocker.Commit(testContext); err != nil {
+		t.Fatal(err)
+	}
+	if err = <-reconciliationDone; err != nil {
+		t.Fatal(err)
+	}
+	if err = <-reservationDone; !errors.Is(err, aiapp.ErrBudgetExhausted) {
+		t.Fatalf("reservation crossed reconciled family spend: %v", err)
+	}
+}
+
 func TestMaintenanceRoleCannotReadOrMutateGatewayTables(t *testing.T) {
 	f := newFixture(t)
 	pool := f.maintenancePool()
@@ -658,12 +721,12 @@ func TestKnownRetryableFailureAllowsOnlyOneNewAttempt(t *testing.T) {
 	}
 }
 
-func TestPrecountOutageWaitsAndDoesNotConsumeProviderRetry(t *testing.T) {
+func TestPrecountConfigurationFailureWaitsAndRecovers(t *testing.T) {
 	f := newFixture(t)
 	f.enqueueReviewJobs(1)
 	gateway := &fakeGateway{
 		result:   completedResult(),
-		countErr: aiapp.GatewayFailure{Code: "provider_unavailable", Retryable: true},
+		countErr: aiapp.GatewayFailure{Code: "provider_configuration_invalid", Retryable: true},
 	}
 	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
 	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
@@ -676,6 +739,9 @@ func TestPrecountOutageWaitsAndDoesNotConsumeProviderRetry(t *testing.T) {
 	}
 	gateway.countErr = nil
 	gateway.generateErr = aiapp.GatewayFailure{Code: "provider_rate_limited", Retryable: true, ConfirmedNoCharge: true}
+	if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET available_at=clock_timestamp() WHERE kind='ai'`); err != nil {
+		t.Fatal(err)
+	}
 	if err := aiapp.NewGatewayQueue(f.store, time.Minute).Step(testContext); err != nil {
 		t.Fatal(err)
 	}
@@ -706,16 +772,21 @@ func TestPrecountRateLimitHonorsDelayWithoutConsumingGenerationRetry(t *testing.
 	}
 	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
 	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
-	for range 2 {
+	queue := aiapp.NewGatewayQueue(f.store, time.Minute)
+	for range 4 {
 		if err := worker.Step(testContext); err != nil {
 			t.Fatal(err)
 		}
 		var state string
+		var attempt int
 		var remaining float64
-		if err := f.admin.QueryRow(testContext, `SELECT state,EXTRACT(EPOCH FROM available_at-clock_timestamp()) FROM want_keep.jobs WHERE kind='ai'`).Scan(&state, &remaining); err != nil || state != "ready" || remaining < 119 {
-			t.Fatalf("pre-count rate limit was not delayed: %s %.3f %v", state, remaining, err)
+		if err := f.admin.QueryRow(testContext, `SELECT state,attempt,EXTRACT(EPOCH FROM available_at-clock_timestamp()) FROM want_keep.jobs WHERE kind='ai'`).Scan(&state, &attempt, &remaining); err != nil || state != "waiting" || attempt != 0 || remaining < 119 {
+			t.Fatalf("pre-count rate limit was not delayed without consuming an attempt: %s/%d %.3f %v", state, attempt, remaining, err)
 		}
 		if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET available_at=clock_timestamp() WHERE kind='ai'`); err != nil {
+			t.Fatal(err)
+		}
+		if err := queue.Step(testContext); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -735,8 +806,57 @@ func TestPrecountRateLimitHonorsDelayWithoutConsumingGenerationRetry(t *testing.
 	if err := f.admin.QueryRow(testContext, `SELECT state FROM want_keep.jobs WHERE kind='ai'`).Scan(&state); err != nil || state != "failed" {
 		t.Fatalf("generation retry allowance changed after pre-count rate limits: %s %v", state, err)
 	}
-	if gateway.countCalls.Load() != 4 || gateway.generateCalls.Load() != 2 {
+	if gateway.countCalls.Load() != 6 || gateway.generateCalls.Load() != 2 {
 		t.Fatalf("provider attempts: count=%d generation=%d", gateway.countCalls.Load(), gateway.generateCalls.Load())
+	}
+}
+
+func TestGatewayWaitingPreservesDeadlineAndBoundsAttemptHistory(t *testing.T) {
+	f := newFixture(t)
+	f.enqueueReviewJobs(1)
+	gateway := &fakeGateway{countErr: aiapp.GatewayFailure{Code: "provider_unavailable", Retryable: true}}
+	handler := aiapp.NewHandler(f.store, gateway, func() time.Time { return f.now.Time() }, uuid.NewString)
+	worker := jobapp.Worker{Repository: f.store, Handler: handler, Config: jobapp.DefaultWorkerConfig(jobs.AI)}
+	queue := aiapp.NewGatewayQueue(f.store, time.Minute)
+
+	var deadline time.Time
+	if err := f.admin.QueryRow(testContext, `SELECT deadline FROM want_keep.jobs WHERE kind='ai'`).Scan(&deadline); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := worker.Step(testContext); err != nil {
+			t.Fatal(err)
+		}
+		var state string
+		var attempt int
+		var currentDeadline time.Time
+		var retryDelay float64
+		if err := f.admin.QueryRow(testContext, `SELECT state,attempt,COALESCE(run_deadline,deadline),EXTRACT(EPOCH FROM available_at-clock_timestamp()) FROM want_keep.jobs WHERE kind='ai'`).Scan(&state, &attempt, &currentDeadline, &retryDelay); err != nil || state != "waiting" || attempt != 0 || !currentDeadline.Equal(deadline) || retryDelay < 299 {
+			t.Fatalf("gateway wait lost its bound: %s/%d/%s/%.3f %v", state, attempt, currentDeadline, retryDelay, err)
+		}
+		if err := queue.Step(testContext); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET available_at=clock_timestamp() WHERE kind='ai'`); err != nil {
+			t.Fatal(err)
+		}
+		if err := queue.Step(testContext); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var attempts int
+	if err := f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.ai_attempts`).Scan(&attempts); err != nil || attempts != 2 {
+		t.Fatalf("unexpected pre-count history: %d, %v", attempts, err)
+	}
+	if _, err := f.admin.Exec(testContext, `UPDATE want_keep.jobs SET state='waiting',reason='gateway_unavailable',run_deadline=clock_timestamp()-INTERVAL '1 second' WHERE kind='ai'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := queue.Step(testContext); err != nil {
+		t.Fatal(err)
+	}
+	var state, reason string
+	if err := f.admin.QueryRow(testContext, `SELECT state,reason FROM want_keep.jobs WHERE kind='ai'`).Scan(&state, &reason); err != nil || state != "failed" || reason != "deadline_exceeded" {
+		t.Fatalf("expired gateway wait survived: %s/%s %v", state, reason, err)
 	}
 }
 
@@ -849,4 +969,21 @@ func completedResult() ai.Result {
 		Output: json.RawMessage(`{"results":[{"id":"1","action":"skip","kind":null,"amount":null,"fee":null,"asset":null,"target":null,"month":null,"shares":[],"items":[],"evidence":[],"explanation":"ok"}]}`),
 		Usage:  ai.Usage{InputTokens: 100, CachedTokens: 20, CacheWriteTokens: &writes, OutputTokens: 50, ReasoningTokens: 12},
 	}
+}
+
+func waitForDatabaseLock(t *testing.T, f *fixture, user, queryFragment string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		var waiting bool
+		err := f.admin.QueryRow(testContext, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND usename=$1 AND wait_event_type='Lock' AND query LIKE '%' || $2 || '%')`, user, queryFragment).Scan(&waiting)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("%s did not reach the %s lock", user, queryFragment)
 }

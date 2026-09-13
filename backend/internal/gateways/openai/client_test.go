@@ -183,12 +183,18 @@ func TestProviderHTTPFailuresPreserveChargeUncertainty(t *testing.T) {
 				var failure aiapp.GatewayFailure
 				wantUnknown := call.name == "generation" && (testCase.status == http.StatusRequestTimeout || testCase.status == http.StatusTooManyRequests || testCase.status >= 500)
 				wantRetryable := testCase.retryable && !wantUnknown
+				if call.name == "count" && (testCase.status == http.StatusUnauthorized || testCase.status == http.StatusForbidden) {
+					wantRetryable = true
+				}
 				if testCase.status == http.StatusTooManyRequests {
 					wantRetryable = false
 				}
 				wantConfirmedNoCharge := false
 				if !errors.As(err, &failure) || failure.Retryable != wantRetryable || failure.OutcomeUnknown != wantUnknown || failure.ConfirmedNoCharge != wantConfirmedNoCharge || requests != 1 {
 					t.Fatalf("failure classification: calls=%d failure=%+v err=%v", requests, failure, err)
+				}
+				if call.name == "count" && (testCase.status == http.StatusUnauthorized || testCase.status == http.StatusForbidden) && failure.Code != "provider_configuration_invalid" {
+					t.Fatalf("count authentication code = %q", failure.Code)
 				}
 			})
 		}

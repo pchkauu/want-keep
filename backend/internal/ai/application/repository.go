@@ -63,7 +63,7 @@ type BudgetQueueRepository interface {
 }
 
 type GatewayQueueRepository interface {
-	ResumeWaiting(context.Context, jobs.Kind, jobs.Reason) error
+	ResumeAIGatewayWaiting(context.Context) error
 }
 
 type WaitingHandler struct{}
