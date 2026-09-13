@@ -357,6 +357,33 @@ func TestGoldenPageRoundTripsThroughPostgreSQLWithoutDuplicateEffects(t *testing
 	}
 }
 
+func TestConfirmedCorrectionReplayDoesNotCreateAnotherSourceRevision(t *testing.T) {
+	f := newFixture(t)
+	for attempt := range 3 {
+		job := f.issued()
+		gateway := f.gatewayWithMutation(job, func(root map[string]any) {
+			classification := "correction"
+			if attempt == 0 {
+				classification = "ambiguous"
+			}
+			page := root["page"].(map[string]any)
+			for _, raw := range page["records"].([]any) {
+				record := raw.(map[string]any)
+				if transaction, ok := record["transaction"].(map[string]any); ok {
+					transaction["classification"] = classification
+				}
+			}
+		})
+		applied, failure, err := f.service.Ingest(testContext, f.p, job, gateway)
+		if err != nil || !applied || failure != nil {
+			t.Fatal(applied, failure, err)
+		}
+	}
+	if revisions := f.count("source_revisions"); revisions != 6 {
+		t.Fatalf("replayed corrections changed source history: revisions=%d", revisions)
+	}
+}
+
 func TestResultReceiptIsImmutableForApplicationRole(t *testing.T) {
 	f := newFixture(t)
 	job := f.issued()

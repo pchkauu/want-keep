@@ -24,6 +24,7 @@ func TestSourceResolutionRequiresCurrentRevisionAndPreservesOriginal(t *testing.
 	if !original.Ambiguous || original.Revision != 2 {
 		t.Fatal("source mutated")
 	}
+	input.ExpectedRevision = resolved.Revision
 	again, duplicate, err := resolved.Next(input)
 	if err != nil || !duplicate || again != resolved {
 		t.Fatal("same correction repeated")

@@ -91,7 +91,7 @@ func (r SourceRecord) Next(i SourceInput) (SourceRecord, bool, error) {
 		return r, false, ErrSourceAmbiguous
 	}
 	confirmedCorrection := i.Classification == "correction" && i.ExpectedRevision == r.Revision
-	if r.PayloadHash == i.PayloadHash && !confirmedCorrection && (i.Classification != "ambiguous" || r.Ambiguous) {
+	if r.PayloadHash == i.PayloadHash && (!r.Ambiguous || !confirmedCorrection) && (i.Classification != "ambiguous" || r.Ambiguous) {
 		return r, true, nil
 	}
 	if r.Revision >= 9007199254740991 {
