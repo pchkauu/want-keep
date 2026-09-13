@@ -155,6 +155,12 @@ describe("collector ingestion contract v10", () => {
     delete zeroLookback.history.maximumLookbackDays;
     expect(() => parseCapabilityManifest(zeroLookback)).not.toThrow();
 
+    const blankNamespace = structuredClone(manifest) as {
+      logs: Array<{ namespace: string }>;
+    };
+    blankNamespace.logs[0]!.namespace = " \t";
+    expect(() => parseCapabilityManifest(blankNamespace)).toThrow();
+
     for (const gaps of [
       ["gap", "gap"],
       Array.from({ length: 101 }, (_, index) => `gap-${index}`),

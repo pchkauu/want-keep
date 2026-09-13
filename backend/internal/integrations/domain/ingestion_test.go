@@ -94,6 +94,25 @@ func TestPageAndFailureEnforceCursorAndRetrySemantics(t *testing.T) {
 	}
 }
 
+func TestProviderFailureEnforcesEvidenceIdentityAndAggregateSize(t *testing.T) {
+	failure := ingestion.ProviderFailure{Token: token(), Kind: ingestion.MFARequired, Evidence: []ingestion.Evidence{evidence(), evidence()}}
+	if !errors.Is(failure.Validate(), ingestion.ErrInvalidContract) {
+		t.Fatal("duplicate failure evidence was accepted")
+	}
+	largeEvidence := func(id string, size int) ingestion.Evidence {
+		data := make([]byte, size)
+		digest := sha256.Sum256(data)
+		return ingestion.Evidence{ID: id, MediaType: "application/json", Digest: hex.EncodeToString(digest[:]), Locator: "synthetic:" + id, Data: data}
+	}
+	failure.Evidence = []ingestion.Evidence{
+		largeEvidence("first", ingestion.MaxEvidenceBytes/2+1),
+		largeEvidence("second", ingestion.MaxEvidenceBytes/2),
+	}
+	if !errors.Is(failure.Validate(), ingestion.ErrInvalidContract) {
+		t.Fatal("oversized aggregate failure evidence was accepted")
+	}
+}
+
 func TestPageBoundsTotalPostings(t *testing.T) {
 	coverage, _ := reporting.NewCoverage(reporting.Complete, nil)
 	reference := ingestion.AccountReference{ExternalAccountID: "external", Product: "current", AssetCode: "RUB"}

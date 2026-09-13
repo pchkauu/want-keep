@@ -330,6 +330,9 @@ func TestDecoderRejectsMissingRequiredFields(t *testing.T) {
 		"manifest actions":  func(root map[string]any) { delete(root, "actions") },
 		"history paginated": func(root map[string]any) { delete(root["history"].(map[string]any), "paginated") },
 		"log record kinds":  func(root map[string]any) { delete(root["logs"].([]any)[0].(map[string]any), "recordKinds") },
+		"blank log namespace": func(root map[string]any) {
+			root["logs"].([]any)[0].(map[string]any)["namespace"] = " \t"
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var root map[string]any

@@ -55,6 +55,7 @@ export function parseCapabilityManifest(value: unknown): CapabilityManifest {
     oneOf(log.product, products);
     if (!productSet.has(log.product as string)) fail();
     text(log.namespace);
+    if ((log.namespace as string).trim() === "") fail();
     const key = JSON.stringify([log.product, log.namespace]);
     if (logKeys.has(key)) fail();
     logKeys.add(key);

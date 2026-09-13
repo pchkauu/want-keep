@@ -520,10 +520,17 @@ func (f ProviderFailure) Validate() error {
 	default:
 		return ErrInvalidContract
 	}
+	ids := map[string]bool{}
+	total := 0
 	for _, evidence := range f.Evidence {
-		if evidence.Validate() != nil {
+		if evidence.Validate() != nil || ids[evidence.ID] {
 			return ErrInvalidContract
 		}
+		ids[evidence.ID] = true
+		total += len(evidence.Data)
+	}
+	if total > MaxEvidenceBytes {
+		return ErrInvalidContract
 	}
 	return nil
 }
