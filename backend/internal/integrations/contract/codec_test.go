@@ -146,6 +146,11 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 		"invalid base64": func(root map[string]any) {
 			root["page"].(map[string]any)["evidence"].([]any)[0].(map[string]any)["data"] = "%%%="
 		},
+		"line-broken base64": func(root map[string]any) {
+			evidence := root["page"].(map[string]any)["evidence"].([]any)[0].(map[string]any)
+			value := evidence["data"].(string)
+			evidence["data"] = value[:4] + "\n" + value[4:]
+		},
 		"wrong discriminator": func(root map[string]any) {
 			record := root["page"].(map[string]any)["records"].([]any)[0].(map[string]any)
 			record["recordType"] = "transaction"
@@ -251,6 +256,9 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 		},
 		"null optional field": func(root map[string]any) {
 			root["page"].(map[string]any)["nextCursor"] = nil
+		},
+		"empty next cursor": func(root map[string]any) {
+			root["page"].(map[string]any)["nextCursor"] = ""
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

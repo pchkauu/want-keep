@@ -237,10 +237,11 @@ func (g *fixtureGateway) Read(context.Context, ingestion.JobToken) (ingestion.Re
 }
 
 type fileEvidenceStore struct {
-	path string
-	fail bool
-	mu   sync.Mutex
-	last ingestion.EvidenceBatch
+	path            string
+	fail            bool
+	failDisposition bool
+	mu              sync.Mutex
+	last            ingestion.EvidenceBatch
 }
 
 func (s *fileEvidenceStore) Save(_ context.Context, batch ingestion.EvidenceBatch) error {
@@ -274,6 +275,9 @@ func (s *fileEvidenceStore) Last() ingestion.EvidenceBatch {
 }
 
 func (s *fileEvidenceStore) SetDisposition(_ context.Context, disposition ingestion.EvidenceDisposition) error {
+	if s.failDisposition {
+		return fmt.Errorf("synthetic disposition failure")
+	}
 	if err := disposition.Validate(); err != nil {
 		return err
 	}
@@ -303,6 +307,25 @@ func (s *fileEvidenceStore) SetDisposition(_ context.Context, disposition ingest
 		return fmt.Errorf("staged evidence batch not found")
 	}
 	return nil
+}
+
+func (s *fileEvidenceStore) Staged(_ context.Context, householdID string, limit int) ([]ingestion.StagedEvidence, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if limit < 1 || s.last.HouseholdID != householdID || s.last.Disposition != ingestion.EvidenceStaged {
+		return nil, nil
+	}
+	entries, err := os.ReadDir(s.path)
+	if err != nil {
+		return nil, err
+	}
+	prefix := s.batchPrefix(s.last.HouseholdID, s.last.JobID, s.last.PageReference) + string(ingestion.EvidenceStaged) + "_"
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), prefix) {
+			return []ingestion.StagedEvidence{{HouseholdID: s.last.HouseholdID, JobID: s.last.JobID, PageReference: s.last.PageReference}}, nil
+		}
+	}
+	return nil, nil
 }
 
 func (s *fileEvidenceStore) batchPrefix(householdID, jobID, pageReference string) string {

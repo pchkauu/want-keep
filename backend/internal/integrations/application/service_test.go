@@ -123,6 +123,64 @@ func TestRejectedEvidenceStaysStagedWhenRetentionFails(t *testing.T) {
 	}
 }
 
+func TestStagedEvidenceCanBeFinalizedAfterRestart(t *testing.T) {
+	for _, test := range []struct {
+		kind admission.ResultKind
+		want ingestion.EvidenceDispositionState
+	}{
+		{kind: admission.PageResult, want: ingestion.EvidenceApplied},
+		{kind: admission.ProviderOutcomeResult, want: ingestion.EvidenceProviderOutcome},
+		{kind: admission.RejectedResult, want: ingestion.EvidenceRejected},
+		{kind: admission.StaleResult, want: ingestion.EvidenceStale},
+	} {
+		t.Run(string(test.kind), func(t *testing.T) {
+			staged := ingestion.StagedEvidence{HouseholdID: string(principal().HouseholdID()), JobID: issued().ID, PageReference: "evidence:page:restart"}
+			var got ingestion.EvidenceDisposition
+			gate := &gateFake{evidenceResult: func(_ context.Context, p household.Principal, jobID, evidence string) (admission.ResultKind, bool, error) {
+				if p.HouseholdID() != principal().HouseholdID() || jobID != staged.JobID || evidence != staged.PageReference {
+					t.Fatal("staged evidence lost trusted scope")
+				}
+				return test.kind, true, nil
+			}}
+			evidence := evidenceFake{
+				save: func(context.Context, ingestion.EvidenceBatch) error { return nil },
+				staged: func(context.Context, string, int) ([]ingestion.StagedEvidence, error) {
+					return []ingestion.StagedEvidence{staged}, nil
+				},
+				disposition: func(_ context.Context, value ingestion.EvidenceDisposition) error {
+					got = value
+					return nil
+				},
+			}
+			service, _ := application.NewService(gate, evidence, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+			completed, err := service.ReconcileStaged(context.Background(), principal(), 100)
+			if err != nil || completed != 1 || got.State != test.want || got.PageReference != staged.PageReference {
+				t.Fatal("staged evidence was not finalized", completed, got, err)
+			}
+		})
+	}
+}
+
+func TestStagedEvidenceWithoutDurableResultRemainsStaged(t *testing.T) {
+	staged := ingestion.StagedEvidence{HouseholdID: string(principal().HouseholdID()), JobID: issued().ID, PageReference: "evidence:page:unknown"}
+	finalized := false
+	evidence := evidenceFake{
+		save: func(context.Context, ingestion.EvidenceBatch) error { return nil },
+		staged: func(context.Context, string, int) ([]ingestion.StagedEvidence, error) {
+			return []ingestion.StagedEvidence{staged}, nil
+		},
+		disposition: func(context.Context, ingestion.EvidenceDisposition) error {
+			finalized = true
+			return nil
+		},
+	}
+	service, _ := application.NewService(&gateFake{}, evidence, accountFake{}, sourceFake{}, now, func() string { return "server-id" })
+	completed, err := service.ReconcileStaged(context.Background(), principal(), 100)
+	if err != nil || completed != 0 || finalized {
+		t.Fatal("unknown result changed staged evidence", completed, finalized, err)
+	}
+}
+
 func TestProviderFailureCommitErrorRetainsEvidenceWithFreshContext(t *testing.T) {
 	commitError := errors.New("provider outcome unavailable")
 	ctx, cancel := context.WithCancel(context.Background())
@@ -323,7 +381,15 @@ type gateFake struct {
 	commit                    func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error)
 	failure                   func(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error)
 	receipt                   func(context.Context, household.Principal, jobs.Job, string, admission.ResultKind) (bool, error)
+	evidenceResult            func(context.Context, household.Principal, string, string) (admission.ResultKind, bool, error)
 	reject                    func(context.Context, household.Principal, jobs.Job, string) error
+}
+
+func (g *gateFake) EvidenceResult(ctx context.Context, p household.Principal, jobID, evidence string) (admission.ResultKind, bool, error) {
+	if g.evidenceResult == nil {
+		return "", false, nil
+	}
+	return g.evidenceResult(ctx, p, jobID, evidence)
 }
 
 func (g *gateFake) ResultReceipt(ctx context.Context, p household.Principal, job jobs.Job, evidence string, kind admission.ResultKind) (bool, error) {
@@ -366,6 +432,7 @@ func (g *gateFake) RetainRejectedResult(ctx context.Context, p household.Princip
 type evidenceFake struct {
 	save        func(context.Context, ingestion.EvidenceBatch) error
 	disposition func(context.Context, ingestion.EvidenceDisposition) error
+	staged      func(context.Context, string, int) ([]ingestion.StagedEvidence, error)
 }
 
 func (e evidenceFake) Save(ctx context.Context, batch ingestion.EvidenceBatch) error {
@@ -377,6 +444,13 @@ func (e evidenceFake) SetDisposition(ctx context.Context, disposition ingestion.
 		return nil
 	}
 	return e.disposition(ctx, disposition)
+}
+
+func (e evidenceFake) Staged(ctx context.Context, householdID string, limit int) ([]ingestion.StagedEvidence, error) {
+	if e.staged == nil {
+		return nil, nil
+	}
+	return e.staged(ctx, householdID, limit)
 }
 
 type accountFake struct{}

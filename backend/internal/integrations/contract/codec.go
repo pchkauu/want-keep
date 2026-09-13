@@ -132,6 +132,9 @@ func pageFromGenerated(source generated.SyncPage, expected ingestion.JobToken) (
 	}
 	page := ingestion.Page{Token: token, Complete: source.Complete, Coverage: coverage}
 	if source.NextCursor != nil {
+		if *source.NextCursor == "" {
+			return ingestion.Page{}, ingestion.ErrInvalidContract
+		}
 		page.NextCursor = *source.NextCursor
 	}
 	page.Evidence, err = evidenceFromGenerated(source.Evidence)
@@ -202,7 +205,7 @@ func evidenceFromGenerated(source []generated.EvidenceBlob) ([]ingestion.Evidenc
 	result := make([]ingestion.Evidence, 0, len(source))
 	for _, raw := range source {
 		data, err := base64.StdEncoding.Strict().DecodeString(raw.Data)
-		if err != nil || len(data) == 0 {
+		if err != nil || len(data) == 0 || base64.StdEncoding.EncodeToString(data) != raw.Data {
 			return nil, ingestion.ErrInvalidContract
 		}
 		digest := sha256.Sum256(data)

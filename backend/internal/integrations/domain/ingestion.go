@@ -255,6 +255,18 @@ type EvidenceDisposition struct {
 	State              EvidenceDispositionState
 }
 
+type StagedEvidence struct {
+	HouseholdID, JobID string
+	PageReference      string
+}
+
+func (e StagedEvidence) Validate() error {
+	if !validText(e.HouseholdID) || !validText(e.JobID) || !validText(e.PageReference) {
+		return ErrEvidence
+	}
+	return nil
+}
+
 func (d EvidenceDisposition) Validate() error {
 	if !validText(d.HouseholdID) || !validText(d.JobID) || !validText(d.PageReference) {
 		return ErrEvidence

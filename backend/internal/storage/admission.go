@@ -320,11 +320,46 @@ func (s *Store) SaveResultReceipt(ctx context.Context, p household.Principal, j 
 	if err != nil {
 		return err
 	}
-	if scope.principal != p || scope.syncJobID != j.ID || j.HouseholdID != p.HouseholdID() || evidence == "" || len(evidence) > 2000 || !kind.Valid() {
+	if scope.principal != p ||
+		(scope.syncJobID == "" && kind != admission.RejectedResult && kind != admission.StaleResult) ||
+		(scope.syncJobID != "" && scope.syncJobID != j.ID) ||
+		j.HouseholdID != p.HouseholdID() || evidence == "" || len(evidence) > 2000 || !kind.Valid() {
 		return ErrTransactionRequired
 	}
-	_, err = scope.tx.Exec(ctx, `INSERT INTO want_keep.ingestion_result_receipts(household_id,id,job_id,lease_token,attempt,input_cursor,evidence_ref,kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, p.HouseholdID(), newID(), j.ID, j.LeaseToken, j.Attempt, j.Cursor, evidence, kind)
-	return err
+	tag, err := scope.tx.Exec(ctx, `INSERT INTO want_keep.ingestion_result_receipts(household_id,id,job_id,lease_token,attempt,input_cursor,evidence_ref,kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(household_id,job_id,evidence_ref) DO NOTHING`, p.HouseholdID(), newID(), j.ID, j.LeaseToken, j.Attempt, j.Cursor, evidence, kind)
+	if err != nil || tag.RowsAffected() == 1 {
+		return err
+	}
+	var lease string
+	var attempt int
+	var cursor string
+	var storedKind admission.ResultKind
+	if err = scope.tx.QueryRow(ctx, `SELECT lease_token,attempt,input_cursor,kind FROM want_keep.ingestion_result_receipts WHERE household_id=$1 AND job_id=$2 AND evidence_ref=$3`, p.HouseholdID(), j.ID, evidence).Scan(&lease, &attempt, &cursor, &storedKind); err != nil {
+		return err
+	}
+	if lease != j.LeaseToken || attempt != j.Attempt || cursor != j.Cursor || storedKind != kind {
+		return jobs.ErrInvalidJob
+	}
+	return nil
+}
+
+func (s *Store) EvidenceResult(ctx context.Context, p household.Principal, jobID, evidence string) (admission.ResultKind, bool, error) {
+	q, err := s.reader(ctx, p)
+	if err != nil {
+		return "", false, err
+	}
+	var kind admission.ResultKind
+	err = q.QueryRow(ctx, `SELECT kind FROM want_keep.ingestion_result_receipts WHERE household_id=$1 AND job_id=$2 AND evidence_ref=$3`, p.HouseholdID(), jobID, evidence).Scan(&kind)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	if !kind.Valid() {
+		return "", false, jobs.ErrInvalidJob
+	}
+	return kind, true, nil
 }
 
 func (s *Store) ResultReceipt(ctx context.Context, p household.Principal, j jobs.Job, evidence string) (admission.ResultReceipt, bool, error) {

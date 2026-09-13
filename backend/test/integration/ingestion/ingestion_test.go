@@ -377,6 +377,25 @@ func TestResultReceiptIsImmutableForApplicationRole(t *testing.T) {
 	}
 }
 
+func TestStagedEvidenceFinalizesFromDurableReceipt(t *testing.T) {
+	f := newFixture(t)
+	f.evidence.failDisposition = true
+	job := f.issued()
+	applied, failure, err := f.service.Ingest(testContext, f.p, job, f.gateway(job))
+	if !applied || failure != nil || !errors.Is(err, ingestion.ErrEvidence) || f.count("source_records") != 3 {
+		t.Fatal("commit did not survive disposition failure", applied, failure, err)
+	}
+	f.evidence.failDisposition = false
+	completed, err := f.service.ReconcileStaged(testContext, f.p, 100)
+	if err != nil || completed != 1 || f.count("source_records") != 3 {
+		t.Fatal("durable receipt did not finalize staged evidence", completed, err)
+	}
+	entries, err := os.ReadDir(f.evidence.path)
+	if err != nil || len(entries) != 1 || !strings.Contains(entries[0].Name(), string(ingestion.EvidenceApplied)) {
+		t.Fatal("evidence did not reach applied disposition", entries, err)
+	}
+}
+
 func TestUnicodeContractLimitRoundTripsThroughPostgreSQL(t *testing.T) {
 	f := newFixture(t)
 	job := f.issued()
@@ -469,6 +488,10 @@ func TestEvidenceFailureAndStaleAdmissionCannotCrossCommitFence(t *testing.T) {
 		if len(entries) != 1 || !strings.Contains(entries[0].Name(), string(f.family.ID)) || !strings.Contains(entries[0].Name(), job.ID) || !strings.Contains(entries[0].Name(), string(ingestion.EvidenceRejected)) {
 			t.Fatal("raw evidence was not stored under trusted ownership", entries)
 		}
+		kind, found, receiptErr := f.gate.EvidenceResult(testContext, f.p, job.ID, evidenceRef)
+		if receiptErr != nil || !found || kind != admission.RejectedResult {
+			t.Fatal("rejected evidence finalization was not durable", kind, found, receiptErr)
+		}
 	})
 
 	t.Run("stale admission", func(t *testing.T) {
@@ -488,6 +511,10 @@ func TestEvidenceFailureAndStaleAdmissionCannotCrossCommitFence(t *testing.T) {
 		}
 		if files, _ := os.ReadDir(f.evidence.path); len(files) != 1 {
 			t.Fatal("stale raw evidence was not retained")
+		}
+		kind, found, receiptErr := f.gate.EvidenceResult(testContext, f.p, job.ID, f.evidence.Last().PageReference)
+		if receiptErr != nil || !found || kind != admission.StaleResult {
+			t.Fatal("stale evidence finalization was not durable", kind, found, receiptErr)
 		}
 	})
 }

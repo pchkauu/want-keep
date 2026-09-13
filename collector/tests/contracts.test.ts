@@ -263,6 +263,23 @@ describe("collector ingestion contract v10", () => {
       parseSyncResult(malformed, parseSyncRequest(request)),
     ).toThrow();
 
+    const lineBroken = structuredClone(golden) as {
+      page: { evidence: Array<{ data: string }> };
+    };
+    const encodedEvidence = lineBroken.page.evidence[0]!.data;
+    lineBroken.page.evidence[0]!.data = `${encodedEvidence.slice(0, 4)}\n${encodedEvidence.slice(4)}`;
+    expect(() =>
+      parseSyncResult(lineBroken, parseSyncRequest(request)),
+    ).toThrow();
+
+    const emptyNextCursor = structuredClone(golden) as {
+      page: { nextCursor?: string };
+    };
+    emptyNextCursor.page.nextCursor = "";
+    expect(() =>
+      parseSyncResult(emptyNextCursor, parseSyncRequest(request)),
+    ).toThrow();
+
     const invalidEvidenceIdentity = structuredClone(golden) as {
       page: { evidence: Array<{ id: string }> };
     };

@@ -17,9 +17,13 @@ type ResultKind string
 const (
 	PageResult            ResultKind = "page"
 	ProviderOutcomeResult ResultKind = "provider_outcome"
+	RejectedResult        ResultKind = "rejected_result"
+	StaleResult           ResultKind = "stale_result"
 )
 
-func (k ResultKind) Valid() bool { return k == PageResult || k == ProviderOutcomeResult }
+func (k ResultKind) Valid() bool {
+	return k == PageResult || k == ProviderOutcomeResult || k == RejectedResult || k == StaleResult
+}
 
 type ResultReceipt struct {
 	HouseholdID household.HouseholdID
@@ -65,6 +69,7 @@ type Repository interface {
 	SetJobOutcome(context.Context, household.Principal, jobs.Job, jobs.State, jobs.Reason, time.Duration) error
 	SaveResultReceipt(context.Context, household.Principal, jobs.Job, string, ResultKind) error
 	ResultReceipt(context.Context, household.Principal, jobs.Job, string) (ResultReceipt, bool, error)
+	EvidenceResult(context.Context, household.Principal, string, string) (ResultKind, bool, error)
 	SyncDue(context.Context, string) (bool, error)
 	AdvanceSyncSchedule(context.Context, string) error
 }
@@ -330,7 +335,7 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 	})
 	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
 		// The failed transaction has rolled back before retaining the stale evidence.
-		return false, s.quarantineResult(ctx, p, issued.ID, page.EvidenceRef)
+		return false, s.quarantineResult(ctx, p, issued, page.EvidenceRef)
 	}
 	return applied && err == nil, err
 }
@@ -367,7 +372,7 @@ func (s *Service) CommitProviderOutcome(ctx context.Context, p household.Princip
 		})
 	})
 	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
-		return false, s.quarantineResult(ctx, p, issued.ID, evidence)
+		return false, s.quarantineResult(ctx, p, issued, evidence)
 	}
 	return applied && err == nil, err
 }
@@ -383,6 +388,13 @@ func (s *Service) ResultReceipt(ctx context.Context, p household.Principal, issu
 	return receipt.Matches(p, issued, evidence, kind), nil
 }
 
+func (s *Service) EvidenceResult(ctx context.Context, p household.Principal, jobID, evidence string) (ResultKind, bool, error) {
+	if jobID == "" || evidence == "" || len(evidence) > 2000 {
+		return "", false, jobs.ErrInvalidJob
+	}
+	return s.repository.EvidenceResult(ctx, p, jobID, evidence)
+}
+
 // RetainRejectedResult associates evidence that was staged before a page failed
 // domain or persistence validation. It does not advance the checkpoint or job.
 func (s *Service) RetainRejectedResult(ctx context.Context, p household.Principal, issued jobs.Job, evidence string) error {
@@ -393,7 +405,10 @@ func (s *Service) RetainRejectedResult(ctx context.Context, p household.Principa
 		return jobs.ErrInvalidJob
 	}
 	return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
-		return s.repository.Quarantine(ctx, issued, evidence, "rejected_result")
+		if err := s.repository.Quarantine(ctx, issued, evidence, "rejected_result"); err != nil {
+			return err
+		}
+		return s.repository.SaveResultReceipt(ctx, p, issued, evidence, RejectedResult)
 	})
 }
 
@@ -403,12 +418,14 @@ func (s *Service) CommitFailure(ctx context.Context, p household.Principal, issu
 	return s.CommitProviderOutcome(ctx, p, issued, evidence, jobs.Failed, jobs.PermanentFailure, 0, apply)
 }
 
-func (s *Service) quarantineResult(ctx context.Context, p household.Principal, jobID, evidence string) error {
+func (s *Service) quarantineResult(ctx context.Context, p household.Principal, issued jobs.Job, evidence string) error {
 	return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
-		current, err := s.repository.Job(ctx, p, jobID)
-		if err != nil {
+		if _, err := s.repository.Job(ctx, p, issued.ID); err != nil {
 			return err
 		}
-		return s.repository.Quarantine(ctx, current, evidence, "stale_result")
+		if err := s.repository.Quarantine(ctx, issued, evidence, "stale_result"); err != nil {
+			return err
+		}
+		return s.repository.SaveResultReceipt(ctx, p, issued, evidence, StaleResult)
 	})
 }

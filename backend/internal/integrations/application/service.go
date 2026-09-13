@@ -34,6 +34,8 @@ type EvidenceStore interface {
 	Save(context.Context, ingestion.EvidenceBatch) error
 	// SetDisposition is idempotent. A staged batch remains discoverable for reconciliation if this call fails.
 	SetDisposition(context.Context, ingestion.EvidenceDisposition) error
+	// Staged returns durable batches that still need terminal disposition reconciliation.
+	Staged(context.Context, string, int) ([]ingestion.StagedEvidence, error)
 }
 
 type Gate interface {
@@ -42,6 +44,7 @@ type Gate interface {
 	CommitProviderOutcome(context.Context, household.Principal, jobs.Job, string, jobs.State, jobs.Reason, time.Duration, func(context.Context) error) (bool, error)
 	ResultReceipt(context.Context, household.Principal, jobs.Job, string, admission.ResultKind) (bool, error)
 	RetainRejectedResult(context.Context, household.Principal, jobs.Job, string) error
+	EvidenceResult(context.Context, household.Principal, string, string) (admission.ResultKind, bool, error)
 }
 
 type AccountImporter interface {
@@ -173,6 +176,55 @@ func (s *Service) recoverCommit(ctx context.Context, p household.Principal, issu
 	return true, s.setEvidenceDisposition(ctx, batch, disposition)
 }
 
+// ReconcileStaged finalizes evidence after a restart or a lost disposition acknowledgement.
+func (s *Service) ReconcileStaged(ctx context.Context, p household.Principal, limit int) (int, error) {
+	if limit < 1 || limit > 1000 {
+		return 0, ingestion.ErrInvalidContract
+	}
+	items, err := s.evidence.Staged(ctx, string(p.HouseholdID()), limit)
+	if err != nil {
+		return 0, errors.Join(ingestion.ErrEvidence, err)
+	}
+	completed := 0
+	for _, item := range items {
+		if item.Validate() != nil || item.HouseholdID != string(p.HouseholdID()) {
+			return completed, ingestion.ErrEvidence
+		}
+		kind, found, resultErr := s.gate.EvidenceResult(ctx, p, item.JobID, item.PageReference)
+		if resultErr != nil {
+			return completed, resultErr
+		}
+		if !found {
+			continue
+		}
+		state, valid := evidenceState(kind)
+		if !valid {
+			return completed, ingestion.ErrEvidence
+		}
+		disposition := ingestion.EvidenceDisposition{HouseholdID: item.HouseholdID, JobID: item.JobID, PageReference: item.PageReference, State: state}
+		if err = s.setEvidenceDispositionValue(ctx, disposition); err != nil {
+			return completed, err
+		}
+		completed++
+	}
+	return completed, nil
+}
+
+func evidenceState(kind admission.ResultKind) (ingestion.EvidenceDispositionState, bool) {
+	switch kind {
+	case admission.PageResult:
+		return ingestion.EvidenceApplied, true
+	case admission.ProviderOutcomeResult:
+		return ingestion.EvidenceProviderOutcome, true
+	case admission.RejectedResult:
+		return ingestion.EvidenceRejected, true
+	case admission.StaleResult:
+		return ingestion.EvidenceStale, true
+	default:
+		return "", false
+	}
+}
+
 func providerFailureOutcome(failure ingestion.ProviderFailure, attempt int) (jobs.State, jobs.Reason, time.Duration) {
 	switch failure.Kind {
 	case ingestion.ReauthenticationRequired, ingestion.MFARequired, ingestion.CaptchaRequired:
@@ -233,6 +285,10 @@ func (s *Service) retainRejectedEvidence(ctx context.Context, p household.Princi
 
 func (s *Service) setEvidenceDisposition(ctx context.Context, batch ingestion.EvidenceBatch, state ingestion.EvidenceDispositionState) error {
 	disposition := ingestion.EvidenceDisposition{HouseholdID: batch.HouseholdID, JobID: batch.JobID, PageReference: batch.PageReference, State: state}
+	return s.setEvidenceDispositionValue(ctx, disposition)
+}
+
+func (s *Service) setEvidenceDispositionValue(ctx context.Context, disposition ingestion.EvidenceDisposition) error {
 	if err := disposition.Validate(); err != nil {
 		return err
 	}

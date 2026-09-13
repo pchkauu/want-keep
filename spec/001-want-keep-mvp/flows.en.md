@@ -138,6 +138,7 @@ sequenceDiagram
   participant G as Admission gate
   participant A as Accounts/Ledger
   participant Q as Quarantine
+  participant R as Restart reconciler
   J->>G: Verify exact gateway binding
   J->>G: BeforeRead(binding, revision, generation, lease)
   G->>C: Server-issued request without household/actor/internal IDs
@@ -162,6 +163,12 @@ sequenceDiagram
   else result is stale
     G->>Q: Evidence reference + safe reason
   end
+  opt Disposition remains staged after restart
+    R->>E: Read staged batches
+    R->>G: Find terminal receipt by household/job/evidence
+    G-->>R: page/provider_outcome/rejected_result/stale_result or unknown
+    R->>E: Idempotently finalize only a proven disposition
+  end
 ```
 
-A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. A provider failure also echoes the issued cursor; the sync-result boundary rejects a delayed outcome from an earlier page, while the shared lease identity keeps heartbeat valid after checkpoint advancement. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. The cumulative gap set after merging the checkpoint is capped at 100 values; overflow rolls the page back. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records. A confirmed `RUR → RUB` provider mapping preserves the raw code in evidence/metadata and uses RUB in the financial domain. A replay with a new evidence ID/locator, equivalent empty optional fields and the same normalized payload/raw digest creates no source revision. Only the atomic receipt proves an unknown commit outcome; without it evidence remains staged.
+A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. `nextCursor` is either absent or non-empty. A provider failure also echoes the issued cursor; the sync-result boundary rejects a delayed outcome from an earlier page, while the shared lease identity keeps heartbeat valid after checkpoint advancement. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. The cumulative gap set after merging the checkpoint is capped at 100 values; overflow rolls the page back. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records. A confirmed `RUR → RUB` provider mapping preserves the raw code in evidence/metadata and uses RUB in the financial domain. A replay with a new evidence ID/locator, equivalent empty optional fields and the same normalized payload/raw digest creates no source revision. Evidence uses canonical base64 without CR/LF. Only the atomic receipt proves an unknown commit outcome; without it evidence remains staged. The restart reconciler finalizes disposition only from a stored terminal receipt and never replays the financial effect.

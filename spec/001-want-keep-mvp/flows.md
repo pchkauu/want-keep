@@ -138,6 +138,7 @@ sequenceDiagram
   participant G as Admission gate
   participant A as Accounts/Ledger
   participant Q as Quarantine
+  participant R as Restart reconciler
   J->>G: Проверить exact gateway binding
   J->>G: BeforeRead(binding, revision, generation, lease)
   G->>C: Server-issued request без household/actor/internal IDs
@@ -162,6 +163,12 @@ sequenceDiagram
   else результат устарел
     G->>Q: Evidence reference + safe reason
   end
+  opt После рестарта disposition остался staged
+    R->>E: Прочитать staged batches
+    R->>G: Найти terminal receipt по household/job/evidence
+    G-->>R: page/provider_outcome/rejected_result/stale_result либо неизвестно
+    R->>E: Идемпотентно завершить только доказанный disposition
+  end
 ```
 
-Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. Provider failure также повторяет issued cursor; sync-result boundary отклоняет запоздалый outcome прежней страницы, а общая lease identity продолжает heartbeat после продвижения checkpoint. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Совокупный набор gaps после объединения с checkpoint ограничен 100 значениями; переполнение откатывает страницу. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи. Подтверждённый provider mapping `RUR → RUB` сохраняет raw code в evidence/metadata и использует RUB в финансовом домене. Повтор с новым evidence ID/locator, эквивалентными пустыми optional-полями и тем же нормализованным payload/raw digest не создаёт source revision. Неизвестный результат commit подтверждается только атомарной receipt; без неё evidence остаётся staged.
+Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. `nextCursor` либо отсутствует, либо непустой. Provider failure также повторяет issued cursor; sync-result boundary отклоняет запоздалый outcome прежней страницы, а общая lease identity продолжает heartbeat после продвижения checkpoint. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Совокупный набор gaps после объединения с checkpoint ограничен 100 значениями; переполнение откатывает страницу. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи. Подтверждённый provider mapping `RUR → RUB` сохраняет raw code в evidence/metadata и использует RUB в финансовом домене. Повтор с новым evidence ID/locator, эквивалентными пустыми optional-полями и тем же нормализованным payload/raw digest не создаёт source revision. Evidence использует канонический base64 без CR/LF. Неизвестный результат commit подтверждается только атомарной receipt; без неё evidence остаётся staged. Restart reconciler завершает disposition только по сохранённой terminal receipt и не повторяет финансовый эффект.

@@ -541,6 +541,7 @@ components:
           maxLength: 2000
         nextCursor:
           type: string
+          minLength: 1
           maxLength: 2000
         complete:
           type: boolean
