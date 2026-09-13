@@ -35,7 +35,7 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 			out.Review.Evidence = append(out.Review.Evidence, generated.DecisionEvidence{Kind: generated.DecisionEvidenceKind(e.Kind), Id: e.ID, Revision: int64(e.Revision)})
 		}
 		if rv.Proposal != nil {
-			proposal := &generated.ClassificationProposal{ReceiptItems: []generated.ReceiptItem{}}
+			proposal := &generated.ClassificationProposal{ReceiptItems: []generated.ClassificationProposalItem{}}
 			if rv.Proposal.CategoryID != "" {
 				proposal.CategoryId = &rv.Proposal.CategoryID
 			}
@@ -46,7 +46,7 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 				proposal.MerchantAlias = &rv.Proposal.MerchantAlias
 			}
 			for _, item := range rv.Proposal.ReceiptItems {
-				dto, e := receiptItemDTO(item)
+				dto, e := classificationProposalItemDTO(item)
 				if e != nil {
 					return out, e
 				}
@@ -207,19 +207,7 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 }
 
 func receiptItemDTO(item ledger.ReceiptItem) (generated.ReceiptItem, error) {
-	gross, err := (contract.MoneyConverter{}).ToDTO(item.Gross)
-	if err != nil {
-		return generated.ReceiptItem{}, err
-	}
-	discount, err := (contract.MoneyConverter{}).ToDTO(item.Discount)
-	if err != nil {
-		return generated.ReceiptItem{}, err
-	}
-	net, err := item.Net()
-	if err != nil {
-		return generated.ReceiptItem{}, err
-	}
-	netDTO, err := (contract.MoneyConverter{}).ToDTO(net)
+	common, err := receiptItemValues(item)
 	if err != nil {
 		return generated.ReceiptItem{}, err
 	}
@@ -227,9 +215,44 @@ func receiptItemDTO(item ledger.ReceiptItem) (generated.ReceiptItem, error) {
 	if err != nil {
 		return generated.ReceiptItem{}, err
 	}
-	out := generated.ReceiptItem{Id: item.ID, Name: item.Name, Quantity: item.Quantity, Gross: gross, Discount: discount, Net: netDTO, Allocation: allocation}
+	out := generated.ReceiptItem{Id: common.ID, Name: common.Name, Quantity: common.Quantity, Gross: common.Gross, Discount: common.Discount, Net: common.Net, Allocation: allocation, CategoryId: common.CategoryID}
+	return out, nil
+}
+
+func classificationProposalItemDTO(item ledger.ReceiptItem) (generated.ClassificationProposalItem, error) {
+	common, err := receiptItemValues(item)
+	if err != nil {
+		return generated.ClassificationProposalItem{}, err
+	}
+	return generated.ClassificationProposalItem{Id: common.ID, Name: common.Name, Quantity: common.Quantity, Gross: common.Gross, Discount: common.Discount, Net: common.Net, CategoryId: common.CategoryID}, nil
+}
+
+type receiptItemValuesDTO struct {
+	ID, Name, Quantity   string
+	Gross, Discount, Net generated.Money
+	CategoryID           *string
+}
+
+func receiptItemValues(item ledger.ReceiptItem) (receiptItemValuesDTO, error) {
+	gross, err := (contract.MoneyConverter{}).ToDTO(item.Gross)
+	if err != nil {
+		return receiptItemValuesDTO{}, err
+	}
+	discount, err := (contract.MoneyConverter{}).ToDTO(item.Discount)
+	if err != nil {
+		return receiptItemValuesDTO{}, err
+	}
+	net, err := item.Net()
+	if err != nil {
+		return receiptItemValuesDTO{}, err
+	}
+	netDTO, err := (contract.MoneyConverter{}).ToDTO(net)
+	if err != nil {
+		return receiptItemValuesDTO{}, err
+	}
+	out := receiptItemValuesDTO{ID: item.ID, Name: item.Name, Quantity: item.Quantity, Gross: gross, Discount: discount, Net: netDTO}
 	if item.CategoryID != "" {
-		out.CategoryId = &item.CategoryID
+		out.CategoryID = &item.CategoryID
 	}
 	return out, nil
 }

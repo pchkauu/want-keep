@@ -354,7 +354,16 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 			return r, netErr
 		}
 		if net.Sign() == 0 {
-			next.ReceiptItems[index].Allocation = NotApplicableAllocation()
+			allocation := NotApplicableAllocation()
+			switch {
+			case item.Allocation.Basis != nil:
+				basis := cloneAllocationInput(*item.Allocation.Basis)
+				allocation.Basis = &basis
+			case item.Allocation.State != "" && item.Allocation.State != AllocationNotApplicable:
+				basis := allocationInput(item.Allocation)
+				allocation.Basis = &basis
+			}
+			next.ReceiptItems[index].Allocation = allocation
 		}
 	}
 	components, itemAmounts, err := next.allocationComponents()
@@ -530,7 +539,7 @@ func (r Revision) WithAllocation(input AllocationInput, items []ItemAllocationIn
 // RefreshAllocation rebuilds a snapshot from its persisted purchase and item
 // bases after its financial contribution or exact amounts changed.
 func (r Revision) RefreshAllocation() (Revision, error) {
-	components, _, err := r.allocationComponents()
+	components, itemAmounts, err := r.allocationComponents()
 	if err != nil {
 		return r, err
 	}
@@ -544,7 +553,13 @@ func (r Revision) RefreshAllocation() (Revision, error) {
 	if fallback.Mode == "" {
 		fallback = AllocationInput{Mode: AllocationUnknown, Reason: "allocation_unresolved"}
 	}
-	return r.WithAllocation(fallback, items, active)
+	allocatableItems := items[:0]
+	for _, item := range items {
+		if _, ok := itemAmounts[item.ItemID]; ok {
+			allocatableItems = append(allocatableItems, item)
+		}
+	}
+	return r.WithAllocation(fallback, allocatableItems, active)
 }
 
 func (r Revision) allocationBases() (AllocationInput, []ItemAllocationInput, []household.MembershipID, error) {
@@ -841,16 +856,24 @@ func allocateComponent(total money.Money, input AllocationInput, active map[hous
 	if input.Mode == AllocationByShares && !sumIs(weights, "100") || input.Mode == AllocationByAmounts && !sumIs(weights, total.Amount()) || !slices.Contains([]AllocationMode{AllocationByAmounts, AllocationByShares, AllocationEqual}, input.Mode) {
 		return AllocationSnapshot{}, ErrInvalidAllocation
 	}
-	allocated, err := total.Allocate(weights, decimalScale(total.Amount()))
-	if err != nil {
-		return AllocationSnapshot{}, ErrInvalidAllocation
-	}
 	result := AllocationSnapshot{State: AllocationResolved, Purpose: input.Purpose, Mode: input.Mode, Origin: input.Origin, Reason: input.Reason, Inputs: cloneAllocationInputs(input.Members), RuleRefs: slices.Clone(input.RuleRefs)}
-	for _, value := range allocated {
-		if value.Money.Sign() == 0 {
-			continue
+	if input.Mode == AllocationByAmounts {
+		for _, member := range input.Members {
+			if member.Amount.Sign() > 0 {
+				result.Members = append(result.Members, MemberAmount{MemberID: member.MemberID, Money: *member.Amount})
+			}
 		}
-		result.Members = append(result.Members, MemberAmount{MemberID: household.MembershipID(value.ID), Money: value.Money})
+	} else {
+		allocated, err := total.Allocate(weights, decimalScale(total.Amount()))
+		if err != nil {
+			return AllocationSnapshot{}, ErrInvalidAllocation
+		}
+		for _, value := range allocated {
+			if value.Money.Sign() == 0 {
+				continue
+			}
+			result.Members = append(result.Members, MemberAmount{MemberID: household.MembershipID(value.ID), Money: value.Money})
+		}
 	}
 	return result, result.Validate()
 }

@@ -189,8 +189,7 @@ JOIN want_keep.ledger_revision_audit a USING(household_id,operation_id,revision)
 JOIN want_keep.postings p USING(household_id,operation_id,revision)
 LEFT JOIN want_keep.ledger_participations participation USING(household_id,operation_id,revision)
 LEFT JOIN want_keep.ledger_contributions contribution USING(household_id,operation_id,revision,position)
-WHERE a.accounting_state='included'
- AND r.economic_type<>'income'
+WHERE r.economic_type<>'income'
  AND p.amount<0 AND p.treatment IN ('','movement')
  AND (r.economic_type='expense' AND p.role='principal' OR p.role IN ('fee','interest'))
  AND (participation.operation_id IS NULL OR participation.state='retained' OR participation.state='linked' AND contribution.carrier_id=r.operation_id)

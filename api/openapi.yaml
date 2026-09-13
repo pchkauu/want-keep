@@ -441,6 +441,8 @@ components:
       "$ref": "./schemas/transactions.yaml#/ReceiptItem"
     ReceiptItemInput:
       "$ref": "./schemas/transactions.yaml#/ReceiptItemInput"
+    ClassificationProposalItem:
+      "$ref": "./schemas/transactions.yaml#/ClassificationProposalItem"
     ClassificationReferenceChange:
       "$ref": "./schemas/transactions.yaml#/ClassificationReferenceChange"
     ReceiptItemsChange:

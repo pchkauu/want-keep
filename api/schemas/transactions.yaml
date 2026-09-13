@@ -200,6 +200,27 @@ ReceiptItemInput:
     discount: { $ref: './money.yaml#/Money' }
     categoryId: { $ref: './money.yaml#/ID' }
   required: [id, name, quantity, gross]
+ClassificationProposalItem:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      "$ref": "./money.yaml#/ID"
+    name:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    quantity:
+      "$ref": "./money.yaml#/PositiveDecimal"
+    gross:
+      "$ref": "./money.yaml#/Money"
+    discount:
+      "$ref": "./money.yaml#/Money"
+    net:
+      "$ref": "./money.yaml#/Money"
+    categoryId:
+      "$ref": "./money.yaml#/ID"
+  required: [id, name, quantity, gross, discount, net]
 ClassificationReferenceChange:
   type: object
   additionalProperties: false
@@ -231,7 +252,7 @@ ClassificationProposal:
     receiptItems:
       type: array
       maxItems: 1000
-      items: { $ref: './transactions.yaml#/ReceiptItem' }
+      items: { $ref: './transactions.yaml#/ClassificationProposalItem' }
   required: [receiptItems]
 Transaction:
   type: object

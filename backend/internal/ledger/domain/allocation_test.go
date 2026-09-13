@@ -161,6 +161,19 @@ func TestAmountAllocationCoversMultipleComponentsAndAssetsExactly(t *testing.T) 
 	}
 }
 
+func TestAmountAllocationPreservesExplicitPrecision(t *testing.T) {
+	members := []household.MembershipID{"member-a", "member-b"}
+	revision := expenseRevision(mustAllocationMoney(t, "1", money.RUB))
+	input := AllocationInput{Mode: AllocationByAmounts, Purpose: AllocationShared, Members: []AllocationMemberInput{
+		{MemberID: members[0], Amount: allocationMoneyPtr(t, "0.5", money.RUB)},
+		{MemberID: members[1], Amount: allocationMoneyPtr(t, "0.5", money.RUB)},
+	}}
+	allocated, err := revision.WithAllocation(input, nil, members)
+	if err != nil || allocationMemberTotal(allocated.Allocation, members[0], money.RUB) != "0.5" || allocationMemberTotal(allocated.Allocation, members[1], money.RUB) != "0.5" {
+		t.Fatalf("precise amount allocation = %+v, err=%v", allocated.Allocation, err)
+	}
+}
+
 func TestCompositeAllocationPreservesSharedIntentAtOneQuantum(t *testing.T) {
 	paid := mustAllocationMoney(t, "0.01", money.RUB)
 	revision := expenseRevision(paid)
@@ -360,6 +373,38 @@ func TestCompositeAmountFallbackRefreshesOnlyExplicitItemBases(t *testing.T) {
 	}
 	if corrected.ReceiptItems[0].Allocation.Origin != AllocationExplicitItem || corrected.ReceiptItems[1].Allocation.Origin == AllocationExplicitItem || corrected.ReceiptItems[2].Allocation.Origin == AllocationExplicitItem {
 		t.Fatalf("item origins = %+v", corrected.ReceiptItems)
+	}
+}
+
+func TestRefreshMakesZeroNetItemNotApplicableAndRetainsBasis(t *testing.T) {
+	members := []household.MembershipID{"member-a", "member-b"}
+	revision := expenseRevision(mustAllocationMoney(t, "100", money.RUB))
+	revision.ReceiptItems = []ReceiptItem{
+		{ID: "first", Name: "First", Quantity: "1", Gross: mustAllocationMoney(t, "40", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)},
+		{ID: "second", Name: "Second", Quantity: "1", Gross: mustAllocationMoney(t, "60", money.RUB), Discount: mustAllocationMoney(t, "0", money.RUB)},
+	}
+	fallback := AllocationInput{Mode: AllocationEqual, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0]}, {MemberID: members[1]}}}
+	override := AllocationInput{Mode: AllocationByShares, Purpose: AllocationShared, Members: []AllocationMemberInput{{MemberID: members[0], Share: "50"}, {MemberID: members[1], Share: "50"}}, Origin: AllocationExplicitItem}
+	allocated, err := revision.WithAllocation(fallback, []ItemAllocationInput{{ItemID: "first", Allocation: override}}, members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zero := mustAllocationMoney(t, "0", money.RUB)
+	fullDiscount := mustAllocationMoney(t, "40", money.RUB)
+	items := ReceiptItemsCorrection{Items: []ReceiptItemInput{
+		{ID: "first", Name: "First", Quantity: "1", Gross: mustAllocationMoney(t, "40", money.RUB), Discount: &fullDiscount},
+		{ID: "second", Name: "Second", Quantity: "1", Gross: mustAllocationMoney(t, "100", money.RUB), Discount: &zero},
+	}, TotalDiscount: fullDiscount}
+	corrected, fields, err := allocated.Correct(Correction{ReceiptItems: &items})
+	if err != nil || !slices.Contains(fields, AllocationField) || corrected.Validate() != nil {
+		t.Fatalf("zero-net refresh = %+v, fields=%v, err=%v", corrected.Allocation, fields, err)
+	}
+	item := corrected.ReceiptItems[0].Allocation
+	if item.State != AllocationNotApplicable || item.Basis == nil || item.Basis.Origin != AllocationExplicitItem || len(item.Members) != 0 {
+		t.Fatalf("zero-net item allocation = %+v", item)
+	}
+	if allocationMemberTotal(corrected.Allocation, members[0], money.RUB) != "50" || allocationMemberTotal(corrected.Allocation, members[1], money.RUB) != "50" {
+		t.Fatalf("remaining allocation = %+v", corrected.Allocation.Members)
 	}
 }
 

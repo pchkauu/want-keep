@@ -2213,7 +2213,16 @@ export interface components {
       categoryId?: components["schemas"]["ID"];
       merchantAlias?: string;
       merchantId?: components["schemas"]["ID"];
-      receiptItems: components["schemas"]["ReceiptItem"][];
+      receiptItems: components["schemas"]["ClassificationProposalItem"][];
+    };
+    ClassificationProposalItem: {
+      categoryId?: components["schemas"]["ID"];
+      discount: components["schemas"]["Money"];
+      gross: components["schemas"]["Money"];
+      id: components["schemas"]["ID"];
+      name: string;
+      net: components["schemas"]["Money"];
+      quantity: components["schemas"]["PositiveDecimal"];
     };
     /** @description The set action requires id; clear forbids id. Delivery validates this typed invariant. */
     ClassificationReferenceChange: {
