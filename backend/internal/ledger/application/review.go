@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"sort"
 	"unicode/utf8"
 
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
@@ -46,6 +47,9 @@ func (s *Service) CompleteReview(ctx context.Context, p household.Principal, in 
 	if in.Correction != nil && (in.State != "reviewed" || in.Correction.Principal != nil || in.Correction.Fees != nil || in.Correction.OccurredAt != nil) {
 		return commands.Rejection{Code: "source_conflict"}
 	}
+	if in.Correction != nil && (in.Correction.CategoryID != nil || in.Correction.MerchantID != nil || in.Correction.ReceiptItems != nil) {
+		return commands.Rejection{Code: "clarification_required"}
+	}
 	if len(in.Evidence) > 100 {
 		return commands.Rejection{Code: "invalid_request"}
 	}
@@ -61,6 +65,7 @@ func (s *Service) CompleteReview(ctx context.Context, p household.Principal, in 
 		State, Rationale string
 		Merchant, Note   *string
 		Payer            *ledger.PayerChange
+		Allocation       *reviewAllocationChangePayload
 		Evidence         []ledger.Evidence
 		Proposal         *classificationProposalPayload
 	}{State: in.State, Rationale: in.Rationale, Evidence: in.Evidence}
@@ -68,6 +73,9 @@ func (s *Service) CompleteReview(ctx context.Context, p household.Principal, in 
 		payload.Merchant = in.Correction.Merchant
 		payload.Note = in.Correction.Note
 		payload.Payer = in.Correction.Payer
+		if in.Correction.Allocation != nil {
+			payload.Allocation = reviewAllocationChange(in.Correction.Allocation)
+		}
 	}
 	if in.Proposal != nil {
 		payload.Proposal = proposalPayload(in.Proposal)
@@ -120,6 +128,75 @@ func (s *Service) CompleteReview(ctx context.Context, p household.Principal, in 
 		}
 	}
 	return nil
+}
+
+type reviewAllocationChangePayload struct {
+	Allocation reviewAllocationInputPayload
+	Items      []reviewItemAllocationPayload
+	Members    []string
+}
+
+type reviewAllocationInputPayload struct {
+	Mode, Purpose, Reason, Origin string
+	Members                       []reviewAllocationMemberPayload
+	Rules                         []reviewAllocationRulePayload
+}
+
+type reviewAllocationMemberPayload struct {
+	MemberID, Share string
+	Amount          *reviewMoneyPayload
+}
+
+type reviewMoneyPayload struct{ Amount, Asset string }
+type reviewAllocationRulePayload struct {
+	ID       string
+	Revision uint64
+}
+type reviewItemAllocationPayload struct {
+	ItemID     string
+	Allocation reviewAllocationInputPayload
+}
+
+func reviewAllocationChange(value *ledger.AllocationChange) *reviewAllocationChangePayload {
+	out := &reviewAllocationChangePayload{Allocation: reviewAllocationInput(value.Allocation)}
+	for _, item := range value.Items {
+		out.Items = append(out.Items, reviewItemAllocationPayload{ItemID: item.ItemID, Allocation: reviewAllocationInput(item.Allocation)})
+	}
+	sort.Slice(out.Items, func(i, j int) bool { return out.Items[i].ItemID < out.Items[j].ItemID })
+	for _, member := range value.Members {
+		out.Members = append(out.Members, string(member))
+	}
+	sort.Strings(out.Members)
+	return out
+}
+
+func reviewAllocationInput(value ledger.AllocationInput) reviewAllocationInputPayload {
+	out := reviewAllocationInputPayload{Mode: string(value.Mode), Purpose: string(value.Purpose), Reason: value.Reason, Origin: string(value.Origin)}
+	for _, member := range value.Members {
+		item := reviewAllocationMemberPayload{MemberID: string(member.MemberID), Share: member.Share}
+		if member.Amount != nil {
+			item.Amount = &reviewMoneyPayload{Amount: member.Amount.Amount(), Asset: string(member.Amount.Asset())}
+		}
+		out.Members = append(out.Members, item)
+	}
+	sort.Slice(out.Members, func(i, j int) bool {
+		if out.Members[i].MemberID != out.Members[j].MemberID {
+			return out.Members[i].MemberID < out.Members[j].MemberID
+		}
+		left, right := "", ""
+		if out.Members[i].Amount != nil {
+			left = out.Members[i].Amount.Asset
+		}
+		if out.Members[j].Amount != nil {
+			right = out.Members[j].Amount.Asset
+		}
+		return left < right
+	})
+	for _, ref := range value.RuleRefs {
+		out.Rules = append(out.Rules, reviewAllocationRulePayload{ID: ref.ID, Revision: ref.Revision})
+	}
+	sort.Slice(out.Rules, func(i, j int) bool { return out.Rules[i].ID < out.Rules[j].ID })
+	return out
 }
 
 type classificationProposalPayload struct {

@@ -1,6 +1,8 @@
 package domain
 
-import "slices"
+import (
+	"slices"
+)
 
 func (r Revision) Correct(c Correction) (Revision, []Field, error) {
 	if r.Type == Opening {
@@ -120,6 +122,28 @@ func (r Revision) Correct(c Correction) (Revision, []Field, error) {
 			fields = append(fields, ReceiptItemsField)
 		}
 	}
+	if c.Allocation != nil {
+		if r.Type == Income {
+			return r, nil, ErrFeatureUnavailable
+		}
+		allocated, err := next.WithAllocation(c.Allocation.Allocation, c.Allocation.Items, c.Allocation.Members)
+		if err != nil {
+			return r, nil, err
+		}
+		next = allocated
+		if !r.FieldEqual(next, AllocationField) {
+			fields = append(fields, AllocationField)
+		}
+	} else if slices.Contains(fields, PrincipalField) || slices.Contains(fields, FeesField) || slices.Contains(fields, ReceiptItemsField) {
+		allocated, err := next.RefreshAllocation()
+		if err != nil {
+			return r, nil, err
+		}
+		next = allocated
+		if !r.FieldEqual(next, AllocationField) {
+			fields = append(fields, AllocationField)
+		}
+	}
 	if err := next.validateClassification(); err != nil {
 		return r, nil, err
 	}
@@ -127,4 +151,8 @@ func (r Revision) Correct(c Correction) (Revision, []Field, error) {
 		return r, nil, ErrNoChange
 	}
 	return next, fields, nil
+}
+
+func allocationInput(snapshot AllocationSnapshot) AllocationInput {
+	return AllocationInput{Mode: snapshot.Mode, Purpose: snapshot.Purpose, Members: cloneAllocationInputs(snapshot.Inputs), Reason: snapshot.Reason, Origin: snapshot.Origin, RuleRefs: slices.Clone(snapshot.RuleRefs)}
 }

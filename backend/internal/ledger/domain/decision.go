@@ -29,10 +29,11 @@ const (
 	LegacyField       Field = "legacy_all"
 	MatchingField     Field = "matching"
 	ContributionField Field = "contribution"
+	AllocationField   Field = "allocation"
 )
 
 func (f Field) Valid() bool {
-	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, CategoryField, MerchantIDField, ReceiptItemsField, LegacyField, MatchingField, ContributionField}, f)
+	return slices.Contains([]Field{PrincipalField, FeesField, DateField, PayerField, MerchantField, NoteField, AccountingField, CategoryField, MerchantIDField, ReceiptItemsField, LegacyField, MatchingField, ContributionField, AllocationField}, f)
 }
 
 type AccountingState string
@@ -59,6 +60,13 @@ type Correction struct {
 	Merchant, Note         *string
 	CategoryID, MerchantID *string
 	ReceiptItems           *ReceiptItemsCorrection
+	Allocation             *AllocationChange
+}
+
+type AllocationChange struct {
+	Allocation AllocationInput
+	Items      []ItemAllocationInput
+	Members    []household.MembershipID
 }
 
 type DecisionEntry struct {
@@ -122,6 +130,10 @@ func (r Revision) Clone() Revision {
 	r.Postings = slices.Clone(r.Postings)
 	r.Participation.Parts = slices.Clone(r.Participation.Parts)
 	r.ReceiptItems = slices.Clone(r.ReceiptItems)
+	for i := range r.ReceiptItems {
+		r.ReceiptItems[i].Allocation = r.ReceiptItems[i].Allocation.Clone()
+	}
+	r.Allocation = r.Allocation.Clone()
 	r.Protections = maps.Clone(r.Protections)
 	if r.Protections == nil {
 		r.Protections = map[Field]Protection{}
@@ -179,7 +191,7 @@ func (r Revision) UndoFields(entry DecisionEntry, before Revision, source *Revis
 		}
 		basis := before
 		_, legacy := before.Protections[LegacyField]
-		if _, protected := before.Protections[f]; !protected && !legacy && source != nil && f != AccountingField && f != MatchingField {
+		if _, protected := before.Protections[f]; !protected && !legacy && source != nil && f != AccountingField && f != MatchingField && f != AllocationField {
 			basis = *source
 		}
 		if err := next.CopyField(basis, f); err != nil {
@@ -225,9 +237,16 @@ func (r Revision) MergeSource(source Revision) (Revision, bool, error) {
 	next.AccountingState = r.Accounting()
 	next.Participation = r.Clone().Participation
 	next.HumanOverride = len(next.Protections) > 0
+	// Allocation is a ledger decision. A provider may update source facts, but it
+	// cannot author or erase the household's analytical split.
+	if r.Allocation.State != "" {
+		if err := next.CopyField(r, AllocationField); err != nil {
+			return r, false, err
+		}
+	}
 	conflict := false
 	for f := range r.Protections {
-		if f != AccountingField && f != MatchingField && !r.FieldEqual(source, f) {
+		if f != AccountingField && f != MatchingField && f != AllocationField && !r.FieldEqual(source, f) {
 			conflict = true
 		}
 		if err := next.CopyField(r, f); err != nil {
@@ -250,7 +269,7 @@ func (r Revision) ConflictsWithSource(source *Revision) bool {
 		return !r.SameFacts(*source)
 	}
 	for f := range r.Protections {
-		if f != AccountingField && f != MatchingField && !r.FieldEqual(*source, f) {
+		if f != AccountingField && f != MatchingField && f != AllocationField && !r.FieldEqual(*source, f) {
 			return true
 		}
 	}

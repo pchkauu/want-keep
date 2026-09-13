@@ -28,7 +28,7 @@ func TestSyncWorkerCommitsAdmittedPages(t *testing.T) {
 		t.Fatal(err)
 	}
 	account := f.account(money.RUB, "1000")
-	source := journal.NewSources(f.store, f.writer)
+	source := journal.NewSources(f.store, f.writer, nil)
 	calls := 0
 	worker := app.Worker{Repository: f.store, Admission: gate, Config: app.DefaultWorkerConfig(jobs.Sync)}
 	worker.Handler = handlerFunc(func(ctx context.Context, x app.Execution) (app.Result, error) {

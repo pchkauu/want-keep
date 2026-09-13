@@ -54,6 +54,47 @@ func (s *Store) Category(ctx context.Context, p household.Principal, id string) 
 	return scanCategory(q.QueryRow(ctx, `SELECT household_id,id,revision,COALESCE(parent_id::text,''),key,name_ru,name_en,custom_name,state,origin FROM want_keep.categories WHERE household_id=$1 AND id=$2`, p.HouseholdID(), id))
 }
 
+func (s *Store) ClassificationStates(ctx context.Context, p household.Principal, categoryIDs, merchantIDs []string) (map[string]category.State, map[string]category.State, error) {
+	q, err := s.reader(ctx, p)
+	if err != nil {
+		return nil, nil, err
+	}
+	categories := make(map[string]category.State, len(categoryIDs))
+	rows, err := q.Query(ctx, `SELECT id::text,state FROM want_keep.categories WHERE household_id=$1 AND id=ANY($2::uuid[])`, p.HouseholdID(), categoryIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	for rows.Next() {
+		var id string
+		var state category.State
+		if err = rows.Scan(&id, &state); err != nil {
+			rows.Close()
+			return nil, nil, err
+		}
+		categories[id] = state
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return nil, nil, err
+	}
+	rows.Close()
+	merchants := make(map[string]category.State, len(merchantIDs))
+	rows, err = q.Query(ctx, `SELECT id::text,state FROM want_keep.merchants WHERE household_id=$1 AND id=ANY($2::uuid[])`, p.HouseholdID(), merchantIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var state category.State
+		if err = rows.Scan(&id, &state); err != nil {
+			return nil, nil, err
+		}
+		merchants[id] = state
+	}
+	return categories, merchants, rows.Err()
+}
+
 func (s *Store) Categories(ctx context.Context, p household.Principal, filter category.Filter, after string, limit int) ([]category.Category, string, error) {
 	q, err := s.reader(ctx, p)
 	if err != nil {

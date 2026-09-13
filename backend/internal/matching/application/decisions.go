@@ -173,8 +173,12 @@ func (s *Service) link(ctx context.Context, p household.Principal, g matching.Gr
 			}
 		}
 		changed = changed || !r.FieldEqual(before, ledger.MatchingField)
-		d.Entries = append(d.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: []ledger.Field{ledger.MatchingField}})
-		r = r.WithDecision(d, []ledger.Field{ledger.MatchingField})
+		fields := []ledger.Field{ledger.MatchingField}
+		if !r.FieldEqual(before, ledger.AllocationField) {
+			fields = append(fields, ledger.AllocationField)
+		}
+		d.Entries = append(d.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: fields})
+		r = matchingDecisionRevision(r, before, d, fields)
 		next = append(next, r)
 		g.Members = append(g.Members, matching.Member{OperationID: r.OperationID, Revision: r.Revision})
 	}
@@ -227,8 +231,16 @@ func (s *Service) Separate(ctx context.Context, p household.Principal, id string
 	d := ledger.Decision{ID: s.newID(), Kind: "matching", ActorID: p.UserID(), At: s.now(), Reason: reason}
 	r := facts[0].Clone()
 	r.Participation = ledger.Participation{}
-	d.Entries = []ledger.DecisionEntry{{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: []ledger.Field{ledger.MatchingField}}}
-	r = r.WithDecision(d, []ledger.Field{ledger.MatchingField})
+	r, err = r.RefreshAllocation()
+	if err != nil {
+		return command.Result{}, err
+	}
+	fields := []ledger.Field{ledger.MatchingField}
+	if !facts[0].FieldEqual(r, ledger.AllocationField) {
+		fields = append(fields, ledger.AllocationField)
+	}
+	d.Entries = []ledger.DecisionEntry{{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: fields}}
+	r = matchingDecisionRevision(r, facts[0], d, fields)
 	g.DecisionID = d.ID
 	g.Members = []matching.Member{{OperationID: r.OperationID, Revision: r.Revision}}
 	if err = s.repository.SaveMatchingGroup(ctx, g, g.Revision-1); err != nil {
@@ -272,4 +284,17 @@ func (s *Service) reject(err error) error {
 		return commands.Rejection{Code: "no_change"}
 	}
 	return err
+}
+
+func matchingDecisionRevision(next, previous ledger.Revision, decision ledger.Decision, fields []ledger.Field) ledger.Revision {
+	next = next.WithDecision(decision, fields)
+	if slices.Contains(fields, ledger.AllocationField) {
+		if protection, protected := previous.Protections[ledger.AllocationField]; protected {
+			next.Protections[ledger.AllocationField] = protection
+		} else {
+			delete(next.Protections, ledger.AllocationField)
+		}
+		next.HumanOverride = len(next.Protections) > 0
+	}
+	return next
 }

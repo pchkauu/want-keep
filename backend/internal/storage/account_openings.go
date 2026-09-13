@@ -10,6 +10,7 @@ import (
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 	reporting "github.com/pchkauu/want-keep/backend/internal/reporting/domain"
 )
@@ -161,10 +162,20 @@ func (s *Store) AccountEffects(ctx context.Context, p household.Principal, id st
 		return nil, err
 	}
 	rows.Close()
-	result := []account.Effect{}
+	revisions := make([]ledger.Revision, 0, len(refs))
 	for _, ref := range refs {
-		r, err := s.LedgerRevision(ctx, p, ref.id, ref.revision)
+		r, err := s.ledgerRevision(ctx, q, p, ref.id, ref.revision, false)
 		if err != nil {
+			return nil, err
+		}
+		revisions = append(revisions, r)
+	}
+	if err = s.loadLedgerAllocationsMany(ctx, q, p, revisions); err != nil {
+		return nil, err
+	}
+	result := []account.Effect{}
+	for _, r := range revisions {
+		if err = r.Validate(); err != nil {
 			return nil, err
 		}
 		effects, err := r.BalanceEffects()

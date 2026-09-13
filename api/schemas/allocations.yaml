@@ -1,0 +1,86 @@
+---
+AllocationRuleShare:
+  type: object
+  additionalProperties: false
+  properties:
+    memberId: { $ref: './money.yaml#/ID' }
+    share: { $ref: './money.yaml#/PositiveDecimal' }
+  required: [memberId, share]
+AllocationRuleCondition:
+  type: object
+  additionalProperties: false
+  properties:
+    merchantId: { $ref: './money.yaml#/ID' }
+    categoryId: { $ref: './money.yaml#/ID' }
+  minProperties: 1
+AllocationRuleCreateInput:
+  type: object
+  additionalProperties: false
+  properties:
+    priority: { type: integer, minimum: 1, maximum: 1000 }
+    state: { type: string, enum: [active, archived] }
+    condition: { $ref: './allocations.yaml#/AllocationRuleCondition' }
+    shares:
+      type: array
+      minItems: 1
+      maxItems: 1000
+      items: { $ref: './allocations.yaml#/AllocationRuleShare' }
+  required: [priority, state, condition, shares]
+AllocationRuleChangeInput:
+  type: object
+  additionalProperties: false
+  properties:
+    expectedRevision: { $ref: './money.yaml#/Revision' }
+    priority: { type: integer, minimum: 1, maximum: 1000 }
+    state: { type: string, enum: [active, archived] }
+    condition: { $ref: './allocations.yaml#/AllocationRuleCondition' }
+    shares:
+      type: array
+      minItems: 1
+      maxItems: 1000
+      items: { $ref: './allocations.yaml#/AllocationRuleShare' }
+  required: [expectedRevision, priority, state, condition, shares]
+AllocationRule:
+  type: object
+  additionalProperties: false
+  properties:
+    id: { $ref: './money.yaml#/ID' }
+    revision: { $ref: './money.yaml#/Revision' }
+    priority: { type: integer, minimum: 1, maximum: 1000 }
+    state: { type: string, enum: [active, archived] }
+    condition: { $ref: './allocations.yaml#/AllocationRuleCondition' }
+    shares:
+      type: array
+      minItems: 1
+      maxItems: 1000
+      items: { $ref: './allocations.yaml#/AllocationRuleShare' }
+  required: [id, revision, priority, state, condition, shares]
+AllocationRulePage:
+  type: object
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      items: { $ref: './allocations.yaml#/AllocationRule' }
+    nextCursor: { type: string }
+  required: [items]
+AllocationRulePreviewInput:
+  type: object
+  additionalProperties: false
+  properties:
+    merchantId: { $ref: './money.yaml#/ID' }
+    categoryId: { $ref: './money.yaml#/ID' }
+  minProperties: 1
+AllocationRulePreview:
+  type: object
+  additionalProperties: false
+  properties:
+    state: { type: string, enum: [resolved, unresolved] }
+    reason: { type: string, enum: [matched, no_matching_rule, rule_conflict] }
+    shares:
+      type: array
+      items: { $ref: './allocations.yaml#/AllocationRuleShare' }
+    rules:
+      type: array
+      items: { $ref: './transactions.yaml#/AllocationRuleReference' }
+  required: [state, reason, shares, rules]

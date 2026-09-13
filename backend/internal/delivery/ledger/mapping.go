@@ -35,7 +35,7 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 			out.Review.Evidence = append(out.Review.Evidence, generated.DecisionEvidence{Kind: generated.DecisionEvidenceKind(e.Kind), Id: e.ID, Revision: int64(e.Revision)})
 		}
 		if rv.Proposal != nil {
-			proposal := &generated.ClassificationProposal{ReceiptItems: []generated.ReceiptItem{}}
+			proposal := &generated.ClassificationProposal{ReceiptItems: []generated.ClassificationProposalItem{}}
 			if rv.Proposal.CategoryID != "" {
 				proposal.CategoryId = &rv.Proposal.CategoryID
 			}
@@ -46,7 +46,7 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 				proposal.MerchantAlias = &rv.Proposal.MerchantAlias
 			}
 			for _, item := range rv.Proposal.ReceiptItems {
-				dto, e := receiptItemDTO(item)
+				dto, e := classificationProposalItemDTO(item)
 				if e != nil {
 					return out, e
 				}
@@ -126,14 +126,11 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 		value := generated.TransactionPnlBasis(r.PnLBasis)
 		out.PnlBasis = &value
 	}
-	reason := r.AllocationReason
-	if reason == "" {
-		reason = "allocation_unresolved"
-	}
-	if err := out.Allocation.FromUnresolvedAllocation(generated.UnresolvedAllocation{Mode: "unresolved", Reason: reason}); err != nil {
+	allocation, err := s.allocationDTO(r.Allocation)
+	if err != nil {
 		return out, err
 	}
-	var err error
+	out.Allocation = allocation
 	if r.PayerState == "known" {
 		err = out.Payer.FromKnownPayer(generated.KnownPayer{State: "known", MemberId: string(r.PayerMemberID)})
 	} else {
@@ -210,25 +207,90 @@ func (s *Server) transactionDTO(p household.Principal, v application.View) (gene
 }
 
 func receiptItemDTO(item ledger.ReceiptItem) (generated.ReceiptItem, error) {
-	gross, err := (contract.MoneyConverter{}).ToDTO(item.Gross)
+	common, err := receiptItemValues(item)
 	if err != nil {
 		return generated.ReceiptItem{}, err
+	}
+	allocation, err := allocationDTO(item.Allocation)
+	if err != nil {
+		return generated.ReceiptItem{}, err
+	}
+	out := generated.ReceiptItem{Id: common.ID, Name: common.Name, Quantity: common.Quantity, Gross: common.Gross, Discount: common.Discount, Net: common.Net, Allocation: allocation, CategoryId: common.CategoryID}
+	return out, nil
+}
+
+func classificationProposalItemDTO(item ledger.ReceiptItem) (generated.ClassificationProposalItem, error) {
+	common, err := receiptItemValues(item)
+	if err != nil {
+		return generated.ClassificationProposalItem{}, err
+	}
+	return generated.ClassificationProposalItem{Id: common.ID, Name: common.Name, Quantity: common.Quantity, Gross: common.Gross, Discount: common.Discount, Net: common.Net, CategoryId: common.CategoryID}, nil
+}
+
+type receiptItemValuesDTO struct {
+	ID, Name, Quantity   string
+	Gross, Discount, Net generated.Money
+	CategoryID           *string
+}
+
+func receiptItemValues(item ledger.ReceiptItem) (receiptItemValuesDTO, error) {
+	gross, err := (contract.MoneyConverter{}).ToDTO(item.Gross)
+	if err != nil {
+		return receiptItemValuesDTO{}, err
 	}
 	discount, err := (contract.MoneyConverter{}).ToDTO(item.Discount)
 	if err != nil {
-		return generated.ReceiptItem{}, err
+		return receiptItemValuesDTO{}, err
 	}
 	net, err := item.Net()
 	if err != nil {
-		return generated.ReceiptItem{}, err
+		return receiptItemValuesDTO{}, err
 	}
 	netDTO, err := (contract.MoneyConverter{}).ToDTO(net)
 	if err != nil {
-		return generated.ReceiptItem{}, err
+		return receiptItemValuesDTO{}, err
 	}
-	out := generated.ReceiptItem{Id: item.ID, Name: item.Name, Quantity: item.Quantity, Gross: gross, Discount: discount, Net: netDTO}
+	out := receiptItemValuesDTO{ID: item.ID, Name: item.Name, Quantity: item.Quantity, Gross: gross, Discount: discount, Net: netDTO}
 	if item.CategoryID != "" {
-		out.CategoryId = &item.CategoryID
+		out.CategoryID = &item.CategoryID
+	}
+	return out, nil
+}
+
+func (s *Server) allocationDTO(value ledger.AllocationSnapshot) (generated.AllocationSnapshot, error) {
+	return allocationDTO(value)
+}
+
+func allocationDTO(value ledger.AllocationSnapshot) (generated.AllocationSnapshot, error) {
+	if err := value.Validate(); err != nil {
+		return generated.AllocationSnapshot{}, err
+	}
+	out := generated.AllocationSnapshot{State: generated.AllocationSnapshotState(value.State), Origin: generated.AllocationSnapshotOrigin(value.Origin), Reason: value.Reason, Members: []generated.MemberAmount{}, Unallocated: []generated.Money{}, Rules: []generated.AllocationRuleReference{}}
+	if value.Mode != "" {
+		mode := generated.AllocationSnapshotMode(value.Mode)
+		out.Mode = &mode
+	}
+	if value.Purpose != "" {
+		purpose := generated.AllocationSnapshotPurpose(value.Purpose)
+		out.Purpose = &purpose
+	}
+	converter := contract.MoneyConverter{}
+	for _, member := range value.Members {
+		amount, err := converter.ToDTO(member.Money)
+		if err != nil {
+			return out, err
+		}
+		out.Members = append(out.Members, generated.MemberAmount{MemberId: string(member.MemberID), Amount: amount})
+	}
+	for _, amount := range value.Unallocated {
+		dto, err := converter.ToDTO(amount)
+		if err != nil {
+			return out, err
+		}
+		out.Unallocated = append(out.Unallocated, dto)
+	}
+	for _, rule := range value.RuleRefs {
+		out.Rules = append(out.Rules, generated.AllocationRuleReference{RuleId: rule.ID, Revision: int64(rule.Revision)})
 	}
 	return out, nil
 }

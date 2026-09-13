@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -21,11 +22,14 @@ type SourceRepository interface {
 	EmitEvent(context.Context, string, string, uint64, string) error
 }
 type Sources struct {
-	repository SourceRepository
-	writer     JournalWriter
+	repository  SourceRepository
+	writer      JournalWriter
+	allocations AllocationResolver
 }
 
-func NewSources(r SourceRepository, w JournalWriter) *Sources { return &Sources{r, w} }
+func NewSources(r SourceRepository, w JournalWriter, allocations AllocationResolver) *Sources {
+	return &Sources{repository: r, writer: w, allocations: allocations}
+}
 
 // Apply belongs inside CommitPage's transaction, after the deployment and lease fences.
 func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger.SourceInput) (ledger.SourceOutcome, error) {
@@ -46,6 +50,8 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		raw.AccountingState = ledger.IncludedInAccounting
 		raw.CategoryID, raw.MerchantID, raw.ReceiptItems = "", "", nil
 		raw.DecisionID, raw.ReviewState = "", ""
+		raw.Allocation = ledger.AllocationSnapshot{}
+		raw.AllocationReason = ""
 		input.Operation = &raw
 	}
 	if input.Operation != nil && input.Operation.Validate() != nil {
@@ -141,6 +147,31 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 				}
 			}
 		}
+		if !found {
+			raw, e = raw.WithAllocation(ledger.AllocationInput{}, nil, nil)
+			if e != nil {
+				return result, fmt.Errorf("initialize source allocation: %w", e)
+			}
+			if raw.Allocation.State != ledger.AllocationNotApplicable && s.allocations != nil {
+				allocation, matched, resolveErr := s.allocations.ResolveSource(ctx, p, raw.Merchant)
+				if resolveErr != nil {
+					return result, fmt.Errorf("resolve source allocation: %w", resolveErr)
+				}
+				if matched {
+					var members []household.MembershipID
+					if allocation.Mode != ledger.AllocationUnknown {
+						members, resolveErr = s.allocations.ActiveMemberIDs(ctx, p)
+						if resolveErr != nil {
+							return result, fmt.Errorf("load source allocation members: %w", resolveErr)
+						}
+					}
+					raw, resolveErr = raw.WithAllocation(allocation, nil, members)
+					if resolveErr != nil {
+						return result, fmt.Errorf("apply source allocation: %w", resolveErr)
+					}
+				}
+			}
+		}
 		r := raw.Clone()
 		conflict := ""
 		if found {
@@ -181,7 +212,23 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 		}
 		validation := r.Clone()
 		validation.Participation = ledger.Participation{}
-		if validation.CheckSuccessor(prior) != nil {
+		validationErr := validation.CheckSuccessor(prior)
+		if found && errors.Is(validationErr, ledger.ErrInvalidAllocation) {
+			refreshed, refreshErr := validation.RefreshAllocation()
+			_, allocationProtected := previous.Protections[ledger.AllocationField]
+			removesProtectedAllocation := allocationProtected && previous.Allocation.State != ledger.AllocationNotApplicable && refreshed.Allocation.State == ledger.AllocationNotApplicable
+			if refreshErr == nil && !removesProtectedAllocation {
+				if copyErr := r.CopyField(refreshed, ledger.AllocationField); copyErr != nil {
+					return result, copyErr
+				}
+				if !previous.FieldEqual(r, ledger.AllocationField) {
+					r.FieldVersions[ledger.AllocationField] = r.Revision
+				}
+				validation = refreshed
+				validationErr = validation.CheckSuccessor(prior)
+			}
+		}
+		if validationErr != nil {
 			if !found {
 				return result, s.repository.RecordUnresolvedTransaction(ctx, input)
 			}

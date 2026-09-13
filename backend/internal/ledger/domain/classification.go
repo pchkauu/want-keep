@@ -20,6 +20,7 @@ var (
 type ReceiptItem struct {
 	ID, Name, Quantity, CategoryID string
 	Gross, Discount                money.Money
+	Allocation                     AllocationSnapshot
 }
 
 func (i ReceiptItem) Validate() error {
@@ -34,6 +35,9 @@ func (i ReceiptItem) Validate() error {
 		return ErrInvalidAllocation
 	}
 	if compared, err := i.Discount.Compare(i.Gross); err != nil || compared > 0 {
+		return ErrInvalidAllocation
+	}
+	if i.Allocation.State != "" && i.Allocation.Validate() != nil {
 		return ErrInvalidAllocation
 	}
 	return nil
@@ -87,7 +91,18 @@ func (c ReceiptItemsCorrection) Build(current Revision) ([]ReceiptItem, error) {
 	if err != nil {
 		return nil, ErrInvalidAllocation
 	}
-	return BuildReceiptItems(c.Items, c.TotalDiscount, paid)
+	items, err := BuildReceiptItems(c.Items, c.TotalDiscount, paid)
+	if err != nil {
+		return nil, err
+	}
+	currentAllocations := make(map[string]AllocationSnapshot, len(current.ReceiptItems))
+	for _, item := range current.ReceiptItems {
+		currentAllocations[item.ID] = item.Allocation.Clone()
+	}
+	for index := range items {
+		items[index].Allocation = currentAllocations[items[index].ID]
+	}
+	return items, nil
 }
 
 func BuildReceiptItems(inputs []ReceiptItemInput, totalDiscount, paid money.Money) ([]ReceiptItem, error) {

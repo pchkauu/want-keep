@@ -161,6 +161,9 @@ func (s *Store) AuthorizeCommandResult(ctx context.Context, p household.Principa
 	case "reconciliation":
 		_, err := s.Reconciliation(ctx, p, r.ResourceID)
 		return err
+	case "allocation_rule":
+		_, err := s.AllocationRule(ctx, p, r.ResourceID)
+		return err
 	default:
 		return household.ErrForbidden
 	}

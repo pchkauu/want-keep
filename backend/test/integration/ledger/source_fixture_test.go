@@ -16,7 +16,7 @@ func (f *fixture) importSource(service *admission.Service, connection string, in
 	input.ConnectionID = connection
 	input.JobID = issued.ID
 	input.FetchedAt = f.now
-	sources := journal.NewSources(f.store, f.writer)
+	sources := journal.NewSources(f.store, f.writer, nil)
 	var outcome ledger.SourceOutcome
 	applied, err := service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: input.EvidenceRef, Coverage: "complete", Complete: true}, func(ctx context.Context) error {
 		var err error

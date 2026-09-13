@@ -55,7 +55,7 @@ func TestWaitingReviewDoesNotBlockAccounting(t *testing.T) {
 			}
 			imported := f.revision(uuid.NewString(), account, "-20", money.RUB, 1)
 			manual := f.revision(uuid.NewString(), account, "-30", money.RUB, 1)
-			sources := journal.NewSources(f.store, f.writer)
+			sources := journal.NewSources(f.store, f.writer, nil)
 			worker := app.Worker{Repository: f.store, Admission: gate, Config: app.DefaultWorkerConfig(jobs.Sync), Handler: handlerFunc(func(ctx context.Context, x app.Execution) (app.Result, error) {
 				if err := gate.BeforeRead(ctx, x.Principal, x.Job); err != nil {
 					return app.Result{}, err

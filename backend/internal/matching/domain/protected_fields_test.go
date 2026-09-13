@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	matching "github.com/pchkauu/want-keep/backend/internal/matching/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
@@ -40,5 +41,54 @@ func TestProtectedClassificationAcrossThreeEvidenceRecords(t *testing.T) {
 	c.CategoryID = b.CategoryID
 	if _, _, err = f.group(matching.Payment, "a").Assign([]ledger.Revision{a, b, c}, false); err != nil {
 		t.Fatal("agreeing protected categories were rejected", err)
+	}
+}
+
+func TestProtectedAllocationCannotBeSilentlyMovedOffNonCarrier(t *testing.T) {
+	f := fixture{t}
+	a, b := f.fact("a", "account", "-500", money.RUB), f.fact("b", "account", "-500", money.RUB)
+	a.Origin, b.Origin = "manual", "manual"
+	a.RecordedAt = a.OccurredAt
+	allocation := ledger.AllocationInput{Mode: ledger.AllocationByShares, Purpose: ledger.AllocationShared, Members: []ledger.AllocationMemberInput{{MemberID: "member-a", Share: "50"}, {MemberID: "member-b", Share: "50"}}}
+	var err error
+	b, err = b.WithAllocation(allocation, nil, []household.MembershipID{"member-a", "member-b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b = b.WithDecision(ledger.Decision{ID: "allocation-b", Kind: "correction", ActorID: "member-a", Reason: "Confirmed split", At: b.OccurredAt}, []ledger.Field{ledger.AllocationField})
+	if _, _, err = f.group(matching.Payment, "a").Assign([]ledger.Revision{a, b}, false); err == nil {
+		t.Fatal("protected non-carrier allocation was silently discarded")
+	}
+}
+
+func TestMatchingPreservesProtectedUnresolvedItemAllocation(t *testing.T) {
+	f := fixture{t}
+	a, b := f.fact("a", "account", "-500", money.RUB), f.fact("b", "account", "-500", money.RUB)
+	a.Origin, b.Origin = "manual", "source"
+	gross, _ := money.NewMoney("500", money.RUB)
+	discount, _ := money.NewMoney("0", money.RUB)
+	a.ReceiptItems = []ledger.ReceiptItem{{ID: "unclear-item", Name: "Unclear item", Quantity: "1", Gross: gross, Discount: discount}}
+	var err error
+	a, err = a.WithAllocation(
+		ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "purchase_needs_clarification"},
+		[]ledger.ItemAllocationInput{{ItemID: "unclear-item", Allocation: ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "item_needs_clarification"}}},
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a = a.WithDecision(ledger.Decision{ID: "allocation-a", Kind: "correction", ActorID: "member-a", Reason: "Keep item unresolved", At: a.OccurredAt}, []ledger.Field{ledger.AllocationField})
+	_, revisions, err := f.group(matching.Payment, "a").Assign([]ledger.Revision{a, b}, false)
+	if err != nil {
+		t.Fatal("matching rejected unchanged protected allocation", err)
+	}
+	for _, revision := range revisions {
+		if revision.OperationID != "a" {
+			continue
+		}
+		item := revision.ReceiptItems[0].Allocation
+		if item.Origin != ledger.AllocationExplicitItem || item.Reason != "item_needs_clarification" {
+			t.Fatalf("matching changed explicit unresolved item = %+v", item)
+		}
 	}
 }

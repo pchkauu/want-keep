@@ -48,8 +48,7 @@ func TestHTTPNativeRoundTripFamilyFactAndCommands(t *testing.T) {
 		if payer.MemberId != string(f.members[1].ID) {
 			t.Fatal("payer conflated with actor")
 		}
-		allocation, _ := transaction.Allocation.AsUnresolvedAllocation()
-		if allocation.Mode != "unresolved" {
+		if transaction.Allocation.Mode == nil || *transaction.Allocation.Mode != "unresolved" || transaction.Allocation.State != "unresolved" {
 			t.Fatal("invented distribution")
 		}
 		if transaction.AiState != "waiting" || len(transaction.EconomicComponents) != 1 {
@@ -138,7 +137,14 @@ func TestHTTPTransfersExchangeAndUnsupportedFeatures(t *testing.T) {
 	}
 	delete(manual, "categoryId")
 	manual["allocation"] = map[string]any{"mode": "shares", "purpose": "shared", "members": []any{map[string]any{"memberId": string(f.members[0].ID), "share": "50"}, map[string]any{"memberId": string(f.members[1].ID), "share": "50"}}}
-	c.call("POST", "/transactions", uuid.NewString(), manual, 422)
+	allocated := decode[generated.CommandSucceeded](t, c.call("POST", "/transactions", uuid.NewString(), manual, 202))
+	if allocated.Status != "succeeded" {
+		t.Fatal("explicit allocation failed", allocated)
+	}
+	allocatedTransaction := decode[generated.Transaction](t, c.call("GET", "/transactions/"+allocated.Result.Id, "", nil, 200))
+	if allocatedTransaction.Allocation.State != "resolved" || len(allocatedTransaction.Allocation.Members) != 2 {
+		t.Fatal("explicit allocation missing", allocatedTransaction.Allocation)
+	}
 	manual = c.input(a, "RUB", "12000")
 	out = decode[generated.CommandSucceeded](t, c.call("POST", "/transactions", uuid.NewString(), manual, 202))
 	if out.Status != "succeeded" {

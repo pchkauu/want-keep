@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sort"
 
+	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/domain"
 	commands "github.com/pchkauu/want-keep/backend/internal/commands/application"
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -21,6 +22,7 @@ type DecisionRepository interface {
 	LatestSourceFact(context.Context, household.Principal, string) (*ledger.Revision, error)
 	DecisionSourceFact(context.Context, household.Principal, string, string) (*ledger.Revision, error)
 	RevisionEvidence(context.Context, household.Principal, string, uint64) ([]ledger.Evidence, error)
+	FirstLedgerRuleBoundary(context.Context, household.Principal, string) (uint64, error)
 }
 
 type Change struct {
@@ -36,6 +38,26 @@ type ExpectedRevision struct {
 
 func (s *Service) Correct(ctx context.Context, p household.Principal, change Change, reason string) (command.Result, error) {
 	return s.ApplyChanges(ctx, p, []Change{change}, reason)
+}
+
+func (s *Service) Allocate(ctx context.Context, p household.Principal, operationID string, expected uint64, allocation ledger.AllocationInput, items []ledger.ItemAllocationInput, reason string) (command.Result, error) {
+	if s.allocations == nil {
+		return command.Result{}, commands.Rejection{Code: "feature_unavailable"}
+	}
+	members, err := s.allocations.ActiveMemberIDs(ctx, p)
+	if err != nil {
+		return command.Result{}, err
+	}
+	completeEqualAllocation(&allocation, members)
+	for index := range items {
+		completeEqualAllocation(&items[index].Allocation, members)
+	}
+	if allocation.Mode == ledger.AllocationUnknown {
+		allocation.Origin = ledger.AllocationUnknownOrigin
+	} else {
+		allocation.Origin = ledger.AllocationExplicitPurchase
+	}
+	return s.ApplyChanges(ctx, p, []Change{{OperationID: operationID, Expected: expected, Correction: ledger.Correction{Allocation: &ledger.AllocationChange{Allocation: allocation, Items: items, Members: members}}}}, reason)
 }
 
 // ApplyChanges is the atomic decision boundary used by household commands. Its caller owns the transaction.
@@ -88,6 +110,22 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 			}
 			d.Kind = "exclusion"
 		} else {
+			if in.Correction.Allocation != nil {
+				if s.allocations == nil {
+					return command.Result{}, commands.Rejection{Code: "feature_unavailable"}
+				}
+				members, memberErr := s.allocations.ActiveMemberIDs(ctx, p)
+				if memberErr != nil {
+					return command.Result{}, memberErr
+				}
+				change := cloneAllocationChange(*in.Correction.Allocation)
+				change.Members = slices.Clone(members)
+				completeEqualAllocation(&change.Allocation, members)
+				for index := range change.Items {
+					completeEqualAllocation(&change.Items[index].Allocation, members)
+				}
+				in.Correction.Allocation = &change
+			}
 			updated, fields, err = r.Correct(in.Correction)
 			if errors.Is(err, ledger.ErrNoChange) && len(changes) > 1 && r.Participation.GroupID != "" {
 				unchanged[r.OperationID] = r.Participation.GroupID
@@ -125,13 +163,39 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 				return command.Result{}, commands.Rejection{Code: "source_conflict"}
 			}
 		}
+		if kind == "correction" && in.Correction.Allocation == nil && s.shouldResolveAllocation(r, fields) {
+			basis, basisErr := s.repository.FirstLedgerRuleBoundary(ctx, p, r.OperationID)
+			if basisErr != nil {
+				return command.Result{}, s.reject(basisErr)
+			}
+			resolved, allocationChanged, resolveErr := s.resolveAllocationAt(ctx, p, updated, basis)
+			if resolveErr != nil {
+				return command.Result{}, resolveErr
+			}
+			if allocationChanged {
+				updated = resolved
+				if !slices.Contains(fields, ledger.AllocationField) {
+					fields = append(fields, ledger.AllocationField)
+				}
+				changedGroups[r.Participation.GroupID] = true
+			}
+		}
 		if slices.Contains(fields, ledger.PrincipalField) || slices.Contains(fields, ledger.FeesField) || slices.Contains(fields, ledger.AccountingField) {
 			financialGroups[r.Participation.GroupID] = true
 		}
 		if updated.OccurredAt.Time().After(s.now().Time()) {
 			return command.Result{}, commands.Rejection{Code: "invalid_request"}
 		}
-		next = append(next, updated.WithDecision(d, fields))
+		decided := updated.WithDecision(d, fields)
+		if in.Correction.Allocation == nil && slices.Contains(fields, ledger.AllocationField) {
+			if protection, protected := r.Protections[ledger.AllocationField]; protected {
+				decided.Protections[ledger.AllocationField] = protection
+			} else {
+				delete(decided.Protections, ledger.AllocationField)
+			}
+			decided.HumanOverride = len(decided.Protections) > 0
+		}
+		next = append(next, decided)
 		d.Entries = append(d.Entries, ledger.DecisionEntry{OperationID: r.OperationID, Before: r.Revision, After: r.Revision + 1, Fields: fields})
 	}
 	for _, group := range unchanged {
@@ -151,6 +215,95 @@ func (s *Service) applyChanges(ctx context.Context, p household.Principal, chang
 	}
 	d.Entries = entries
 	return s.persistDecision(ctx, p, d, retained)
+}
+
+func (s *Service) shouldResolveAllocation(revision ledger.Revision, fields []ledger.Field) bool {
+	if s.allocations == nil || !slices.Contains(fields, ledger.CategoryField) && !slices.Contains(fields, ledger.MerchantIDField) && !slices.Contains(fields, ledger.ReceiptItemsField) {
+		return false
+	}
+	return revision.Allocation.State != "" && (revision.Allocation.State != ledger.AllocationNotApplicable || revision.Allocation.Basis != nil)
+}
+
+func (s *Service) resolveAllocationAt(ctx context.Context, p household.Principal, revision ledger.Revision, boundary uint64) (ledger.Revision, bool, error) {
+	fallback, existingItems, err := revision.AllocationBases()
+	if err != nil {
+		return revision, false, s.rejectDecision(err)
+	}
+	preservedItems := make(map[string]ledger.AllocationInput, len(existingItems))
+	for _, item := range existingItems {
+		if item.Allocation.Origin == ledger.AllocationExplicitItem {
+			preservedItems[item.ItemID] = item.Allocation
+		}
+	}
+	conditions := []allocation.Condition{}
+	fallbackCondition := allocation.Condition{MerchantID: revision.MerchantID, CategoryID: revision.CategoryID}
+	if fallback.Origin != ledger.AllocationExplicitPurchase {
+		conditions = append(conditions, fallbackCondition)
+	}
+	if fallback.Origin != ledger.AllocationExplicitPurchase {
+		for _, item := range revision.ReceiptItems {
+			if _, preserved := preservedItems[item.ID]; !preserved {
+				conditions = append(conditions, allocation.Condition{MerchantID: revision.MerchantID, CategoryID: item.CategoryID})
+			}
+		}
+	}
+	resolvedInputs, err := s.allocations.ResolveAtBoundary(ctx, p, conditions, boundary)
+	if err != nil {
+		return revision, false, err
+	}
+	if fallback.Origin != ledger.AllocationExplicitPurchase {
+		var matched bool
+		fallback, matched = resolvedInputs[fallbackCondition]
+		if !matched {
+			fallback = ledger.AllocationInput{Mode: ledger.AllocationUnknown, Reason: "allocation_unresolved"}
+		}
+	}
+	items := make([]ledger.ItemAllocationInput, 0, len(revision.ReceiptItems))
+	for _, item := range revision.ReceiptItems {
+		if preserved, ok := preservedItems[item.ID]; ok {
+			items = append(items, ledger.ItemAllocationInput{ItemID: item.ID, Allocation: preserved})
+			continue
+		}
+		if fallback.Origin != ledger.AllocationExplicitPurchase {
+			resolved, ok := resolvedInputs[allocation.Condition{MerchantID: revision.MerchantID, CategoryID: item.CategoryID}]
+			if ok {
+				items = append(items, ledger.ItemAllocationInput{ItemID: item.ID, Allocation: resolved})
+			}
+		}
+	}
+	var members []household.MembershipID
+	if fallback.Mode != "" && fallback.Mode != ledger.AllocationUnknown || len(items) > 0 {
+		members, err = s.allocations.ActiveMemberIDs(ctx, p)
+		if err != nil {
+			return revision, false, err
+		}
+	}
+	resolved, err := revision.WithAllocation(fallback, items, members)
+	if err != nil {
+		return revision, false, s.rejectDecision(err)
+	}
+	return resolved, !revision.FieldEqual(resolved, ledger.AllocationField), nil
+}
+
+func cloneAllocationChange(value ledger.AllocationChange) ledger.AllocationChange {
+	value.Members = slices.Clone(value.Members)
+	value.Allocation.Members = slices.Clone(value.Allocation.Members)
+	value.Allocation.RuleRefs = slices.Clone(value.Allocation.RuleRefs)
+	value.Items = slices.Clone(value.Items)
+	for index := range value.Items {
+		value.Items[index].Allocation.Members = slices.Clone(value.Items[index].Allocation.Members)
+		value.Items[index].Allocation.RuleRefs = slices.Clone(value.Items[index].Allocation.RuleRefs)
+	}
+	return value
+}
+
+func completeEqualAllocation(input *ledger.AllocationInput, members []household.MembershipID) {
+	if input.Mode != ledger.AllocationEqual || input.Purpose != ledger.AllocationShared || len(input.Members) != 0 {
+		return
+	}
+	for _, memberID := range members {
+		input.Members = append(input.Members, ledger.AllocationMemberInput{MemberID: memberID})
+	}
 }
 
 func (s *Service) Undo(ctx context.Context, p household.Principal, id string, expected []ExpectedRevision, reason string) (command.Result, error) {
@@ -196,7 +349,13 @@ func (s *Service) Undo(ctx context.Context, p household.Principal, id string, ex
 		if err != nil {
 			return command.Result{}, s.rejectDecision(err)
 		}
-		for _, field := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField} {
+		if validationErr := r.Validate(); errors.Is(validationErr, ledger.ErrInvalidAllocation) {
+			r, err = r.RefreshAllocation()
+			if err != nil {
+				return command.Result{}, s.rejectDecision(err)
+			}
+		}
+		for _, field := range []ledger.Field{ledger.PrincipalField, ledger.FeesField, ledger.DateField, ledger.PayerField, ledger.MerchantField, ledger.NoteField, ledger.CategoryField, ledger.MerchantIDField, ledger.ReceiptItemsField, ledger.AllocationField} {
 			if !prior.FieldEqual(r, field) && !slices.Contains(entry.Fields, field) {
 				entry.Fields = append(entry.Fields, field)
 			}

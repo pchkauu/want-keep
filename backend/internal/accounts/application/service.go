@@ -160,7 +160,7 @@ func (s *Service) writeOpening(ctx context.Context, p household.Principal, a acc
 	if err != nil {
 		return s.reject(err)
 	}
-	r := ledger.Revision{OperationID: o.OperationID, Revision: o.Revision, ActorID: p.UserID(), Reason: o.Reason, Type: "opening", State: "draft", OccurredAt: at, CashDate: o.Date, HumanOverride: o.Confirmed, PayerState: "not_applicable"}
+	r := ledger.Revision{OperationID: o.OperationID, Revision: o.Revision, ActorID: p.UserID(), Reason: o.Reason, Type: "opening", State: "draft", OccurredAt: at, CashDate: o.Date, HumanOverride: o.Confirmed, PayerState: "not_applicable", Allocation: ledger.NotApplicableAllocation()}
 	if o.Confirmed {
 		value, _ := o.Amounts.Owned.Value()
 		r.State = "posted"
