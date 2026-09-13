@@ -546,15 +546,46 @@ func (s *Store) ResumeAIGatewayWaiting(ctx context.Context) error {
 		return err
 	}
 	defer tx.Rollback(context.Background())
-	if _, err = tx.Exec(ctx, `WITH expired AS (
-	 SELECT household_id,id FROM want_keep.jobs
-	 WHERE kind='ai' AND state='waiting' AND reason='gateway_unavailable'
-	  AND COALESCE(run_deadline,deadline)<=clock_timestamp()
-	 ORDER BY available_at,id LIMIT 100 FOR UPDATE SKIP LOCKED
-	)
-	UPDATE want_keep.jobs j SET state='failed',reason='deadline_exceeded'
-	FROM expired e WHERE (j.household_id,j.id)=(e.household_id,e.id)`); err != nil {
+	var now time.Time
+	if err = tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&now); err != nil {
 		return err
+	}
+	rows, err := tx.Query(ctx, `SELECT household_id,id FROM want_keep.jobs
+	 WHERE kind='ai' AND state='waiting' AND reason='gateway_unavailable'
+	  AND COALESCE(run_deadline,deadline)<=$1
+	 ORDER BY available_at,id LIMIT 100 FOR UPDATE SKIP LOCKED`, now)
+	if err != nil {
+		return err
+	}
+	type expiredJob struct {
+		householdID household.HouseholdID
+		jobID       string
+	}
+	expired := make([]expiredJob, 0, 100)
+	for rows.Next() {
+		var item expiredJob
+		if err = rows.Scan(&item.householdID, &item.jobID); err != nil {
+			rows.Close()
+			return err
+		}
+		expired = append(expired, item)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	for _, item := range expired {
+		if err = s.releaseSafeAIJobAttempts(ctx, tx, item.householdID, item.jobID, "gateway_wait_expired", now); err != nil {
+			return err
+		}
+		tag, updateErr := tx.Exec(ctx, `UPDATE want_keep.jobs SET state='failed',reason='deadline_exceeded' WHERE household_id=$1 AND id=$2 AND state='waiting' AND reason='gateway_unavailable' AND COALESCE(run_deadline,deadline)<=$3`, item.householdID, item.jobID, now)
+		if updateErr != nil {
+			return updateErr
+		}
+		if tag.RowsAffected() != 1 {
+			return jobs.ErrStaleAttempt
+		}
 	}
 	if _, err = tx.Exec(ctx, `WITH pending AS (
 	 SELECT household_id,id FROM want_keep.jobs

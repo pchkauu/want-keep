@@ -156,6 +156,54 @@ func TestPreGenerationRepositoryFailuresDoNotExhaustJob(t *testing.T) {
 	}
 }
 
+func TestExpiredGatewayWaitReleasesUnstartedAttempts(t *testing.T) {
+	f := newFixture(t)
+	jobsToExpire := f.newReviewJobs(2)
+	reservation, err := ai.TerraPricing().Reservation(100, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index, job := range jobsToExpire {
+		request := f.request(job)
+		if err = f.store.StartAIAttempt(testContext, f.p, job, request, strings.Repeat("d", 64), f.now.Time()); err != nil {
+			t.Fatal(err)
+		}
+		if index == 1 {
+			if err = f.store.ReserveAIAttempt(testContext, f.p, job, request.ID, 100, reservation, f.now.Time()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err = f.store.SetJobOutcome(testContext, f.p, job, jobs.Waiting, jobs.GatewayUnavailable, 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err = f.admin.Exec(testContext, `UPDATE want_keep.jobs SET run_deadline=clock_timestamp()-INTERVAL '1 second' WHERE kind='ai'`); err != nil {
+		t.Fatal(err)
+	}
+	if err = aiapp.NewGatewayQueue(f.store, time.Minute).Step(testContext); err != nil {
+		t.Fatal(err)
+	}
+	var failed, released int
+	if err = f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.jobs WHERE kind='ai' AND state='failed' AND reason='deadline_exceeded'`).Scan(&failed); err != nil {
+		t.Fatal(err)
+	}
+	if err = f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.ai_attempts a JOIN LATERAL(SELECT state,code FROM want_keep.ai_attempt_states s WHERE (s.household_id,s.attempt_id)=(a.household_id,a.id) ORDER BY revision DESC LIMIT 1) latest ON true WHERE latest.state='known_rejection' AND latest.code='gateway_wait_expired'`).Scan(&released); err != nil {
+		t.Fatal(err)
+	}
+	if failed != 2 || released != 2 {
+		t.Fatalf("expired gateway cleanup mismatch: failed=%d released=%d", failed, released)
+	}
+	for _, job := range f.newReviewJobs(2) {
+		request := f.request(job)
+		if err = f.store.StartAIAttempt(testContext, f.p, job, request, strings.Repeat("d", 64), f.now.Time()); err != nil {
+			t.Fatal(err)
+		}
+		if err = f.store.ReserveAIAttempt(testContext, f.p, job, request.ID, 100, reservation, f.now.Time()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 type failingReviewRepository struct {
 	aiapp.Repository
 	remaining int
