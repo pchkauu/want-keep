@@ -86,6 +86,7 @@ func run() error {
 	}
 	reconciliationService := reconciliation.NewService(db, db, ledger.NewWriter(db, db), admissionService, now, uuid.NewString)
 	var syncHandler jobs.Handler
+	var stagedReconciler *collector.StagedReconciler
 	if socket := os.Getenv("WANT_KEEP_COLLECTOR_SOCKET"); socket != "" {
 		connectionKeys, keyErr := cryptobox.Load(os.Getenv("WANT_KEEP_CONNECTION_KEYRING"), "connections")
 		evidence, evidenceErr := collector.NewEvidenceStore(db, connectionKeys)
@@ -99,6 +100,13 @@ func run() error {
 		} else {
 			connectionAccess := connectionaccess.NewService(nil, db, admissionService)
 			syncHandler = collector.Handler{Socket: socket, Vault: credentials.New(connectionAccess, db, connectionKeys), Service: ingestionService}
+			stagedReconciler = &collector.StagedReconciler{
+				Principals: db.StagedCollectorPrincipals,
+				Reconcile:  ingestionService.ReconcileStaged,
+				Report: func(error) {
+					report(jobs.Diagnostic{Kind: domain.Sync, Stage: "evidence_reconciliation", Code: "collector_evidence_reconciliation_failed"})
+				},
+			}
 		}
 	}
 	var aiHandler jobs.Handler = ai.WaitingHandler{}
@@ -121,6 +129,10 @@ func run() error {
 	var group sync.WaitGroup
 	group.Add(1)
 	go func() { defer group.Done(); _ = scheduler.Run(ctx) }()
+	if stagedReconciler != nil {
+		group.Add(1)
+		go func() { defer group.Done(); _ = stagedReconciler.Run(ctx) }()
+	}
 	if aiBudgetQueue != nil {
 		group.Add(1)
 		go func() {

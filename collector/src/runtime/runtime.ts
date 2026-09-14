@@ -52,10 +52,20 @@ export class CollectorRuntime {
         admissionRevision: envelope.syncRequest.admissionRevision,
       });
       validateStorageState(envelope.storageState, binding.origin);
+      const entry = routeFor(binding, "entry");
+      const target = routeFor(
+        binding,
+        envelope.syncRequest.replayRange === undefined
+          ? "read"
+          : "request_statement",
+      );
+      if (signal.aborted) throw new Error("request_aborted");
       const browser = await this.getBrowser();
       return await readWithContext(
         browser,
         binding,
+        entry,
+        target,
         envelope.syncRequest,
         envelope.storageState,
         signal,
@@ -196,6 +206,8 @@ export function parseReadEnvelope(value: unknown): ReadEnvelope {
 async function readWithContext(
   browser: Browser,
   binding: RuntimeBinding,
+  entry: RouteRule,
+  target: RouteRule,
   request: SyncRequest,
   storageState: unknown,
   signal: AbortSignal,
@@ -212,7 +224,10 @@ async function readWithContext(
   const reject = (message: string): void => {
     violation ??= new Error(message);
   };
+  const abort = (): void => void context.close();
+  signal.addEventListener("abort", abort, { once: true });
   try {
+    if (signal.aborted) throw new Error("request_aborted");
     await context.route("**/*", async (route) => {
       try {
         requireAllowedRequest(binding, request, route);
@@ -237,20 +252,13 @@ async function readWithContext(
       reject("download_blocked");
       void download.cancel();
     });
-    const abort = (): void => void context.close();
-    signal.addEventListener("abort", abort, { once: true });
     try {
-      const entry = routeFor(binding, "entry");
       await page.goto(binding.origin + entry.path, {
         waitUntil: "domcontentloaded",
         timeout,
       });
       if (page.url() !== binding.origin + entry.path || violation !== undefined)
         throw violation ?? new Error("redirect_blocked");
-      const target = routeFor(
-        binding,
-        request.replayRange === undefined ? "read" : "request_statement",
-      );
       const body =
         target.method === "POST"
           ? JSON.stringify({
@@ -268,7 +276,7 @@ async function readWithContext(
                 ? undefined
                 : { "content-type": "application/json" },
             credentials: "include",
-            redirect: "follow",
+            redirect: "error",
           });
           if (response.body === null) throw new Error("provider_body_missing");
           const reader = response.body.getReader();
@@ -291,6 +299,7 @@ async function readWithContext(
             offset += chunk.byteLength;
           }
           return {
+            url: response.url,
             status: response.status,
             challenge: response.headers.get("x-want-keep-challenge"),
             text: new TextDecoder("utf-8", { fatal: true }).decode(data),
@@ -304,6 +313,8 @@ async function readWithContext(
         },
       );
       if (violation !== undefined) throw violation;
+      if (response.url !== binding.origin + target.path)
+        throw new Error("redirect_blocked");
       if (page.url() !== binding.origin + entry.path)
         throw new Error("navigation_blocked");
       if (

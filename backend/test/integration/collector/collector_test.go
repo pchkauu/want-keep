@@ -18,13 +18,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	accounts "github.com/pchkauu/want-keep/backend/internal/accounts/application"
+	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/application"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	collector "github.com/pchkauu/want-keep/backend/internal/connections/collector"
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	integrations "github.com/pchkauu/want-keep/backend/internal/integrations/application"
 	ingestion "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	"github.com/pchkauu/want-keep/backend/internal/privacy/cryptobox"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 	"github.com/pchkauu/want-keep/backend/migrations"
@@ -125,6 +129,50 @@ func TestEncryptedEvidenceLifecycleSurvivesRestart(t *testing.T) {
 	}
 	if _, err = admin.Exec(testContext, `UPDATE want_keep.collector_evidence_batches SET disposition='stale_result' WHERE household_id=$1 AND page_reference=$2`, batch.HouseholdID, batch.PageReference); err == nil {
 		t.Fatal("terminal disposition changed")
+	}
+}
+
+func TestStagedReconciliationUsesTerminalReceiptAfterRestart(t *testing.T) {
+	store, admin, principal, job, keys, _ := fixture(t)
+	evidence, err := collector.NewEvidenceStore(store, keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	at, _ := calendar.ParseInstant("2026-09-14T10:00:00.123456789Z")
+	raw := []byte(`{"balance":"5000"}`)
+	digest := fmt.Sprintf("%x", sha256.Sum256(raw))
+	batch := ingestion.EvidenceBatch{
+		HouseholdID: string(principal.HouseholdID()), JobID: job.ID, PageReference: "evidence:page:" + uuid.NewString(), FetchedAt: at, Disposition: ingestion.EvidenceStaged,
+		Items: []ingestion.StoredEvidence{{Reference: "evidence:raw:" + uuid.NewString(), Raw: ingestion.Evidence{ID: "raw-restart", MediaType: "application/json", Digest: digest, Locator: "synthetic:restart", Data: raw}}},
+	}
+	if err = evidence.Save(testContext, batch); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = admin.Exec(testContext, `INSERT INTO want_keep.ingestion_result_receipts(household_id,id,job_id,lease_token,attempt,input_cursor,evidence_ref,kind) VALUES($1,$2,$3,$4,$5,$6,$7,'page')`, principal.HouseholdID(), uuid.NewString(), job.ID, job.LeaseToken, job.Attempt, job.Cursor, batch.PageReference); err != nil {
+		t.Fatal(err)
+	}
+	gate := admission.NewService(store, store)
+	accountService := accounts.NewService(store, store, func() calendar.Instant { return at }, uuid.NewString)
+	accountImporter, err := integrations.NewAccountImporter(accountService, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources := ledger.NewSources(store, ledger.NewWriter(store, store), allocation.NewService(store, func() calendar.Instant { return at }, uuid.NewString))
+	sourceWriter, err := integrations.NewSourceWriter(sources, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := integrations.NewService(gate, evidence, accountImporter, sourceWriter, func() calendar.Instant { return at }, uuid.NewString)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reconciler := collector.StagedReconciler{Principals: store.StagedCollectorPrincipals, Reconcile: service.ReconcileStaged, Report: func(error) {}}
+	if err = reconciler.Step(testContext); err != nil {
+		t.Fatal(err)
+	}
+	var disposition string
+	if err = admin.QueryRow(testContext, `SELECT disposition FROM want_keep.collector_evidence_batches WHERE household_id=$1 AND page_reference=$2`, principal.HouseholdID(), batch.PageReference).Scan(&disposition); err != nil || disposition != "applied" {
+		t.Fatal("staged receipt was not reconciled", disposition, err)
 	}
 }
 

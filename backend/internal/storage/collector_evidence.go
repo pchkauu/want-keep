@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 
+	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ingestion "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
 )
 
@@ -66,4 +67,29 @@ func (s *Store) StagedCollectorEvidence(ctx context.Context, householdID string,
 		result = append(result, item)
 	}
 	return result, rows.Err()
+}
+
+func (s *Store) StagedCollectorPrincipals(ctx context.Context, limit int) ([]household.Principal, error) {
+	if limit < 1 || limit > 1000 {
+		return nil, ingestion.ErrEvidence
+	}
+	rows, err := s.pool.Query(ctx, `SELECT DISTINCT ON(b.household_id) m.id::text,m.user_id::text,b.household_id::text FROM want_keep.collector_evidence_batches b JOIN want_keep.jobs j ON (j.household_id,j.id)=(b.household_id,b.job_id) JOIN want_keep.memberships m ON (m.household_id,m.user_id)=(j.household_id,j.actor_id) WHERE b.disposition='staged' AND m.active ORDER BY b.household_id,b.fetched_at,b.page_reference LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	principals := []household.Principal{}
+	for rows.Next() {
+		var membership household.Membership
+		if err = rows.Scan(&membership.ID, &membership.UserID, &membership.HouseholdID); err != nil {
+			return nil, err
+		}
+		membership.Active = true
+		principal, principalErr := membership.Principal()
+		if principalErr != nil {
+			return nil, principalErr
+		}
+		principals = append(principals, principal)
+	}
+	return principals, rows.Err()
 }

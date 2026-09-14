@@ -75,6 +75,7 @@ describe("collector security boundary", () => {
     for (const [scenario, kind] of [
       ["mfa", "mfa_required"],
       ["captcha", "captcha_required"],
+      ["expired", "reauthentication_required"],
     ]) {
       const challengePortal = await startPortal(scenario);
       const challenged = await start(challengePortal.origin, "/portal");
@@ -127,6 +128,35 @@ describe("collector security boundary", () => {
     const result = await post(collector.socket, "/v1/read", stale);
     expect(result.status).toBe(422);
   });
+
+  it("rejects missing statement capability and allowed-route redirects before acceptance", async () => {
+    const portal = await startPortal("statement-redirect");
+    const withoutStatement = await start(portal.origin, "/portal", [
+      { method: "GET", path: "/portal", action: "entry" },
+      { method: "GET", path: "/api/read", action: "read" },
+    ]);
+    const missing = await post(
+      withoutStatement.socket,
+      "/v1/read",
+      envelope("alpha", {
+        from: "2026-09-01T00:00:00Z",
+        to: "2026-09-02T00:00:00Z",
+      }),
+    );
+    expect(missing.status).toBe(422);
+    expect(portal.requests()).toBe(0);
+
+    const collector = await start(portal.origin, "/portal");
+    const redirected = await post(
+      collector.socket,
+      "/v1/read",
+      envelope("alpha", {
+        from: "2026-09-01T00:00:00Z",
+        to: "2026-09-02T00:00:00Z",
+      }),
+    );
+    expect(redirected.status).toBe(503);
+  });
 });
 
 function envelope(
@@ -154,9 +184,9 @@ function envelope(
   };
 }
 
-async function start(origin: string, entry: string) {
+async function start(origin: string, entry: string, routes?: unknown[]) {
   const socket = join("/tmp", `wk-${crypto.randomUUID().slice(0, 8)}.sock`);
-  const runtime = config(origin, entry);
+  const runtime = config(origin, entry, routes);
   runtime.socket = socket;
   const server = await startCollectorServer(runtime);
   cleanup.push(() => server.close());
@@ -194,7 +224,9 @@ function config(
 
 async function startPortal(scenario: string) {
   let workerRequests = 0;
+  let requests = 0;
   const server = createServer((request, response) => {
+    requests++;
     if (request.url === "/portal") {
       if (scenario === "redirect") {
         response.writeHead(302, { location: "/unknown" }).end();
@@ -218,10 +250,21 @@ async function startPortal(scenario: string) {
       return;
     }
     if (request.url === "/api/read" || request.url === "/api/statement") {
+      if (
+        scenario === "statement-redirect" &&
+        request.url === "/api/statement"
+      ) {
+        response.writeHead(302, { location: "/api/read" }).end();
+        return;
+      }
       if (scenario === "mfa" || scenario === "captcha") {
         response
           .writeHead(428, { "x-want-keep-challenge": scenario })
           .end("challenge");
+        return;
+      }
+      if (scenario === "expired") {
+        response.writeHead(401).end("expired");
         return;
       }
       const result = structuredClone(golden);
@@ -250,6 +293,7 @@ async function startPortal(scenario: string) {
   return {
     origin: `http://127.0.0.1:${address.port}`,
     workerRequests: () => workerRequests,
+    requests: () => requests,
   };
 }
 
