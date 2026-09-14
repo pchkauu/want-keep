@@ -40,6 +40,9 @@ type Result struct {
 	Reason       jobs.Reason
 	MinimumDelay time.Duration
 	Apply        Effect
+	// Committed is reserved for sync handlers whose admission gate atomically
+	// persists the provider result and job transition.
+	Committed bool
 }
 type Handler interface {
 	Prepare(context.Context, Execution) (Result, error)
