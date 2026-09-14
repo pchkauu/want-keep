@@ -1,0 +1,298 @@
+import { readFileSync } from "node:fs";
+import { request } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createServer, type Server } from "node:http";
+
+import { afterEach, describe, expect, it } from "vitest";
+
+import {
+  parseRuntimeConfig,
+  type RuntimeConfig,
+} from "../src/runtime/config.js";
+import { startCollectorServer } from "../src/runtime/server.js";
+
+const manifest = JSON.parse(
+  readFileSync(
+    new URL("../contracts/v10/fixtures/manifest.json", import.meta.url),
+    "utf8",
+  ),
+) as Record<string, unknown>;
+const golden = JSON.parse(
+  readFileSync(
+    new URL("../contracts/v10/fixtures/golden-page.json", import.meta.url),
+    "utf8",
+  ),
+) as { page: Record<string, unknown> };
+const binding = golden.page.binding as Record<string, unknown>;
+const requestBody = {
+  jobId: golden.page.jobId,
+  attempt: golden.page.attempt,
+  leaseToken: golden.page.leaseToken,
+  connectionId: "22222222-2222-4222-8222-222222222222",
+  connectionGeneration: golden.page.connectionGeneration,
+  binding,
+  admissionRevision: golden.page.admissionRevision,
+};
+
+const cleanup: Array<() => Promise<void>> = [];
+afterEach(async () => {
+  for (const close of cleanup.splice(0).reverse()) await close();
+});
+
+describe("collector security boundary", () => {
+  it("reads an allowlisted page and statement through isolated contexts", async () => {
+    const portal = await startPortal("safe");
+    const collector = await start(portal.origin, "/portal");
+    const first = await post(collector.socket, "/v1/read", envelope("alpha"));
+    const second = await post(
+      collector.socket,
+      "/v1/read",
+      envelope("beta", {
+        from: "2026-09-01T00:00:00Z",
+        to: "2026-09-02T00:00:00Z",
+      }),
+    );
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(first.body).not.toContain("alpha");
+    expect(second.body).not.toContain("beta");
+    expect(JSON.parse(first.body).page.records).toHaveLength(17);
+  });
+
+  it("keeps sessions separate and maps owner challenges", async () => {
+    const portal = await startPortal("session");
+    const collector = await start(portal.origin, "/portal");
+    const first = await post(collector.socket, "/v1/read", envelope("alpha"));
+    const second = await post(collector.socket, "/v1/read", envelope("beta"));
+    expect(
+      JSON.parse(first.body).page.records[1].balanceSnapshot.freshness,
+    ).toBe("fresh");
+    expect(
+      JSON.parse(second.body).page.records[1].balanceSnapshot.freshness,
+    ).toBe("stale");
+
+    for (const [scenario, kind] of [
+      ["mfa", "mfa_required"],
+      ["captcha", "captcha_required"],
+    ]) {
+      const challengePortal = await startPortal(scenario);
+      const challenged = await start(challengePortal.origin, "/portal");
+      const result = await post(
+        challenged.socket,
+        "/v1/read",
+        envelope("alpha"),
+      );
+      expect(JSON.parse(result.body).failure.kind).toBe(kind);
+    }
+  });
+
+  it.each(["payment", "redirect", "popup", "download", "websocket"])(
+    "blocks %s behavior outside the build-owned read policy",
+    async (scenario) => {
+      const portal = await startPortal(scenario);
+      const collector = await start(portal.origin, "/portal");
+      const result = await post(
+        collector.socket,
+        "/v1/read",
+        envelope("alpha"),
+      );
+      expect(result.status).toBe(503);
+      expect(result.body).toBe('{"code":"collector_unavailable"}');
+    },
+  );
+
+  it("blocks service workers without failing the allowed read", async () => {
+    const portal = await startPortal("serviceworker");
+    const collector = await start(portal.origin, "/portal");
+    const result = await post(collector.socket, "/v1/read", envelope("alpha"));
+    expect(result.status).toBe(200);
+    expect(portal.workerRequests()).toBe(0);
+  });
+
+  it("rejects mutation capabilities and stale bindings before browser work", async () => {
+    const portal = await startPortal("safe");
+    expect(() =>
+      config(portal.origin, "/portal", [
+        { method: "GET", path: "/portal", action: "entry" },
+        { method: "GET", path: "/api/read", action: "read" },
+        { method: "POST", path: "/api/payment", action: "payment" },
+      ]),
+    ).toThrow("invalid ingestion contract");
+    const collector = await start(portal.origin, "/portal");
+    const stale = envelope("alpha") as {
+      syncRequest: { admissionRevision: number };
+    };
+    stale.syncRequest.admissionRevision = 2;
+    const result = await post(collector.socket, "/v1/read", stale);
+    expect(result.status).toBe(422);
+  });
+});
+
+function envelope(
+  session: string,
+  replayRange?: { from: string; to: string },
+): unknown {
+  return {
+    version: 1,
+    syncRequest: { ...requestBody, replayRange },
+    storageState: {
+      cookies: [
+        {
+          name: "session",
+          value: session,
+          domain: "127.0.0.1",
+          path: "/",
+          expires: -1,
+          httpOnly: true,
+          secure: false,
+          sameSite: "Lax",
+        },
+      ],
+      origins: [],
+    },
+  };
+}
+
+async function start(origin: string, entry: string) {
+  const socket = join("/tmp", `wk-${crypto.randomUUID().slice(0, 8)}.sock`);
+  const runtime = config(origin, entry);
+  runtime.socket = socket;
+  const server = await startCollectorServer(runtime);
+  cleanup.push(() => server.close());
+  return { socket };
+}
+
+function config(
+  origin: string,
+  entry: string,
+  routes: unknown[] = [
+    { method: "GET", path: entry, action: "entry" },
+    { method: "GET", path: "/api/read", action: "read" },
+    {
+      method: "POST",
+      path: "/api/statement",
+      action: "request_statement",
+    },
+  ],
+): RuntimeConfig {
+  return parseRuntimeConfig({
+    version: 1,
+    socket: join(tmpdir(), "unused.sock"),
+    requestTimeoutMs: 10_000,
+    bindings: [
+      {
+        binding,
+        admissionRevision: golden.page.admissionRevision,
+        manifest,
+        origin,
+        routes,
+      },
+    ],
+  });
+}
+
+async function startPortal(scenario: string) {
+  let workerRequests = 0;
+  const server = createServer((request, response) => {
+    if (request.url === "/portal") {
+      if (scenario === "redirect") {
+        response.writeHead(302, { location: "/unknown" }).end();
+        return;
+      }
+      const behavior =
+        scenario === "payment"
+          ? "fetch('/api/payment',{method:'POST',body:'{}'}).catch(()=>{})"
+          : scenario === "popup"
+            ? "window.open('/popup')"
+            : scenario === "download"
+              ? "const a=document.createElement('a');a.href='/download';a.download='x';a.click()"
+              : scenario === "websocket"
+                ? "new WebSocket('ws://127.0.0.1:1/socket')"
+                : scenario === "serviceworker"
+                  ? "navigator.serviceWorker.register('/worker.js').catch(()=>{})"
+                  : "";
+      response
+        .writeHead(200, { "content-type": "text/html" })
+        .end(`<html><body><script>${behavior}</script></body></html>`);
+      return;
+    }
+    if (request.url === "/api/read" || request.url === "/api/statement") {
+      if (scenario === "mfa" || scenario === "captcha") {
+        response
+          .writeHead(428, { "x-want-keep-challenge": scenario })
+          .end("challenge");
+        return;
+      }
+      const result = structuredClone(golden);
+      const cookie = request.headers.cookie ?? "";
+      if (scenario === "session")
+        (
+          result.page.records as Array<{
+            balanceSnapshot?: { freshness: string };
+          }>
+        )[1]!.balanceSnapshot!.freshness = cookie.includes("beta")
+          ? "stale"
+          : "fresh";
+      response
+        .writeHead(200, { "content-type": "application/json" })
+        .end(JSON.stringify(result));
+      return;
+    }
+    if (request.url === "/worker.js") workerRequests++;
+    response.writeHead(200).end("blocked target");
+  });
+  await listen(server);
+  const address = server.address();
+  if (address === null || typeof address === "string")
+    throw new Error("listen");
+  cleanup.push(() => close(server));
+  return {
+    origin: `http://127.0.0.1:${address.port}`,
+    workerRequests: () => workerRequests,
+  };
+}
+
+async function listen(server: Server): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => resolve());
+  });
+}
+
+async function close(server: Server): Promise<void> {
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+}
+
+async function post(
+  socketPath: string,
+  path: string,
+  body: unknown,
+): Promise<{ status: number; body: string }> {
+  const data = JSON.stringify(body);
+  return await new Promise((resolve, reject) => {
+    const call = request(
+      {
+        socketPath,
+        path,
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-length": Buffer.byteLength(data),
+        },
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () =>
+          resolve({
+            status: response.statusCode ?? 0,
+            body: Buffer.concat(chunks).toString("utf8"),
+          }),
+        );
+      },
+    );
+    call.on("error", reject);
+    call.end(data);
+  });
+}
