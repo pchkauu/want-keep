@@ -31,6 +31,7 @@ import (
 	delivery "github.com/pchkauu/want-keep/backend/internal/delivery/identity"
 	ledgerdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/ledger"
 	reconciliationdelivery "github.com/pchkauu/want-keep/backend/internal/delivery/reconciliation"
+	expenses "github.com/pchkauu/want-keep/backend/internal/expenses/application"
 	application "github.com/pchkauu/want-keep/backend/internal/identity/application"
 	"github.com/pchkauu/want-keep/backend/internal/identity/webauthn"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/application"
@@ -113,7 +114,7 @@ func run() error {
 	}
 	baseWriter := ledger.NewWriter(database, database)
 	reconciliationService := reconciliation.NewService(database, database, baseWriter, admission.NewService(database, database), now, uuid.NewString)
-	writer := ledger.NewWriterWithReconciliation(database, database, reconciliationService)
+	writer := ledger.NewWriterWithProjections(database, database, reconciliationService, expenses.NewProjector(database))
 	accountService := accounts.NewServiceWithReconciliation(database, database, reconciliationService, now, uuid.NewString)
 	executor := commands.NewExecutor(database, database, now)
 	queries := commands.NewQueries(database, database.AuthorizeCommandResult)
@@ -123,7 +124,8 @@ func run() error {
 	}
 	matchingService := matching.NewService(database, writer, now, uuid.NewString)
 	allocationService := allocations.NewService(database, now, uuid.NewString)
-	ledgerHandler, err := ledgerdelivery.New(ledger.NewServiceWithAllocations(database, matchingService, allocationService, now, uuid.NewString), matchingService, ledger.NewQueries(database), executor, queries, service, database, config, now)
+	refundService := expenses.NewService(database, writer, now, uuid.NewString)
+	ledgerHandler, err := ledgerdelivery.NewWithRefunds(ledger.NewServiceWithAllocations(database, matchingService, allocationService, now, uuid.NewString), matchingService, refundService, ledger.NewQueries(database), executor, queries, service, database, config, now)
 	if err != nil {
 		return err
 	}
@@ -143,6 +145,7 @@ func run() error {
 	mux.Handle("/api/v1/transactions", ledgerHandler)
 	mux.Handle("/api/v1/transactions/", ledgerHandler)
 	mux.Handle("/api/v1/transfers", ledgerHandler)
+	mux.Handle("/api/v1/refunds", ledgerHandler)
 	mux.Handle("/api/v1/matching", ledgerHandler)
 	mux.Handle("/api/v1/matching/", ledgerHandler)
 	mux.Handle("/api/v1/allocation-rules", allocationHandler)

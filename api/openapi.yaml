@@ -485,6 +485,20 @@ components:
       "$ref": "./schemas/allocations.yaml#/AllocationRulePreview"
     RefundCreate:
       "$ref": "./schemas/transactions.yaml#/RefundCreate"
+    RefundItemInput:
+      "$ref": "./schemas/transactions.yaml#/RefundItemInput"
+    RefundLinkInput:
+      "$ref": "./schemas/transactions.yaml#/RefundLinkInput"
+    RefundAttribution:
+      "$ref": "./schemas/transactions.yaml#/RefundAttribution"
+    RefundValuation:
+      "$ref": "./schemas/transactions.yaml#/RefundValuation"
+    KnownRefundValuation:
+      "$ref": "./schemas/transactions.yaml#/KnownRefundValuation"
+    UnavailableRefundValuation:
+      "$ref": "./schemas/transactions.yaml#/UnavailableRefundValuation"
+    CategoryAmount:
+      "$ref": "./schemas/transactions.yaml#/CategoryAmount"
     Reimbursement:
       "$ref": "./schemas/transactions.yaml#/Reimbursement"
     ReimbursementCreate:

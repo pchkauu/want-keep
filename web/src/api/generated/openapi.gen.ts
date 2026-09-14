@@ -1218,7 +1218,10 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** transactions refund */
+    /**
+     * Record a confirmed purchase refund
+     * @description Creates one posted cash receipt and applies its analytical expense reduction to the purchase month. Historical valuation is frozen; unavailable valuation stays explicit.
+     */
     post: operations["transactions_refund"];
     delete?: never;
     options?: never;
@@ -2164,6 +2167,10 @@ export interface components {
       /** @enum {string} */
       state: "active" | "archived";
     };
+    CategoryAmount: {
+      amount: components["schemas"]["Money"];
+      categoryId?: components["schemas"]["ID"];
+    };
     CategoryChange: {
       expectedRevision: components["schemas"]["Revision"];
       /** @description A replacement name supplied only with nameAction set. */
@@ -2492,6 +2499,8 @@ export interface components {
       | "member_limit_reached"
       | "reconciliation_not_ready"
       | "component_not_adjustable"
+      | "invalid_refund"
+      | "refund_exceeds_purchase"
       | "internal_error";
     ExcludeInput: {
       expectedRevision: components["schemas"]["Revision"];
@@ -2692,6 +2701,18 @@ export interface components {
       memberId: components["schemas"]["ID"];
       /** @enum {string} */
       state: "known";
+    };
+    KnownRefundValuation: {
+      amount: components["schemas"]["Money"];
+      basisRef: string;
+      categories: components["schemas"]["CategoryAmount"][];
+      members: components["schemas"]["MemberAmount"][];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      state: "KnownRefundValuation";
+      unallocated: components["schemas"]["Money"][];
     };
     /** @description Dimensionless annualized D-42 XIRR ratio, rounded HALF_EVEN to 12 places. The application verifies the root lies between -1+1e-12 and 1000000; provider APR is never substituted. */
     KnownReturn: {
@@ -3183,15 +3204,49 @@ export interface components {
     RecoveryInput: {
       recoveryCode: string;
     };
-    /** @description Refund is bounded by unrefunded purchase value. Original month, audited allocation and historical valuation are used. */
+    RefundAttribution: {
+      amount: components["schemas"]["Money"];
+      cashDate: components["schemas"]["Date"];
+      categories: components["schemas"]["CategoryAmount"][];
+      expenseMonth: components["schemas"]["Month"];
+      id: components["schemas"]["ID"];
+      members: components["schemas"]["MemberAmount"][];
+      purchaseId: components["schemas"]["ID"];
+      purchaseRevision: components["schemas"]["Revision"];
+      reason: string;
+      refundRevision: components["schemas"]["Revision"];
+      remaining: components["schemas"]["Money"];
+      returnedItems: components["schemas"]["RefundItemInput"][];
+      revision: components["schemas"]["Revision"];
+      /** @enum {string} */
+      state: "applied" | "clarification" | "inactive";
+      unallocated: components["schemas"]["Money"][];
+      valuation: components["schemas"]["RefundValuation"];
+    };
+    /** @description Creates one posted cash receipt and a versioned link to the purchase. The refund is bounded by the unrefunded purchase and item values. Original month, audited allocation and historical valuation are used. */
     RefundCreate: {
-      accountId: components["schemas"]["ID"];
       amount: components["schemas"]["PositiveMoney"];
-      itemIds: components["schemas"]["ID"][];
+      fees: components["schemas"]["FeeInput"][];
       occurredAt: components["schemas"]["Instant"];
       purchaseExpectedRevision: components["schemas"]["Revision"];
       purchaseId: components["schemas"]["ID"];
+      reason: string;
+      receivingAccountId: components["schemas"]["ID"];
+      returnedItems: components["schemas"]["RefundItemInput"][];
     };
+    RefundItemInput: {
+      amount: components["schemas"]["PositiveMoney"];
+      itemId: components["schemas"]["ID"];
+    };
+    RefundLinkInput: {
+      /** Format: int64 */
+      expectedRevision: number;
+      purchaseId: components["schemas"]["ID"];
+      returnedItems: components["schemas"]["RefundItemInput"][];
+    };
+    RefundValuation:
+      | components["schemas"]["KnownRefundValuation"]
+      | components["schemas"]["UnavailableRefundValuation"];
     RegistrationCredential: {
       attestationObject: string;
       clientDataJSON: string;
@@ -3483,6 +3538,7 @@ export interface components {
       quality: components["schemas"]["DataQuality"];
       receiptId?: components["schemas"]["ID"];
       receiptItems: components["schemas"]["ReceiptItem"][];
+      refunds: components["schemas"]["RefundAttribution"][];
       review?: components["schemas"]["TransactionReview"];
       revision: components["schemas"]["Revision"];
       sourceConflict: boolean;
@@ -3587,12 +3643,13 @@ export interface components {
       amount: components["schemas"]["PositiveMoney"];
       funding: components["schemas"]["PostingFunding"];
     };
-    /** @description The route target is the initial primary. A linked group keeps its primary. All participants and current revisions are required. Refund linking is feature_unavailable. Native amounts are validated without correction. */
+    /** @description The route target is the initial primary. A linked group keeps its primary. All participants and current revisions are required. Refund links require refund details and never add a second cash effect. Native amounts are validated without correction. */
     TransactionLink: {
       expectedRevisions: components["schemas"]["DecisionRevision"][];
       /** @enum {string} */
       kind: "transfer" | "exchange" | "receipt_match" | "refund";
       reason: string;
+      refund?: components["schemas"]["RefundLinkInput"];
     };
     TransactionPage: {
       items: components["schemas"]["Transaction"][];
@@ -3636,6 +3693,15 @@ export interface components {
       /** @enum {string} */
       reason: "valuation_unavailable" | "quote_unavailable";
       requestedDate: components["schemas"]["Date"];
+    };
+    UnavailableRefundValuation: {
+      /** @enum {string} */
+      reason: "historical_basis_unavailable";
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      state: "UnavailableRefundValuation";
     };
     UnavailableReturn: {
       /** @enum {string} */

@@ -183,7 +183,8 @@
     operationId: transactions_refund
     tags:
     - transactions
-    summary: transactions refund
+    summary: Record a confirmed purchase refund
+    description: Creates one posted cash receipt and applies its analytical expense reduction to the purchase month. Historical valuation is frozen; unavailable valuation stays explicit.
     parameters:
     - "$ref": "../components.yaml#/parameters/IdempotencyKey"
     - "$ref": "../components.yaml#/parameters/CSRF"

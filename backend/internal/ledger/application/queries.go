@@ -5,6 +5,7 @@ import (
 	"unicode/utf8"
 
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
+	expenses "github.com/pchkauu/want-keep/backend/internal/expenses/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	reporting "github.com/pchkauu/want-keep/backend/internal/reporting/domain"
@@ -40,6 +41,7 @@ type View struct {
 	Coverage    reporting.Coverage
 	SourceFacts []SourceFact
 	Review      *ReviewResult
+	Refunds     []expenses.Refund
 }
 type SourceFact struct {
 	SourceID string
@@ -58,6 +60,10 @@ type QueryRepository interface {
 	TransactionMatchingConflict(context.Context, household.Principal, string, uint64) (bool, error)
 }
 type Queries struct{ repository QueryRepository }
+
+type refundQueryRepository interface {
+	RefundsForOperation(context.Context, household.Principal, string) ([]expenses.Refund, error)
+}
 
 func NewQueries(r QueryRepository) *Queries { return &Queries{r} }
 func (q *Queries) Read(ctx context.Context, p household.Principal, id string) (View, error) {
@@ -122,6 +128,18 @@ func (q *Queries) view(ctx context.Context, p household.Principal, r ledger.Revi
 	if r.FeeKnowledge != ledger.KnownFees {
 		reasons = append(reasons, "fees_unknown")
 	}
+	refunds := []expenses.Refund{}
+	if repository, ok := q.repository.(refundQueryRepository); ok {
+		refunds, err = repository.RefundsForOperation(ctx, p, r.OperationID)
+		if err != nil {
+			return View{}, err
+		}
+		for _, refund := range refunds {
+			if refund.State == expenses.Clarification {
+				reasons = append(reasons, "refund_clarification")
+			}
+		}
+	}
 	for _, posting := range r.Postings {
 		if posting.Funding == ledger.UnknownFunds {
 			reasons = append(reasons, "funding_split_unknown")
@@ -133,7 +151,7 @@ func (q *Queries) view(ctx context.Context, p household.Principal, r ledger.Revi
 		state = reporting.Partial
 	}
 	coverage, err := reporting.NewCoverage(state, reasons)
-	v := View{Revision: r, Sources: sources, Coverage: coverage, SourceFacts: facts}
+	v := View{Revision: r, Sources: sources, Coverage: coverage, SourceFacts: facts, Refunds: refunds}
 	if reviewed {
 		v.Review = &review
 	}
