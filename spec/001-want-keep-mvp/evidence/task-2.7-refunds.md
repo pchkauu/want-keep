@@ -1,0 +1,26 @@
+# Task-2.7 — возвраты и распределение расходов
+
+Реализован backend/API возвратов на базе task-2.2, task-2.6 и task-2.8. Домен `expenses` рассчитывает versioned связь между покупкой и refund-операцией; ledger остаётся единственным владельцем проводок и lifecycle, allocation snapshot покупки — владельцем исторического семейного распределения. Production и UI не менялись.
+
+Ручной возврат создаёт одну posted refund-операцию и одну связь. Principal поступает в фактическую дату без income, аналитический эффект уменьшает исходный expense month. Существующую импортированную refund-операцию можно связать без второго денежного движения. Актив principal совпадает с покупкой; комиссии сохраняются отдельными postings, включая третий актив.
+
+Миграция 019 хранит текущую связь, immutable revisions, точные item portions, member/category effects, frozen historical valuation и отдельный review request каждой содержательной revision связи. Составные household FK связывают обе операции, purchase/refund revisions, receipt items, memberships и categories. Проверка общей и позиционной невозвращённой суммы выполняется в household-транзакции под существующей блокировкой. Clarification сохраняет подтверждённое поступление без вымышленной позиции или долей.
+
+Общий ledger Writer пересчитывает связь после correction, exclusion, reversal, cancellation и undo. Неизменившийся расчёт не создаёт revision или событие. Историческая оценка использует только сохранённое основание покупки; отсутствие основания остаётся `historical_basis_unavailable`. OpenAPI возвращает cash date, исходный месяц, остаток, returned items, распределение и known/unavailable valuation.
+
+## Матрица проверок
+
+Обязательные команды кандидата: `make check`, `make check-contracts`, `make test-integration AREA=refunds`, `make test-refunds-race`, затронутые integration/race/privacy suites и `git diff --check`. PostgreSQL 17.11 обязателен; отсутствие БД завершает refund suite ошибкой. Точные результаты опубликованного кандидата фиксируются в PR и Issue.
+
+Проверки покрывают RUB 1000 в августе и возврат RUB 400 в сентябре; USD 10 с сохранённой оценкой RUB 900 и возврат USD 4 с эффектом RUB 360; шесть активов; комиссии третьего актива; чек со скидкой и точными item portions; clarification без распределения; общий и позиционный cap; конкурентные команды; idempotent replay; correction, exclusion, undo и reversal покупки/возврата; review requests; и связь существующей refund-операции без второго движения.
+
+## Границы критериев
+
+| Критерии | Доказуемая часть task-2.7 | Дальнейшая проверка |
+| --- | --- | --- |
+| AC-010/011/016 | Фактическое поступление и исходный месяц разделены; partial/item cap и отсутствие текущего курса проверяемы | Получение исторических котировок task-6.1 и отчёты |
+| AC-037/059 | Точные native item/allocation effects и frozen valuation сохраняются отдельно по активам | Текущая переоценка и FX-аналитика task-6.1 |
+| AC-065/081 | Снимок покупки и скидки дают точные member/category effects без нового правила задним числом | Бюджетные представления и браузерный FORM-08/SCR-010 |
+| AC-091 | Оба участника, command replay и импортированная связь сохраняют один финансовый факт | Реальный импорт чеков/банка и сквозная приёмка |
+
+SDD остаётся **Ready for development**. UI, live provider IO, получение курсов, бюджетные отчёты и production не подтверждаются этой задачей.
