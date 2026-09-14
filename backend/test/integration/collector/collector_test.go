@@ -18,17 +18,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	accounts "github.com/pchkauu/want-keep/backend/internal/accounts/application"
-	allocation "github.com/pchkauu/want-keep/backend/internal/allocation/application"
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	admission "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	collector "github.com/pchkauu/want-keep/backend/internal/connections/collector"
 	connections "github.com/pchkauu/want-keep/backend/internal/connections/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
-	integrations "github.com/pchkauu/want-keep/backend/internal/integrations/application"
 	ingestion "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
-	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/application"
 	"github.com/pchkauu/want-keep/backend/internal/privacy/cryptobox"
 	"github.com/pchkauu/want-keep/backend/internal/storage"
 	"github.com/pchkauu/want-keep/backend/migrations"
@@ -110,6 +106,9 @@ func TestEncryptedEvidenceLifecycleSurvivesRestart(t *testing.T) {
 	if json.Unmarshal(plain, &decoded) != nil || !bytes.Equal(decoded.Data, raw) {
 		t.Fatal("restart could not read encrypted evidence")
 	}
+	if _, err = admin.Exec(testContext, `INSERT INTO want_keep.ingestion_result_receipts(household_id,id,job_id,lease_token,attempt,input_cursor,evidence_ref,kind) VALUES($1,$2,$3,$4,$5,$6,$7,'page')`, principal.HouseholdID(), uuid.NewString(), job.ID, job.LeaseToken, job.Attempt, job.Cursor, batch.PageReference); err != nil {
+		t.Fatal(err)
+	}
 	staged, err := evidence.Staged(testContext, batch.HouseholdID, 10)
 	if err != nil || len(staged) != 1 || staged[0].PageReference != batch.PageReference {
 		t.Fatal("staged evidence not recoverable", staged, err)
@@ -151,28 +150,23 @@ func TestStagedReconciliationUsesTerminalReceiptAfterRestart(t *testing.T) {
 	if _, err = admin.Exec(testContext, `INSERT INTO want_keep.ingestion_result_receipts(household_id,id,job_id,lease_token,attempt,input_cursor,evidence_ref,kind) VALUES($1,$2,$3,$4,$5,$6,$7,'page')`, principal.HouseholdID(), uuid.NewString(), job.ID, job.LeaseToken, job.Attempt, job.Cursor, batch.PageReference); err != nil {
 		t.Fatal(err)
 	}
-	gate := admission.NewService(store, store)
-	accountService := accounts.NewService(store, store, func() calendar.Instant { return at }, uuid.NewString)
-	accountImporter, err := integrations.NewAccountImporter(accountService, store)
-	if err != nil {
+	if _, err = admin.Exec(testContext, `INSERT INTO want_keep.collector_evidence_batches(household_id,page_reference,job_id,fetched_at,fetched_ns,disposition) SELECT $1,'evidence:unresolved:'||lpad(g::text,3,'0'),$2,'2026-09-14T09:00:00Z',0,'staged' FROM generate_series(1,100) g`, principal.HouseholdID(), job.ID); err != nil {
 		t.Fatal(err)
 	}
-	sources := ledger.NewSources(store, ledger.NewWriter(store, store), allocation.NewService(store, func() calendar.Instant { return at }, uuid.NewString))
-	sourceWriter, err := integrations.NewSourceWriter(sources, store)
-	if err != nil {
+	if _, err = admin.Exec(testContext, `UPDATE want_keep.memberships SET active=false WHERE household_id=$1 AND user_id=$2`, principal.HouseholdID(), principal.UserID()); err != nil {
 		t.Fatal(err)
 	}
-	service, err := integrations.NewService(gate, evidence, accountImporter, sourceWriter, func() calendar.Instant { return at }, uuid.NewString)
-	if err != nil {
-		t.Fatal(err)
-	}
-	reconciler := collector.StagedReconciler{Principals: store.StagedCollectorPrincipals, Reconcile: service.ReconcileStaged, Report: func(error) {}}
+	reconciler := collector.StagedReconciler{Reconcile: store.ReconcileStagedCollectorEvidence, Report: func(error) {}}
 	if err = reconciler.Step(testContext); err != nil {
 		t.Fatal(err)
 	}
 	var disposition string
 	if err = admin.QueryRow(testContext, `SELECT disposition FROM want_keep.collector_evidence_batches WHERE household_id=$1 AND page_reference=$2`, principal.HouseholdID(), batch.PageReference).Scan(&disposition); err != nil || disposition != "applied" {
 		t.Fatal("staged receipt was not reconciled", disposition, err)
+	}
+	var unresolved int
+	if err = admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.collector_evidence_batches WHERE household_id=$1 AND disposition='staged'`, principal.HouseholdID()).Scan(&unresolved); err != nil || unresolved != 100 {
+		t.Fatal("unproven evidence changed", unresolved, err)
 	}
 }
 

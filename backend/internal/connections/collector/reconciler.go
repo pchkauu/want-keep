@@ -3,8 +3,6 @@ package collector
 import (
 	"context"
 	"time"
-
-	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 )
 
 const (
@@ -13,26 +11,17 @@ const (
 )
 
 type StagedReconciler struct {
-	Principals func(context.Context, int) ([]household.Principal, error)
-	Reconcile  func(context.Context, household.Principal, int) (int, error)
-	Report     func(error)
+	Reconcile func(context.Context, int) (int, error)
+	Report    func(error)
 }
 
 func (r StagedReconciler) Step(ctx context.Context) error {
-	principals, err := r.Principals(ctx, reconciliationBatch)
-	if err != nil {
-		return err
-	}
-	for _, principal := range principals {
-		if _, err = r.Reconcile(ctx, principal, reconciliationBatch); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := r.Reconcile(ctx, reconciliationBatch)
+	return err
 }
 
 func (r StagedReconciler) Run(ctx context.Context) error {
-	if r.Principals == nil || r.Reconcile == nil || r.Report == nil {
+	if r.Reconcile == nil || r.Report == nil {
 		return ErrUnavailable
 	}
 	ticker := time.NewTicker(reconciliationInterval)

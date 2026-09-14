@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 
-	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
 	ingestion "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
 )
 
@@ -50,7 +49,7 @@ func (s *Store) StagedCollectorEvidence(ctx context.Context, householdID string,
 	if householdID == "" || limit < 1 || limit > 1000 {
 		return nil, ingestion.ErrEvidence
 	}
-	rows, err := s.pool.Query(ctx, `SELECT job_id::text,page_reference FROM want_keep.collector_evidence_batches WHERE household_id=$1 AND disposition='staged' ORDER BY fetched_at,page_reference LIMIT $2`, householdID, limit)
+	rows, err := s.pool.Query(ctx, `SELECT b.job_id::text,b.page_reference FROM want_keep.collector_evidence_batches b WHERE b.household_id=$1 AND b.disposition='staged' AND EXISTS(SELECT 1 FROM want_keep.ingestion_result_receipts r WHERE (r.household_id,r.job_id,r.evidence_ref)=(b.household_id,b.job_id,b.page_reference)) ORDER BY b.fetched_at,b.page_reference LIMIT $2`, householdID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -69,27 +68,33 @@ func (s *Store) StagedCollectorEvidence(ctx context.Context, householdID string,
 	return result, rows.Err()
 }
 
-func (s *Store) StagedCollectorPrincipals(ctx context.Context, limit int) ([]household.Principal, error) {
+// ReconcileStagedCollectorEvidence finalizes only batches backed by one terminal receipt.
+// It is a system recovery operation and must not depend on the original job actor remaining active.
+func (s *Store) ReconcileStagedCollectorEvidence(ctx context.Context, limit int) (int, error) {
 	if limit < 1 || limit > 1000 {
-		return nil, ingestion.ErrEvidence
+		return 0, ingestion.ErrEvidence
 	}
-	rows, err := s.pool.Query(ctx, `SELECT DISTINCT ON(b.household_id) m.id::text,m.user_id::text,b.household_id::text FROM want_keep.collector_evidence_batches b JOIN want_keep.jobs j ON (j.household_id,j.id)=(b.household_id,b.job_id) JOIN want_keep.memberships m ON (m.household_id,m.user_id)=(j.household_id,j.actor_id) WHERE b.disposition='staged' AND m.active ORDER BY b.household_id,b.fetched_at,b.page_reference LIMIT $1`, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	principals := []household.Principal{}
-	for rows.Next() {
-		var membership household.Membership
-		if err = rows.Scan(&membership.ID, &membership.UserID, &membership.HouseholdID); err != nil {
-			return nil, err
-		}
-		membership.Active = true
-		principal, principalErr := membership.Principal()
-		if principalErr != nil {
-			return nil, principalErr
-		}
-		principals = append(principals, principal)
-	}
-	return principals, rows.Err()
+	var reconciled int
+	err := s.pool.QueryRow(ctx, `WITH candidates AS (
+ SELECT b.household_id,b.page_reference,
+  CASE r.kind WHEN 'page' THEN 'applied' WHEN 'provider_outcome' THEN 'provider_outcome' WHEN 'rejected_result' THEN 'rejected_result' WHEN 'stale_result' THEN 'stale_result' END AS disposition
+ FROM want_keep.collector_evidence_batches b
+ JOIN LATERAL (
+  SELECT min(receipt.kind) AS kind
+  FROM want_keep.ingestion_result_receipts receipt
+  WHERE (receipt.household_id,receipt.job_id,receipt.evidence_ref)=(b.household_id,b.job_id,b.page_reference)
+  HAVING count(*)=1
+ ) r ON true
+ WHERE b.disposition='staged'
+ ORDER BY b.fetched_at,b.page_reference
+ LIMIT $1
+ FOR UPDATE OF b SKIP LOCKED
+), updated AS (
+ UPDATE want_keep.collector_evidence_batches b SET disposition=c.disposition
+ FROM candidates c
+ WHERE (b.household_id,b.page_reference)=(c.household_id,c.page_reference)
+ RETURNING 1
+)
+SELECT count(*) FROM updated`, limit).Scan(&reconciled)
+	return reconciled, err
 }
