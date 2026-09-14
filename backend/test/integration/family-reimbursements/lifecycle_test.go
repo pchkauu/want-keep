@@ -204,6 +204,36 @@ func TestSettlementSurvivesTextEditAndStalesOnFinancialEdit(t *testing.T) {
 	}
 }
 
+func TestReversedTransferRestoresDebt(t *testing.T) {
+	f := newFixture(t)
+	client := f.client(f.p)
+	from := f.personalAccount(1, money.RUB, "1000")
+	to := f.personalAccount(0, money.RUB, "0")
+	transferID := f.transfer(from, to, cash("100", money.RUB), cash("100", money.RUB))
+	key := uuid.NewString()
+	client.call(http.MethodPost, "/reimbursements", key, map[string]any{"creditorMemberId": f.members[0].ID, "debtorMemberId": f.members[1].ID, "amount": map[string]any{"amount": "100", "asset": "RUB"}, "reason": "Transfer-linked debt"}, http.StatusAccepted)
+	id := client.result(key).ResourceID
+	client.call(http.MethodPost, "/reimbursements/"+id+"/settlements", uuid.NewString(), map[string]any{"expectedRevision": 1, "transferId": transferID, "transferExpectedRevision": 1, "transferAmount": map[string]any{"amount": "100", "asset": "RUB"}, "settledAmount": map[string]any{"amount": "100", "asset": "RUB"}}, http.StatusAccepted)
+
+	reversed, _, err := f.store.CurrentLedgerRevision(testContext, f.p, transferID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reversed = reversed.Clone()
+	reversed.Revision++
+	reversed.State = ledger.Reversed
+	reversed.Reason = "Transfer reversed"
+	if err = f.store.WithinHousehold(testContext, f.p, func(ctx context.Context) error {
+		return f.writer.Append(ctx, f.p, reversed, reversed.Revision-1)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	current := decode[generated.Reimbursement](t, client.call(http.MethodGet, "/reimbursements/"+id, "", nil, http.StatusOK))
+	if current.Outstanding.Amount != "100" || current.State != "open" || current.Settlements[0].State != "stale" {
+		t.Fatalf("reversed transfer did not restore debt: %#v", current)
+	}
+}
+
 func TestVoidedDebtRecordsLinkedExpenseChange(t *testing.T) {
 	f := newFixture(t)
 	client := f.client(f.p)

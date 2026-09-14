@@ -110,14 +110,15 @@ func (s *Store) saveReimbursementSettlements(ctx context.Context, tx pgx.Tx, fam
 			if err != nil {
 				return err
 			}
-			for _, operationID := range settlement.OperationIDs {
-				var revision uint64
-				if err = tx.QueryRow(ctx, `SELECT revision FROM want_keep.operations WHERE household_id=$1 AND id=$2`, family, operationID).Scan(&revision); err != nil {
-					return err
-				}
-				if _, err = tx.Exec(ctx, `INSERT INTO want_keep.reimbursement_settlement_operations(household_id,settlement_id,operation_id,operation_revision) VALUES($1,$2,$3,$4)`, family, settlement.ID, operationID, revision); err != nil {
-					return err
-				}
+			tag, operationErr := tx.Exec(ctx, `INSERT INTO want_keep.reimbursement_settlement_operations(household_id,settlement_id,operation_id,operation_revision)
+SELECT $1,$2,o.id,o.revision FROM want_keep.operations o
+JOIN unnest($3::uuid[]) requested(id) ON requested.id=o.id
+WHERE o.household_id=$1`, family, settlement.ID, settlement.OperationIDs)
+			if operationErr != nil {
+				return operationErr
+			}
+			if tag.RowsAffected() != int64(len(settlement.OperationIDs)) {
+				return ledger.ErrInvalidReimbursement
 			}
 			current = ""
 		}

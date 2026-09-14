@@ -129,45 +129,16 @@ func (r Reimbursement) Validate() error {
 	if len(r.Settlements) > MaxReimbursementSettlements {
 		return ErrInvalidReimbursement
 	}
-	settled, _ := money.NewMoney("0", r.Principal.Asset())
 	seen := map[string]bool{}
 	for _, settlement := range r.Settlements {
 		if seen[settlement.ID] || settlement.Validate() != nil {
 			return ErrInvalidReimbursement
 		}
 		seen[settlement.ID] = true
-		if settlement.State == SettlementActive {
-			if settlement.SettledAmount.Asset() != r.Principal.Asset() {
-				return ErrInvalidReimbursement
-			}
-			var err error
-			settled, err = settled.Add(settlement.SettledAmount)
-			if err != nil {
-				return err
-			}
-		}
 	}
-	expected, err := r.Principal.Subtract(settled)
-	if err != nil || expected.Sign() < 0 || !sameMoneyValue(expected, r.Outstanding) {
+	expected, state, err := r.projection()
+	if err != nil || !sameMoneyValue(expected, r.Outstanding) || state != r.State {
 		return ErrInvalidReimbursement
-	}
-	switch {
-	case r.Voided:
-		if r.State != ReimbursementVoided || settled.Sign() != 0 {
-			return ErrInvalidReimbursement
-		}
-	case r.AttentionReason != "":
-		if r.State != ReimbursementAttentionRequired {
-			return ErrInvalidReimbursement
-		}
-	case r.Outstanding.Sign() == 0:
-		if r.State != ReimbursementSettled {
-			return ErrInvalidReimbursement
-		}
-	default:
-		if r.State != ReimbursementOpen {
-			return ErrInvalidReimbursement
-		}
 	}
 	return nil
 }
@@ -353,30 +324,43 @@ func (r Reimbursement) activeSettlements() []ReimbursementSettlement {
 }
 
 func (r *Reimbursement) recalculate() error {
+	outstanding, state, err := r.projection()
+	if err != nil {
+		return err
+	}
+	r.Outstanding, r.State = outstanding, state
+	return nil
+}
+
+func (r Reimbursement) projection() (money.Money, ReimbursementState, error) {
 	settled, _ := money.NewMoney("0", r.Principal.Asset())
 	for _, settlement := range r.activeSettlements() {
+		if settlement.SettledAmount.Asset() != r.Principal.Asset() {
+			return money.Money{}, "", ErrReimbursementConflict
+		}
 		var err error
 		settled, err = settled.Add(settlement.SettledAmount)
 		if err != nil {
-			return err
+			return money.Money{}, "", err
 		}
 	}
 	outstanding, err := r.Principal.Subtract(settled)
 	if err != nil || outstanding.Sign() < 0 {
-		return ErrReimbursementConflict
+		return money.Money{}, "", ErrReimbursementConflict
 	}
-	r.Outstanding = outstanding
 	switch {
 	case r.Voided:
-		r.State = ReimbursementVoided
+		if settled.Sign() != 0 {
+			return money.Money{}, "", ErrReimbursementConflict
+		}
+		return outstanding, ReimbursementVoided, nil
 	case r.AttentionReason != "":
-		r.State = ReimbursementAttentionRequired
+		return outstanding, ReimbursementAttentionRequired, nil
 	case outstanding.Sign() == 0:
-		r.State = ReimbursementSettled
+		return outstanding, ReimbursementSettled, nil
 	default:
-		r.State = ReimbursementOpen
+		return outstanding, ReimbursementOpen, nil
 	}
-	return nil
 }
 
 func (r *Reimbursement) bump(actor household.UserID, at calendar.Instant, decisionID string, fields []ReimbursementField) {
