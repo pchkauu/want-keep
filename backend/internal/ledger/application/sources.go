@@ -72,7 +72,8 @@ func (s *Sources) Apply(ctx context.Context, p household.Principal, input ledger
 	var duplicate bool
 	provenance := current
 	if exists {
-		if current.Ambiguous && input.Classification == "ambiguous" && current.PayloadHash != input.PayloadHash {
+		confirmedCorrection := input.Classification == "correction" && input.ExpectedRevision == current.Revision
+		if current.Ambiguous && !confirmedCorrection && current.PayloadHash != input.PayloadHash {
 			var revision uint64
 			revision, duplicate, err = s.repository.HistoricalSourceRevision(ctx, p, current, input.PayloadHash)
 			if err != nil {

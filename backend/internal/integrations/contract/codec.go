@@ -96,7 +96,9 @@ func DecodeResult(data []byte, expected ingestion.JobToken) (ingestion.Result, e
 		return ingestion.Result{}, err
 	}
 	var source generated.SyncResult
-	if err := decodeStrict(data, &source, validResultShape); err != nil {
+	if err := decodeStrict(data, &source, func(value any) bool {
+		return validResultShape(value) && resultJobID(value) == expected.JobID
+	}); err != nil {
 		return ingestion.Result{}, err
 	}
 	if !source.Outcome.Valid() || (source.Page == nil) == (source.Failure == nil) {
@@ -119,6 +121,14 @@ func DecodeResult(data []byte, expected ingestion.JobToken) (ingestion.Result, e
 		return ingestion.Result{}, ingestion.ErrInvalidContract
 	}
 	return result, nil
+}
+
+func resultJobID(value any) string {
+	root, _ := value.(map[string]any)
+	outcome, _ := root["outcome"].(string)
+	payload, _ := root[outcome].(map[string]any)
+	jobID, _ := payload["jobId"].(string)
+	return jobID
 }
 
 func pageFromGenerated(source generated.SyncPage, expected ingestion.JobToken) (ingestion.Page, error) {

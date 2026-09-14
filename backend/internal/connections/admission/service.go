@@ -423,7 +423,35 @@ func (s *Service) RetainRejectedResult(ctx context.Context, p household.Principa
 // CommitFailure retains the existing terminal boundary used by replay
 // reconciliation. Provider adapters should use CommitProviderOutcome.
 func (s *Service) CommitFailure(ctx context.Context, p household.Principal, issued jobs.Job, evidence string, apply func(context.Context) error) (bool, error) {
-	return s.CommitProviderOutcome(ctx, p, issued, evidence, jobs.Failed, jobs.PermanentFailure, 0, apply)
+	if issued.HouseholdID != p.HouseholdID() {
+		return false, household.ErrForbidden
+	}
+	if evidence == "" || len(evidence) > 2000 || issued.Binding.Validate() != nil || apply == nil {
+		return false, jobs.ErrInvalidJob
+	}
+	applied := false
+	err := s.transactions.WithinAdmission(ctx, issued.Binding.Provider, issued.Binding.Environment, func(ctx context.Context) error {
+		return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
+			if err := s.repository.FenceSyncResult(ctx, p, issued); err != nil {
+				return err
+			}
+			if err := apply(ctx); err != nil {
+				return err
+			}
+			if err := s.repository.FailJob(ctx, p, issued); err != nil {
+				return err
+			}
+			applied = true
+			return nil
+		})
+	})
+	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
+		if quarantineErr := s.quarantineResult(ctx, p, issued, evidence); quarantineErr != nil {
+			return false, errors.Join(err, quarantineErr)
+		}
+		return false, nil
+	}
+	return applied && err == nil, err
 }
 
 func (s *Service) quarantineResult(ctx context.Context, p household.Principal, issued jobs.Job, evidence string) error {

@@ -140,7 +140,7 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 			if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
 				return false, nil, err
 			}
-			if errors.Is(err, ingestion.ErrResultRejected) {
+			if errors.Is(err, ingestion.ErrResultRejected) || errors.Is(err, admission.ErrPageRejected) {
 				return false, nil, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
 			}
 			return false, nil, err

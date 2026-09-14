@@ -1,11 +1,14 @@
 package admission
 
 import (
+	"errors"
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 	"sort"
 )
 
 const maxPageGaps = 100
+
+var ErrPageRejected = errors.New("sync page rejected")
 
 // WithOmissions preserves gaps discovered by earlier pages or normalization inside the current transaction.
 func (p Page) WithOmissions(omissions []string) Page {
@@ -29,7 +32,7 @@ func (p Page) WithOmissions(omissions []string) Page {
 
 func (p Page) Validate() error {
 	if (p.Coverage == "complete") != (len(p.Gaps) == 0) || len(p.Gaps) > maxPageGaps || p.EvidenceRef == "" || len(p.EvidenceRef) > 2000 || (p.Coverage != "complete" && p.Coverage != "partial" && p.Coverage != "unavailable") {
-		return jobs.ErrInvalidJob
+		return errors.Join(ErrPageRejected, jobs.ErrInvalidJob)
 	}
 	return nil
 }

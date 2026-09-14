@@ -1,8 +1,11 @@
 package admission
 
 import (
+	"errors"
 	"fmt"
 	"testing"
+
+	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 )
 
 func TestPageOmissionsPreserveInputAndCoverage(t *testing.T) {
@@ -27,7 +30,7 @@ func TestPageRejectsCumulativeGapOverflow(t *testing.T) {
 		t.Fatal("valid gap boundary was rejected")
 	}
 	page = page.WithOmissions([]string{"one-more-gap"})
-	if page.Validate() == nil {
+	if err := page.Validate(); !errors.Is(err, ErrPageRejected) || !errors.Is(err, jobs.ErrInvalidJob) {
 		t.Fatal("cumulative gap overflow was accepted")
 	}
 }

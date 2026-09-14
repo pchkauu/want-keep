@@ -73,7 +73,7 @@ func TestRejectedPageRetainsOwnedEvidenceDisposition(t *testing.T) {
 	gate := &gateFake{
 		commit: func(context.Context, household.Principal, jobs.Job, admission.Page, func(context.Context) error) (bool, error) {
 			cancel()
-			return false, errors.Join(ingestion.ErrResultRejected, commitError)
+			return false, errors.Join(admission.ErrPageRejected, commitError)
 		},
 		reject: func(ctx context.Context, p household.Principal, job jobs.Job, evidence string) error {
 			retained = ctx.Err() == nil && p.HouseholdID() == job.HouseholdID && job.ID == issued().ID && evidence != ""

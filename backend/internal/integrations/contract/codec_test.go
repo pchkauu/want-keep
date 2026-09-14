@@ -295,6 +295,25 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 	}
 }
 
+func TestPageRequiresExactJobIdentifierEcho(t *testing.T) {
+	var root map[string]any
+	if err := json.Unmarshal(fixture(t, "golden-page.json"), &root); err != nil {
+		t.Fatal(err)
+	}
+	expected := goldenToken()
+	expected.JobID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+	root["page"].(map[string]any)["jobId"] = strings.ToUpper(expected.JobID)
+	encoded, _ := json.Marshal(root)
+	if _, err := contract.DecodeResult(encoded, expected); err == nil {
+		t.Fatal("normalized page job identifier was accepted")
+	}
+	root["page"].(map[string]any)["jobId"] = expected.JobID
+	encoded, _ = json.Marshal(root)
+	if _, err := contract.DecodeResult(encoded, expected); err != nil {
+		t.Fatal("exact page job identifier was rejected", err)
+	}
+}
+
 func TestDecoderRejectsMissingRequiredFields(t *testing.T) {
 	original := fixture(t, "golden-page.json")
 	for name, mutate := range map[string]func(map[string]any){
@@ -429,6 +448,9 @@ func TestProviderFailureRequiresExactCursorEcho(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := golden["page"].(map[string]any)
+	expected := goldenToken()
+	expected.JobID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+	page["jobId"] = expected.JobID
 	failure := map[string]any{
 		"outcome": "failure",
 		"failure": map[string]any{
@@ -439,49 +461,55 @@ func TestProviderFailureRequiresExactCursorEcho(t *testing.T) {
 		},
 	}
 	encoded, _ := json.Marshal(failure)
-	if _, err := contract.DecodeResult(encoded, goldenToken()); err != nil {
+	if _, err := contract.DecodeResult(encoded, expected); err != nil {
 		t.Fatal("valid provider failure was rejected", err)
 	}
 	payload := failure["failure"].(map[string]any)
+	payload["jobId"] = strings.ToUpper(payload["jobId"].(string))
+	encoded, _ = json.Marshal(failure)
+	if _, err := contract.DecodeResult(encoded, expected); err == nil {
+		t.Fatal("normalized provider failure job identifier was accepted")
+	}
+	payload["jobId"] = page["jobId"]
 	payload["safeMessage"] = ""
 	encoded, _ = json.Marshal(failure)
-	if _, err := contract.DecodeResult(encoded, goldenToken()); err != nil {
+	if _, err := contract.DecodeResult(encoded, expected); err != nil {
 		t.Fatal("empty optional safe message was rejected", err)
 	}
 	delete(payload, "safeMessage")
 	payload["retryable"] = nil
 	encoded, _ = json.Marshal(failure)
-	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+	if _, err := contract.DecodeResult(encoded, expected); err == nil {
 		t.Fatal("null provider failure retryable flag was accepted")
 	}
 	payload["retryable"] = false
 	payload["cursor"] = "stale-cursor"
 	encoded, _ = json.Marshal(failure)
-	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+	if _, err := contract.DecodeResult(encoded, expected); err == nil {
 		t.Fatal("stale provider failure cursor was accepted")
 	}
 	delete(payload, "cursor")
 	encoded, _ = json.Marshal(failure)
-	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+	if _, err := contract.DecodeResult(encoded, expected); err == nil {
 		t.Fatal("missing provider failure cursor was accepted")
 	}
 	payload["cursor"] = ""
 	delete(payload, "retryable")
 	encoded, _ = json.Marshal(failure)
-	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+	if _, err := contract.DecodeResult(encoded, expected); err == nil {
 		t.Fatal("missing provider failure retryable flag was accepted")
 	}
 	payload["retryable"] = true
 	payload["kind"] = "temporary_failure"
 	payload["retryAfterSeconds"] = 0
 	encoded, _ = json.Marshal(failure)
-	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+	if _, err := contract.DecodeResult(encoded, expected); err == nil {
 		t.Fatal("explicit zero retry delay was accepted")
 	}
 	payload["retryable"] = false
 	payload["kind"] = "mfa_required"
 	encoded, _ = json.Marshal(failure)
-	if _, err := contract.DecodeResult(encoded, goldenToken()); err == nil {
+	if _, err := contract.DecodeResult(encoded, expected); err == nil {
 		t.Fatal("explicit zero retry delay bypassed absent-only semantics")
 	}
 }
