@@ -77,6 +77,17 @@ describe("collector ingestion contract v10", () => {
     ).toThrow("invalid ingestion contract");
   });
 
+  it("rejects fractional integer lexemes before JSON number rounding", () => {
+    const encoded = JSON.stringify(golden);
+    for (const invalid of ["0.99999999999999999", "1.0", "1e0"]) {
+      const malformed = encoded.replace('"attempt":1', `"attempt":${invalid}`);
+      expect(malformed).not.toBe(encoded);
+      expect(() =>
+        parseSyncResultJSON(malformed, parseSyncRequest(request)),
+      ).toThrow("invalid ingestion contract");
+    }
+  });
+
   it("enforces the manifest against every returned record", () => {
     const missingBalances = structuredClone(manifest) as { actions: string[] };
     missingBalances.actions = missingBalances.actions.filter(

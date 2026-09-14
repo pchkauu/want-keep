@@ -79,6 +79,7 @@ export function parseSyncResultJSON(
   expected: SyncRequest,
 ): SyncResult {
   if (Buffer.byteLength(textValue, "utf8") > MAX_ENCODED_RESULT_BYTES) fail();
+  requireIntegerNumberLexemes(textValue);
   let value: unknown;
   try {
     value = JSON.parse(textValue) as unknown;
@@ -86,6 +87,30 @@ export function parseSyncResultJSON(
     fail();
   }
   return parseSyncResult(value, expected);
+}
+
+function requireIntegerNumberLexemes(value: string): void {
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index]!;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      continue;
+    }
+    if (character !== "-" && (character < "0" || character > "9")) continue;
+    let end = index + 1;
+    while (end < value.length && value[end]! >= "0" && value[end]! <= "9")
+      end += 1;
+    if (value[end] === "." || value[end] === "e" || value[end] === "E") fail();
+    index = end - 1;
+  }
 }
 
 export function parseSyncResult(
