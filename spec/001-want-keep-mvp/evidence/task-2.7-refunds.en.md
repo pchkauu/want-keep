@@ -6,13 +6,13 @@ A manual refund creates one posted refund transaction and one link. Principal ar
 
 Migration 019 stores the current link, immutable revisions, exact item portions, member/category effects, frozen historical valuation and a separate review request for every material link revision. Compound household foreign keys bind both operations, purchase/refund revisions, receipt items, memberships and categories. The total and per-item remaining amounts are checked in the household transaction under the existing lock. Clarification retains a confirmed receipt without inventing an item or shares.
 
-The shared ledger Writer recalculates links after correction, exclusion, reversal, cancellation and undo. An unchanged calculation creates no revision or event. Historical valuation uses only the retained purchase basis; a missing basis remains `historical_basis_unavailable`. OpenAPI returns cash date, original month, remainder, returned items, allocation and known/unavailable valuation.
+The shared ledger Writer recalculates links after correction, exclusion, reversal, cancellation and undo. Related refund revisions are loaded in one batch; cumulative caps and historical valuation are calculated in one pass. An unchanged calculation creates no revision or event. One largest-remainder allocation across every active refund and the remainder preserves the frozen reporting total without cumulative rounding. Historical detail/history reads the link state at the ledger revision, while current lists hydrate links in a batch. A missing basis remains `historical_basis_unavailable`.
 
 ## Verification matrix
 
 Required candidate commands are `make check`, `make check-contracts`, `make test-integration AREA=refunds`, `make test-refunds-race`, affected integration/race/privacy suites and `git diff --check`. PostgreSQL 17.11 is required; the refund suite fails when the database is unavailable. Exact published-candidate results are recorded in the PR and Issue.
 
-Coverage includes a RUB 1000 August purchase with a RUB 400 September refund; a USD 10 purchase frozen at RUB 900 with a USD 4 refund producing RUB 360; six assets; third-asset fees; a discounted receipt with exact item portions; clarification without allocation; total and item caps; concurrent commands; idempotent replay; purchase/refund correction, exclusion, undo and reversal; review requests; and linking an existing refund transaction without a second movement.
+Coverage includes a RUB 1000 August purchase with a RUB 400 September refund; a USD 10 purchase frozen at RUB 900 with a USD 4 refund producing RUB 360; six partial refunds preserving a frozen RUB 1 total exactly; a historical refund revision retaining its prior amount; six assets; third-asset fees; a discounted receipt with exact item portions; clarification without allocation; total and item caps; concurrent commands; idempotent replay; purchase/refund correction, exclusion, undo and reversal; review requests; and linking an existing refund transaction without a second movement.
 
 ## Acceptance boundaries
 

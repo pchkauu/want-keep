@@ -63,6 +63,11 @@ type Queries struct{ repository QueryRepository }
 
 type refundQueryRepository interface {
 	RefundsForOperation(context.Context, household.Principal, string) ([]expenses.Refund, error)
+	RefundsForOperationAt(context.Context, household.Principal, string, uint64, calendar.Instant) ([]expenses.Refund, error)
+}
+
+type refundBatchQueryRepository interface {
+	RefundsForOperations(context.Context, household.Principal, []string) (map[string][]expenses.Refund, error)
 }
 
 func NewQueries(r QueryRepository) *Queries { return &Queries{r} }
@@ -88,8 +93,24 @@ func (q *Queries) List(ctx context.Context, p household.Principal, f Filter, c C
 		return nil, nil, err
 	}
 	out := make([]View, 0, len(revisions))
+	var refunds map[string][]expenses.Refund
+	if repository, ok := q.repository.(refundBatchQueryRepository); ok {
+		ids := make([]string, len(revisions))
+		for i := range revisions {
+			ids[i] = revisions[i].OperationID
+		}
+		refunds, err = repository.RefundsForOperations(ctx, p, ids)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 	for _, r := range revisions {
-		v, err := q.view(ctx, p, r)
+		var v View
+		if refunds != nil {
+			v, err = q.viewWithRefunds(ctx, p, r, refunds[r.OperationID])
+		} else {
+			v, err = q.view(ctx, p, r)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
@@ -98,6 +119,29 @@ func (q *Queries) List(ctx context.Context, p household.Principal, f Filter, c C
 	return out, next, nil
 }
 func (q *Queries) view(ctx context.Context, p household.Principal, r ledger.Revision) (View, error) {
+	refunds := []expenses.Refund{}
+	if repository, ok := q.repository.(refundQueryRepository); ok {
+		var err error
+		refunds, err = repository.RefundsForOperation(ctx, p, r.OperationID)
+		if err != nil {
+			return View{}, err
+		}
+	}
+	return q.viewWithRefunds(ctx, p, r, refunds)
+}
+
+func (q *Queries) viewAt(ctx context.Context, p household.Principal, r ledger.Revision) (View, error) {
+	if repository, ok := q.repository.(refundQueryRepository); ok {
+		refunds, err := repository.RefundsForOperationAt(ctx, p, r.OperationID, r.Revision, r.RecordedAt)
+		if err != nil {
+			return View{}, err
+		}
+		return q.viewWithRefunds(ctx, p, r, refunds)
+	}
+	return q.view(ctx, p, r)
+}
+
+func (q *Queries) viewWithRefunds(ctx context.Context, p household.Principal, r ledger.Revision, refunds []expenses.Refund) (View, error) {
 	review, reviewed, err := q.repository.ReviewResult(ctx, p, r.OperationID, r.Revision)
 	if err != nil {
 		return View{}, err
@@ -128,16 +172,9 @@ func (q *Queries) view(ctx context.Context, p household.Principal, r ledger.Revi
 	if r.FeeKnowledge != ledger.KnownFees {
 		reasons = append(reasons, "fees_unknown")
 	}
-	refunds := []expenses.Refund{}
-	if repository, ok := q.repository.(refundQueryRepository); ok {
-		refunds, err = repository.RefundsForOperation(ctx, p, r.OperationID)
-		if err != nil {
-			return View{}, err
-		}
-		for _, refund := range refunds {
-			if refund.State == expenses.Clarification {
-				reasons = append(reasons, "refund_clarification")
-			}
+	for _, refund := range refunds {
+		if refund.State == expenses.Clarification {
+			reasons = append(reasons, "refund_clarification")
 		}
 	}
 	for _, posting := range r.Postings {

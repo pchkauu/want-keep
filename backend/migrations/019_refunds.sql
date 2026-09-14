@@ -55,8 +55,9 @@ CREATE TABLE want_keep.refund_revisions (
  FOREIGN KEY(household_id,refund_operation_id,refund_revision) REFERENCES want_keep.operation_revisions(household_id,operation_id,revision),
  FOREIGN KEY(household_id,actor_id) REFERENCES want_keep.memberships(household_id,user_id),
  CHECK((valuation_basis_ref IS NULL AND valuation_basis_native_amount IS NULL AND valuation_basis_native_asset IS NULL AND valuation_basis_reporting_amount IS NULL AND valuation_basis_reporting_asset IS NULL AND valuation_amount IS NULL AND valuation_asset IS NULL)
-    OR (length(valuation_basis_ref) BETWEEN 1 AND 2000 AND valuation_basis_native_amount>0 AND valuation_basis_native_asset=asset AND valuation_basis_reporting_amount>0 AND valuation_basis_reporting_asset IS NOT NULL AND valuation_amount>0 AND valuation_asset=valuation_basis_reporting_asset))
+    OR (length(valuation_basis_ref) BETWEEN 1 AND 2000 AND valuation_basis_native_amount>0 AND valuation_basis_native_asset=asset AND valuation_basis_reporting_amount>0 AND valuation_basis_reporting_asset IS NOT NULL AND valuation_amount>=0 AND valuation_asset=valuation_basis_reporting_asset))
 );
+CREATE INDEX refund_revisions_recorded ON want_keep.refund_revisions(household_id,refund_operation_id,recorded_at DESC,recorded_ns DESC,revision DESC);
 CREATE TRIGGER immutable_history BEFORE UPDATE OR DELETE ON want_keep.refund_revisions FOR EACH ROW EXECUTE FUNCTION want_keep.reject_history_change();
 
 CREATE TABLE want_keep.refund_item_portions (

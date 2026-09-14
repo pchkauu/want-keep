@@ -13,7 +13,7 @@
 
 ### Изменение и контракты
 
-Ручной возврат создаёт одну posted refund-операцию: деньги поступают в фактическую дату без дохода, а аналитика уменьшает расход исходного месяца. Версионная связь сохраняет revisions покупки и возврата, точные позиции, исходное распределение, зафиксированную историческую оценку и отдельный review request. Совокупный возврат ограничен невозвращённой суммой покупки и каждой позиции под блокировкой покупки. Импортированный возврат связывается без второго денежного эффекта. Correction, exclusion, reversal и undo пересчитывают связь через тот же ledger Writer; неоднозначная позиция остаётся clarification без вымышленного распределения.
+Ручной возврат создаёт одну posted refund-операцию: деньги поступают в фактическую дату без дохода, а аналитика уменьшает расход исходного месяца. Версионная связь сохраняет revisions покупки и возврата, точные позиции, исходное распределение, зафиксированную историческую оценку и отдельный review request. Совокупный возврат ограничен невозвращённой суммой покупки и каждой позиции под блокировкой покупки. Единое largest-remainder распределение сохраняет frozen reporting total всех частичных возвратов. Импортированный возврат связывается без второго денежного эффекта. Correction, exclusion, reversal и undo пакетно пересчитывают связи через тот же ledger Writer; исторические представления используют состояние связи на момент ledger revision, а неоднозначная позиция остаётся clarification без вымышленного распределения.
 
 ### Границы изменений
 
@@ -103,7 +103,7 @@
 make check && make test-integration AREA=refunds && make test-refunds-race
 ```
 
-Шесть активов, частичные/повторные/конкурентные возвраты, позиции и скидки, историческая оценка, комиссия третьего актива, correction/exclusion/undo/reversal, review requests, replay и связь импортного возврата сохраняют точную сумму, исходный месяц и единственный денежный эффект.
+Шесть активов, частичные/повторные/конкурентные возвраты, позиции и скидки, точная совокупная историческая оценка без накопления округления, исторические revisions связей, комиссия третьего актива, correction/exclusion/undo/reversal, review requests, replay и связь импортного возврата сохраняют точную сумму, исходный месяц и единственный денежный эффект.
 
 Зависимости task-2.2, task-2.6 и task-2.8 включены в базу. Доказательства и границы: evidence/task-2.7-refunds.md. Обязательны make check, refunds и затронутые integration/race/privacy suites. Это не подтверждает эксплуатационную готовность.
 
@@ -125,7 +125,7 @@ Recalculate original expenses without distorting cash movements.
 
 ### Change and contracts
 
-A manual refund creates one posted refund transaction: cash arrives on its actual date without income, while analytics reduces the original month's expense. The versioned link retains purchase and refund revisions, exact items, the original allocation, a frozen historical valuation and a separate review request. Cumulative refunds are capped by the remaining purchase and item amounts while the purchase is locked. An imported refund is linked without a second cash effect. Correction, exclusion, reversal and undo recalculate the link through the same ledger Writer; ambiguous items remain clarification without invented allocation.
+A manual refund creates one posted refund transaction: cash arrives on its actual date without income, while analytics reduces the original month's expense. The versioned link retains purchase and refund revisions, exact items, the original allocation, a frozen historical valuation and a separate review request. Cumulative refunds are capped by the remaining purchase and item amounts while the purchase is locked. One largest-remainder allocation preserves the frozen reporting total across all partial refunds. An imported refund is linked without a second cash effect. Correction, exclusion, reversal and undo recalculate links in a batch through the same ledger Writer; historical views use the link state at the ledger revision, while ambiguous items remain clarification without invented allocation.
 
 ### Change boundaries
 
@@ -215,7 +215,7 @@ A link establishes coverage but does not prove the whole criterion; verification
 make check && make test-integration AREA=refunds && make test-refunds-race
 ```
 
-Six assets, partial/replayed/concurrent refunds, items and discounts, historical valuation, a third-asset fee, correction/exclusion/undo/reversal, review requests, replay and imported-refund linking preserve exact totals, the original month and one cash effect.
+Six assets, partial/replayed/concurrent refunds, items and discounts, exact cumulative historical valuation without rounding drift, historical link revisions, a third-asset fee, correction/exclusion/undo/reversal, review requests, replay and imported-refund linking preserve exact totals, the original month and one cash effect.
 
 Dependencies task-2.2, task-2.6 and task-2.8 are included in the base. Evidence and boundaries: evidence/task-2.7-refunds.en.md. Require make check, refunds and affected integration/race/privacy suites. This does not confirm operational readiness.
 

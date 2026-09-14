@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	account "github.com/pchkauu/want-keep/backend/internal/accounts/domain"
@@ -20,10 +21,10 @@ type Repository interface {
 	CurrentLedgerRevision(context.Context, household.Principal, string) (ledger.Revision, bool, error)
 	Account(context.Context, household.Principal, string) (account.Account, error)
 	AccountTimezone(context.Context, household.Principal) (calendar.Timezone, error)
-	ActiveRefundTotals(context.Context, household.Principal, string, string, money.Asset) (money.Money, map[string]money.Money, error)
 	Refund(context.Context, household.Principal, string) (expenses.Refund, bool, error)
 	RefundCountForPurchase(context.Context, household.Principal, string) (int, error)
 	RefundsForOperation(context.Context, household.Principal, string) ([]expenses.Refund, error)
+	CurrentRefundRevisions(context.Context, household.Principal, []string) (map[string]ledger.Revision, error)
 	PurchaseValuation(context.Context, household.Principal, string, uint64) (*expenses.ValuationBasis, error)
 	SaveRefund(context.Context, household.Principal, expenses.Refund, uint64) error
 	EmitEvent(context.Context, string, string, uint64, string) error
@@ -94,7 +95,8 @@ func (s *Service) Create(ctx context.Context, principal household.Principal, inp
 		return command.Result{}, s.reject(err)
 	}
 	operationID := s.newID()
-	revision := ledger.Revision{OperationID: operationID, Revision: 1, ActorID: principal.UserID(), Reason: input.Reason, Type: ledger.Refund, State: ledger.Posted, OccurredAt: input.At, CashDate: date, ExpenseMonth: month, Timezone: zone, Origin: "manual", FeeKnowledge: ledger.KnownFees, PayerState: "not_applicable", AllocationReason: "refund_fee_allocation_unresolved", Postings: []ledger.Posting{{AccountID: input.AccountID, Money: input.Amount, Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}}, RecordedAt: s.now(), HumanOverride: true, Protections: map[ledger.Field]ledger.Protection{ledger.PrincipalField: {Revision: 1}, ledger.FeesField: {Revision: 1}, ledger.DateField: {Revision: 1}}, FieldVersions: map[ledger.Field]uint64{}}
+	recordedAt := s.now()
+	revision := ledger.Revision{OperationID: operationID, Revision: 1, ActorID: principal.UserID(), Reason: input.Reason, Type: ledger.Refund, State: ledger.Posted, OccurredAt: input.At, CashDate: date, ExpenseMonth: month, Timezone: zone, Origin: "manual", FeeKnowledge: ledger.KnownFees, PayerState: "not_applicable", AllocationReason: "refund_fee_allocation_unresolved", Postings: []ledger.Posting{{AccountID: input.AccountID, Money: input.Amount, Role: ledger.Principal, Funding: ledger.OwnFunds, Treatment: ledger.Movement}}, RecordedAt: recordedAt, HumanOverride: true, Protections: map[ledger.Field]ledger.Protection{ledger.PrincipalField: {Revision: 1}, ledger.FeesField: {Revision: 1}, ledger.DateField: {Revision: 1}}, FieldVersions: map[ledger.Field]uint64{}}
 	for _, fee := range input.Fees {
 		if fee.Amount.Validate() != nil || fee.Amount.Sign() <= 0 {
 			return command.Result{}, commands.Rejection{Code: "invalid_money"}
@@ -110,7 +112,7 @@ func (s *Service) Create(ctx context.Context, principal household.Principal, inp
 	if err = s.writer.Append(ctx, principal, revision, 0); err != nil {
 		return command.Result{}, s.reject(err)
 	}
-	if _, err = s.save(ctx, principal, purchase, revision, input.Items, 0, input.Reason, principal.UserID()); err != nil {
+	if _, err = s.save(ctx, principal, purchase, revision, input.Items, 0, input.Reason, principal.UserID(), recordedAt); err != nil {
 		return command.Result{}, err
 	}
 	return command.Result{ResourceType: "transaction", ResourceID: operationID, Revision: 1}, nil
@@ -128,15 +130,22 @@ func (s *Service) Link(ctx context.Context, principal household.Principal, input
 	if err != nil {
 		return command.Result{}, err
 	}
-	result, err := s.save(ctx, principal, purchase, refund, input.Items, input.ExpectedRevision, input.Reason, principal.UserID())
+	result, err := s.save(ctx, principal, purchase, refund, input.Items, input.ExpectedRevision, input.Reason, principal.UserID(), s.after(refund.RecordedAt))
 	if err != nil {
 		return command.Result{}, err
 	}
 	return command.Result{ResourceType: "transaction", ResourceID: refund.OperationID, Revision: result.RefundRevision}, nil
 }
 
-func (s *Service) save(ctx context.Context, principal household.Principal, purchase, refund ledger.Revision, items []expenses.ItemPortion, expected uint64, reason string, actor household.UserID) (expenses.Refund, error) {
-	if expected == 0 {
+func (s *Service) save(ctx context.Context, principal household.Principal, purchase, refund ledger.Revision, items []expenses.ItemPortion, expected uint64, reason string, actor household.UserID, recordedAt calendar.Instant) (expenses.Refund, error) {
+	existing, found, err := s.repository.Refund(ctx, principal, refund.OperationID)
+	if err != nil {
+		return expenses.Refund{}, s.reject(err)
+	}
+	if found && (existing.PurchaseID != purchase.OperationID || existing.Revision != expected) || !found && expected != 0 {
+		return expenses.Refund{}, commands.Rejection{Code: "version_conflict", CurrentRevision: existing.Revision}
+	}
+	if !found {
 		count, err := s.repository.RefundCountForPurchase(ctx, principal, purchase.OperationID)
 		if err != nil {
 			return expenses.Refund{}, s.reject(err)
@@ -145,29 +154,35 @@ func (s *Service) save(ctx context.Context, principal household.Principal, purch
 			return expenses.Refund{}, commands.Rejection{Code: "invalid_request"}
 		}
 	}
-	refunded, refundedItems, err := s.repository.ActiveRefundTotals(ctx, principal, purchase.OperationID, refund.OperationID, principalAsset(purchase))
+	links, err := s.repository.RefundsForOperation(ctx, principal, purchase.OperationID)
 	if err != nil {
 		return expenses.Refund{}, s.reject(err)
 	}
+	ids := make([]string, 0, len(links)+1)
+	for _, link := range links {
+		ids = append(ids, link.OperationID)
+	}
+	ids = append(ids, refund.OperationID)
+	refunds, err := s.repository.CurrentRefundRevisions(ctx, principal, ids)
+	if err != nil {
+		return expenses.Refund{}, s.reject(err)
+	}
+	refunds[refund.OperationID] = refund
 	basis, err := s.repository.PurchaseValuation(ctx, principal, purchase.OperationID, purchase.Revision)
 	if err != nil {
 		return expenses.Refund{}, s.reject(err)
 	}
-	recordedAt := s.now()
-	result, err := expenses.Calculate(purchase, refund, items, refunded, refundedItems, basis, expected+1, reason, actor, recordedAt)
-	if errors.Is(err, expenses.ErrClarificationRequired) {
-		result, err = expenses.Clarify(purchase, refund, items, refunded, expected+1, reason, actor, recordedAt)
+	result, err := recalculate(ctx, s.repository, principal, purchase, links, refunds, basis, &refundChange{refund: refund, items: items, expected: expected, reason: reason}, actor, recordedAt)
+	return result, s.reject(err)
+}
+
+func (s *Service) after(boundary calendar.Instant) calendar.Instant {
+	now := s.now()
+	if now.Time().After(boundary.Time()) {
+		return now
 	}
-	if err != nil {
-		return expenses.Refund{}, s.reject(err)
-	}
-	if err = s.repository.SaveRefund(ctx, principal, result, expected); err != nil {
-		return expenses.Refund{}, s.reject(err)
-	}
-	if err = s.repository.EmitEvent(ctx, "refund", result.OperationID, result.Revision, "refund.changed"); err != nil {
-		return expenses.Refund{}, err
-	}
-	return result, nil
+	next, _ := calendar.ParseInstant(boundary.Time().Add(time.Nanosecond).Format(time.RFC3339Nano))
+	return next
 }
 
 func (s *Service) current(ctx context.Context, principal household.Principal, id string, expected uint64) (ledger.Revision, error) {

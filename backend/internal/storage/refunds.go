@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -10,69 +11,57 @@ import (
 	command "github.com/pchkauu/want-keep/backend/internal/commands/domain"
 	expenses "github.com/pchkauu/want-keep/backend/internal/expenses/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	ledger "github.com/pchkauu/want-keep/backend/internal/ledger/domain"
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 )
 
-func (s *Store) ActiveRefundTotals(ctx context.Context, p household.Principal, purchaseID, excludedRefundID string, asset money.Asset) (money.Money, map[string]money.Money, error) {
+func (s *Store) CurrentRefundRevisions(ctx context.Context, p household.Principal, ids []string) (map[string]ledger.Revision, error) {
 	q, err := s.reader(ctx, p)
 	if err != nil {
-		return money.Money{}, nil, err
+		return nil, err
 	}
-	total, err := money.NewMoney("0", asset)
+	result := make(map[string]ledger.Revision, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+	rows, err := q.Query(ctx, `SELECT o.id,o.revision,r.economic_type,r.state,r.cash_date,a.accounting_state,p.account_id,p.amount::text,p.asset,p.role,p.funding,p.treatment FROM want_keep.operations o JOIN want_keep.operation_revisions r ON (r.household_id,r.operation_id,r.revision)=(o.household_id,o.id,o.revision) JOIN want_keep.ledger_revision_audit a ON (a.household_id,a.operation_id,a.revision)=(r.household_id,r.operation_id,r.revision) JOIN want_keep.postings p ON (p.household_id,p.operation_id,p.revision)=(r.household_id,r.operation_id,r.revision) WHERE o.household_id=$1 AND o.id=ANY($2::uuid[]) AND p.role='principal' AND p.treatment IN ('','movement') ORDER BY o.id,p.position`, p.HouseholdID(), ids)
 	if err != nil {
-		return total, nil, err
-	}
-	rows, err := q.Query(ctx, `SELECT rr.refund_operation_id,rr.amount::text FROM want_keep.refunds r JOIN want_keep.refund_revisions rr ON (rr.household_id,rr.refund_operation_id,rr.revision)=(r.household_id,r.refund_operation_id,r.revision) WHERE r.household_id=$1 AND r.purchase_operation_id=$2 AND r.refund_operation_id<>$3 AND rr.state IN ('applied','clarification') AND rr.asset=$4 ORDER BY rr.refund_operation_id`, p.HouseholdID(), purchaseID, excludedRefundID, asset)
-	if err != nil {
-		return total, nil, err
-	}
-	for rows.Next() {
-		var id, amount string
-		if err = rows.Scan(&id, &amount); err != nil {
-			rows.Close()
-			return total, nil, err
-		}
-		value, parseErr := money.NewMoney(amount, asset)
-		if parseErr != nil {
-			rows.Close()
-			return total, nil, parseErr
-		}
-		total, err = total.Add(value)
-		if err != nil {
-			rows.Close()
-			return total, nil, err
-		}
-	}
-	if err = rows.Err(); err != nil {
-		rows.Close()
-		return total, nil, err
-	}
-	rows.Close()
-	items := map[string]money.Money{}
-	rows, err = q.Query(ctx, `SELECT i.item_id,i.amount::text FROM want_keep.refund_item_portions i JOIN want_keep.refunds r ON (r.household_id,r.refund_operation_id,r.revision)=(i.household_id,i.refund_operation_id,i.revision) JOIN want_keep.refund_revisions rr ON (rr.household_id,rr.refund_operation_id,rr.revision)=(r.household_id,r.refund_operation_id,r.revision) WHERE r.household_id=$1 AND r.purchase_operation_id=$2 AND r.refund_operation_id<>$3 AND rr.state IN ('applied','clarification') AND i.asset=$4 ORDER BY i.item_id`, p.HouseholdID(), purchaseID, excludedRefundID, asset)
-	if err != nil {
-		return total, nil, err
+		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var id, amount string
-		if err = rows.Scan(&id, &amount); err != nil {
-			return total, nil, err
+		var revision ledger.Revision
+		var cashDate time.Time
+		var posting ledger.Posting
+		var amount, asset string
+		if err = rows.Scan(&revision.OperationID, &revision.Revision, &revision.Type, &revision.State, &cashDate, &revision.AccountingState, &posting.AccountID, &amount, &asset, &posting.Role, &posting.Funding, &posting.Treatment); err != nil {
+			return nil, err
 		}
-		value, parseErr := money.NewMoney(amount, asset)
-		if parseErr != nil {
-			return total, nil, parseErr
+		if _, duplicate := result[revision.OperationID]; duplicate {
+			return nil, expenses.ErrInvalidRefund
 		}
-		if current, found := items[id]; found {
-			items[id], err = current.Add(value)
-		} else {
-			items[id] = value
-		}
+		revision.CashDate, err = calendar.ParseDate(cashDate.Format(time.DateOnly))
 		if err != nil {
-			return total, nil, err
+			return nil, err
 		}
+		posting.Money, err = money.NewMoney(amount, money.Asset(asset))
+		if err != nil {
+			return nil, err
+		}
+		revision.Postings = []ledger.Posting{posting}
+		result[revision.OperationID] = revision
 	}
-	return total, items, rows.Err()
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	unique := map[string]bool{}
+	for _, id := range ids {
+		unique[id] = true
+	}
+	if len(result) != len(unique) {
+		return nil, ledger.ErrNotFound
+	}
+	return result, nil
 }
 
 func (s *Store) PurchaseValuation(ctx context.Context, p household.Principal, operationID string, revision uint64) (*expenses.ValuationBasis, error) {
@@ -131,10 +120,7 @@ func (s *Store) SaveRefund(ctx context.Context, p household.Principal, refund ex
 	at, ns := splitInstant(refund.RecordedAt)
 	var basisNativeAmount, basisNativeAsset, basisValueAmount, basisValueAsset, basisRef, valueAmount, valueAsset any
 	if refund.Valuation != nil {
-		basis, basisErr := s.PurchaseValuation(ctx, p, refund.PurchaseID, refund.PurchaseRevision)
-		if basisErr != nil {
-			return basisErr
-		}
+		basis := refund.Valuation.Basis
 		if basis == nil || basis.Ref != refund.Valuation.Ref {
 			return expenses.ErrInvalidRefund
 		}
@@ -195,15 +181,16 @@ func (s *Store) saveRefundEffects(ctx context.Context, scope *transactionScope, 
 }
 
 func (s *Store) Refund(ctx context.Context, p household.Principal, operationID string) (expenses.Refund, bool, error) {
-	q, err := s.reader(ctx, p)
+	values, err := s.RefundsForOperation(ctx, p, operationID)
 	if err != nil {
 		return expenses.Refund{}, false, err
 	}
-	refund, err := s.refund(ctx, q, p, operationID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return expenses.Refund{}, false, nil
+	for _, value := range values {
+		if value.OperationID == operationID {
+			return value, true, nil
+		}
 	}
-	return refund, err == nil, err
+	return expenses.Refund{}, false, nil
 }
 
 func (s *Store) RefundCountForPurchase(ctx context.Context, p household.Principal, purchaseID string) (int, error) {
@@ -217,151 +204,197 @@ func (s *Store) RefundCountForPurchase(ctx context.Context, p household.Principa
 }
 
 func (s *Store) RefundsForOperation(ctx context.Context, p household.Principal, operationID string) ([]expenses.Refund, error) {
+	values, err := s.RefundsForOperations(ctx, p, []string{operationID})
+	return values[operationID], err
+}
+
+func (s *Store) RefundsForOperations(ctx context.Context, p household.Principal, operationIDs []string) (map[string][]expenses.Refund, error) {
 	q, err := s.reader(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.Query(ctx, `SELECT refund_operation_id FROM want_keep.refunds WHERE household_id=$1 AND (refund_operation_id=$2 OR purchase_operation_id=$2) ORDER BY refund_operation_id`, p.HouseholdID(), operationID)
+	return s.loadRefunds(ctx, q, p, operationIDs, 0, nil)
+}
+
+func (s *Store) RefundsForOperationAt(ctx context.Context, p household.Principal, operationID string, operationRevision uint64, at calendar.Instant) ([]expenses.Refund, error) {
+	q, err := s.reader(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	var ids []string
+	values, err := s.loadRefunds(ctx, q, p, []string{operationID}, operationRevision, &at)
+	return values[operationID], err
+}
+
+func (s *Store) loadRefunds(ctx context.Context, q reader, p household.Principal, operationIDs []string, operationRevision uint64, at *calendar.Instant) (map[string][]expenses.Refund, error) {
+	result := make(map[string][]expenses.Refund, len(operationIDs))
+	if len(operationIDs) == 0 {
+		return result, nil
+	}
+	const columns = `r.refund_operation_id,r.purchase_operation_id,rr.revision,rr.purchase_revision,rr.refund_revision,rr.actor_id,rr.reason,rr.state,rr.expense_month,rr.cash_date,rr.amount::text,rr.remaining::text,rr.asset,rr.valuation_basis_native_amount::text,rr.valuation_basis_native_asset,rr.valuation_basis_reporting_amount::text,rr.valuation_basis_reporting_asset,rr.valuation_basis_ref,rr.valuation_amount::text,rr.valuation_asset,rr.recorded_at,rr.recorded_ns`
+	query := `SELECT ` + columns + ` FROM want_keep.refunds r JOIN want_keep.refund_revisions rr ON (rr.household_id,rr.refund_operation_id,rr.revision)=(r.household_id,r.refund_operation_id,r.revision) WHERE r.household_id=$1 AND (r.refund_operation_id=ANY($2::uuid[]) OR r.purchase_operation_id=ANY($2::uuid[])) ORDER BY r.refund_operation_id`
+	args := []any{p.HouseholdID(), operationIDs}
+	if at != nil {
+		if len(operationIDs) != 1 || operationRevision < 1 {
+			return nil, expenses.ErrInvalidRefund
+		}
+		cutoff, ns := splitInstant(*at)
+		query = `SELECT ` + columns + ` FROM want_keep.refunds r JOIN LATERAL (SELECT * FROM want_keep.refund_revisions candidate WHERE (candidate.household_id,candidate.refund_operation_id)=(r.household_id,r.refund_operation_id) AND (candidate.recorded_at,candidate.recorded_ns)<=($4,$5) AND ((r.refund_operation_id=$2 AND candidate.refund_revision<=$3) OR (r.purchase_operation_id=$2 AND candidate.purchase_revision<=$3)) ORDER BY candidate.recorded_at DESC,candidate.recorded_ns DESC,candidate.revision DESC LIMIT 1) rr ON true WHERE r.household_id=$1 AND (r.refund_operation_id=$2 OR r.purchase_operation_id=$2) ORDER BY r.refund_operation_id`
+		args = []any{p.HouseholdID(), operationIDs[0], operationRevision, cutoff, ns}
+	}
+	rows, err := q.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	values := []expenses.Refund{}
 	for rows.Next() {
-		var id string
-		if err = rows.Scan(&id); err != nil {
+		var value expenses.Refund
+		var month, cashDate, recordedAt time.Time
+		var recordedNS int16
+		var amount, remaining, asset string
+		var basisNativeAmount, basisNativeAsset, basisValueAmount, basisValueAsset, basisRef, valueAmount, valueAsset *string
+		if err = rows.Scan(&value.OperationID, &value.PurchaseID, &value.Revision, &value.PurchaseRevision, &value.RefundRevision, &value.ActorID, &value.Reason, &value.State, &month, &cashDate, &amount, &remaining, &asset, &basisNativeAmount, &basisNativeAsset, &basisValueAmount, &basisValueAsset, &basisRef, &valueAmount, &valueAsset, &recordedAt, &recordedNS); err != nil {
 			rows.Close()
 			return nil, err
 		}
-		ids = append(ids, id)
+		value.ExpenseMonth, err = calendar.ParseMonth(month.Format("2006-01"))
+		if err == nil {
+			value.CashDate, err = calendar.ParseDate(cashDate.Format(time.DateOnly))
+		}
+		if err == nil {
+			value.RecordedAt, err = restoreInstant(recordedAt, recordedNS)
+		}
+		if err == nil {
+			value.Amount, err = money.NewMoney(amount, money.Asset(asset))
+		}
+		if err == nil {
+			value.Remaining, err = money.NewMoney(remaining, money.Asset(asset))
+		}
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if basisNativeAmount != nil && basisNativeAsset != nil && basisValueAmount != nil && basisValueAsset != nil && basisRef != nil && valueAmount != nil && valueAsset != nil {
+			basisPurchase, parseErr := money.NewMoney(*basisNativeAmount, money.Asset(*basisNativeAsset))
+			if parseErr != nil {
+				rows.Close()
+				return nil, parseErr
+			}
+			basisValue, parseErr := money.NewMoney(*basisValueAmount, money.Asset(*basisValueAsset))
+			if parseErr != nil {
+				rows.Close()
+				return nil, parseErr
+			}
+			valuation, parseErr := money.NewMoney(*valueAmount, money.Asset(*valueAsset))
+			if parseErr != nil {
+				rows.Close()
+				return nil, parseErr
+			}
+			basis := expenses.ValuationBasis{Purchase: basisPurchase, Value: basisValue, Ref: *basisRef}
+			value.Valuation = &expenses.Valuation{Value: valuation, Ref: *basisRef, Basis: &basis}
+		}
+		values = append(values, value)
 	}
 	if err = rows.Err(); err != nil {
 		rows.Close()
 		return nil, err
 	}
 	rows.Close()
-	result := make([]expenses.Refund, 0, len(ids))
-	for _, id := range ids {
-		value, loadErr := s.refund(ctx, q, p, id)
-		if loadErr != nil {
-			return nil, loadErr
+	if len(values) == 0 {
+		return result, nil
+	}
+	ids, revisions := make([]string, len(values)), make([]int64, len(values))
+	index := make(map[string]*expenses.Refund, len(values))
+	for i := range values {
+		ids[i], revisions[i] = values[i].OperationID, int64(values[i].Revision)
+		index[refundRevisionKey(values[i].OperationID, values[i].Revision)] = &values[i]
+	}
+	rows, err = q.Query(ctx, `SELECT i.refund_operation_id,i.revision,i.item_id,i.amount::text,i.asset FROM want_keep.refund_item_portions i JOIN unnest($2::uuid[],$3::bigint[]) selected(refund_operation_id,revision) ON (selected.refund_operation_id,selected.revision)=(i.refund_operation_id,i.revision) WHERE i.household_id=$1 ORDER BY i.refund_operation_id,i.revision,i.position`, p.HouseholdID(), ids, revisions)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var id, itemID, amount, asset string
+		var revision uint64
+		if err = rows.Scan(&id, &revision, &itemID, &amount, &asset); err != nil {
+			rows.Close()
+			return nil, err
 		}
-		result = append(result, value)
+		value, parseErr := money.NewMoney(amount, money.Asset(asset))
+		if parseErr != nil {
+			rows.Close()
+			return nil, parseErr
+		}
+		index[refundRevisionKey(id, revision)].Items = append(index[refundRevisionKey(id, revision)].Items, expenses.ItemPortion{ItemID: itemID, Amount: value})
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	rows, err = q.Query(ctx, `SELECT e.refund_operation_id,e.revision,e.basis,e.dimension,COALESCE(e.member_id::text,e.category_id::text,''),e.amount::text,e.asset FROM want_keep.refund_effects e JOIN unnest($2::uuid[],$3::bigint[]) selected(refund_operation_id,revision) ON (selected.refund_operation_id,selected.revision)=(e.refund_operation_id,e.revision) WHERE e.household_id=$1 ORDER BY e.refund_operation_id,e.revision,e.basis,e.position`, p.HouseholdID(), ids, revisions)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var id, basis, dimension, key, amount, asset string
+		var revision uint64
+		if err = rows.Scan(&id, &revision, &basis, &dimension, &key, &amount, &asset); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		value, parseErr := money.NewMoney(amount, money.Asset(asset))
+		if parseErr != nil {
+			rows.Close()
+			return nil, parseErr
+		}
+		refund := index[refundRevisionKey(id, revision)]
+		switch dimension {
+		case "member":
+			if basis == "native" {
+				refund.Members = append(refund.Members, expenses.MemberAmount{MemberID: household.MembershipID(key), Amount: value})
+			} else {
+				refund.Valuation.Members = append(refund.Valuation.Members, expenses.MemberAmount{MemberID: household.MembershipID(key), Amount: value})
+			}
+		case "category":
+			if basis == "native" {
+				refund.Categories = append(refund.Categories, expenses.CategoryAmount{CategoryID: key, Amount: value})
+			} else {
+				refund.Valuation.Categories = append(refund.Valuation.Categories, expenses.CategoryAmount{CategoryID: key, Amount: value})
+			}
+		case "unallocated":
+			if basis == "native" {
+				refund.Unallocated = append(refund.Unallocated, value)
+			} else {
+				refund.Valuation.Unallocated = append(refund.Valuation.Unallocated, value)
+			}
+		default:
+			rows.Close()
+			return nil, expenses.ErrInvalidRefund
+		}
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	requested := make(map[string]bool, len(operationIDs))
+	for _, id := range operationIDs {
+		requested[id] = true
+	}
+	for i := range values {
+		if err = values[i].Validate(); err != nil {
+			return nil, err
+		}
+		if requested[values[i].OperationID] {
+			result[values[i].OperationID] = append(result[values[i].OperationID], values[i])
+		}
+		if requested[values[i].PurchaseID] {
+			result[values[i].PurchaseID] = append(result[values[i].PurchaseID], values[i])
+		}
 	}
 	return result, nil
 }
 
-func (s *Store) refund(ctx context.Context, q reader, p household.Principal, operationID string) (expenses.Refund, error) {
-	var result expenses.Refund
-	var month, cashDate, recordedAt time.Time
-	var recordedNS int16
-	var amount, remaining, asset string
-	var valueAmount, valueAsset, valueRef *string
-	err := q.QueryRow(ctx, `SELECT r.refund_operation_id,r.purchase_operation_id,r.revision,rr.purchase_revision,rr.refund_revision,rr.actor_id,rr.reason,rr.state,rr.expense_month,rr.cash_date,rr.amount::text,rr.remaining::text,rr.asset,rr.valuation_amount::text,rr.valuation_asset,rr.valuation_basis_ref,rr.recorded_at,rr.recorded_ns FROM want_keep.refunds r JOIN want_keep.refund_revisions rr ON (rr.household_id,rr.refund_operation_id,rr.revision)=(r.household_id,r.refund_operation_id,r.revision) WHERE r.household_id=$1 AND r.refund_operation_id=$2`, p.HouseholdID(), operationID).Scan(&result.OperationID, &result.PurchaseID, &result.Revision, &result.PurchaseRevision, &result.RefundRevision, &result.ActorID, &result.Reason, &result.State, &month, &cashDate, &amount, &remaining, &asset, &valueAmount, &valueAsset, &valueRef, &recordedAt, &recordedNS)
-	if err != nil {
-		return result, err
-	}
-	result.ExpenseMonth, err = calendar.ParseMonth(month.Format("2006-01"))
-	if err == nil {
-		result.CashDate, err = calendar.ParseDate(cashDate.Format(time.DateOnly))
-	}
-	if err == nil {
-		result.RecordedAt, err = restoreInstant(recordedAt, recordedNS)
-	}
-	if err == nil {
-		result.Amount, err = money.NewMoney(amount, money.Asset(asset))
-	}
-	if err == nil {
-		result.Remaining, err = money.NewMoney(remaining, money.Asset(asset))
-	}
-	if err != nil {
-		return result, err
-	}
-	if valueAmount != nil && valueAsset != nil && valueRef != nil {
-		value, valueErr := money.NewMoney(*valueAmount, money.Asset(*valueAsset))
-		if valueErr != nil {
-			return result, valueErr
-		}
-		result.Valuation = &expenses.Valuation{Value: value, Ref: *valueRef}
-	}
-	return result, s.loadRefundChildren(ctx, q, p, &result)
-}
-
-func (s *Store) loadRefundChildren(ctx context.Context, q reader, p household.Principal, result *expenses.Refund) error {
-	rows, err := q.Query(ctx, `SELECT item_id,amount::text,asset FROM want_keep.refund_item_portions WHERE household_id=$1 AND refund_operation_id=$2 AND revision=$3 ORDER BY position`, p.HouseholdID(), result.OperationID, result.Revision)
-	if err != nil {
-		return err
-	}
-	for rows.Next() {
-		var item expenses.ItemPortion
-		var amount, asset string
-		if err = rows.Scan(&item.ItemID, &amount, &asset); err != nil {
-			rows.Close()
-			return err
-		}
-		item.Amount, err = money.NewMoney(amount, money.Asset(asset))
-		if err != nil {
-			rows.Close()
-			return err
-		}
-		result.Items = append(result.Items, item)
-	}
-	if err = rows.Err(); err != nil {
-		rows.Close()
-		return err
-	}
-	rows.Close()
-	return s.loadRefundEffectsMore(ctx, q, p, result)
-}
-
-func (s *Store) loadRefundEffects(ctx context.Context, q reader, p household.Principal, result *expenses.Refund, basis string) error {
-	rows, err := q.Query(ctx, `SELECT dimension,COALESCE(member_id::text,category_id::text,''),amount::text,asset FROM want_keep.refund_effects WHERE household_id=$1 AND refund_operation_id=$2 AND revision=$3 AND basis=$4 ORDER BY position`, p.HouseholdID(), result.OperationID, result.Revision, basis)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var dimension, key, amount, asset string
-		if err = rows.Scan(&dimension, &key, &amount, &asset); err != nil {
-			return err
-		}
-		value, parseErr := money.NewMoney(amount, money.Asset(asset))
-		if parseErr != nil {
-			return parseErr
-		}
-		switch dimension {
-		case "member":
-			if basis == "native" {
-				result.Members = append(result.Members, expenses.MemberAmount{MemberID: household.MembershipID(key), Amount: value})
-			} else {
-				result.Valuation.Members = append(result.Valuation.Members, expenses.MemberAmount{MemberID: household.MembershipID(key), Amount: value})
-			}
-		case "category":
-			if basis == "native" {
-				result.Categories = append(result.Categories, expenses.CategoryAmount{CategoryID: key, Amount: value})
-			} else {
-				result.Valuation.Categories = append(result.Valuation.Categories, expenses.CategoryAmount{CategoryID: key, Amount: value})
-			}
-		case "unallocated":
-			if basis == "native" {
-				result.Unallocated = append(result.Unallocated, value)
-			} else {
-				result.Valuation.Unallocated = append(result.Valuation.Unallocated, value)
-			}
-		default:
-			return expenses.ErrInvalidRefund
-		}
-	}
-	return rows.Err()
-}
-
-func (s *Store) loadRefundEffectsMore(ctx context.Context, q reader, p household.Principal, result *expenses.Refund) error {
-	if err := s.loadRefundEffects(ctx, q, p, result, "native"); err != nil {
-		return err
-	}
-	if result.Valuation != nil {
-		if err := s.loadRefundEffects(ctx, q, p, result, "valuation"); err != nil {
-			return err
-		}
-	}
-	return result.Validate()
+func refundRevisionKey(id string, revision uint64) string {
+	return id + ":" + strconv.FormatUint(revision, 10)
 }

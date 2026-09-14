@@ -99,6 +99,38 @@ func TestRefundUsesFrozenHistoricalValuation(t *testing.T) {
 	}
 }
 
+func TestPartialRefundsPreserveFrozenValuationTotal(t *testing.T) {
+	f := newFixture(t)
+	client := f.client(f.p)
+	accountID := f.account(money.USD, "100")
+	purchase := createExpense(t, client, accountID, money.USD, "6", "3")
+	if _, err := f.admin.Exec(testContext, `INSERT INTO want_keep.transaction_historical_values(household_id,operation_id,operation_revision,basis_ref,native_amount,native_asset,reporting_amount,reporting_asset) VALUES($1,$2,1,'synthetic:rounding',6,'USD',1,'RUB')`, f.family.ID, purchase.Result.Id); err != nil {
+		t.Fatal(err)
+	}
+	for range 6 {
+		createRefund(t, client, purchase.Result.Id, accountID, money.USD, "1", uuid.NewString())
+	}
+	view := readTransaction(t, client, purchase.Result.Id)
+	if len(view.Refunds) != 6 {
+		t.Fatalf("refund count=%d", len(view.Refunds))
+	}
+	total := cash("0", money.RUB)
+	for _, refund := range view.Refunds {
+		known, err := refund.Valuation.AsKnownRefundValuation()
+		if err != nil || refund.Remaining.Amount != "0" {
+			t.Fatalf("refund=%+v valuation=%+v err=%v", refund, known, err)
+		}
+		value := cash(known.Amount.Amount, money.RUB)
+		total, err = total.Add(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if total.Amount() != "1.000000" {
+		t.Fatalf("valuation total=%s", total.Amount())
+	}
+}
+
 func TestRefundCorrectionAndExclusionRecalculateOnce(t *testing.T) {
 	f := newFixture(t)
 	client := f.client(f.p)
@@ -122,6 +154,10 @@ func TestRefundCorrectionAndExclusionRecalculateOnce(t *testing.T) {
 	view := readTransaction(t, client, created.Result.Id)
 	if len(view.Refunds) != 1 || view.Refunds[0].RefundRevision != 2 || view.Refunds[0].Amount.Amount != "500" {
 		t.Fatalf("corrected attribution=%+v", view.Refunds)
+	}
+	original := decodeResponse[generated.Transaction](t, client.call(http.MethodGet, "/transactions/"+created.Result.Id+"/revisions/1", "", nil, http.StatusOK))
+	if len(original.Refunds) != 1 || original.Refunds[0].RefundRevision != 1 || original.Refunds[0].Amount.Amount != "400" || original.Refunds[0].Remaining.Amount != "600" {
+		t.Fatalf("historical attribution=%+v", original.Refunds)
 	}
 	excluded := decodeResponse[generated.CommandSucceeded](t, client.call(http.MethodPost, "/transactions/"+created.Result.Id+"/exclude", uuid.NewString(), map[string]any{"expectedRevision": 2, "reason": "Exclude duplicate source record"}, http.StatusAccepted))
 	if excluded.Status != "succeeded" || excluded.Result.Revision != 3 || f.available(accountID, f.p) != "4000" {

@@ -24,7 +24,7 @@ func (q *Queries) Revision(ctx context.Context, p household.Principal, id string
 	if err != nil {
 		return View{}, err
 	}
-	return q.view(ctx, p, r)
+	return q.viewAt(ctx, p, r)
 }
 func (q *Queries) History(ctx context.Context, p household.Principal, id string, before uint64, limit int) ([]HistoryEntry, uint64, error) {
 	if limit < 1 || limit > 100 {
@@ -39,7 +39,7 @@ func (q *Queries) History(ctx context.Context, p household.Principal, id string,
 	}
 	out := []HistoryEntry{}
 	for _, r := range revs {
-		view, err := q.view(ctx, p, r)
+		view, err := q.viewAt(ctx, p, r)
 		if err != nil {
 			return nil, 0, err
 		}

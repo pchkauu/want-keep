@@ -47,9 +47,15 @@ type ValuationBasis struct {
 	Ref      string
 }
 
+type ValuationShare struct {
+	Basis ValuationBasis
+	Value money.Money
+}
+
 type Valuation struct {
 	Value       money.Money
 	Ref         string
+	Basis       *ValuationBasis
 	Members     []MemberAmount
 	Categories  []CategoryAmount
 	Unallocated []money.Money
@@ -96,7 +102,7 @@ func (r Refund) Validate() error {
 			return err
 		}
 		if r.Valuation != nil {
-			if r.Valuation.Value.Validate() != nil || r.Valuation.Value.Sign() <= 0 || strings.TrimSpace(r.Valuation.Ref) == "" || validateEffects(r.Valuation.Value, r.Valuation.Members, r.Valuation.Unallocated) != nil || validateCategories(r.Valuation.Value, r.Valuation.Categories) != nil {
+			if r.Valuation.Value.Validate() != nil || r.Valuation.Value.Sign() < 0 || strings.TrimSpace(r.Valuation.Ref) == "" || r.Valuation.Basis == nil || r.Valuation.Basis.Ref != r.Valuation.Ref || r.Valuation.Basis.Purchase.Validate() != nil || r.Valuation.Basis.Purchase.Sign() <= 0 || r.Valuation.Basis.Purchase.Asset() != r.Amount.Asset() || r.Valuation.Basis.Value.Validate() != nil || r.Valuation.Basis.Value.Sign() <= 0 || r.Valuation.Basis.Value.Asset() != r.Valuation.Value.Asset() || validateEffects(r.Valuation.Value, r.Valuation.Members, r.Valuation.Unallocated) != nil || validateCategories(r.Valuation.Value, r.Valuation.Categories) != nil {
 				return ErrInvalidRefund
 			}
 		}
@@ -119,7 +125,7 @@ func (r Refund) SameCalculation(other Refund) bool {
 	return r.Valuation.Ref == other.Valuation.Ref && sameMoney(r.Valuation.Value, other.Valuation.Value) && sameMembers(r.Valuation.Members, other.Valuation.Members) && sameCategories(r.Valuation.Categories, other.Valuation.Categories) && sameMoneySlice(r.Valuation.Unallocated, other.Valuation.Unallocated)
 }
 
-func Calculate(purchase, refund ledger.Revision, requested []ItemPortion, refunded money.Money, refundedItems map[string]money.Money, basis *ValuationBasis, revision uint64, reason string, actor household.UserID, recordedAt calendar.Instant) (Refund, error) {
+func Calculate(purchase, refund ledger.Revision, requested []ItemPortion, refunded money.Money, refundedItems map[string]money.Money, valuation *ValuationShare, revision uint64, reason string, actor household.UserID, recordedAt calendar.Instant) (Refund, error) {
 	purchaseAmount, err := principal(purchase, -1)
 	if err != nil || purchase.Type != ledger.Expense {
 		return Refund{}, ErrInvalidRefund
@@ -240,8 +246,8 @@ func Calculate(purchase, refund ledger.Revision, requested []ItemPortion, refund
 		}
 		sortEffects(&result)
 	}
-	if basis != nil {
-		valuation, valuationErr := valueRefund(*basis, purchaseAmount, refundAmount, result)
+	if valuation != nil {
+		valuation, valuationErr := valueRefund(*valuation, result)
 		if valuationErr != nil {
 			return Refund{}, valuationErr
 		}
@@ -327,26 +333,62 @@ func allocate(total money.Money, snapshot ledger.AllocationSnapshot) ([]MemberAm
 	return members, unknown, nil
 }
 
-func valueRefund(basis ValuationBasis, purchaseAmount, refundAmount money.Money, result Refund) (Valuation, error) {
-	if basis.Purchase.Validate() != nil || basis.Value.Validate() != nil || basis.Purchase.Asset() != purchaseAmount.Asset() || strings.TrimSpace(basis.Ref) == "" {
-		return Valuation{}, ErrInvalidRefund
+func AllocateValuations(basis ValuationBasis, purchase money.Money, refunds map[string]money.Money) (map[string]ValuationShare, error) {
+	if basis.Purchase.Validate() != nil || basis.Value.Validate() != nil || basis.Purchase.Asset() != purchase.Asset() || strings.TrimSpace(basis.Ref) == "" {
+		return nil, ErrInvalidRefund
 	}
-	if compared, _ := basis.Purchase.Compare(purchaseAmount); compared != 0 {
-		return Valuation{}, ErrInvalidRefund
+	if compared, _ := basis.Purchase.Compare(purchase); compared != 0 {
+		return nil, ErrInvalidRefund
 	}
-	remaining, _ := purchaseAmount.Subtract(refundAmount)
-	weights := []money.Weight{{ID: "refund", Value: refundAmount.Amount()}, {ID: "remaining", Value: remaining.Amount()}}
+	total, _ := money.NewMoney("0", purchase.Asset())
+	weights := make([]money.Weight, 0, len(refunds)+1)
+	for id, amount := range refunds {
+		if id == "" || amount.Validate() != nil || amount.Asset() != purchase.Asset() || amount.Sign() <= 0 {
+			return nil, ErrInvalidRefund
+		}
+		var err error
+		total, err = total.Add(amount)
+		if err != nil {
+			return nil, ErrInvalidRefund
+		}
+		weights = append(weights, money.Weight{ID: id, Value: amount.Amount()})
+	}
+	remaining, err := purchase.Subtract(total)
+	if err != nil || remaining.Sign() < 0 {
+		return nil, ErrRefundExceedsPurchase
+	}
+	if remaining.Sign() > 0 {
+		weights = append(weights, money.Weight{ID: "remaining", Value: remaining.Amount()})
+	}
+	if len(refunds) == 0 {
+		return map[string]ValuationShare{}, nil
+	}
 	parts, err := basis.Value.Allocate(weights, allocationScale(basis.Value, weights))
 	if err != nil {
+		return nil, ErrInvalidRefund
+	}
+	result := make(map[string]ValuationShare, len(refunds))
+	for _, part := range parts {
+		if _, ok := refunds[part.ID]; ok {
+			copy := basis
+			result[part.ID] = ValuationShare{Basis: copy, Value: part.Money}
+		}
+	}
+	return result, nil
+}
+
+func valueRefund(share ValuationShare, result Refund) (Valuation, error) {
+	if share.Value.Validate() != nil || share.Value.Sign() < 0 || strings.TrimSpace(share.Basis.Ref) == "" {
 		return Valuation{}, ErrInvalidRefund
 	}
-	value := parts[0].Money
-	v := Valuation{Value: value, Ref: basis.Ref}
-	v.Members, v.Unallocated, err = scaleMembers(value, result.Members, result.Unallocated)
+	basis := share.Basis
+	v := Valuation{Value: share.Value, Ref: basis.Ref, Basis: &basis}
+	var err error
+	v.Members, v.Unallocated, err = scaleMembers(share.Value, result.Members, result.Unallocated)
 	if err != nil {
 		return Valuation{}, err
 	}
-	v.Categories, err = scaleCategories(value, result.Categories)
+	v.Categories, err = scaleCategories(share.Value, result.Categories)
 	return v, err
 }
 

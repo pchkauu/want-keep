@@ -6,13 +6,13 @@
 
 Миграция 019 хранит текущую связь, immutable revisions, точные item portions, member/category effects, frozen historical valuation и отдельный review request каждой содержательной revision связи. Составные household FK связывают обе операции, purchase/refund revisions, receipt items, memberships и categories. Проверка общей и позиционной невозвращённой суммы выполняется в household-транзакции под существующей блокировкой. Clarification сохраняет подтверждённое поступление без вымышленной позиции или долей.
 
-Общий ledger Writer пересчитывает связь после correction, exclusion, reversal, cancellation и undo. Неизменившийся расчёт не создаёт revision или событие. Историческая оценка использует только сохранённое основание покупки; отсутствие основания остаётся `historical_basis_unavailable`. OpenAPI возвращает cash date, исходный месяц, остаток, returned items, распределение и known/unavailable valuation.
+Общий ledger Writer пересчитывает связь после correction, exclusion, reversal, cancellation и undo. Связанные refund revisions загружаются одним пакетом; совокупные ограничения и historical valuation рассчитываются одним проходом. Неизменившийся расчёт не создаёт revision или событие. Единое largest-remainder распределение между всеми активными возвратами и остатком сохраняет frozen reporting total без накопления округления. Исторические detail/history читают связь на момент ledger revision; текущий список загружает связи пакетно. Отсутствие основания остаётся `historical_basis_unavailable`.
 
 ## Матрица проверок
 
 Обязательные команды кандидата: `make check`, `make check-contracts`, `make test-integration AREA=refunds`, `make test-refunds-race`, затронутые integration/race/privacy suites и `git diff --check`. PostgreSQL 17.11 обязателен; отсутствие БД завершает refund suite ошибкой. Точные результаты опубликованного кандидата фиксируются в PR и Issue.
 
-Проверки покрывают RUB 1000 в августе и возврат RUB 400 в сентябре; USD 10 с сохранённой оценкой RUB 900 и возврат USD 4 с эффектом RUB 360; шесть активов; комиссии третьего актива; чек со скидкой и точными item portions; clarification без распределения; общий и позиционный cap; конкурентные команды; idempotent replay; correction, exclusion, undo и reversal покупки/возврата; review requests; и связь существующей refund-операции без второго движения.
+Проверки покрывают RUB 1000 в августе и возврат RUB 400 в сентябре; USD 10 с сохранённой оценкой RUB 900 и возврат USD 4 с эффектом RUB 360; шесть частичных возвратов сохраняют frozen total RUB 1 точно; историческая revision возврата сохраняет прежнюю сумму; шесть активов; комиссии третьего актива; чек со скидкой и точными item portions; clarification без распределения; общий и позиционный cap; конкурентные команды; idempotent replay; correction, exclusion, undo и reversal покупки/возврата; review requests; и связь существующей refund-операции без второго движения.
 
 ## Границы критериев
 

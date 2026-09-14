@@ -46,7 +46,12 @@ func TestPurchaseLevelRefundPreservesMonthAllocationAndHistoricalValue(t *testin
 	r := refund("4", money.USD)
 	zero := cash("0", money.USD)
 	basis := expenses.ValuationBasis{Purchase: cash("10", money.USD), Value: cash("900", money.RUB), Ref: "rate-observation"}
-	result, err := expenses.Calculate(p, r, nil, zero, nil, &basis, 1, "returned", household.UserID("user"), r.RecordedAt)
+	shares, err := expenses.AllocateValuations(basis, cash("10", money.USD), map[string]money.Money{"refund": cash("4", money.USD)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	share := shares["refund"]
+	result, err := expenses.Calculate(p, r, nil, zero, nil, &share, 1, "returned", household.UserID("user"), r.RecordedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +60,28 @@ func TestPurchaseLevelRefundPreservesMonthAllocationAndHistoricalValue(t *testin
 	}
 	if len(result.Members) != 2 || !equal(result.Members[0].Amount, cash("1.6", money.USD)) || !equal(result.Members[1].Amount, cash("2.4", money.USD)) {
 		t.Fatalf("unexpected members: %#v", result.Members)
+	}
+}
+
+func TestHistoricalValueAllocationPreservesFrozenTotalAcrossPartialRefunds(t *testing.T) {
+	basis := expenses.ValuationBasis{Purchase: cash("6", money.USD), Value: cash("1", money.RUB), Ref: "rate-observation"}
+	amounts := map[string]money.Money{}
+	for _, id := range []string{"f", "e", "d", "c", "b", "a"} {
+		amounts[id] = cash("1", money.USD)
+	}
+	shares, err := expenses.AllocateValuations(basis, cash("6", money.USD), amounts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	total := cash("0", money.RUB)
+	for _, id := range []string{"a", "b", "c", "d", "e", "f"} {
+		total, err = total.Add(shares[id].Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !equal(total, cash("1", money.RUB)) {
+		t.Fatalf("allocated value=%s", total.Amount())
 	}
 }
 
