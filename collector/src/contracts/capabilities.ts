@@ -14,11 +14,11 @@ import {
   equal,
   fail,
   integer,
+  nonblankText,
   oneOf,
   parseInstant,
   requiredKeys,
   strictObject,
-  text,
   uniqueArray,
 } from "./validation.js";
 
@@ -54,8 +54,7 @@ export function parseCapabilityManifest(value: unknown): CapabilityManifest {
     requiredKeys(log, ["product", "namespace", "recordKinds"]);
     oneOf(log.product, products);
     if (!productSet.has(log.product as string)) fail();
-    text(log.namespace);
-    if ((log.namespace as string).trim() === "") fail();
+    nonblankText(log.namespace);
     const key = JSON.stringify([log.product, log.namespace]);
     if (logKeys.has(key)) fail();
     logKeys.add(key);

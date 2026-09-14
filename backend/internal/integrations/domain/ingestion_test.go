@@ -134,6 +134,24 @@ func TestPageBoundsTotalPostings(t *testing.T) {
 	}
 }
 
+func TestPageRejectsDuplicateBalanceSnapshot(t *testing.T) {
+	coverage, _ := reporting.NewCoverage(reporting.Complete, nil)
+	reference := ingestion.AccountReference{ExternalAccountID: "external", Product: "current", AssetCode: "RUB"}
+	instant, _ := calendar.ParseInstant("2026-09-08T12:00:00Z")
+	balance := ingestion.BalanceSnapshot{Reference: reference, LogNamespace: "balances", SourceAsOf: instant, EvidenceID: "raw"}
+	page := ingestion.Page{
+		Token: token(), Complete: true, Coverage: coverage, Evidence: []ingestion.Evidence{evidence()},
+		Records: []ingestion.Record{
+			{Kind: ingestion.AccountRecordKind, Account: &ingestion.AccountRecord{Reference: reference, LogNamespace: "accounts", EvidenceID: "raw"}, CanonicalPayload: []byte("account")},
+			{Kind: ingestion.BalanceRecordKind, Balance: &balance, CanonicalPayload: []byte("first")},
+			{Kind: ingestion.BalanceRecordKind, Balance: &balance, CanonicalPayload: []byte("second")},
+		},
+	}
+	if !errors.Is(page.Validate(), ingestion.ErrInvalidContract) {
+		t.Fatal("duplicate balance snapshot was accepted")
+	}
+}
+
 func TestEvidenceRequiresMatchingDigestAndBoundsTheBatch(t *testing.T) {
 	invalid := evidence()
 	invalid.Digest = strings.Repeat("0", 64)

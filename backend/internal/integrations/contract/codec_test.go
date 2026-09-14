@@ -188,6 +188,23 @@ func TestDecoderRejectsUnsafeShapesAndEchoChanges(t *testing.T) {
 			aliases := records[0].(map[string]any)["account"].(map[string]any)["aliases"].([]any)
 			aliases[0].(map[string]any)["label"] = "٤٢٤٢"
 		},
+		"blank account name": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			records[0].(map[string]any)["account"].(map[string]any)["name"] = " \t"
+		},
+		"blank card alias label": func(root map[string]any) {
+			records := root["page"].(map[string]any)["records"].([]any)
+			aliases := records[0].(map[string]any)["account"].(map[string]any)["aliases"].([]any)
+			aliases[0].(map[string]any)["label"] = " \t"
+		},
+		"duplicate balance snapshot": func(root map[string]any) {
+			page := root["page"].(map[string]any)
+			records := page["records"].([]any)
+			encoded, _ := json.Marshal(records[1])
+			var duplicate any
+			_ = json.Unmarshal(encoded, &duplicate)
+			page["records"] = append(records, duplicate)
+		},
 		"missing account descriptor": func(root map[string]any) {
 			page := root["page"].(map[string]any)
 			records := page["records"].([]any)

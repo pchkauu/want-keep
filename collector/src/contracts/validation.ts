@@ -90,6 +90,17 @@ export function text(
     fail();
 }
 
+export function nonblankText(
+  value: unknown,
+  maximum = MAX_TEXT,
+): asserts value is string {
+  text(value, maximum);
+  if (
+    !Array.from(value).some((character) => !/\p{White_Space}/u.test(character))
+  )
+    fail();
+}
+
 export function textOrEmpty(value: unknown): asserts value is string {
   if (
     typeof value !== "string" ||

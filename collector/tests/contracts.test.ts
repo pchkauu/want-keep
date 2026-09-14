@@ -310,6 +310,35 @@ describe("collector ingestion contract v10", () => {
     namedAccount.name = "invalid\u0000text";
     expect(() => parseSyncResult(unicode, parseSyncRequest(request))).toThrow();
 
+    namedAccount.name = " \t";
+    expect(() => parseSyncResult(unicode, parseSyncRequest(request))).toThrow();
+
+    const blankAlias = structuredClone(golden) as {
+      page: {
+        records: Array<{ account?: { aliases: Array<{ label: string }> } }>;
+      };
+    };
+    const alias = blankAlias.page.records.find(
+      (record) => record.account?.aliases.length,
+    )?.account?.aliases[0];
+    if (alias === undefined) throw new Error("invalid test fixture");
+    alias.label = " \t";
+    expect(() =>
+      parseSyncResult(blankAlias, parseSyncRequest(request)),
+    ).toThrow();
+
+    const duplicateBalance = structuredClone(golden) as {
+      page: { records: Array<{ balanceSnapshot?: unknown }> };
+    };
+    const balanceRecord = duplicateBalance.page.records.find(
+      (record) => record.balanceSnapshot !== undefined,
+    );
+    if (balanceRecord === undefined) throw new Error("invalid test fixture");
+    duplicateBalance.page.records.push(structuredClone(balanceRecord));
+    expect(() =>
+      parseSyncResult(duplicateBalance, parseSyncRequest(request)),
+    ).toThrow();
+
     const missingDescriptor = structuredClone(golden) as {
       page: { records: Array<{ recordType: string }> };
     };

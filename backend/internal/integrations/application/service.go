@@ -126,7 +126,11 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 		}
 		page := admission.Page{EvidenceRef: batch.PageReference, Cursor: result.Page.Token.Cursor, NextCursor: result.Page.NextCursor, Coverage: string(result.Page.Coverage.State()), Gaps: result.Page.Coverage.Reasons(), Complete: result.Page.Complete}
 		applied, err := s.gate.CommitPage(ctx, p, issued, page, func(tx context.Context) error {
-			return s.applyPage(tx, p, issued, *result.Page, batch.FetchedAt, references)
+			applyErr := s.applyPage(tx, p, issued, *result.Page, batch.FetchedAt, references)
+			if errors.Is(applyErr, ingestion.ErrInvalidContract) {
+				return errors.Join(ingestion.ErrResultRejected, applyErr)
+			}
+			return applyErr
 		})
 		if err != nil {
 			if errors.Is(err, transaction.ErrCommitOutcomeUnknown) {
@@ -136,7 +140,10 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 			if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
 				return false, nil, err
 			}
-			return false, nil, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
+			if errors.Is(err, ingestion.ErrResultRejected) {
+				return false, nil, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
+			}
+			return false, nil, err
 		}
 		state := ingestion.EvidenceStale
 		if applied {
@@ -161,7 +168,7 @@ func (s *Service) Ingest(ctx context.Context, p household.Principal, issued jobs
 		if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
 			return false, result.Failure, err
 		}
-		return false, result.Failure, errors.Join(err, s.retainRejectedEvidence(ctx, p, issued, batch))
+		return false, result.Failure, err
 	}
 	disposition := ingestion.EvidenceStale
 	if applied {
@@ -425,7 +432,7 @@ func (s *Service) prepareTransactions(p household.Principal, issued jobs.Job, pa
 		}
 		groups[key] = append(groups[key], pageTransaction{record: *record.Transaction, canonical: record.CanonicalPayload, hash: hash})
 	}
-	prepared := make([]pageTransaction, 0, len(order))
+	prepared := make([]pageTransaction, 0, len(page.Records))
 	for _, key := range order {
 		group := groups[key]
 		identical := true
@@ -436,7 +443,7 @@ func (s *Service) prepareTransactions(p household.Principal, issued jobs.Job, pa
 			}
 		}
 		if identical {
-			prepared = append(prepared, group[0])
+			prepared = append(prepared, group...)
 			continue
 		}
 		for _, transaction := range group {

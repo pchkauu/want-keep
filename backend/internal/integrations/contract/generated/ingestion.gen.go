@@ -515,7 +515,7 @@ type AccountRecord struct {
 // AssetCode defines model for AssetCode.
 type AssetCode = string
 
-// BalanceSnapshotRecord defines model for BalanceSnapshotRecord.
+// BalanceSnapshotRecord A page contains at most one balance snapshot for each account reference.
 type BalanceSnapshotRecord struct {
 	AssetCode         AssetCode                      `json:"assetCode"`
 	Available         SourceAmount                   `json:"available"`
@@ -617,7 +617,9 @@ type HistoryCapability struct {
 
 // IngestionRecord defines model for IngestionRecord.
 type IngestionRecord struct {
-	Account         *AccountRecord         `json:"account,omitempty"`
+	Account *AccountRecord `json:"account,omitempty"`
+
+	// BalanceSnapshot A page contains at most one balance snapshot for each account reference.
 	BalanceSnapshot *BalanceSnapshotRecord `json:"balanceSnapshot,omitempty"`
 	RecordType      RecordKind             `json:"recordType"`
 	Transaction     *TransactionRecord     `json:"transaction,omitempty"`

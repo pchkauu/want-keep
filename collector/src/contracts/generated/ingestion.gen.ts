@@ -124,6 +124,7 @@ export interface components {
       aliases?: components["schemas"]["CardAlias"][];
       evidenceId: string;
     };
+    /** @description A page contains at most one balance snapshot for each account reference. */
     BalanceSnapshotRecord: {
       externalAccountId: string;
       product: components["schemas"]["Product"];

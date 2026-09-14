@@ -363,7 +363,7 @@ func accountFromGenerated(source generated.AccountRecord) (ingestion.AccountReco
 			return result, ingestion.ErrInvalidContract
 		}
 		for _, alias := range *source.Aliases {
-			if !validText(alias.Id) || !validTextLimit(alias.Label, 100) || !account.SafeCardAliasLabel(alias.Label, alias.LastFour) {
+			if !validText(alias.Id) || !validTextLimit(alias.Label, 100) || strings.TrimSpace(alias.Label) == "" || !account.SafeCardAliasLabel(alias.Label, alias.LastFour) {
 				return result, ingestion.ErrInvalidContract
 			}
 			result.Aliases = append(result.Aliases, ingestion.CardAlias{ID: alias.Id, Label: alias.Label, LastFour: alias.LastFour})

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -262,9 +263,10 @@ func TestSamePageSourceIdentityIsPreflightedBeforeFinancialApply(t *testing.T) {
 		changeAmount bool
 		wantPostings int
 		wantPartial  bool
+		wantEvidence int
 	}{
-		{name: "identical duplicate", wantPostings: 5},
-		{name: "conflicting fact", changeAmount: true, wantPostings: 4, wantPartial: true},
+		{name: "identical duplicate", wantPostings: 5, wantEvidence: 2},
+		{name: "conflicting fact", changeAmount: true, wantPostings: 4, wantPartial: true, wantEvidence: 2},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -283,6 +285,13 @@ func TestSamePageSourceIdentityIsPreflightedBeforeFinancialApply(t *testing.T) {
 					_ = json.Unmarshal(encoded, &duplicate)
 					if test.changeAmount {
 						duplicate["transaction"].(map[string]any)["postings"].([]any)[0].(map[string]any)["money"] = "-700"
+					} else {
+						evidence := page["evidence"].([]any)[0].(map[string]any)
+						duplicateEvidence := maps.Clone(evidence)
+						duplicateEvidence["id"] = "raw-duplicate"
+						duplicateEvidence["locator"] = "synthetic://duplicate"
+						page["evidence"] = append(page["evidence"].([]any), duplicateEvidence)
+						duplicate["transaction"].(map[string]any)["evidenceId"] = "raw-duplicate"
 					}
 					page["records"] = append(records, duplicate)
 					return
@@ -302,6 +311,10 @@ func TestSamePageSourceIdentityIsPreflightedBeforeFinancialApply(t *testing.T) {
 			}
 			if test.wantPartial != (coverage == "partial" && contains(gaps, "source_ambiguous")) {
 				t.Fatal("same-page ambiguity coverage mismatch", coverage, gaps)
+			}
+			var evidenceCount int
+			if err = f.admin.QueryRow(testContext, `SELECT count(*) FROM want_keep.source_provenance p JOIN want_keep.source_records s ON (s.household_id,s.id)=(p.household_id,p.source_id) WHERE s.household_id=$1 AND s.provider_record_id='expense-1'`, f.family.ID).Scan(&evidenceCount); err != nil || evidenceCount != test.wantEvidence {
+				t.Fatal("source provenance was not preserved", evidenceCount, err)
 			}
 		})
 	}

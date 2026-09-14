@@ -246,6 +246,7 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
     EvidenceBlob:
       type: object
       additionalProperties: false
@@ -269,6 +270,7 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
     CardAlias:
       type: object
       additionalProperties: false
@@ -278,10 +280,12 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         label:
           type: string
           minLength: 1
           maxLength: 100
+          pattern: '.*\S.*'
         lastFour:
           type: string
           pattern: "^[0-9]{4}$"
@@ -303,12 +307,14 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         product:
           $ref: "#/components/schemas/Product"
         logNamespace:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         assetCode:
           $ref: "#/components/schemas/AssetCode"
         network:
@@ -318,6 +324,7 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         openingDate:
           $ref: "#/components/schemas/CalendarDate"
         aliases:
@@ -331,6 +338,7 @@ components:
           maxLength: 128
     BalanceSnapshotRecord:
       type: object
+      description: A page contains at most one balance snapshot for each account reference.
       additionalProperties: false
       required:
         [
@@ -354,12 +362,14 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         product:
           $ref: "#/components/schemas/Product"
         logNamespace:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         assetCode:
           $ref: "#/components/schemas/AssetCode"
         network:
@@ -397,6 +407,7 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         product:
           $ref: "#/components/schemas/Product"
         network:
@@ -437,16 +448,19 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         product:
           $ref: "#/components/schemas/Product"
         logNamespace:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         providerRecordId:
           type: string
           minLength: 1
           maxLength: 2000
+          pattern: '.*\S.*'
         classification:
           type: string
           enum: [new, correction, ambiguous]

@@ -25,6 +25,7 @@ import {
   fail,
   instant,
   integer,
+  nonblankText,
   oneOf,
   optionalText,
   optionalTextOrEmpty,
@@ -161,6 +162,7 @@ function page(value: unknown, expected: SyncRequest): void {
   const evidenceIDs = evidence(object.evidence);
   let postingCount = 0;
   const descriptors = new Set<string>();
+  const balances = new Set<string>();
   const references = new Set<string>();
   array(object.records, 0, MAX_RECORDS).forEach((record) => {
     const summary = ingestionRecord(record, evidenceIDs);
@@ -169,6 +171,10 @@ function page(value: unknown, expected: SyncRequest): void {
     if (summary.descriptor !== undefined) {
       if (descriptors.has(summary.descriptor)) fail();
       descriptors.add(summary.descriptor);
+    }
+    if (summary.balance !== undefined) {
+      if (balances.has(summary.balance)) fail();
+      balances.add(summary.balance);
     }
     summary.references.forEach((reference) => references.add(reference));
   });
@@ -271,6 +277,7 @@ function echoedToken(
 interface RecordSummary {
   postingCount: number;
   descriptor?: string;
+  balance?: string;
   references: string[];
 }
 
@@ -304,11 +311,13 @@ function ingestionRecord(
     object.balanceSnapshot !== undefined
   ) {
     balanceRecord(object.balanceSnapshot, evidenceIDs);
+    const reference = accountKey(
+      object.balanceSnapshot as Record<string, unknown>,
+    );
     return {
       postingCount: 0,
-      references: [
-        accountKey(object.balanceSnapshot as Record<string, unknown>),
-      ],
+      balance: reference,
+      references: [reference],
     };
   } else if (
     object.recordType === "transaction" &&
@@ -345,8 +354,8 @@ function accountRecord(value: unknown, evidenceIDs: Set<string>): void {
     "evidenceId",
   ]);
   accountReference(object);
-  text(object.logNamespace);
-  text(object.name);
+  nonblankText(object.logNamespace);
+  nonblankText(object.name);
   date(object.openingDate);
   evidenceReference(object.evidenceId, evidenceIDs);
   if (object.aliases !== undefined)
@@ -388,7 +397,7 @@ function balanceRecord(value: unknown, evidenceIDs: Set<string>): void {
     "evidenceId",
   ]);
   accountReference(object);
-  text(object.logNamespace);
+  nonblankText(object.logNamespace);
   instant(object.sourceAsOf);
   for (const field of ["owned", "available", "locked", "debt", "creditLimit"])
     sourceAmount(object[field], object.assetCode);
@@ -432,10 +441,10 @@ function transactionRecord(
     "evidenceId",
     "postings",
   ]);
-  text(object.externalAccountId);
+  nonblankText(object.externalAccountId);
   oneOf(object.product, products);
-  text(object.logNamespace);
-  text(object.providerRecordId);
+  nonblankText(object.logNamespace);
+  nonblankText(object.providerRecordId);
   oneOf(object.classification, new Set(["new", "correction", "ambiguous"]));
   oneOf(
     object.providerState,
@@ -537,7 +546,7 @@ function evidence(value: unknown): Set<string> {
       createHash("sha256").update(raw).digest("hex") !== digest
     )
       fail();
-    text(object.locator);
+    nonblankText(object.locator);
   });
   if (decodedBytes > MAX_EVIDENCE_BYTES) fail();
   return ids;
@@ -559,7 +568,7 @@ function sourceAmount(value: unknown, assetCode: unknown): void {
     if (object.reason !== undefined) fail();
   } else if (object.state === "unknown" || object.state === "unavailable") {
     requiredKeys(object, ["reason"]);
-    text(object.reason);
+    nonblankText(object.reason);
     if (object.amount !== undefined) fail();
   } else fail();
 }
@@ -637,7 +646,7 @@ function replayRange(value: unknown): void {
 }
 
 function accountReference(object: Record<string, unknown>): void {
-  text(object.externalAccountId);
+  nonblankText(object.externalAccountId);
   oneOf(object.product, products);
   asset(object.assetCode);
   optionalTextOrEmpty(object.network);
@@ -655,8 +664,8 @@ function accountKey(object: Record<string, unknown>): string {
 function cardAlias(value: unknown): void {
   const object = strictObject(value, ["id", "label", "lastFour"]);
   requiredKeys(object, ["id", "label", "lastFour"]);
-  text(object.id);
-  text(object.label, 100);
+  nonblankText(object.id);
+  nonblankText(object.label, 100);
   if (
     typeof object.lastFour !== "string" ||
     !/^[0-9]{4}$/.test(object.lastFour)

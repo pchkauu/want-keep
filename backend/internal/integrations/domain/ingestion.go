@@ -30,6 +30,7 @@ const (
 var (
 	ErrInvalidContract = errors.New("invalid ingestion contract")
 	ErrEvidence        = errors.New("evidence storage failed")
+	ErrResultRejected  = errors.New("ingestion result rejected")
 	sha256Syntax       = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
@@ -410,7 +411,7 @@ func (p Page) Validate() error {
 		return ErrInvalidContract
 	}
 	totalPostings := 0
-	descriptors, references := map[string]bool{}, map[string]bool{}
+	descriptors, balances, references := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, record := range p.Records {
 		count := 0
 		var evidenceID string
@@ -441,10 +442,12 @@ func (p Page) Validate() error {
 		if record.Balance != nil {
 			count++
 			evidenceID = record.Balance.EvidenceID
-			if err := record.Balance.Reference.Validate(); err != nil || !validText(record.Balance.LogNamespace) {
+			key := record.Balance.Reference.Key()
+			if err := record.Balance.Reference.Validate(); err != nil || !validText(record.Balance.LogNamespace) || balances[key] {
 				return ErrInvalidContract
 			}
-			references[record.Balance.Reference.Key()] = true
+			balances[key] = true
+			references[key] = true
 		}
 		if record.Transaction != nil {
 			count++
