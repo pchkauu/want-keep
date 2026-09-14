@@ -12,7 +12,10 @@ import (
 	money "github.com/pchkauu/want-keep/backend/internal/money/domain"
 )
 
-const MaxReimbursementRevision = uint64(9007199254740991)
+const (
+	MaxReimbursementRevision    = uint64(9007199254740991)
+	MaxReimbursementSettlements = 1000
+)
 
 var (
 	ErrInvalidReimbursement  = errors.New("invalid reimbursement")
@@ -66,15 +69,15 @@ type ReimbursementSettlement struct {
 	RecordedAt                                           calendar.Instant
 }
 
-func (s ReimbursementSettlement) Validate(asset money.Asset) error {
+func (s ReimbursementSettlement) Validate() error {
 	fingerprint, fingerprintErr := hex.DecodeString(s.Fingerprint)
 	if s.ID == "" || s.DecisionID == "" || s.TransferID == "" || !validReimbursementText(s.TransferKey) || fingerprintErr != nil || len(fingerprint) != 32 || s.TransferRevision < 1 || s.TransferRevision > MaxReimbursementRevision || s.ActorID == "" || s.RecordedAt.String() == "" || !slices.Contains([]SettlementState{SettlementActive, SettlementStale, SettlementUndone}, s.State) || len(s.OperationIDs) < 1 || len(s.OperationIDs) > 100 {
 		return ErrInvalidReimbursement
 	}
-	if s.TransferAmount.Validate() != nil || s.SettledAmount.Validate() != nil || s.TransferAmount.Sign() <= 0 || s.SettledAmount.Sign() <= 0 || s.SettledAmount.Asset() != asset {
+	if s.TransferAmount.Validate() != nil || s.SettledAmount.Validate() != nil || s.TransferAmount.Sign() <= 0 || s.SettledAmount.Sign() <= 0 {
 		return ErrInvalidReimbursement
 	}
-	if s.TransferAmount.Asset() == asset {
+	if s.TransferAmount.Asset() == s.SettledAmount.Asset() {
 		compared, err := s.TransferAmount.Compare(s.SettledAmount)
 		if err != nil || compared != 0 {
 			return ErrInvalidReimbursement
@@ -123,14 +126,20 @@ func (r Reimbursement) Validate() error {
 			return ErrInvalidReimbursement
 		}
 	}
+	if len(r.Settlements) > MaxReimbursementSettlements {
+		return ErrInvalidReimbursement
+	}
 	settled, _ := money.NewMoney("0", r.Principal.Asset())
 	seen := map[string]bool{}
 	for _, settlement := range r.Settlements {
-		if seen[settlement.ID] || settlement.Validate(r.Principal.Asset()) != nil {
+		if seen[settlement.ID] || settlement.Validate() != nil {
 			return ErrInvalidReimbursement
 		}
 		seen[settlement.ID] = true
 		if settlement.State == SettlementActive {
+			if settlement.SettledAmount.Asset() != r.Principal.Asset() {
+				return ErrInvalidReimbursement
+			}
 			var err error
 			settled, err = settled.Add(settlement.SettledAmount)
 			if err != nil {
@@ -217,7 +226,7 @@ func (r Reimbursement) Correct(change ReimbursementChange, actor household.UserI
 }
 
 func (r Reimbursement) AddSettlement(settlement ReimbursementSettlement, actor household.UserID, at calendar.Instant, decisionID string) (Reimbursement, error) {
-	if r.Voided || r.AttentionReason != "" || settlement.State != SettlementActive || settlement.DecisionID != decisionID {
+	if r.Voided || r.AttentionReason != "" || len(r.Settlements) >= MaxReimbursementSettlements || settlement.State != SettlementActive || settlement.DecisionID != decisionID {
 		return r, ErrReimbursementConflict
 	}
 	next := r.clone()
@@ -253,7 +262,7 @@ func (r Reimbursement) MarkSettlement(settlementID string, state SettlementState
 }
 
 func (r Reimbursement) RequireAttention(reason string, actor household.UserID, at calendar.Instant, decisionID string) (Reimbursement, error) {
-	if r.Voided || reason == "" || reason == r.AttentionReason {
+	if reason == "" || reason == r.AttentionReason {
 		return r, ErrReimbursementNoChange
 	}
 	next := r.clone()

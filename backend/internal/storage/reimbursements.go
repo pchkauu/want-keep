@@ -83,10 +83,28 @@ func (s *Store) SaveReimbursement(ctx context.Context, principal household.Princ
 }
 
 func (s *Store) saveReimbursementSettlements(ctx context.Context, tx pgx.Tx, family household.HouseholdID, value ledger.Reimbursement, expected uint64, decisionID string) error {
+	states := map[string]ledger.SettlementState{}
+	rows, err := tx.Query(ctx, `SELECT s.id::text,e.state FROM want_keep.reimbursement_settlements s JOIN LATERAL(SELECT state FROM want_keep.reimbursement_settlement_events WHERE household_id=s.household_id AND settlement_id=s.id ORDER BY reimbursement_revision DESC LIMIT 1)e ON true WHERE s.household_id=$1 AND s.reimbursement_id=$2`, family, value.ID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var id string
+		var state ledger.SettlementState
+		if err = rows.Scan(&id, &state); err != nil {
+			rows.Close()
+			return err
+		}
+		states[id] = state
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
 	for _, settlement := range value.Settlements {
-		var current ledger.SettlementState
-		err := tx.QueryRow(ctx, `SELECT e.state FROM want_keep.reimbursement_settlements s JOIN LATERAL(SELECT state FROM want_keep.reimbursement_settlement_events WHERE household_id=s.household_id AND settlement_id=s.id ORDER BY reimbursement_revision DESC LIMIT 1)e ON true WHERE s.household_id=$1 AND s.id=$2`, family, settlement.ID).Scan(&current)
-		if errors.Is(err, pgx.ErrNoRows) {
+		current, found := states[settlement.ID]
+		if !found {
 			at, ns := splitInstant(settlement.RecordedAt)
 			_, err = tx.Exec(ctx, `INSERT INTO want_keep.reimbursement_settlements(household_id,id,reimbursement_id,created_revision,decision_id,transfer_id,transfer_revision,transfer_key,fingerprint,transfer_asset,transfer_amount,settled_asset,settled_amount,actor_id,recorded_at,recorded_ns) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::numeric,$12,$13::numeric,$14,$15,$16)`, family, settlement.ID, value.ID, value.Revision, settlement.DecisionID, settlement.TransferID, settlement.TransferRevision, settlement.TransferKey, settlement.Fingerprint, settlement.TransferAmount.Asset(), settlement.TransferAmount.Amount(), settlement.SettledAmount.Asset(), settlement.SettledAmount.Amount(), settlement.ActorID, at, ns)
 			if err != nil {
@@ -102,8 +120,6 @@ func (s *Store) saveReimbursementSettlements(ctx context.Context, tx pgx.Tx, fam
 				}
 			}
 			current = ""
-		} else if err != nil {
-			return err
 		}
 		if current != settlement.State {
 			if expected == 0 && settlement.State != ledger.SettlementActive || current == "" && settlement.State != ledger.SettlementActive {
@@ -141,92 +157,152 @@ func (s *Store) ReimbursementRevision(ctx context.Context, principal household.P
 }
 
 func (s *Store) reimbursementRevision(ctx context.Context, q reader, principal household.Principal, id string, revision uint64) (ledger.Reimbursement, error) {
-	value := ledger.Reimbursement{ID: id, Revision: revision, FieldVersions: map[ledger.ReimbursementField]uint64{}}
-	var principalAmount, outstanding, asset string
-	var expenseID *string
-	var expenseRevision *uint64
-	var recordedAt time.Time
-	var recordedNS int16
-	err := q.QueryRow(ctx, `SELECT creditor_member_id,debtor_member_id,asset,principal::text,outstanding::text,state,voided,expense_id::text,expense_revision,reason,attention_reason,actor_id,decision_id,recorded_at,recorded_ns FROM want_keep.reimbursement_revisions WHERE household_id=$1 AND reimbursement_id=$2 AND revision=$3`, principal.HouseholdID(), id, revision).Scan(&value.CreditorMemberID, &value.DebtorMemberID, &asset, &principalAmount, &outstanding, &value.State, &value.Voided, &expenseID, &expenseRevision, &value.Reason, &value.AttentionReason, &value.ActorID, &value.DecisionID, &recordedAt, &recordedNS)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return value, ledger.ErrNotFound
-	}
+	values, err := s.reimbursementRevisions(ctx, q, principal, []reimbursementRef{{ID: id, Revision: revision}})
 	if err != nil {
-		return value, err
+		return ledger.Reimbursement{}, err
 	}
-	value.Principal, err = money.NewMoney(principalAmount, money.Asset(asset))
-	if err != nil {
-		return value, err
-	}
-	value.Outstanding, err = money.NewMoney(outstanding, money.Asset(asset))
-	if err != nil {
-		return value, err
-	}
-	value.RecordedAt, err = restoreInstant(recordedAt, recordedNS)
-	if err != nil {
-		return value, err
-	}
-	if expenseID != nil {
-		value.ExpenseID, value.ExpenseRevision = *expenseID, *expenseRevision
-	}
-	rows, err := q.Query(ctx, `SELECT field,changed_revision FROM want_keep.reimbursement_field_versions WHERE household_id=$1 AND reimbursement_id=$2 AND revision=$3`, principal.HouseholdID(), id, revision)
-	if err != nil {
-		return value, err
-	}
-	for rows.Next() {
-		var field ledger.ReimbursementField
-		var changed uint64
-		if err = rows.Scan(&field, &changed); err != nil {
-			rows.Close()
-			return value, err
-		}
-		value.FieldVersions[field] = changed
-	}
-	if err = rows.Err(); err != nil {
-		rows.Close()
-		return value, err
-	}
-	rows.Close()
-	value.Settlements, err = s.reimbursementSettlements(ctx, q, principal.HouseholdID(), id, revision)
-	if err != nil {
-		return value, err
-	}
-	return value, value.Validate()
+	return values[0], nil
 }
 
-func (s *Store) reimbursementSettlements(ctx context.Context, q reader, family household.HouseholdID, id string, revision uint64) ([]ledger.ReimbursementSettlement, error) {
-	rows, err := q.Query(ctx, `SELECT s.id,s.decision_id,s.transfer_id,s.transfer_revision,s.transfer_key,s.fingerprint,s.transfer_asset,s.transfer_amount::text,s.settled_asset,s.settled_amount::text,s.actor_id,s.recorded_at,s.recorded_ns,
- ARRAY(SELECT operation_id::text FROM want_keep.reimbursement_settlement_operations o WHERE o.household_id=s.household_id AND o.settlement_id=s.id ORDER BY operation_id),
- (SELECT state FROM want_keep.reimbursement_settlement_events e WHERE e.household_id=s.household_id AND e.settlement_id=s.id AND e.reimbursement_revision<=$3 ORDER BY e.reimbursement_revision DESC LIMIT 1)
- FROM want_keep.reimbursement_settlements s WHERE s.household_id=$1 AND s.reimbursement_id=$2 AND s.created_revision<=$3 ORDER BY s.recorded_at,s.recorded_ns,s.id`, family, id, revision)
+type reimbursementRef struct {
+	ID       string
+	Revision uint64
+}
+
+func (s *Store) reimbursementRevisions(ctx context.Context, q reader, principal household.Principal, refs []reimbursementRef) ([]ledger.Reimbursement, error) {
+	if len(refs) == 0 {
+		return []ledger.Reimbursement{}, nil
+	}
+	ids := make([]string, len(refs))
+	revisions := make([]int64, len(refs))
+	for index, ref := range refs {
+		ids[index], revisions[index] = ref.ID, int64(ref.Revision)
+	}
+	family := principal.HouseholdID()
+	result := make([]ledger.Reimbursement, len(refs))
+	rows, err := q.Query(ctx, `WITH requested(reimbursement_id,revision,position) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]) WITH ORDINALITY)
+ SELECT requested.position,r.reimbursement_id::text,r.revision,r.creditor_member_id,r.debtor_member_id,r.asset,r.principal::text,r.outstanding::text,r.state,r.voided,r.expense_id::text,r.expense_revision,r.reason,r.attention_reason,r.actor_id,r.decision_id,r.recorded_at,r.recorded_ns
+ FROM requested JOIN want_keep.reimbursement_revisions r USING(reimbursement_id,revision)
+ WHERE r.household_id=$1 ORDER BY requested.position`, family, ids, revisions)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	result := []ledger.ReimbursementSettlement{}
 	for rows.Next() {
-		var value ledger.ReimbursementSettlement
-		var transferAsset, transferAmount, settledAsset, settledAmount string
+		var position int64
+		var value ledger.Reimbursement
+		var principalAmount, outstanding, asset string
+		var expenseID *string
+		var expenseRevision *uint64
 		var recordedAt time.Time
 		var recordedNS int16
-		if err = rows.Scan(&value.ID, &value.DecisionID, &value.TransferID, &value.TransferRevision, &value.TransferKey, &value.Fingerprint, &transferAsset, &transferAmount, &settledAsset, &settledAmount, &value.ActorID, &recordedAt, &recordedNS, &value.OperationIDs, &value.State); err != nil {
+		if err = rows.Scan(&position, &value.ID, &value.Revision, &value.CreditorMemberID, &value.DebtorMemberID, &asset, &principalAmount, &outstanding, &value.State, &value.Voided, &expenseID, &expenseRevision, &value.Reason, &value.AttentionReason, &value.ActorID, &value.DecisionID, &recordedAt, &recordedNS); err != nil {
+			rows.Close()
 			return nil, err
 		}
-		value.TransferAmount, err = money.NewMoney(transferAmount, money.Asset(transferAsset))
+		index := int(position) - 1
+		if index < 0 || index >= len(refs) || value.ID != refs[index].ID || value.Revision != refs[index].Revision {
+			rows.Close()
+			return nil, ledger.ErrInvalidReimbursement
+		}
+		value.FieldVersions = map[ledger.ReimbursementField]uint64{}
+		value.Principal, err = money.NewMoney(principalAmount, money.Asset(asset))
 		if err != nil {
+			rows.Close()
 			return nil, err
 		}
-		value.SettledAmount, err = money.NewMoney(settledAmount, money.Asset(settledAsset))
+		value.Outstanding, err = money.NewMoney(outstanding, money.Asset(asset))
 		if err != nil {
+			rows.Close()
 			return nil, err
 		}
 		value.RecordedAt, err = restoreInstant(recordedAt, recordedNS)
 		if err != nil {
+			rows.Close()
 			return nil, err
 		}
-		result = append(result, value)
+		if expenseID != nil {
+			value.ExpenseID, value.ExpenseRevision = *expenseID, *expenseRevision
+		}
+		result[index] = value
 	}
-	return result, rows.Err()
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	for index := range result {
+		if result[index].ID == "" {
+			return nil, ledger.ErrNotFound
+		}
+	}
+	rows, err = q.Query(ctx, `WITH requested(reimbursement_id,revision,position) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]) WITH ORDINALITY)
+ SELECT requested.position,f.field,f.changed_revision FROM requested JOIN want_keep.reimbursement_field_versions f USING(reimbursement_id,revision)
+ WHERE f.household_id=$1 ORDER BY requested.position,f.field`, family, ids, revisions)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var position int64
+		var field ledger.ReimbursementField
+		var changed uint64
+		if err = rows.Scan(&position, &field, &changed); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		result[int(position)-1].FieldVersions[field] = changed
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	rows, err = q.Query(ctx, `WITH requested(reimbursement_id,revision,position) AS (SELECT * FROM unnest($2::uuid[],$3::bigint[]) WITH ORDINALITY)
+ SELECT requested.position,s.id,s.decision_id,s.transfer_id,s.transfer_revision,s.transfer_key,s.fingerprint,s.transfer_asset,s.transfer_amount::text,s.settled_asset,s.settled_amount::text,s.actor_id,s.recorded_at,s.recorded_ns,
+ ARRAY(SELECT operation_id::text FROM want_keep.reimbursement_settlement_operations o WHERE o.household_id=s.household_id AND o.settlement_id=s.id ORDER BY operation_id),
+ (SELECT state FROM want_keep.reimbursement_settlement_events e WHERE e.household_id=s.household_id AND e.settlement_id=s.id AND e.reimbursement_revision<=requested.revision ORDER BY e.reimbursement_revision DESC LIMIT 1)
+ FROM requested JOIN want_keep.reimbursement_settlements s ON s.reimbursement_id=requested.reimbursement_id AND s.created_revision<=requested.revision
+ WHERE s.household_id=$1 ORDER BY requested.position,s.recorded_at,s.recorded_ns,s.id`, family, ids, revisions)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var position int64
+		var value ledger.ReimbursementSettlement
+		var transferAsset, transferAmount, settledAsset, settledAmount string
+		var recordedAt time.Time
+		var recordedNS int16
+		if err = rows.Scan(&position, &value.ID, &value.DecisionID, &value.TransferID, &value.TransferRevision, &value.TransferKey, &value.Fingerprint, &transferAsset, &transferAmount, &settledAsset, &settledAmount, &value.ActorID, &recordedAt, &recordedNS, &value.OperationIDs, &value.State); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		value.TransferAmount, err = money.NewMoney(transferAmount, money.Asset(transferAsset))
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		value.SettledAmount, err = money.NewMoney(settledAmount, money.Asset(settledAsset))
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		value.RecordedAt, err = restoreInstant(recordedAt, recordedNS)
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		result[int(position)-1].Settlements = append(result[int(position)-1].Settlements, value)
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	for _, value := range result {
+		if err = value.Validate(); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func (s *Store) Reimbursements(ctx context.Context, principal household.Principal, filter application.ReimbursementFilter, cursor application.ReimbursementCursor, limit int) ([]ledger.Reimbursement, *application.ReimbursementCursor, error) {
@@ -242,7 +318,7 @@ func (s *Store) Reimbursements(ctx context.Context, principal household.Principa
 	if err != nil {
 		return nil, nil, err
 	}
-	refs := [][2]any{}
+	refs := []reimbursementRef{}
 	for rows.Next() {
 		var id string
 		var revision uint64
@@ -250,14 +326,14 @@ func (s *Store) Reimbursements(ctx context.Context, principal household.Principa
 			rows.Close()
 			return nil, nil, err
 		}
-		refs = append(refs, [2]any{id, revision})
+		refs = append(refs, reimbursementRef{ID: id, Revision: revision})
 	}
 	if err = rows.Err(); err != nil {
 		rows.Close()
 		return nil, nil, err
 	}
 	rows.Close()
-	return s.reimbursementPage(ctx, q, principal, refs, limit)
+	return s.reimbursementPage(ctx, q, principal, refs, limit, false)
 }
 
 func (s *Store) ReimbursementHistory(ctx context.Context, principal household.Principal, id string, cursor application.ReimbursementCursor, limit int) ([]ledger.Reimbursement, *application.ReimbursementCursor, error) {
@@ -273,7 +349,7 @@ func (s *Store) ReimbursementHistory(ctx context.Context, principal household.Pr
 	if err != nil {
 		return nil, nil, err
 	}
-	refs := [][2]any{}
+	refs := []reimbursementRef{}
 	for rows.Next() {
 		var reimbursementID string
 		var revision uint64
@@ -281,7 +357,7 @@ func (s *Store) ReimbursementHistory(ctx context.Context, principal household.Pr
 			rows.Close()
 			return nil, nil, err
 		}
-		refs = append(refs, [2]any{reimbursementID, revision})
+		refs = append(refs, reimbursementRef{ID: reimbursementID, Revision: revision})
 	}
 	if err = rows.Err(); err != nil {
 		rows.Close()
@@ -291,24 +367,20 @@ func (s *Store) ReimbursementHistory(ctx context.Context, principal household.Pr
 	return s.reimbursementPage(ctx, q, principal, refs, limit, true)
 }
 
-func (s *Store) reimbursementPage(ctx context.Context, q reader, principal household.Principal, refs [][2]any, limit int, history ...bool) ([]ledger.Reimbursement, *application.ReimbursementCursor, error) {
+func (s *Store) reimbursementPage(ctx context.Context, q reader, principal household.Principal, refs []reimbursementRef, limit int, history bool) ([]ledger.Reimbursement, *application.ReimbursementCursor, error) {
 	more := len(refs) > limit
 	if more {
 		refs = refs[:limit]
 	}
-	result := make([]ledger.Reimbursement, 0, len(refs))
-	for _, ref := range refs {
-		value, err := s.reimbursementRevision(ctx, q, principal, ref[0].(string), ref[1].(uint64))
-		if err != nil {
-			return nil, nil, err
-		}
-		result = append(result, value)
+	result, err := s.reimbursementRevisions(ctx, q, principal, refs)
+	if err != nil {
+		return nil, nil, err
 	}
 	var next *application.ReimbursementCursor
 	if more {
 		last := result[len(result)-1]
 		next = &application.ReimbursementCursor{At: last.RecordedAt, ID: last.ID}
-		if len(history) > 0 && history[0] {
+		if history {
 			next.ID = ""
 			next.Revision = last.Revision
 		}

@@ -85,6 +85,11 @@ func newFixture(t *testing.T) *fixture {
 	if _, err := cluster.Exec(testContext, `CREATE DATABASE `+name); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if _, err := cluster.Exec(testContext, `DROP DATABASE `+name+` WITH (FORCE)`); err != nil {
+			t.Errorf("drop test database: %v", err)
+		}
+	})
 	u := *databaseURL
 	u.Path = "/" + name
 	admin, err := pgxpool.New(testContext, u.String())

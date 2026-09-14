@@ -204,6 +204,31 @@ func TestSettlementSurvivesTextEditAndStalesOnFinancialEdit(t *testing.T) {
 	}
 }
 
+func TestVoidedDebtRecordsLinkedExpenseChange(t *testing.T) {
+	f := newFixture(t)
+	client := f.client(f.p)
+	accountID := f.personalAccount(0, money.RUB, "1000")
+	expenseID := f.expense(accountID, "50", money.RUB)
+	key := uuid.NewString()
+	client.call(http.MethodPost, "/reimbursements", key, map[string]any{"creditorMemberId": f.members[0].ID, "debtorMemberId": f.members[1].ID, "amount": map[string]any{"amount": "300", "asset": "RUB"}, "expenseId": expenseID, "reason": "Linked debt"}, http.StatusAccepted)
+	id := client.result(key).ResourceID
+	client.call(http.MethodPost, "/reimbursements/"+id+"/corrections", uuid.NewString(), map[string]any{"expectedRevision": 1, "voided": true, "reason": "Temporarily void"}, http.StatusAccepted)
+
+	f.execute(f.p, "transactions.correct", func(ctx context.Context) (command.Result, error) {
+		note := "Updated source expense"
+		return f.ledger.Correct(ctx, f.p, journal.Change{OperationID: expenseID, Expected: 1, Correction: ledger.Correction{Note: &note}}, "Update expense")
+	})
+	current := decode[generated.Reimbursement](t, client.call(http.MethodGet, "/reimbursements/"+id, "", nil, http.StatusOK))
+	if current.State != "voided" || current.AttentionReason == nil || current.Revision != 3 {
+		t.Fatalf("voided debt lost expense invalidation: %#v", current)
+	}
+	client.call(http.MethodPost, "/reimbursements/"+id+"/corrections", uuid.NewString(), map[string]any{"expectedRevision": 3, "voided": false, "reason": "Reopen debt"}, http.StatusAccepted)
+	current = decode[generated.Reimbursement](t, client.call(http.MethodGet, "/reimbursements/"+id, "", nil, http.StatusOK))
+	if current.State != "attention_required" || current.AttentionReason == nil {
+		t.Fatalf("reopened debt did not require attention: %#v", current)
+	}
+}
+
 func TestReplayIsolationPaginationAndCSRF(t *testing.T) {
 	f := newFixture(t)
 	client := f.client(f.p)

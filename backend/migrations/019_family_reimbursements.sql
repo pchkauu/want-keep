@@ -36,7 +36,7 @@ CREATE TABLE want_keep.reimbursement_revisions (
  CHECK((revision=1 AND previous_revision IS NULL) OR previous_revision=revision-1),
  CHECK((expense_id IS NULL)=(expense_revision IS NULL)),
  CHECK((voided AND state='voided') OR NOT voided AND state<>'voided'),
- CHECK((state='attention_required')=(length(attention_reason)>0)),
+ CHECK((state='attention_required')=(length(attention_reason)>0 AND NOT voided)),
  CHECK(state<>'settled' OR outstanding=0)
 );
 CREATE INDEX reimbursement_page ON want_keep.reimbursement_revisions(household_id,recorded_at DESC,recorded_ns DESC,reimbursement_id DESC);

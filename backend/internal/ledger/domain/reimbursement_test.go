@@ -95,6 +95,56 @@ func TestReimbursementRejectsUnsafeTextAndRevisionOverflow(t *testing.T) {
 	}
 }
 
+func TestVoidedReimbursementRetainsAttentionUntilReopened(t *testing.T) {
+	debt := reimbursementFixture(t, "300")
+	attention, err := debt.RequireAttention("linked_expense_changed", "user-a", instantForReimbursement(t), "attention")
+	if err != nil {
+		t.Fatal(err)
+	}
+	voided := true
+	closed, _, err := attention.Correct(ReimbursementChange{Voided: &voided}, "user-a", instantForReimbursement(t), "void")
+	if err != nil || closed.State != ReimbursementVoided || closed.AttentionReason == "" {
+		t.Fatal(closed.State, closed.AttentionReason, err)
+	}
+	voided = false
+	reopened, _, err := closed.Correct(ReimbursementChange{Voided: &voided}, "user-a", instantForReimbursement(t), "reopen")
+	if err != nil || reopened.State != ReimbursementAttentionRequired {
+		t.Fatal(reopened.State, err)
+	}
+}
+
+func TestHistoricalSettlementDoesNotBlockAssetCorrection(t *testing.T) {
+	debt := reimbursementFixture(t, "300")
+	settled, _ := money.NewMoney("100", money.RUB)
+	entry := ReimbursementSettlement{ID: "settlement", DecisionID: "settlement-decision", TransferID: "transfer", TransferKey: "transfer", Fingerprint: strings.Repeat("a", 64), TransferRevision: 1, TransferAmount: settled, SettledAmount: settled, OperationIDs: []string{"transfer"}, State: SettlementActive, ActorID: "user-a", RecordedAt: instantForReimbursement(t)}
+	current, err := debt.AddSettlement(entry, "user-a", instantForReimbursement(t), entry.DecisionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, err = current.MarkSettlement(entry.ID, SettlementStale, "user-a", instantForReimbursement(t), "stale", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dollars, _ := money.NewMoney("3", money.USD)
+	corrected, _, err := current.Correct(ReimbursementChange{Principal: &dollars}, "user-a", instantForReimbursement(t), "currency")
+	if err != nil || corrected.Principal.Asset() != money.USD || corrected.Outstanding.Amount() != "3" {
+		t.Fatal(corrected.Principal.Asset(), corrected.Outstanding.Amount(), err)
+	}
+}
+
+func TestReimbursementSettlementLimit(t *testing.T) {
+	debt := reimbursementFixture(t, "300")
+	debt.Settlements = make([]ReimbursementSettlement, MaxReimbursementSettlements)
+	entry := ReimbursementSettlement{DecisionID: "decision"}
+	if _, err := debt.AddSettlement(entry, "user-a", instantForReimbursement(t), entry.DecisionID); err != ErrReimbursementConflict {
+		t.Fatalf("limit error=%v", err)
+	}
+	debt.Settlements = append(debt.Settlements, entry)
+	if err := debt.Validate(); err != ErrInvalidReimbursement {
+		t.Fatalf("oversized aggregate error=%v", err)
+	}
+}
+
 func reimbursementFixture(t *testing.T, amount string) Reimbursement {
 	t.Helper()
 	value, _ := money.NewMoney(amount, money.RUB)

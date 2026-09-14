@@ -308,7 +308,7 @@ func (s *ReimbursementService) ReconcileLedgerRevision(ctx context.Context, prin
 		if loadErr != nil {
 			return loadErr
 		}
-		if value.ExpenseID == current.OperationID && value.ExpenseRevision != current.Revision && !value.Voided && value.AttentionReason == "" {
+		if value.ExpenseID == current.OperationID && value.ExpenseRevision != current.Revision && value.AttentionReason == "" {
 			if err = s.saveReferenceChange(ctx, principal, value, "linked_expense_changed", "reimbursement.expense_attention", ""); err != nil {
 				return err
 			}
