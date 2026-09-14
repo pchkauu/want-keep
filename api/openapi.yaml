@@ -88,6 +88,12 @@ paths:
     "$ref": "./paths/transactions.yaml#/~1reimbursements~1{reimbursementId}"
   "/reimbursements/{reimbursementId}/settlements":
     "$ref": "./paths/transactions.yaml#/~1reimbursements~1{reimbursementId}~1settlements"
+  "/reimbursements/{reimbursementId}/corrections":
+    "$ref": "./paths/transactions.yaml#/~1reimbursements~1{reimbursementId}~1corrections"
+  "/reimbursements/{reimbursementId}/undo":
+    "$ref": "./paths/transactions.yaml#/~1reimbursements~1{reimbursementId}~1undo"
+  "/reimbursements/{reimbursementId}/history":
+    "$ref": "./paths/transactions.yaml#/~1reimbursements~1{reimbursementId}~1history"
   "/connections":
     "$ref": "./paths/connections.yaml#/~1connections"
   "/connections/{connectionId}":
@@ -487,10 +493,16 @@ components:
       "$ref": "./schemas/transactions.yaml#/RefundCreate"
     Reimbursement:
       "$ref": "./schemas/transactions.yaml#/Reimbursement"
+    ReimbursementSettlement:
+      "$ref": "./schemas/transactions.yaml#/ReimbursementSettlement"
     ReimbursementCreate:
       "$ref": "./schemas/transactions.yaml#/ReimbursementCreate"
     SettlementCreate:
       "$ref": "./schemas/transactions.yaml#/SettlementCreate"
+    ReimbursementCorrection:
+      "$ref": "./schemas/transactions.yaml#/ReimbursementCorrection"
+    ReimbursementUndo:
+      "$ref": "./schemas/transactions.yaml#/ReimbursementUndo"
     Reconciliation:
       "$ref": "./schemas/accounts.yaml#/Reconciliation"
     Connection:
