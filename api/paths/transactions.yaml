@@ -507,7 +507,7 @@
         content:
           application/json:
             schema:
-              "$ref": "../schemas/transactions.yaml#/ReimbursementPage"
+              "$ref": "../schemas/reimbursements.yaml#/ReimbursementPage"
       '400':
         "$ref": "../components.yaml#/responses/Problem"
       '401':
@@ -572,7 +572,7 @@
       content:
         application/json:
           schema:
-            "$ref": "../schemas/transactions.yaml#/ReimbursementCreate"
+            "$ref": "../schemas/reimbursements.yaml#/ReimbursementCreate"
 "/reimbursements/{reimbursementId}":
   get:
     operationId: reimbursements_read
@@ -591,7 +591,7 @@
         content:
           application/json:
             schema:
-              "$ref": "../schemas/transactions.yaml#/Reimbursement"
+              "$ref": "../schemas/reimbursements.yaml#/Reimbursement"
       '400':
         "$ref": "../components.yaml#/responses/Problem"
       '401':
@@ -662,7 +662,7 @@
       content:
         application/json:
           schema:
-            "$ref": "../schemas/transactions.yaml#/SettlementCreate"
+            "$ref": "../schemas/reimbursements.yaml#/SettlementCreate"
 "/reimbursements/{reimbursementId}/corrections":
   post:
     operationId: reimbursements_correct
@@ -714,7 +714,7 @@
       content:
         application/json:
           schema:
-            "$ref": "../schemas/transactions.yaml#/ReimbursementCorrection"
+            "$ref": "../schemas/reimbursements.yaml#/ReimbursementCorrection"
 "/reimbursements/{reimbursementId}/undo":
   post:
     operationId: reimbursements_undo
@@ -766,7 +766,7 @@
       content:
         application/json:
           schema:
-            "$ref": "../schemas/transactions.yaml#/ReimbursementUndo"
+            "$ref": "../schemas/reimbursements.yaml#/ReimbursementUndo"
 "/reimbursements/{reimbursementId}/history":
   get:
     operationId: reimbursements_history
@@ -787,7 +787,7 @@
         content:
           application/json:
             schema:
-              "$ref": "../schemas/transactions.yaml#/ReimbursementPage"
+              "$ref": "../schemas/reimbursements.yaml#/ReimbursementPage"
       '400':
         "$ref": "../components.yaml#/responses/Problem"
       '401':

@@ -476,10 +476,17 @@ func (s *ReimbursementService) requireMembers(ctx context.Context, principal hou
 	if creditor == "" || debtor == "" || creditor == debtor {
 		return s.reject(ledger.ErrInvalidReimbursement)
 	}
-	if err := s.requireMember(ctx, principal, creditor); err != nil {
+	members, err := s.members(ctx, principal)
+	if err != nil {
 		return err
 	}
-	return s.requireMember(ctx, principal, debtor)
+	if _, found := members[creditor]; !found {
+		return commands.Rejection{Code: "invalid_request"}
+	}
+	if _, found := members[debtor]; !found {
+		return commands.Rejection{Code: "invalid_request"}
+	}
+	return nil
 }
 
 func requireReimbursementExpense(value ledger.Revision) error {

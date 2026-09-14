@@ -161,6 +161,11 @@ func TestCorrectionUndoAndReferenceInvalidation(t *testing.T) {
 	if current.State != "attention_required" || current.AttentionReason == nil {
 		t.Fatalf("expense revision did not require attention: %#v", current)
 	}
+	key = uuid.NewString()
+	client.call(http.MethodPost, "/reimbursements/"+id+"/undo", key, map[string]any{"expectedRevision": current.Revision, "decisionId": current.DecisionId, "reason": "Invalid undo"}, http.StatusAccepted)
+	if snapshot := client.command(key); snapshot.Status != command.Failed || snapshot.ErrorCode != "decision_conflict" {
+		t.Fatalf("reference invalidation was undone: %#v", snapshot)
+	}
 }
 
 func TestSettlementSurvivesTextEditAndStalesOnFinancialEdit(t *testing.T) {

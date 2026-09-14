@@ -271,7 +271,7 @@ func (d ReimbursementDecision) Validate() error {
 }
 
 func (r Reimbursement) Undo(decision ReimbursementDecision, before Reimbursement, actor household.UserID, at calendar.Instant, undoID string) (Reimbursement, []ReimbursementField, error) {
-	if decision.ReimbursementID != r.ID || decision.After > r.Revision || decision.Kind == "undo" || decision.Kind == "create" {
+	if decision.ReimbursementID != r.ID || decision.After > r.Revision || decision.Kind == "undo" || decision.Kind == "create" || decision.Kind == "reference_change" {
 		return r, nil, ErrReimbursementConflict
 	}
 	if decision.Kind == "settlement" {
