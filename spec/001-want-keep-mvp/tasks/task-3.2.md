@@ -5,7 +5,7 @@
 
 Нормализовать данные без утечки моделей платформ в домен.
 
-**Состояние:** Не начато; задача ожидает собственные зависимости и entry gates.
+**Состояние:** Реализованы versioned wire-контракт, exact gateway binding/sync-result cursor fence, строгие Go/TypeScript null-safe boundary, accounts-owned asset normalization, durable evidence ownership/disposition, commit receipt recovery и атомарное применение synthetic ingestion pages с same-page preflight и безопасной частичной обработкой неоднозначности; реальные provider IO, UI и production остаются последующим задачам. Restart reconciliation durable terminal receipts, непустой nextCursor и канонический base64 входят в результат.
 
 **Зависимости:** `task-3.1`, `task-1.2`, `task-2.1`, `task-2.2`.
 
@@ -13,12 +13,18 @@
 
 ### Изменение и контракты
 
-Закрепить контракт коллектора и provider gateway: capability, source records, account references, coverage, balance snapshots, revisions, cursor, errors. Сохранять исходник до нормализации, namespace ID, связь счетов/карт и provenance значений. Отсутствующие поля/unsupported не становятся нулём. Golden-like contract fixtures должны быть синтетическими и проверять смысл, не только JSON shape. Каждый server-issued job и result содержит immutable exact admission binding и `admissionRevision`; application commit принимает result только при совпадении current `admitted` revision в той же транзакции, что source/posting/outbox, иначе сохраняет evidence в quarantine без финансового эффекта.
+Контракт версии 10 описывает server-issued job, capability только чтения, точный D-43 binding/admissionRevision, cursor/replay, coverage, evidence и типизированные account/balance/transaction/failure records. Server-owned gateway несёт полный immutable binding и должен совпасть с job до manifest/provider IO. Provider, product/log namespace, record kind и read action проверяются по manifest до evidence. Required-поля обязательны и вместе с null/unknown/trailing JSON отклоняются одинаково в Go/TypeScript. Необязательные пустые merchant/note/network/aliases канонизируются как отсутствие, а присутствующие enum, amount/reason и retry delay проверяются по discriminator и диапазону. Строки используют Unicode code points с запретом NUL/lone surrogate и отдельными byte limits; совокупный набор gaps после объединения уникален и ограничен 100 значениями, а maximumLookbackDays либо отсутствует, либо равен 1–36500. Время канонично в UTC с Z. Составная D-39 identity кодируется структурно и не включает page-local evidence ID/locator; payload hash использует нормализованную запись и отдельный raw digest; alias не пропускает PAN/CVV. Fee передаётся отдельной проводкой, а свободный feeId запрещён до типизированной correspondence. Raw evidence сохраняется с server-derived household/job и durable staged disposition до финансового commit; финансовый эффект и immutable receipt миграции 018 коммитятся атомарно. Неизвестный commit подтверждается receipt readback, иначе evidence остаётся staged; отдельный lifecycle context записывает rejected_result только после доказанного отказа и успешного durable retention. Сервер назначает principal, external owner, internal IDs/revisions, evidence reference и fetchedAt. Каждая страница повторяет account descriptor для balance/posting; account-only page не создаёт observation. Accounts-owned policy применяет только подтверждённые mappings, включая Raiffeisen/Ozon RUR → RUB, и сохраняет raw code. Server-side account/source ambiguity предварительно группирует D-39 keys всей страницы, дедуплицирует одинаковые факты, сохраняет omissions, делает coverage partial, не проводит конфликтующую группу и не откатывает независимые записи. Admission/generation/lease/cursor fencing выполняется через CommitPage; stale result остаётся только в quarantine. Provider failure повторяет точный issued cursor; cursor проверяется на sync-result boundary отдельно от lease fence, поэтому запоздалый outcome не меняет job после продвижения checkpoint. Provider failure атомарно связывает evidence с household/job и переводит job в ожидание, ограниченный retry или terminal failure. Generated DTO не входят в domain, суммы остаются decimal-строками, unknown/unavailable и unsupported assets не становятся нулём или паритетом. `nextCursor` либо отсутствует, либо непустой; evidence использует канонический base64 без CR/LF. Миграция 018 хранит terminal receipts для page/provider_outcome/rejected_result/stale_result; restart reconciler завершает staged disposition только по server-owned household/job/evidence reference и не повторяет финансовый эффект.
 
 ### Границы изменений
 
+- `collector/contracts/v10/`
+- `collector/src/contracts/`
 - `backend/internal/integrations/`
-- `collector/contracts/`
+- `backend/internal/accounts/application/`
+- `backend/test/integration/ingestion/`
+- `backend/migrations/018_ingestion_result_receipts.sql`
+- `scripts/generate-ingestion-contracts.sh`
+- `.github/workflows/ci.yml`
 
 Пути планируемые. Общие контракты — `spec/001-want-keep-mvp/contracts.md`, архитектура/команды — `constraints.md`. Менять владельца поведения и его тесты; незакрытый контракт останавливает зависимую работу.
 
@@ -136,12 +142,12 @@
 ### Проверка результата
 
 ```sh
-make check-contracts && make test-integration AREA=ingestion
+make check-contracts && make test-collector FILTER=contracts && make test-integration AREA=ingestion && make test-ingestion-race
 ```
 
-Round-trip и ошибки контракта проверены; replay и частичное покрытие не меняют семантику. Stale admission result не пересекает commit boundary.
+Точные шесть активов, подтверждённое RUR → RUB с сохранением raw code, строгий JSON/required/null/evidence, нормализация необязательных пустых значений, discriminator/range validation, commit receipt readback, evidence-neutral payload hash, exact gateway/job binding, каноническое время, совокупный лимит gaps, единые Unicode/lookback limits, структурная D-39 identity, безопасные alias, отдельные fee postings без свободного feeId, partial coverage при account/source ambiguity, provider failure sync-result cursor fence, durable staged/rejected-result disposition и same-page D-39 preflight, replay/cursor и stale-admission quarantine проходят без потери точности, подмены principal или повторного финансового эффекта. После рестарта staged evidence завершается по durable terminal receipt без повторного финансового применения; без receipt остаётся staged. Пустой nextCursor и base64 с CR/LF отклоняются на обеих границах.
 
-Команды `make` — будущий контракт, создаваемый task-1.1; сейчас они не существуют. Live/paid/manual проверки отдельно фиксируют доступ и фактический результат. Исследования не обходят блокер отсутствующего доступа.
+Зависимости включены в базу. Доказательства и границы: evidence/task-3.2-ingestion.md. Обязательны make check, full integration matrix и ingestion/jobs/storage/accounts/ledger/audit/matching/reconciliation race suites. Ingestion fixtures удаляют свои синтетические БД. Live provider IO и эксплуатационная готовность не подтверждаются.
 
 ### Передача следующему агенту
 
@@ -153,7 +159,7 @@ Round-trip и ошибки контракта проверены; replay и ча
 
 Normalize data without leaking provider models into the domain.
 
-**Status:** Not started; the task awaits its own dependencies and entry gates.
+**Status:** The versioned wire contract, exact gateway binding/sync-result cursor fence, strict null-safe Go/TypeScript boundaries, accounts-owned asset normalization, durable evidence ownership/disposition, commit-receipt recovery and atomic synthetic-page application with same-page preflight and safe partial ambiguity handling are implemented; live provider IO, UI and production remain downstream. Restart reconciliation through durable terminal receipts, non-empty nextCursor and canonical base64 are included.
 
 **Dependencies:** `task-3.1`, `task-1.2`, `task-2.1`, `task-2.2`.
 
@@ -161,12 +167,18 @@ Normalize data without leaking provider models into the domain.
 
 ### Change and contracts
 
-Define collector/provider-gateway contracts: capability, source records, account references, coverage, balance snapshots, revisions, cursor and errors. Retain raw data before normalization, namespace IDs and track account/card relationships and provenance. Missing/unsupported fields never become zero. Synthetic contract fixtures test semantics, not only JSON shape. Every server-issued job and result carries the immutable exact admission binding and `admissionRevision`; application commit accepts a result only when the current `admitted` revision matches in the same transaction as source/posting/outbox, otherwise it retains evidence in quarantine without a financial effect.
+Contract version 10 defines a server-issued job, read-only capabilities, exact D-43 binding/admissionRevision, cursor/replay, coverage, evidence and typed account/balance/transaction/failure records. The server-owned gateway carries the full immutable binding and must match the job before manifest/provider IO. Provider, product/log namespace, record kind and read action are checked against the manifest before evidence. Required fields are mandatory and missing/null/unknown/trailing JSON is rejected consistently in Go and TypeScript. Optional empty merchant/note/network/aliases values canonicalize as absent, while present enums, amount/reason and retry delays are validated against their discriminator and range. Strings use Unicode code points with NUL/lone-surrogate rejection and separate byte limits; the cumulative gap set after merging is unique and capped at 100 values, while maximumLookbackDays is either omitted or 1–36500. Instants use canonical UTC Z. Composite D-39 identity is structurally encoded without page-local evidence ID/locator; the payload hash uses the normalized record and separate raw digest. Aliases cannot carry PAN/CVV. Fees use separate postings, while free-form feeId is forbidden until typed correspondence exists. Raw evidence is durable with server-derived household/job ownership and a staged disposition before the financial commit; the financial effect and immutable migration-018 receipt commit atomically. An unknown commit is proven by receipt readback or evidence remains staged; a separate lifecycle context records rejected_result only after a proven rejection and successful durable retention. The server assigns principal, external owner, internal IDs/revisions, evidence reference and fetchedAt. Every page repeats an account descriptor for each balance/posting; an account-only page creates no observation. An accounts-owned policy applies only confirmed mappings, including Raiffeisen/Ozon RUR → RUB, and preserves the raw code. Server-side account/source ambiguity preflights D-39 keys across the page, deduplicates identical facts, retains omissions, makes coverage partial, posts no conflicting group and does not roll back independent records. Admission/generation/lease/cursor fencing uses CommitPage; stale results remain only in quarantine. A provider failure echoes the exact issued cursor; the cursor is checked at the sync-result boundary separately from the lease fence, so a delayed outcome cannot change the job after checkpoint advancement. A provider failure atomically associates evidence with household/job and moves the job to waiting, bounded retry or terminal failure. Generated DTOs never enter the domain, money remains decimal strings, and unknown/unavailable or unsupported assets never become zero or parity. `nextCursor` is either absent or non-empty, and evidence uses canonical base64 without CR/LF. Migration 018 stores terminal receipts for page/provider_outcome/rejected_result/stale_result; the restart reconciler finalizes staged disposition only by server-owned household/job/evidence reference and does not replay financial effects.
 
 ### Change boundaries
 
+- `collector/contracts/v10/`
+- `collector/src/contracts/`
 - `backend/internal/integrations/`
-- `collector/contracts/`
+- `backend/internal/accounts/application/`
+- `backend/test/integration/ingestion/`
+- `backend/migrations/018_ingestion_result_receipts.sql`
+- `scripts/generate-ingestion-contracts.sh`
+- `.github/workflows/ci.yml`
 
 Paths are planned. Shared contracts are in `spec/001-want-keep-mvp/contracts.en.md`; architecture/commands are in `constraints.en.md`. Change the behavior owner and its tests; an unresolved contract stops dependent work.
 
@@ -284,12 +296,12 @@ A link establishes coverage but does not prove the whole criterion; verification
 ### Verification
 
 ```sh
-make check-contracts && make test-integration AREA=ingestion
+make check-contracts && make test-collector FILTER=contracts && make test-integration AREA=ingestion && make test-ingestion-race
 ```
 
-Contract round trips and errors pass; replay and partial coverage preserve semantics. A stale-admission result cannot cross the commit boundary.
+Six exact assets, confirmed RUR → RUB with the raw code retained, strict JSON/required/null/evidence, optional-empty normalization, discriminator/range validation, commit-receipt readback, evidence-neutral payload hashing, exact gateway/job binding, canonical time, cumulative gap cap, aligned Unicode/lookback limits, structural D-39 identity, safe aliases, separate fee postings without free-form feeId, partial coverage on account/source ambiguity, provider-failure sync-result cursor fencing, durable staged/rejected-result disposition and same-page D-39 preflight, replay/cursor and stale-admission quarantine pass without precision loss, principal spoofing or duplicate financial effects. After restart, staged evidence is finalized from a durable terminal receipt without reapplying financial effects; without a receipt it remains staged. Empty nextCursor and base64 with CR/LF are rejected at both boundaries.
 
-The `make` commands are a future contract established by task-1.1; they do not exist yet. Live/paid/manual checks separately record access and actual outcomes. Research does not bypass missing-access blockers.
+Dependencies are included in the base. Evidence and boundaries: evidence/task-3.2-ingestion.en.md. Require make check, the full integration matrix and ingestion/jobs/storage/accounts/ledger/audit/matching/reconciliation race suites. Ingestion fixtures drop their synthetic databases. Live provider IO and operational readiness are not proven.
 
 ### Handoff to the next agent
 

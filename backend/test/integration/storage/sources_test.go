@@ -103,6 +103,7 @@ func TestSourceCollisionKeepsEvidenceWithoutNewPosting(t *testing.T) {
 	account := f.account(money.USD, "100")
 	r := f.revision(uuid.NewString(), account, "-10", money.USD, 1)
 	input := ledger.SourceInput{Key: ledger.SourceKey{HouseholdID: f.family.ID, Provider: "raiffeisen", ExternalAccountID: "stable-usd", Product: "current", Log: "statement", RecordID: "entry-1"}, PayloadHash: strings.Repeat("a", 64), EvidenceRef: "synthetic:initial", Classification: "new", Operation: &r}
+	firstInput := input
 	first, err := f.importSource(service, connection, input)
 	if err != nil {
 		t.Fatal(err)
@@ -112,10 +113,19 @@ func TestSourceCollisionKeepsEvidenceWithoutNewPosting(t *testing.T) {
 	other := f.revision(uuid.NewString(), account, "-20", money.USD, 1)
 	input.Operation = &other
 	result, err := f.importSource(service, connection, input)
-	if err != nil || !result.Record.Ambiguous || f.count("source_revisions") != 2 || f.count("postings") != 1 {
+	if err != nil || !result.Record.Ambiguous || f.count("source_revisions") != 2 || f.count("quarantine") != 1 || f.count("postings") != 1 {
 		t.Fatalf("collision posted: %v", err)
 	}
+	firstInput.EvidenceRef = "synthetic:initial-replay"
+	if result, err = f.importSource(service, connection, firstInput); err != nil || !result.Duplicate {
+		t.Fatalf("historical source fact was not deduplicated: %+v %v", result, err)
+	}
+	input.EvidenceRef = "synthetic:conflicting-replay"
+	if result, err = f.importSource(service, connection, input); err != nil || !result.Duplicate || f.count("source_revisions") != 2 || f.count("postings") != 1 {
+		t.Fatalf("source collision replay changed history: %+v %v", result, err)
+	}
 	// Simulate an index digest collision; full identity comparison must reject merging it.
+	quarantineBeforeCollision := f.count("quarantine")
 	collision := input
 	collision.Key.RecordID = "different-entry"
 	collision.EvidenceRef = "synthetic:digest-collision"
@@ -124,7 +134,7 @@ func TestSourceCollisionKeepsEvidenceWithoutNewPosting(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err = f.importSource(service, connection, collision)
-	if err != nil || !result.Record.Ambiguous || f.count("quarantine") != 1 || f.count("postings") != 1 {
+	if err != nil || !result.Record.Ambiguous || f.count("quarantine") != quarantineBeforeCollision+1 || f.count("postings") != 1 {
 		t.Fatalf("digest used as identity: %v", err)
 	}
 }

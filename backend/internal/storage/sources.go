@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -15,7 +17,7 @@ func (s *Store) ResolveExternalAccount(ctx context.Context, provider, stableID s
 	if err != nil {
 		return "", err
 	}
-	if len(stableID) < 1 || len(stableID) > 2000 {
+	if stableID == "" || strings.ContainsRune(stableID, 0) || !utf8.ValidString(stableID) || utf8.RuneCountInString(stableID) > 2000 {
 		return "", ledger.ErrInvalidSource
 	}
 	switch provider {
@@ -65,6 +67,23 @@ func (s *Store) Source(ctx context.Context, p household.Principal, key ledger.So
 	}
 	return r, true, nil
 }
+
+func (s *Store) HistoricalSourceRevision(ctx context.Context, p household.Principal, source ledger.SourceRecord, payloadHash string) (uint64, bool, error) {
+	if source.ID == "" || source.Key.Validate() != nil || p.RequireHousehold(source.Key.HouseholdID) != nil {
+		return 0, false, ledger.ErrInvalidSource
+	}
+	q, err := s.reader(ctx, p)
+	if err != nil {
+		return 0, false, err
+	}
+	var revision uint64
+	err = q.QueryRow(ctx, `SELECT revision FROM want_keep.source_revisions WHERE household_id=$1 AND source_id=$2 AND payload_hash=$3 ORDER BY revision DESC LIMIT 1`, p.HouseholdID(), source.ID, payloadHash).Scan(&revision)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, nil
+	}
+	return revision, err == nil, err
+}
+
 func (s *Store) SaveSource(ctx context.Context, r ledger.SourceRecord, input ledger.SourceInput) (ledger.SourceRecord, error) {
 	scope, err := s.familyScope(ctx)
 	if err != nil {

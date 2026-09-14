@@ -64,6 +64,10 @@ func TestCheckpointSurvivesTerminalFailureAndReauth(t *testing.T) {
 	if ok, err := service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:page1", Cursor: "", NextCursor: "page2", Coverage: "partial", Gaps: []string{"history_limited"}}, apply); err != nil || !ok {
 		t.Fatal("first page", err)
 	}
+	issued, err := f.store.Job(testContext, f.p, issued.ID)
+	if err != nil || issued.Cursor != "page2" {
+		t.Fatal("checkpointed attempt", issued.Cursor, err)
+	}
 	if err := f.store.SetJobOutcome(testContext, f.p, issued, jobs.Failed, jobs.PermanentFailure, 0); err != nil {
 		t.Fatal(err)
 	}

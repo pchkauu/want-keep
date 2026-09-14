@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"strings"
+	"unicode/utf8"
 
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -29,7 +31,7 @@ func (k SourceKey) Validate() error {
 		return ErrInvalidSource
 	}
 	for _, v := range []string{k.ExternalAccountID, k.Product, k.Log, k.RecordID} {
-		if len(v) < 1 || len(v) > 2000 {
+		if v == "" || strings.ContainsRune(v, 0) || !utf8.ValidString(v) || utf8.RuneCountInString(v) > 2000 {
 			return ErrInvalidSource
 		}
 	}
@@ -89,7 +91,7 @@ func (r SourceRecord) Next(i SourceInput) (SourceRecord, bool, error) {
 		return r, false, ErrSourceAmbiguous
 	}
 	confirmedCorrection := i.Classification == "correction" && i.ExpectedRevision == r.Revision
-	if r.PayloadHash == i.PayloadHash && !confirmedCorrection && (i.Classification != "ambiguous" || r.Ambiguous) {
+	if r.PayloadHash == i.PayloadHash && (!r.Ambiguous || !confirmedCorrection) && (i.Classification != "ambiguous" || r.Ambiguous) {
 		return r, true, nil
 	}
 	if r.Revision >= 9007199254740991 {

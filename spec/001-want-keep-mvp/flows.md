@@ -127,3 +127,48 @@ flowchart LR
 ```
 
 Отдельные исходные статусы и даты остаются в истории. Неполный поиск и ожидание дают matching_unresolved; source observations сохраняются отдельно. Устаревший import job попадает в quarantine до этой цепочки. Банковский IO и распознавание документов подключаются в профильных задачах.
+
+## Task-3.2: входная страница коннектора
+
+```mermaid
+sequenceDiagram
+  participant J as Проверенное sync job
+  participant C as API/Browser collector
+  participant E as EvidenceStore
+  participant G as Admission gate
+  participant A as Accounts/Ledger
+  participant Q as Quarantine
+  participant R as Restart reconciler
+  J->>G: Проверить exact gateway binding
+  J->>G: BeforeRead(binding, revision, generation, lease)
+  G->>C: Server-issued request без household/actor/internal IDs
+  C-->>G: Exact echo + issued cursor + evidence + typed records/coverage
+  G->>E: Сохранить raw evidence с server-derived household/job и disposition=staged
+  alt provider failure
+    G->>Q: Связать evidence с household/job
+    G->>G: Атомарно сохранить waiting/retry/failed
+  else binding/revision/generation/lease/cursor актуальны
+    G->>A: CommitPage: resolve accounts + source revisions + observations/postings
+    A-->>G: Audit/outbox/checkpoint + immutable receipt атомарно
+    opt Подтверждение commit потеряно
+      G->>G: Readback receipt; без доказательства оставить staged
+    end
+    opt account/source ambiguity
+      A->>Q: Evidence + source_ambiguous/transaction_unresolved
+      A-->>G: Partial coverage без неподтверждённого эффекта
+    end
+  else page отклонена после staging
+    G->>Q: Durable retention через отдельный lifecycle context
+    Q-->>G: Только успех переводит staged в rejected_result
+  else результат устарел
+    G->>Q: Evidence reference + safe reason
+  end
+  opt После рестарта disposition остался staged
+    R->>E: Прочитать staged batches
+    R->>G: Найти terminal receipt по household/job/evidence
+    G-->>R: page/provider_outcome/rejected_result/stale_result либо неизвестно
+    R->>E: Идемпотентно завершить только доказанный disposition
+  end
+```
+
+Страница самостоятельна: каждый поддерживаемый счёт, используемый balance или posting, имеет account descriptor в той же странице. Следующая страница повторяет descriptor и исходный cursor; повтор не создаёт account/opening/financial effect. `nextCursor` либо отсутствует, либо непустой. Provider failure также повторяет issued cursor; sync-result boundary отклоняет запоздалый outcome прежней страницы, а общая lease identity продолжает heartbeat после продвижения checkpoint. Ошибка второй страницы не продвигает её cursor, а уже подтверждённая первая страница остаётся зафиксированной с partial coverage. Совокупный набор gaps после объединения с checkpoint ограничен 100 значениями; переполнение откатывает страницу. Неоднозначный счёт или source не превращает страницу в полный успех и не отменяет независимые поддержанные записи. Подтверждённый provider mapping `RUR → RUB` сохраняет raw code в evidence/metadata и использует RUB в финансовом домене. Повтор с новым evidence ID/locator, эквивалентными пустыми optional-полями и тем же нормализованным payload/raw digest не создаёт source revision. Evidence использует канонический base64 без CR/LF. Неизвестный результат commit подтверждается только атомарной receipt; без неё evidence остаётся staged. Restart reconciler завершает disposition только по сохранённой terminal receipt и не повторяет финансовый эффект.

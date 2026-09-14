@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	calendar "github.com/pchkauu/want-keep/backend/internal/calendar/domain"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
@@ -25,7 +26,7 @@ type Account struct {
 }
 
 func (a Account) Validate() error {
-	if a.ID == "" || strings.TrimSpace(a.Name) == "" || len(a.Name) > 2000 || !Product(a.Product).Valid() || a.Revision < 1 || a.Revision > 9007199254740991 || a.OpeningDate.String() == "" || len(a.Network) > 2000 || len(a.ExternalAssetCode) > 2000 {
+	if a.ID == "" || !validAccountText(a.Name, 2000, true) || !Product(a.Product).Valid() || a.Revision < 1 || a.Revision > 9007199254740991 || a.OpeningDate.String() == "" || !validAccountText(a.Network, 2000, false) || !validAccountText(a.ExternalAssetCode, 2000, false) {
 		return ErrInvalidAccount
 	}
 	if err := a.Ownership.Validate(); err != nil {
@@ -33,6 +34,13 @@ func (a Account) Validate() error {
 	}
 	_, err := money.ParseAsset(string(a.Asset))
 	return err
+}
+
+func validAccountText(value string, maximum int, required bool) bool {
+	if value == "" {
+		return !required
+	}
+	return !strings.ContainsRune(value, 0) && utf8.ValidString(value) && utf8.RuneCountInString(value) <= maximum && (!required || strings.TrimSpace(value) != "")
 }
 
 type Product string

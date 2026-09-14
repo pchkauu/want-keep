@@ -55,6 +55,26 @@ func (s *Store) BeginExternal(ctx context.Context, p household.Principal, j jobs
 		return err
 	})
 }
+
+func (s *Store) AcknowledgeExternalResult(ctx context.Context, p household.Principal, j jobs.Job) error {
+	current, err := s.FenceJob(ctx, p, j)
+	if err != nil {
+		return err
+	}
+	if !current.ExternalStarted {
+		return jobs.ErrStaleAttempt
+	}
+	scope, _ := s.familyScope(ctx)
+	tag, err := scope.tx.Exec(ctx, `UPDATE want_keep.jobs SET external_started=false WHERE household_id=$1 AND id=$2 AND lease_token=$3 AND attempt=$4 AND state='running' AND external_started`, p.HouseholdID(), j.ID, j.LeaseToken, j.Attempt)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return jobs.ErrStaleAttempt
+	}
+	return nil
+}
+
 func (s *Store) JobReceipt(ctx context.Context, p household.Principal, j jobs.Job) (bool, error) {
 	if j.HouseholdID != p.HouseholdID() || j.ActorID != p.UserID() {
 		return false, household.ErrForbidden
@@ -93,7 +113,7 @@ func (s *Store) insertJobReceipt(ctx context.Context, p household.Principal, j j
 	return err
 }
 func (s *Store) SetJobOutcome(ctx context.Context, p household.Principal, j jobs.Job, state jobs.State, reason jobs.Reason, delay time.Duration) error {
-	if delay < 0 || delay > time.Hour || (state != jobs.Ready && state != jobs.Failed && state != jobs.Waiting && state != jobs.Unresolved) || (state == jobs.Waiting && !reason.Waiting()) {
+	if delay < 0 || delay > jobs.MaxRetryDelay || (state != jobs.Ready && state != jobs.Failed && state != jobs.Waiting && state != jobs.Unresolved) || (state == jobs.Waiting && !reason.Waiting()) {
 		return jobs.ErrInvalidJob
 	}
 	return s.transitionJob(ctx, p, j, state, reason, delay)

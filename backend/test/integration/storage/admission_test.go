@@ -5,6 +5,7 @@ package storage_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -208,6 +209,9 @@ func TestCommitFenceAndLeaseCannotBeBypassed(t *testing.T) {
 	if f.available(account) != "90" {
 		t.Fatal("valid effect missing")
 	}
+	if err = f.store.Heartbeat(testContext, f.p, issued, time.Minute); err != nil {
+		t.Fatal("checkpoint advancement invalidated the active lease heartbeat", err)
+	}
 	j, err := f.store.Job(testContext, f.p, issued.ID)
 	if err != nil || j.Cursor != "p2" {
 		t.Fatal("checkpoint not saved")
@@ -222,6 +226,36 @@ func TestCommitFenceAndLeaseCannotBeBypassed(t *testing.T) {
 	applied, err = service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:disconnected", Cursor: "p2", Coverage: "complete", Complete: true}, func(context.Context) error { t.Error("disconnected commit"); return nil })
 	if err != nil || applied || f.count("quarantine") != 2 {
 		t.Fatal("connection generation bypass")
+	}
+}
+
+func TestCumulativeGapOverflowRollsBackPage(t *testing.T) {
+	f := newFixture(t)
+	service := f.admit(binding())
+	issued := f.issued(service, f.connection(), binding())
+	gaps := make([]string, 100)
+	for index := range gaps {
+		gaps[index] = fmt.Sprintf("gap-%d", index)
+	}
+	applied, err := service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:first", NextCursor: "p2", Coverage: "partial", Gaps: gaps}, func(context.Context) error { return nil })
+	if err != nil || !applied {
+		t.Fatal("boundary page failed", applied, err)
+	}
+	issued, err = f.store.Job(testContext, f.p, issued.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	account := f.account(money.RUB, "100")
+	revision := f.revision(uuid.NewString(), account, "-10", money.RUB, 1)
+	applied, err = service.CommitPage(testContext, f.p, issued, admission.Page{EvidenceRef: "synthetic:second", Cursor: "p2", NextCursor: "p3", Coverage: "partial", Gaps: []string{"one-more-gap"}}, func(ctx context.Context) error {
+		return f.writer.Append(ctx, f.p, revision, 0)
+	})
+	if !errors.Is(err, jobs.ErrInvalidJob) || applied || f.available(account) != "100" {
+		t.Fatal("overflow page was not rolled back", applied, f.available(account), err)
+	}
+	current, err := f.store.Job(testContext, f.p, issued.ID)
+	if err != nil || current.Cursor != "p2" || len(current.Gaps) != 100 {
+		t.Fatal("overflow changed checkpoint", current.Cursor, len(current.Gaps), err)
 	}
 }
 

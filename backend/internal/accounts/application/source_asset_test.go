@@ -19,5 +19,9 @@ func TestConfirmedSourceAssetMappings(t *testing.T) {
 		if (input.ValidateAsset() == nil) != tc.valid {
 			t.Fatal(tc)
 		}
+		canonical, err := CanonicalSourceAsset(tc.provider, tc.code)
+		if tc.valid && (err != nil || canonical != input.Asset) {
+			t.Fatal("canonical source asset changed", tc, canonical, err)
+		}
 	}
 }

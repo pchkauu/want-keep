@@ -315,6 +315,69 @@ func (s *Store) SaveCheckpoint(ctx context.Context, j jobs.Job, cursor, coverage
 	return s.saveSyncProgress(ctx, j, cursor, coverage, gaps)
 }
 
+func (s *Store) SaveResultReceipt(ctx context.Context, p household.Principal, j jobs.Job, evidence string, kind admission.ResultKind) error {
+	scope, err := s.familyScope(ctx)
+	if err != nil {
+		return err
+	}
+	if scope.principal != p ||
+		(scope.syncJobID == "" && kind != admission.RejectedResult && kind != admission.StaleResult) ||
+		(scope.syncJobID != "" && scope.syncJobID != j.ID) ||
+		j.HouseholdID != p.HouseholdID() || evidence == "" || len(evidence) > 2000 || !kind.Valid() {
+		return ErrTransactionRequired
+	}
+	tag, err := scope.tx.Exec(ctx, `INSERT INTO want_keep.ingestion_result_receipts(household_id,id,job_id,lease_token,attempt,input_cursor,evidence_ref,kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(household_id,job_id,lease_token,attempt,input_cursor,evidence_ref) DO NOTHING`, p.HouseholdID(), newID(), j.ID, j.LeaseToken, j.Attempt, j.Cursor, evidence, kind)
+	if err != nil || tag.RowsAffected() == 1 {
+		return err
+	}
+	var lease string
+	var attempt int
+	var cursor string
+	var storedKind admission.ResultKind
+	if err = scope.tx.QueryRow(ctx, `SELECT lease_token,attempt,input_cursor,kind FROM want_keep.ingestion_result_receipts WHERE household_id=$1 AND job_id=$2 AND lease_token=$3 AND attempt=$4 AND input_cursor=$5 AND evidence_ref=$6`, p.HouseholdID(), j.ID, j.LeaseToken, j.Attempt, j.Cursor, evidence).Scan(&lease, &attempt, &cursor, &storedKind); err != nil {
+		return err
+	}
+	if lease != j.LeaseToken || attempt != j.Attempt || cursor != j.Cursor || storedKind != kind {
+		return jobs.ErrInvalidJob
+	}
+	return nil
+}
+
+func (s *Store) EvidenceResult(ctx context.Context, p household.Principal, jobID, evidence string) (admission.ResultKind, bool, error) {
+	q, err := s.reader(ctx, p)
+	if err != nil {
+		return "", false, err
+	}
+	var kind admission.ResultKind
+	err = q.QueryRow(ctx, `SELECT kind FROM want_keep.ingestion_result_receipts WHERE household_id=$1 AND job_id=$2 AND evidence_ref=$3`, p.HouseholdID(), jobID, evidence).Scan(&kind)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	if !kind.Valid() {
+		return "", false, jobs.ErrInvalidJob
+	}
+	return kind, true, nil
+}
+
+func (s *Store) ResultReceipt(ctx context.Context, p household.Principal, j jobs.Job, evidence string) (admission.ResultReceipt, bool, error) {
+	if j.HouseholdID != p.HouseholdID() {
+		return admission.ResultReceipt{}, false, household.ErrForbidden
+	}
+	q, err := s.reader(ctx, p)
+	if err != nil {
+		return admission.ResultReceipt{}, false, err
+	}
+	receipt := admission.ResultReceipt{HouseholdID: p.HouseholdID(), JobID: j.ID, EvidenceRef: evidence}
+	err = q.QueryRow(ctx, `SELECT lease_token,attempt,input_cursor,kind FROM want_keep.ingestion_result_receipts WHERE household_id=$1 AND job_id=$2 AND lease_token=$3 AND attempt=$4 AND input_cursor=$5 AND evidence_ref=$6`, p.HouseholdID(), j.ID, j.LeaseToken, j.Attempt, j.Cursor, evidence).Scan(&receipt.LeaseToken, &receipt.Attempt, &receipt.InputCursor, &receipt.Kind)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return admission.ResultReceipt{}, false, nil
+	}
+	return receipt, err == nil, err
+}
+
 func (s *Store) saveSyncProgress(ctx context.Context, j jobs.Job, cursor, coverage string, gaps []string) error {
 	scope, err := s.familyScope(ctx)
 	if err != nil {
@@ -342,6 +405,9 @@ func (s *Store) FenceSyncResult(ctx context.Context, p household.Principal, issu
 	current, err := s.Job(ctx, p, issued.ID)
 	if err != nil {
 		return err
+	}
+	if current.Cursor != issued.Cursor {
+		return jobs.ErrStaleAttempt
 	}
 	now, err := s.DatabaseTime(ctx)
 	if err != nil {

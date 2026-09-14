@@ -127,3 +127,48 @@ flowchart LR
 ```
 
 Original statuses and dates remain in history. Incomplete search and waiting produce matching_unresolved; source observations stay separate. Stale import jobs enter quarantine before this flow. Bank IO and document recognition are connected by their owning tasks.
+
+## Task-3.2: connector ingestion page
+
+```mermaid
+sequenceDiagram
+  participant J as Validated sync job
+  participant C as API/Browser collector
+  participant E as EvidenceStore
+  participant G as Admission gate
+  participant A as Accounts/Ledger
+  participant Q as Quarantine
+  participant R as Restart reconciler
+  J->>G: Verify exact gateway binding
+  J->>G: BeforeRead(binding, revision, generation, lease)
+  G->>C: Server-issued request without household/actor/internal IDs
+  C-->>G: Exact echo + issued cursor + evidence + typed records/coverage
+  G->>E: Persist raw evidence with server-derived household/job and disposition=staged
+  alt provider failure
+    G->>Q: Associate evidence with household/job
+    G->>G: Atomically retain waiting/retry/failed
+  else binding/revision/generation/lease/cursor are current
+    G->>A: CommitPage: resolve accounts + source revisions + observations/postings
+    A-->>G: Audit/outbox/checkpoint + immutable receipt atomically
+    opt Commit acknowledgement is lost
+      G->>G: Read receipt; leave staged without proof
+    end
+    opt account/source ambiguity
+      A->>Q: Evidence + source_ambiguous/transaction_unresolved
+      A-->>G: Partial coverage without an unconfirmed effect
+    end
+  else page is rejected after staging
+    G->>Q: Durable retention in a separate lifecycle context
+    Q-->>G: Only success moves staged to rejected_result
+  else result is stale
+    G->>Q: Evidence reference + safe reason
+  end
+  opt Disposition remains staged after restart
+    R->>E: Read staged batches
+    R->>G: Find terminal receipt by household/job/evidence
+    G-->>R: page/provider_outcome/rejected_result/stale_result or unknown
+    R->>E: Idempotently finalize only a proven disposition
+  end
+```
+
+A page is self-contained: every supported account used by a balance or posting has an account descriptor on that page. A later page repeats the descriptor and prior cursor; replay creates no account/opening/financial effect. `nextCursor` is either absent or non-empty. A provider failure also echoes the issued cursor; the sync-result boundary rejects a delayed outcome from an earlier page, while the shared lease identity keeps heartbeat valid after checkpoint advancement. Failure on page two never advances its cursor, while the confirmed first page stays committed with partial coverage. The cumulative gap set after merging the checkpoint is capped at 100 values; overflow rolls the page back. An ambiguous account or source cannot turn the page into a complete success and does not discard independent supported records. A confirmed `RUR → RUB` provider mapping preserves the raw code in evidence/metadata and uses RUB in the financial domain. A replay with a new evidence ID/locator, equivalent empty optional fields and the same normalized payload/raw digest creates no source revision. Evidence uses canonical base64 without CR/LF. Only the atomic receipt proves an unknown commit outcome; without it evidence remains staged. The restart reconciler finalizes disposition only from a stored terminal receipt and never replays the financial effect.

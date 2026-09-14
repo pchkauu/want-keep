@@ -33,18 +33,18 @@ func TestSyncWorkerCommitsAdmittedPages(t *testing.T) {
 	worker := app.Worker{Repository: f.store, Admission: gate, Config: app.DefaultWorkerConfig(jobs.Sync)}
 	worker.Handler = handlerFunc(func(ctx context.Context, x app.Execution) (app.Result, error) {
 		calls++
-		cursor := x.Job.Cursor
+		issued := x.Job
 		for i, record := range []string{"first", "last"} {
-			if err := gate.BeforeRead(ctx, x.Principal, x.Job); err != nil {
+			if err := gate.BeforeRead(ctx, x.Principal, issued); err != nil {
 				return app.Result{}, err
 			}
-			if err := x.BeginExternal(ctx); err != nil {
+			if err := f.store.BeginExternal(ctx, x.Principal, issued); err != nil {
 				return app.Result{}, err
 			}
 			revision := f.revision(uuid.NewString(), account, "-10", money.RUB, 1)
 			input := ledger.SourceInput{Key: ledger.SourceKey{HouseholdID: f.family.ID, Provider: b.Provider, ExternalAccountID: "synthetic-stable", Product: "current", Log: "statement", RecordID: record}, PayloadHash: strings.Repeat("a", 64), EvidenceRef: "synthetic:" + record, Classification: "new", Operation: &revision, ConnectionID: connection, JobID: x.Job.ID, FetchedAt: f.now}
-			page := admission.Page{EvidenceRef: input.EvidenceRef, Cursor: cursor, NextCursor: record, Coverage: "complete", Complete: i == 1}
-			applied, err := gate.CommitPage(ctx, x.Principal, x.Job, page, func(ctx context.Context) error {
+			page := admission.Page{EvidenceRef: input.EvidenceRef, Cursor: issued.Cursor, NextCursor: record, Coverage: "complete", Complete: i == 1}
+			applied, err := gate.CommitPage(ctx, x.Principal, issued, page, func(ctx context.Context) error {
 				_, err := source.Apply(ctx, x.Principal, input)
 				return err
 			})
@@ -54,7 +54,12 @@ func TestSyncWorkerCommitsAdmittedPages(t *testing.T) {
 			if !applied {
 				return app.Result{}, jobs.ErrStaleAttempt
 			}
-			cursor = page.NextCursor
+			if i == 0 {
+				issued, err = f.store.Job(ctx, x.Principal, issued.ID)
+				if err != nil {
+					return app.Result{}, err
+				}
+			}
 		}
 		return app.Result{State: jobs.Succeeded}, nil
 	})

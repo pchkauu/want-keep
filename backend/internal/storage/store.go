@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	household "github.com/pchkauu/want-keep/backend/internal/household/domain"
+	transaction "github.com/pchkauu/want-keep/backend/internal/transaction/domain"
 )
 
 var ErrStorage = errors.New("storage operation failed")
@@ -125,7 +126,13 @@ func (s *Store) transact(ctx context.Context, fn func(context.Context, *transact
 	if scope.rollbackFailure != nil {
 		return scope.rollbackFailure
 	}
-	return tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		if errors.Is(err, pgx.ErrTxCommitRollback) {
+			return err
+		}
+		return errors.Join(transaction.ErrCommitOutcomeUnknown, err)
+	}
+	return nil
 }
 
 func (s *Store) nestedTransaction(ctx context.Context, parent *transactionScope, fn func(context.Context, *transactionScope) error) error {

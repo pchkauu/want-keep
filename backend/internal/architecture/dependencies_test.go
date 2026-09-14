@@ -90,6 +90,10 @@ import _ "github.com/openai/openai-go/v3"
 
 import _ "github.com/pchkauu/want-keep/backend/internal/delivery"
 `)
+	writeGoFile(t, internalRoot, "storage/store.go", `package storage
+
+import _ "github.com/pchkauu/want-keep/backend/internal/connections/admission"
+`)
 
 	violations, err := inspectImports(internalRoot)
 	if err != nil {
@@ -109,6 +113,7 @@ import _ "github.com/pchkauu/want-keep/backend/internal/delivery"
 		`accounts/domain/http_account.go: domain layer must not import "net/http"`,
 		`accounts/domain/persisted_account.go: domain layer must not import "github.com/jackc/pgx/v5"`,
 		`storage/repository.go: storage layer must not import "github.com/pchkauu/want-keep/backend/internal/delivery"`,
+		`storage/store.go: storage layer must not import "github.com/pchkauu/want-keep/backend/internal/connections/admission"`,
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("violations = %q, want %q", got, want)
@@ -173,7 +178,7 @@ func inspectImports(internalRoot string) ([]importViolation, error) {
 			if err != nil {
 				return fmt.Errorf("parse import in %s: %w", relative, err)
 			}
-			if forbiddenImport(layer, importPath) || (packageOrSubpackage(importPath, "github.com/cockroachdb/apd/v3") && !strings.HasPrefix(filepath.ToSlash(relative), "money/domain/")) {
+			if forbiddenImport(relative, layer, importPath) || (packageOrSubpackage(importPath, "github.com/cockroachdb/apd/v3") && !strings.HasPrefix(filepath.ToSlash(relative), "money/domain/")) {
 				violations = append(violations, importViolation{
 					file:       filepath.ToSlash(relative),
 					layer:      layer,
@@ -223,7 +228,10 @@ func owningLayer(relative string) string {
 	}
 }
 
-func forbiddenImport(layer, importPath string) bool {
+func forbiddenImport(relative, layer, importPath string) bool {
+	if layer == "application" && strings.HasPrefix(filepath.ToSlash(relative), "integrations/application/") && importPath == modulePath+"/internal/integrations/domain" {
+		return false
+	}
 	if (layer == "domain" || layer == "application") && importPath == modulePath+"/internal/ai" {
 		return true
 	}
@@ -243,7 +251,9 @@ func forbiddenImport(layer, importPath string) bool {
 		return isForbiddenInnerImport(importPath, "application", "delivery", "storage", "integrations", "gateways")
 	case "application":
 		return isForbiddenInnerImport(importPath, "delivery", "storage", "integrations", "gateways")
-	case "storage", "integrations", "gateways":
+	case "storage":
+		return (filepath.ToSlash(relative) == "storage/store.go" && packageOrSubpackage(importPath, modulePath+"/internal/connections/admission")) || importsInternalLayer(importPath, "delivery")
+	case "integrations", "gateways", "ai":
 		return importsInternalLayer(importPath, "delivery")
 	}
 	return false
@@ -317,5 +327,25 @@ import _ "github.com/pchkauu/want-keep/backend/internal/connections/admission"
 	}
 	if len(violations) != 2 {
 		t.Fatalf("admission dependency violations: %v", violations)
+	}
+}
+
+func TestIngestionApplicationOwnsDomainWithoutTransportLeakage(t *testing.T) {
+	root := t.TempDir()
+	writeGoFile(t, root, "integrations/application/service.go", `package application
+import _ "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
+`)
+	writeGoFile(t, root, "integrations/domain/transport.go", `package domain
+import _ "github.com/pchkauu/want-keep/backend/internal/integrations/contract/generated"
+`)
+	writeGoFile(t, root, "accounts/application/ingestion.go", `package application
+import _ "github.com/pchkauu/want-keep/backend/internal/integrations/domain"
+`)
+	violations, err := inspectImports(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(violations) != 2 || violations[0].importPath != modulePath+"/internal/integrations/domain" || violations[1].importPath != modulePath+"/internal/integrations/contract/generated" {
+		t.Fatalf("ingestion dependency violations: %v", violations)
 	}
 }

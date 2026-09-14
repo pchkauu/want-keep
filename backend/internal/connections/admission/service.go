@@ -10,6 +10,33 @@ import (
 	jobs "github.com/pchkauu/want-keep/backend/internal/jobs/domain"
 )
 
+type ResultKind string
+
+const (
+	PageResult            ResultKind = "page"
+	ProviderOutcomeResult ResultKind = "provider_outcome"
+	RejectedResult        ResultKind = "rejected_result"
+	StaleResult           ResultKind = "stale_result"
+)
+
+func (k ResultKind) Valid() bool {
+	return k == PageResult || k == ProviderOutcomeResult || k == RejectedResult || k == StaleResult
+}
+
+type ResultReceipt struct {
+	HouseholdID household.HouseholdID
+	JobID       string
+	LeaseToken  string
+	Attempt     int
+	InputCursor string
+	EvidenceRef string
+	Kind        ResultKind
+}
+
+func (r ResultReceipt) Matches(p household.Principal, issued jobs.Job, evidence string, kind ResultKind) bool {
+	return kind.Valid() && r.Kind == kind && r.HouseholdID == p.HouseholdID() && r.JobID == issued.ID && r.LeaseToken == issued.LeaseToken && r.Attempt == issued.Attempt && r.InputCursor == issued.Cursor && r.EvidenceRef == evidence
+}
+
 type Connection struct {
 	HouseholdID   household.HouseholdID
 	ID, Provider  string
@@ -32,11 +59,16 @@ type Repository interface {
 	Job(context.Context, household.Principal, string) (jobs.Job, error)
 	DatabaseTime(context.Context) (time.Time, error)
 	FenceSyncResult(context.Context, household.Principal, jobs.Job) error
+	AcknowledgeExternalResult(context.Context, household.Principal, jobs.Job) error
 	Quarantine(context.Context, jobs.Job, string, string) error
 	SaveCheckpoint(context.Context, jobs.Job, string, string, []string) error
 	ImportOmissions(context.Context, household.Principal, string) ([]string, error)
 	FinishJob(context.Context, household.Principal, jobs.Job) error
 	FailJob(context.Context, household.Principal, jobs.Job) error
+	SetJobOutcome(context.Context, household.Principal, jobs.Job, jobs.State, jobs.Reason, time.Duration) error
+	SaveResultReceipt(context.Context, household.Principal, jobs.Job, string, ResultKind) error
+	ResultReceipt(context.Context, household.Principal, jobs.Job, string) (ResultReceipt, bool, error)
+	EvidenceResult(context.Context, household.Principal, string, string) (ResultKind, bool, error)
 	SyncDue(context.Context, string) (bool, error)
 	AdvanceSyncSchedule(context.Context, string) error
 }
@@ -282,6 +314,9 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 				return err
 			}
 			page = page.WithOmissions(append(append([]string{}, current.Gaps...), omissions...))
+			if err = page.Validate(); err != nil {
+				return err
+			}
 			if err = s.repository.SaveCheckpoint(ctx, issued, page.NextCursor, page.Coverage, page.Gaps); err != nil {
 				return err
 			}
@@ -290,24 +325,108 @@ func (s *Service) CommitPage(ctx context.Context, p household.Principal, issued 
 					return err
 				}
 			}
+			if err = s.repository.SaveResultReceipt(ctx, p, issued, page.EvidenceRef, PageResult); err != nil {
+				return err
+			}
 			applied = true
 			return nil
 		})
 	})
 	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
 		// The failed transaction has rolled back before retaining the stale evidence.
-		return false, s.quarantineResult(ctx, p, issued.ID, page.EvidenceRef)
+		if quarantineErr := s.quarantineResult(ctx, p, issued, page.EvidenceRef); quarantineErr != nil {
+			return false, errors.Join(err, quarantineErr)
+		}
+		return false, nil
 	}
 	return applied && err == nil, err
 }
 
-// CommitFailure records a terminal provider failure while the exact admission,
+// CommitProviderOutcome records a provider outcome while the exact admission,
 // connection generation, job attempt and lease remain current.
+func (s *Service) CommitProviderOutcome(ctx context.Context, p household.Principal, issued jobs.Job, evidence string, state jobs.State, reason jobs.Reason, delay time.Duration, apply func(context.Context) error) (bool, error) {
+	if issued.HouseholdID != p.HouseholdID() {
+		return false, household.ErrForbidden
+	}
+	if evidence == "" || len(evidence) > 2000 || issued.Binding.Validate() != nil || delay < 0 || delay > jobs.MaxRetryDelay || apply == nil {
+		return false, jobs.ErrInvalidJob
+	}
+	applied := false
+	err := s.transactions.WithinAdmission(ctx, issued.Binding.Provider, issued.Binding.Environment, func(ctx context.Context) error {
+		return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
+			if err := s.repository.FenceSyncResult(ctx, p, issued); err != nil {
+				return err
+			}
+			if err := apply(ctx); err != nil {
+				return err
+			}
+			if err := s.repository.Quarantine(ctx, issued, evidence, "provider_outcome"); err != nil {
+				return err
+			}
+			if err := s.repository.AcknowledgeExternalResult(ctx, p, issued); err != nil {
+				return err
+			}
+			if err := s.repository.SetJobOutcome(ctx, p, issued, state, reason, delay); err != nil {
+				return err
+			}
+			if err := s.repository.SaveResultReceipt(ctx, p, issued, evidence, ProviderOutcomeResult); err != nil {
+				return err
+			}
+			applied = true
+			return nil
+		})
+	})
+	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
+		if quarantineErr := s.quarantineResult(ctx, p, issued, evidence); quarantineErr != nil {
+			return false, errors.Join(err, quarantineErr)
+		}
+		return false, nil
+	}
+	return applied && err == nil, err
+}
+
+func (s *Service) ResultReceipt(ctx context.Context, p household.Principal, issued jobs.Job, evidence string, kind ResultKind) (bool, error) {
+	if issued.HouseholdID != p.HouseholdID() || evidence == "" || len(evidence) > 2000 || !kind.Valid() {
+		return false, jobs.ErrInvalidJob
+	}
+	receipt, found, err := s.repository.ResultReceipt(ctx, p, issued, evidence)
+	if err != nil || !found {
+		return false, err
+	}
+	return receipt.Matches(p, issued, evidence, kind), nil
+}
+
+func (s *Service) EvidenceResult(ctx context.Context, p household.Principal, jobID, evidence string) (ResultKind, bool, error) {
+	if jobID == "" || evidence == "" || len(evidence) > 2000 {
+		return "", false, jobs.ErrInvalidJob
+	}
+	return s.repository.EvidenceResult(ctx, p, jobID, evidence)
+}
+
+// RetainRejectedResult associates evidence that was staged before a page failed
+// domain or persistence validation. It does not advance the checkpoint or job.
+func (s *Service) RetainRejectedResult(ctx context.Context, p household.Principal, issued jobs.Job, evidence string) error {
+	if issued.HouseholdID != p.HouseholdID() {
+		return household.ErrForbidden
+	}
+	if evidence == "" || len(evidence) > 2000 {
+		return jobs.ErrInvalidJob
+	}
+	return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
+		if err := s.repository.Quarantine(ctx, issued, evidence, "rejected_result"); err != nil {
+			return err
+		}
+		return s.repository.SaveResultReceipt(ctx, p, issued, evidence, RejectedResult)
+	})
+}
+
+// CommitFailure retains the existing terminal boundary used by replay
+// reconciliation. Provider adapters should use CommitProviderOutcome.
 func (s *Service) CommitFailure(ctx context.Context, p household.Principal, issued jobs.Job, evidence string, apply func(context.Context) error) (bool, error) {
 	if issued.HouseholdID != p.HouseholdID() {
 		return false, household.ErrForbidden
 	}
-	if evidence == "" || len(evidence) > 2000 || issued.Binding.Validate() != nil {
+	if evidence == "" || len(evidence) > 2000 || issued.Binding.Validate() != nil || apply == nil {
 		return false, jobs.ErrInvalidJob
 	}
 	applied := false
@@ -327,17 +446,22 @@ func (s *Service) CommitFailure(ctx context.Context, p household.Principal, issu
 		})
 	})
 	if errors.Is(err, jobs.ErrStaleAttempt) || errors.Is(err, connections.ErrProviderNotAdmitted) {
-		return false, s.quarantineResult(ctx, p, issued.ID, evidence)
+		if quarantineErr := s.quarantineResult(ctx, p, issued, evidence); quarantineErr != nil {
+			return false, errors.Join(err, quarantineErr)
+		}
+		return false, nil
 	}
 	return applied && err == nil, err
 }
 
-func (s *Service) quarantineResult(ctx context.Context, p household.Principal, jobID, evidence string) error {
+func (s *Service) quarantineResult(ctx context.Context, p household.Principal, issued jobs.Job, evidence string) error {
 	return s.transactions.WithinHousehold(ctx, p, func(ctx context.Context) error {
-		current, err := s.repository.Job(ctx, p, jobID)
-		if err != nil {
+		if _, err := s.repository.Job(ctx, p, issued.ID); err != nil {
 			return err
 		}
-		return s.repository.Quarantine(ctx, current, evidence, "stale_result")
+		if err := s.repository.Quarantine(ctx, issued, evidence, "stale_result"); err != nil {
+			return err
+		}
+		return s.repository.SaveResultReceipt(ctx, p, issued, evidence, StaleResult)
 	})
 }

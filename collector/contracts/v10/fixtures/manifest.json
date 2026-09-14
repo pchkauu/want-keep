@@ -1,0 +1,42 @@
+{
+  "provider": "bybit",
+  "contractVersion": "10",
+  "actions": [
+    "read_accounts",
+    "read_balances",
+    "read_transactions",
+    "read_history"
+  ],
+  "products": ["current", "wallet"],
+  "logs": [
+    {
+      "product": "current",
+      "namespace": "accounts",
+      "recordKinds": ["account", "balance_snapshot"]
+    },
+    {
+      "product": "current",
+      "namespace": "payments",
+      "recordKinds": ["transaction"]
+    },
+    {
+      "product": "wallet",
+      "namespace": "accounts",
+      "recordKinds": ["account", "balance_snapshot"]
+    },
+    {
+      "product": "wallet",
+      "namespace": "trades",
+      "recordKinds": ["transaction"]
+    },
+    {
+      "product": "wallet",
+      "namespace": "mining",
+      "recordKinds": ["transaction"]
+    }
+  ],
+  "history": {
+    "paginated": true,
+    "maximumLookbackDays": 90
+  }
+}
